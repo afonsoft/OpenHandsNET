@@ -342,6 +342,77 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                     b.ToTable("audit_events", (string)null);
                 });
 
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.ConversationSkillRecord", b =>
+                {
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<Guid>("SkillId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("skill_id");
+
+                    b.HasKey("ConversationId", "SkillId")
+                        .HasName("pk_conversation_skills");
+
+                    b.ToTable("conversation_skills", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.HookConfigRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("action");
+
+                    b.Property<bool>("Blocking")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("blocking");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("enabled");
+
+                    b.Property<string>("Event")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name");
+
+                    b.Property<string>("OrgId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("OwnerId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("owner_id");
+
+                    b.Property<string>("Payload")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("payload");
+
+                    b.HasKey("Id")
+                        .HasName("pk_hook_configs");
+
+                    b.HasIndex("OwnerId", "Event")
+                        .HasDatabaseName("ix_hook_configs_owner_id_event");
+
+                    b.ToTable("hook_configs", (string)null);
+                });
+
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.McpServerRecord", b =>
                 {
                     b.Property<string>("OwnerId")
@@ -602,10 +673,22 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("created_at");
 
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("enabled");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT")
                         .HasColumnName("name");
+
+                    b.Property<string>("OrgId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("org_id");
 
                     b.Property<string>("OwnerId")
                         .HasColumnType("TEXT")
@@ -618,6 +701,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                     b.Property<string>("TriggersJson")
                         .HasColumnType("TEXT")
                         .HasColumnName("triggers_json");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
 
                     b.HasKey("Id")
                         .HasName("pk_skills");

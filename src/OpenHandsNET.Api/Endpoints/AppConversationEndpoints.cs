@@ -87,8 +87,7 @@ public static class AppConversationEndpoints
                 http, 501, "ACP model switching not supported yet"));
 
         // Proxies git/files foram para GitEndpoints (SPEC-12).
-        group.MapGet("/{id:guid}/skills", () => Results.Ok(Array.Empty<object>()));
-        group.MapGet("/{id:guid}/hooks", () => Results.Ok(Array.Empty<object>()));
+        // skills/hooks reais em SkillEndpoints/HookEndpoints (SPEC-11).
 
         // start-tasks (polling).
         var tasks = app.MapGroup("/api/v1/app-conversations/start-tasks")

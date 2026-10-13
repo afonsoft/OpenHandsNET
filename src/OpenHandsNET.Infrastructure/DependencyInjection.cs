@@ -87,6 +87,14 @@ public static class DependencyInjection
         services.AddHostedService<
             OpenHandsNET.Infrastructure.Conversations.ConversationStartWorker>();
 
+        // Skills & hooks (SPEC-11): skill store + builtin seeder + hook runner.
+        services.AddScoped<OpenHandsNET.Application.Skills.ISkillService,
+            OpenHandsNET.Infrastructure.Skills.SkillService>();
+        services.AddScoped<OpenHandsNET.Application.Hooks.IHookService,
+            OpenHandsNET.Infrastructure.Hooks.HookService>();
+        services.AddHostedService<
+            OpenHandsNET.Infrastructure.Skills.BuiltinSkillSeedService>();
+
         // Agent engine (SPEC-09): LLM provider + tool registry + runner host.
         services.Configure<OpenHandsNET.Application.Agent.AgentLlmOptions>(
             configuration.GetSection("AgentLlm"));

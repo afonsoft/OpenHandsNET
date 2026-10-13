@@ -50,6 +50,30 @@ public sealed class SkillConfiguration : IEntityTypeConfiguration<SkillRecord>
 }
 
 /// <inheritdoc />
+public sealed class ConversationSkillConfiguration
+    : IEntityTypeConfiguration<ConversationSkillRecord>
+{
+    /// <inheritdoc />
+    public void Configure(EntityTypeBuilder<ConversationSkillRecord> b)
+    {
+        b.ToTable("conversation_skills");
+        b.HasKey(e => new { e.ConversationId, e.SkillId });
+    }
+}
+
+/// <inheritdoc />
+public sealed class HookConfigConfiguration : IEntityTypeConfiguration<HookConfigRecord>
+{
+    /// <inheritdoc />
+    public void Configure(EntityTypeBuilder<HookConfigRecord> b)
+    {
+        b.ToTable("hook_configs");
+        b.HasKey(e => e.Id);
+        b.HasIndex(e => new { e.OwnerId, e.Event });
+    }
+}
+
+/// <inheritdoc />
 public sealed class WebhookRegistrationConfiguration
     : IEntityTypeConfiguration<WebhookRegistrationRecord>
 {

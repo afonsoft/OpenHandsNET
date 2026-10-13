@@ -21,9 +21,6 @@ public static class MiscEndpoints
             deployment_mode = "oss",
         })).WithTags("User").AllowAnonymous();
 
-        app.MapGet("/api/v1/skills", () =>
-            Results.Ok(Array.Empty<object>())).WithTags("Skills");
-
         app.MapGet("/api/v1/pending-messages", (
             Guid conversation_id) =>
             Results.Ok(Pending.TryGetValue(conversation_id, out var list)

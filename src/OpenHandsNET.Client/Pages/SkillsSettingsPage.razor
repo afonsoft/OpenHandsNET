@@ -1,0 +1,100 @@
+@page "/settings/skills"
+@inject HttpClient Http
+
+<PageTitle>Skills</PageTitle>
+
+<h1>Skills</h1>
+
+<p>Reusable markdown skills injected into the agent context (SPEC-11).</p>
+
+@if (skills == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Source</th>
+                <th>Description</th>
+                <th>Enabled</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in skills)
+            {
+                <tr>
+                    <td><code>@s.Name</code></td>
+                    <td>@s.Source</td>
+                    <td>@s.Description</td>
+                    <td>
+                        <input type="checkbox" checked="@s.Enabled"
+                               disabled="@(s.Source == "builtin")"
+                               @onchange="_ => ToggleAsync(s)" />
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<h2>New skill</h2>
+<div>
+    <input placeholder="name (slug)" @bind="newName" />
+    <input placeholder="description" @bind="newDescription" />
+    <textarea placeholder="markdown content" @bind="newContent" rows="6"
+              style="width:100%"></textarea>
+    <button @onclick="CreateAsync" disabled="@string.IsNullOrWhiteSpace(newName)">
+        Create
+    </button>
+    @if (error is not null)
+    {
+        <p class="text-danger">@error</p>
+    }
+</div>
+
+@code {
+    private List<SkillDto>? skills;
+    private string? newName;
+    private string? newDescription;
+    private string? newContent;
+    private string? error;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync() =>
+        skills = await Http.GetFromJsonAsync<List<SkillDto>>("api/v1/skills");
+
+    private async Task CreateAsync()
+    {
+        error = null;
+        var resp = await Http.PostAsJsonAsync("api/v1/skills", new
+        {
+            name = newName,
+            description = newDescription,
+            content_md = newContent ?? "",
+            triggers = new[] { new { type = "always", value = (string?)null } },
+        });
+        if (!resp.IsSuccessStatusCode)
+        {
+            error = await resp.Content.ReadAsStringAsync();
+            return;
+        }
+
+        newName = newDescription = newContent = null;
+        await LoadAsync();
+    }
+
+    private async Task ToggleAsync(SkillDto skill)
+    {
+        await Http.PatchAsJsonAsync($"api/v1/skills/{skill.Id}",
+            new { enabled = !skill.Enabled });
+        await LoadAsync();
+    }
+
+    private sealed record SkillDto(
+        Guid Id, string Name, string? Description,
+        string Source, bool Enabled);
+}

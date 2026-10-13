@@ -52,10 +52,36 @@ public sealed class SkillRecord
 {
     public required Guid Id { get; set; }
     public string? OwnerId { get; set; }
+    public string? OrgId { get; set; }
     public required string Name { get; set; }
+    public string? Description { get; set; }
     public required string Content { get; set; }
     public string? TriggersJson { get; set; }
     public string? Source { get; set; }
+    public bool Enabled { get; set; } = true;
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+}
+
+/// <summary>Skill resolved into a conversation at SETTING_UP_SKILLS (SPEC-11 RF-005).</summary>
+public sealed class ConversationSkillRecord
+{
+    public required Guid ConversationId { get; set; }
+    public required Guid SkillId { get; set; }
+}
+
+/// <summary>Lifecycle hook configuration (SPEC-11 RF-004).</summary>
+public sealed class HookConfigRecord
+{
+    public required Guid Id { get; set; }
+    public string? OwnerId { get; set; }
+    public string? OrgId { get; set; }
+    public required string Name { get; set; }
+    public required string Event { get; set; }
+    public required string Action { get; set; }
+    public string? Payload { get; set; }
+    public bool Blocking { get; set; }
+    public bool Enabled { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; }
 }
 

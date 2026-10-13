@@ -94,7 +94,33 @@ public sealed class ConversationStartWorker(
         }
 
         await AdvanceAsync(db, task, StartTaskStatus.SettingUpSkills, ct);
-        // Skills/hooks provisioning lands with SPEC-11; nothing to install yet.
+        // SPEC-11 RF-005: resolve + persiste skills da conversa antes de READY.
+        {
+            var skillSvc = scope.ServiceProvider
+                .GetService<Application.Skills.ISkillService>();
+            if (skillSvc is not null)
+            {
+                // keyword triggers casam contra a última mensagem do usuário
+                // já persistida no event stream (initial_message).
+                var eventSvc = scope.ServiceProvider
+                    .GetRequiredService<Application.Events.IEventService>();
+                var page = await eventSvc.SearchAsync(conv.Id,
+                    new Application.Events.EventQuery(Limit: 100), ct);
+                var firstMessage = page.Items
+                    .OfType<Domain.Events.MessageEvent>()
+                    .Where(m => m.Source == Domain.Events.EventSource.User)
+                    .Select(m => m.LlmMessage.GetRawText())
+                    .LastOrDefault();
+                var resolved = await skillSvc.ResolveForConversationAsync(
+                    conv.Id, firstMessage, null,
+                    conv.CreatedByUserId, conv.OrgId?.ToString(), ct);
+                if (skillSvc is Infrastructure.Skills.SkillService concrete)
+                {
+                    await concrete.PinAsync(
+                        conv.Id, resolved.Select(s => s.Id), ct);
+                }
+            }
+        }
 
         conv.ExecutionStatus = ConversationExecutionStatus.Running.ToString();
         conv.UpdatedAt = DateTimeOffset.UtcNow;
