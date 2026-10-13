@@ -9,7 +9,7 @@
 | Stack | `.NET 10 · C# 14 · Blazor WASM · ASP.NET Core Minimal APIs` |
 | Repository | `afonsoft/OpenHandsNET` |
 | Branch | `main` (SPECs) |
-| Status | `Approved` |
+| Status | `In implementation` |
 | Ticket | [#2](https://github.com/afonsoft/OpenHandsNET/issues/2) (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | — |
 

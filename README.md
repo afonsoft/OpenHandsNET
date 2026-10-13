@@ -5,7 +5,8 @@ Blazor WebAssembly** — agente autônomo de engenharia de software com conceito
 Cloud + Enterprise e UX inspirada no Devin Web, sobre a base de
 [`afonsoft/open-webui`](https://github.com/afonsoft/open-webui).
 
-> Status: **especificação** (`.specs/`). Implementação ainda não iniciada.
+> Status: **especificação + foundation** — solução .NET 10 scaffolded
+> (SPEC-01). Domínios chegam nas SPECs 02–13.
 
 ## Visão
 
@@ -18,13 +19,31 @@ Cloud + Enterprise e UX inspirada no Devin Web, sobre a base de
 - **CLI** `openhandsnet`: login device-flow, `cloud`, `run` headless, `serve`, TUI.
 - **Enterprise open-source**: OIDC, API keys `sk-*`, orgs/RBAC, quota, auditoria.
 
+## Quickstart
+
+Pré-requisito: .NET SDK 10 (`dotnet --version`).
+
+```bash
+dotnet build OpenHandsNET.slnx          # build (9 projetos)
+dotnet test OpenHandsNET.slnx           # testes
+dotnet run --project src/OpenHandsNET.Api   # app em http://localhost:8080
+cp .env.exemplo .env && docker compose up -d --build   # container em :3032
+```
+
+Configuração por env vars com prefixo `OPENHANDSNET_` (ex.:
+`OPENHANDSNET_Database__Provider=PostgreSql`). Banco default: SQLite em
+`data/openhandsnet.db` (migrado no boot). Endpoints: `GET /api/v1/health`,
+`/api/v1/ready`, `/api/v1/config`.
+
 ## Layout do repositório
 
 ```
-.specs/             SPECs SDD (8 módulos — comece por .specs/README.md)
+.specs/             SPECs SDD (14 módulos — comece por .specs/README.md)
 migration-plan/     research (api-inventory, domains, risks) + roadmap
 docs/reference/     baseline upstream + extratos das docs oficiais
-src/  cli/  tests/  (a criar — ver .specs/01_architecture_overview.md)
+src/                Domain · Application · Infrastructure · Api · Client (WASM)
+cli/                OpenHandsNET.Cli (Spectre.Console — SPEC-06)
+tests/              UnitTests · IntegrationTests · Client.Tests (bUnit)
 ```
 
 ## Fontes

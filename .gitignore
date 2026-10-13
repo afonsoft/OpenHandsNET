@@ -1,0 +1,29 @@
+# .NET
+bin/
+obj/
+out/
+*.user
+*.suo
+.vs/
+.idea/
+
+# Build artifacts
+artifacts/
+publish/
+
+# Runtime data / secrets
+data/
+.env
+*.db
+*.db-shm
+*.db-wal
+secrets*.json
+
+# Logs
+logs/
+*.log
+
+# Tooling
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
