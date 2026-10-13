@@ -15,6 +15,8 @@ app.Configure(config =>
         .WithDescription("headless CI: --json --exit-on-finish --timeout-min");
     config.AddCommand<ServeCommand>("serve")
         .WithDescription("sobe OpenHandsNET.Api local");
+    config.AddCommand<DoctorCommand>("doctor")
+        .WithDescription("self-check: api/db/docker/llm/disk [--json]");
     config.AddCommand<TuiCommand>("tui").IsHidden()
         .WithDescription("interactive TUI (default sem args)");
     config.AddBranch("conversations", b =>

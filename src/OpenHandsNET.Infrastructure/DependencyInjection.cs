@@ -127,6 +127,10 @@ public static class DependencyInjection
             OpenHandsNET.Infrastructure.Identity.AuditService>();
         services.AddScoped<OpenHandsNET.Application.Identity.IFeatureFlagService,
             OpenHandsNET.Infrastructure.Identity.FeatureFlagService>();
+        services.AddScoped<OpenHandsNET.Application.Identity.IUsageService,
+            OpenHandsNET.Infrastructure.Identity.UsageService>();
+        services.AddScoped<
+            OpenHandsNET.Infrastructure.Observability.SupportBundleService>();
         services.AddSingleton<OpenHandsNET.Application.Identity.IAnalyticsService,
             OpenHandsNET.Infrastructure.Identity.NullAnalyticsService>();
         services.AddSingleton<

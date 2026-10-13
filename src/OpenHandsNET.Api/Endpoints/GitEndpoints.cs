@@ -39,7 +39,10 @@ public static class GitEndpoints
             OpenHandsNET.Infrastructure.Git.GitCredentialProvider store,
             OpenHandsNET.Application.Identity.ICurrentUserAccessor current,
             HttpContext http, CancellationToken ct) =>
-            await store.DeleteAsync(host, current.RequireUserId().ToString(), ct)
+            await store.DeleteAsync(host,
+                current.User?.UserId.ToString()
+                    ?? OpenHandsNET.Infrastructure.Git.GitCredentialProvider.SystemOwner,
+                ct)
                 ? Results.NoContent()
                 : OpenHandsNetProblemFactory.Create(
                     http, 404, $"No credential for {host}"))
@@ -218,7 +221,10 @@ public static class GitEndpoints
         }
 
         await store.PutAsync(
-            host, kind, secret, current.RequireUserId().ToString(), ct);
+            host, kind, secret,
+            current.User?.UserId.ToString()
+                ?? OpenHandsNET.Infrastructure.Git.GitCredentialProvider.SystemOwner,
+            ct);
         return Results.NoContent();
     }
 

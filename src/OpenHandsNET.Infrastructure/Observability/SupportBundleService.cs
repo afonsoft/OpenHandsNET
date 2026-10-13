@@ -18,9 +18,9 @@ namespace OpenHandsNET.Infrastructure.Observability;
 /// </summary>
 public sealed class SupportBundleService(
     AppDbContext db,
-    IDockerClient docker,
     HealthCheckService health,
-    IConfiguration config)
+    IConfiguration config,
+    IDockerClient? docker = null)
 {
     /// <summary>Log file glob the bundle tails (Serilog rolling file).</summary>
     public const string LogGlob = "openhandsnet-*.log";
@@ -30,7 +30,11 @@ public sealed class SupportBundleService(
     /// path segments (e.g. <c>Agent:ApiKey</c>, <c>ConnectionStrings:db</c>).
     /// </summary>
     private static readonly string[] SensitiveTokens =
-        ["key", "secret", "token", "password", "credential", "connectionstring", "connection_strings"];
+        ["key", "secret", "token", "password", "credential", "authorization"];
+
+    /// <summary>Compound names matched by substring ("ConnectionStrings", "conn_string").</summary>
+    private static readonly string[] SensitiveSubstrings =
+        ["connectionstring", "connection_string"];
 
     /// <summary>Builds the support bundle ZIP and returns its bytes.</summary>
     public async Task<byte[]> GenerateAsync(CancellationToken ct)
@@ -56,8 +60,15 @@ public sealed class SupportBundleService(
         string dockerStatus;
         try
         {
-            await docker.System.PingAsync(ct);
-            dockerStatus = "healthy";
+            if (docker is null)
+            {
+                dockerStatus = "unavailable";
+            }
+            else
+            {
+                await docker.System.PingAsync(ct);
+                dockerStatus = "healthy";
+            }
         }
         catch (Exception ex)
         {
@@ -109,7 +120,7 @@ public sealed class SupportBundleService(
     /// Flattens the effective configuration; every value whose path smells
     /// like a secret — or which itself is shaped like one — becomes <c>***</c>.
     /// </summary>
-    internal static Dictionary<string, string?> EffectiveConfigOf(
+    public static Dictionary<string, string?> EffectiveConfigOf(
         IConfiguration config)
     {
         var flat = new Dictionary<string, string?>();
@@ -130,11 +141,15 @@ public sealed class SupportBundleService(
 
     private static bool IsSensitivePath(string path)
     {
-        var segments = path.Split(':', '_', StringSplitOptions.RemoveEmptyEntries);
+        // Only ':' separates config segments — splitting '_' would break
+        // words like "connectionstring" that must stay whole.
+        var segments = path.Split(':', StringSplitOptions.RemoveEmptyEntries);
         return segments.Any(s =>
             SensitiveTokens.Any(t =>
                 s.Equals(t, StringComparison.OrdinalIgnoreCase) ||
-                s.EndsWith(t, StringComparison.OrdinalIgnoreCase)));
+                s.EndsWith(t, StringComparison.OrdinalIgnoreCase)) ||
+            SensitiveSubstrings.Any(t =>
+                s.Contains(t, StringComparison.OrdinalIgnoreCase)));
     }
 
     private static bool LooksSecret(string value) =>
@@ -163,7 +178,8 @@ public sealed class SupportBundleService(
         return string.Join('\n', lines.Select(RedactLine));
     }
 
-    private static string RedactLine(string line)
+    /// <summary>Redacts placeholders and <c>sk-*</c> key shapes from a log line.</summary>
+    public static string RedactLine(string line)
     {
         var redacted = SecretRedactor.Redact(line);
         // API-key-shaped values in logs must never survive the bundle.
