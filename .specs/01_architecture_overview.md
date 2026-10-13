@@ -10,6 +10,7 @@
 | Repository | `afonsoft/OpenHandsNET` |
 | Branch | `main` (SPECs) |
 | Status | `Approved` |
+| Ticket | [#2](https://github.com/afonsoft/OpenHandsNET/issues/2) (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | — |
 
 ## 1. User Story

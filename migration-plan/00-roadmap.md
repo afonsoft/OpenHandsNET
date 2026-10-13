@@ -47,6 +47,11 @@ Fase 3+ (fora das 8 SPECs): automações, ACP, canvas extensions, warm-pool K8s.
 - **Paridade**: testes de contrato golden (eventos JSON) contra fixtures derivadas
   do OpenAPI upstream (`docs/reference/openhands-upstream/search-events-openapi.md`).
 
+## Epics
+
+- [**[E10] OpenHandsNET — port .NET 10 do ecossistema OpenHands**](https://github.com/afonsoft/OpenHandsNET/issues/1) - `todo`
+  - Slices: #2 (01), #3 (02), #4 (03), #5 (04), #6 (05), #7 (06), #8 (07), #9 (08)
+
 ## Questões em aberto
 
 1. Banco default: **SQLite** (recomendado, paridade open-webui-net) vs PostgreSQL-first.

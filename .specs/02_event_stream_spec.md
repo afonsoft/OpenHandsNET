@@ -9,6 +9,7 @@
 | Stack | `.NET 10 · C# 14 · EF Core` |
 | Repository | `afonsoft/OpenHandsNET` |
 | Status | `Approved` |
+| Ticket | [#3](https://github.com/afonsoft/OpenHandsNET/issues/3) (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | `01_architecture_overview` |
 
 ## 1. User Story

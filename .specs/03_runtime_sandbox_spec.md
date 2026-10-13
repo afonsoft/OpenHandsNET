@@ -9,6 +9,7 @@
 | Stack | `.NET 10 · Docker.DotNet · Microsoft.Playwright` |
 | Repository | `afonsoft/OpenHandsNET` |
 | Status | `Approved` |
+| Ticket | [#4](https://github.com/afonsoft/OpenHandsNET/issues/4) (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | `01_architecture_overview` |
 
 ## 1. User Story

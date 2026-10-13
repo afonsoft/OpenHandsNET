@@ -9,6 +9,7 @@
 | Stack | `.NET 10 · Minimal APIs · SignalR` |
 | Repository | `afonsoft/OpenHandsNET` |
 | Status | `Approved` |
+| Ticket | [#5](https://github.com/afonsoft/OpenHandsNET/issues/5) (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | `02_event_stream_spec`, `03_runtime_sandbox_spec` |
 
 ## 1. User Story

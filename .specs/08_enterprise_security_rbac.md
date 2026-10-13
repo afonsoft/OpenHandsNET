@@ -9,6 +9,7 @@
 | Stack | `.NET 10 · ASP.NET Core Auth · OIDC · EF Core` |
 | Repository | `afonsoft/OpenHandsNET` |
 | Status | `Approved` |
+| Ticket | [#9](https://github.com/afonsoft/OpenHandsNET/issues/9) (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | `04_rest_and_signalr_api_spec` |
 | Upstream | `enterprise/server/routes/` (Polyform — **conceitos apenas**) |
 
