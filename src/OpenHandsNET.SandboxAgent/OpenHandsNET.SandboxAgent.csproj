@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <!--
+    SPEC-17 RF-002: agente HTTP que roda como PID 1 dentro do sandbox
+    (sob tini). Self-contained single-file na imagem runtime — o host fala
+    HTTP com ele em vez de `docker exec` quando a capability existe.
+  -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <Nullable>enable</Nullable>
+    <AssemblyName>openhandsnet-sandbox-agent</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Console JSON limpo — o agente é inspecionado via docker logs. -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+</Project>

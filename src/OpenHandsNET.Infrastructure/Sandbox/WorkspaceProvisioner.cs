@@ -56,6 +56,33 @@ public sealed class SandboxOptions
     /// (libera RAM; workspace e container fs persistem). 0 = nunca stop.
     /// </summary>
     public double SleepStopAfterHours { get; set; }
+
+    /// <summary>
+    /// SPEC-17: prefixos de imagem que trazem o sandbox-agent como entrypoint
+    /// (<c>;</c>-separados). Para elas o container não leva <c>Cmd=sleep</c>
+    /// e recebe <c>OHN_SESSION_KEY</c>/<c>OHN_DEFERRED_INIT</c>.
+    /// </summary>
+    public string AgentImagePrefixes { get; set; } = "openhandsnet/runtime";
+
+    /// <summary>
+    /// SPEC-17: publica a porta 8000 do agente em <c>127.0.0.1:{port}</c>
+    /// (Docker Desktop / daemon remoto). Default: reach via IP na bridge.
+    /// </summary>
+    public bool PublishAgentPort { get; set; }
+
+    /// <summary>
+    /// SPEC-17 RF-006: mapa <c>imagem→count</c> do warm pool
+    /// (<c>imgA:2;imgB:1</c>). <see cref="WarmPoolSize"/> cobre a imagem default.
+    /// </summary>
+    public string? WarmPoolImages { get; set; }
+
+    /// <summary>SPEC-17: timeout do blueprint (sdk installers + setup.sh).</summary>
+    public int BlueprintTimeoutMinutes { get; set; } = 15;
+
+    /// <summary>SPEC-17: detecta se a imagem embute o sandbox-agent.</summary>
+    public bool IsAgentImage(string image) =>
+        AgentImagePrefixes.Split(';', StringSplitOptions.RemoveEmptyEntries)
+            .Any(p => image.Contains(p.Trim(), StringComparison.OrdinalIgnoreCase));
 }
 
 /// <summary>

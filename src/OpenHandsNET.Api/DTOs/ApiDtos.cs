@@ -89,6 +89,8 @@ public sealed record SandboxDto
     public string? ConversationId { get; init; }
     public required string Status { get; init; }
     public string Pool { get; init; } = "cold";
+    public string? PoolKey { get; init; }
+    public string BlueprintStatus { get; init; } = "none";
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset? ExpiresAt { get; init; }
 }

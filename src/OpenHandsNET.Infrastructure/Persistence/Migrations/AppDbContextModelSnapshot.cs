@@ -1060,6 +1060,23 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("agent_url");
 
+                    b.Property<string>("BlueprintEnvJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("blueprint_env_json");
+
+                    b.Property<string>("BlueprintImage")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("blueprint_image");
+
+                    b.Property<string>("BlueprintLogTail")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("blueprint_log_tail");
+
+                    b.Property<string>("BlueprintStatus")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("blueprint_status");
+
                     b.Property<string>("ContainerId")
                         .HasMaxLength(80)
                         .HasColumnType("TEXT")
@@ -1093,6 +1110,14 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT")
                         .HasColumnName("pool");
+
+                    b.Property<string>("PoolKey")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("pool_key");
+
+                    b.Property<string>("SessionKeyProtected")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("session_key_protected");
 
                     b.Property<Guid>("SpecId")
                         .HasColumnType("TEXT")

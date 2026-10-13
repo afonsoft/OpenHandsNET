@@ -212,7 +212,7 @@ public sealed class Spec14SandboxTests : IAsyncLifetime
         {
             // wait until a free warm container exists (pull may take a moment)
             var deadline = DateTime.UtcNow.AddMinutes(3);
-            while (await pool.FreeCountAsync(CancellationToken.None) < 1)
+            while (await pool.FreeCountAsync(Image, CancellationToken.None) < 1)
             {
                 if (DateTime.UtcNow > deadline)
                 {
