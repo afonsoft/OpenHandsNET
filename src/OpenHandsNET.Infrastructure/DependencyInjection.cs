@@ -70,6 +70,13 @@ public static class DependencyInjection
         services.AddHostedService<OpenHandsNET.Infrastructure.Sandbox.OrphanSweepService>();
         services.AddHostedService<OpenHandsNET.Infrastructure.Sandbox.SandboxTimeoutWatcher>();
 
+        // Git/SCM (SPEC-12): git CLI no container, credenciais via secrets+askpass.
+        services.Configure<OpenHandsNET.Infrastructure.Git.GitOptions>(
+            configuration.GetSection("Git"));
+        services.AddScoped<OpenHandsNET.Infrastructure.Git.GitCredentialProvider>();
+        services.AddScoped<OpenHandsNET.Application.Git.IGitService,
+            OpenHandsNET.Infrastructure.Git.GitService>();
+
         // Conversations (SPEC-04): aggregate service + start-task queue/worker.
         services.AddSingleton<OpenHandsNET.Infrastructure.Conversations.StartTaskService>();
         services.AddSingleton<OpenHandsNET.Application.Conversations.IStartTaskService>(
