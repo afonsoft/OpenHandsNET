@@ -2,7 +2,7 @@ using Docker.DotNet;
 using Docker.DotNet.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-
+using Microsoft.Extensions.Options;
 using OpenHandsNET.Application.Sandbox;
 using OpenHandsNET.Domain.Sandbox;
 using OpenHandsNET.Infrastructure.Persistence;
@@ -18,6 +18,7 @@ public sealed class DockerSandboxService(
     AppDbContext db,
     IDockerClient docker,
     WorkspaceProvisioner workspaces,
+    IOptions<SandboxOptions> options,
     ILogger<DockerSandboxService> logger) : ISandboxService
 {
     /// <summary>Label prefix on all managed containers.</summary>
@@ -158,6 +159,13 @@ public sealed class DockerSandboxService(
             {
                 // already gone — delete stays idempotent
             }
+            catch (DockerApiException ex)
+            {
+                // daemon races (ex.: removal already in progress) não bloqueiam
+                logger.LogWarning(ex,
+                    "Container {ContainerId} removal reported an error (ignored)",
+                    record.ContainerId);
+            }
         }
 
         db.Sandboxes.Remove(record);
@@ -228,7 +236,7 @@ public sealed class DockerSandboxService(
         if (specId == Guid.Empty)
         {
             return new Domain.Sandbox.SandboxSpec(
-                Guid.Empty, "default", Domain.Sandbox.SandboxSpec.DefaultImage);
+                Guid.Empty, "default", options.Value.DefaultImage);
         }
 
         var record = await db.SandboxSpecs.FindAsync([specId], ct);

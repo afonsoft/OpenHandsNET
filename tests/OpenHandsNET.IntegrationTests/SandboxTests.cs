@@ -49,7 +49,7 @@ public sealed class DockerSandboxTests : IAsyncLifetime
             Options.Create(new SandboxOptions { WorkspaceRoot = _wsRoot }),
             NullLogger<WorkspaceProvisioner>.Instance);
         _service = new DockerSandboxService(
-            _db, _docker, provisioner, NullLogger<DockerSandboxService>.Instance);
+            _db, _docker, provisioner, Options.Create(new SandboxOptions()), NullLogger<DockerSandboxService>.Instance);
         _executor = new DockerSandboxExecutor(_docker);
     }
 

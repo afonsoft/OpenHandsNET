@@ -9,6 +9,10 @@ public sealed class SandboxOptions
 {
     /// <summary>Host root for per-conversation workspaces (bind-mounted).</summary>
     public string WorkspaceRoot { get; set; } = "data/workspaces";
+
+    /// <summary>Default sandbox image when a spec does not set one.</summary>
+    public string DefaultImage { get; set; } =
+        OpenHandsNET.Domain.Sandbox.SandboxSpec.DefaultImage;
 }
 
 /// <summary>

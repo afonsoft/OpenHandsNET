@@ -37,10 +37,10 @@ public sealed class SystemEndpointsTests : IClassFixture<SystemEndpointsTests.Ap
     [Fact]
     public async Task Config_Returns_Version_And_DeploymentMode()
     {
-        var config = await _client.GetFromJsonAsync<ConfigResponse>("/api/v1/config");
-        config.ShouldNotBeNull();
-        config.Version.ShouldNotBeNullOrEmpty();
-        config.DeploymentMode.ShouldBe("oss");
+        var config = await _client.GetFromJsonAsync<
+            System.Text.Json.JsonElement>("/api/v1/config");
+        config.GetProperty("version").GetString().ShouldNotBeNullOrEmpty();
+        config.GetProperty("deployment_mode").GetString().ShouldBe("oss");
     }
 
     // Covers RF-003: OPENHANDSNET_* env overrides bind into options.
@@ -55,16 +55,14 @@ public sealed class SystemEndpointsTests : IClassFixture<SystemEndpointsTests.Ap
             },
         };
         var client = factory.CreateClient();
-        var config = await client.GetFromJsonAsync<ConfigResponse>("/api/v1/config");
-        config.ShouldNotBeNull();
-        config.DeploymentMode.ShouldBe("self_hosted");
-        config.Features.MultiTenancy.ShouldBeTrue();
+        var config = await client.GetFromJsonAsync<
+            System.Text.Json.JsonElement>("/api/v1/config");
+        config.GetProperty("deployment_mode").GetString().ShouldBe("self_hosted");
+        config.GetProperty("features").GetProperty("multi_tenancy")
+            .GetBoolean().ShouldBeTrue();
     }
 
-    private sealed record ConfigResponse(
-        string Version, string DeploymentMode, string AuthProvider, FeaturesResponse Features);
 
-    private sealed record FeaturesResponse(bool MultiTenancy);
 
     /// <summary>Factory that points the app at a throwaway SQLite file.</summary>
     public class AppFactory : WebApplicationFactory<Program>

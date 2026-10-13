@@ -1,4 +1,5 @@
 using OpenHandsNET.Api.Endpoints;
+using OpenHandsNET.Api.Hubs;
 using OpenHandsNET.Api.Options;
 using OpenHandsNET.Infrastructure;
 using OpenTelemetry.Metrics;
@@ -47,7 +48,19 @@ builder.Services.AddOpenTelemetry()
 
 // Infrastructure (EF Core + DatabaseMigrator + health checks).
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddSignalR();
+// V1 wire contract: snake_case payloads (paridade upstream).
+builder.Services.ConfigureHttpJsonOptions(o =>
+{
+    o.SerializerOptions.PropertyNamingPolicy =
+        System.Text.Json.JsonNamingPolicy.SnakeCaseLower;
+    o.SerializerOptions.PropertyNameCaseInsensitive = true;
+});
+builder.Services.AddSignalR().AddJsonProtocol(o =>
+{
+    o.PayloadSerializerOptions.PropertyNamingPolicy =
+        System.Text.Json.JsonNamingPolicy.SnakeCaseLower;
+});
+builder.Services.AddSingleton<TerminalBridgeService>();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
@@ -65,6 +78,13 @@ app.UseSerilogRequestLogging();
 app.MapStaticAssets();
 
 app.MapSystemEndpoints();
+app.MapAppConversationEndpoints();
+app.MapEventEndpoints();
+app.MapSandboxEndpoints();
+app.MapSettingsEndpoints();
+app.MapMiscEndpoints();
+app.MapWebhookEndpoints();
+app.MapHub<ConversationHub>("/hubs/conversations");
 app.MapHealthChecks("/api/v1/health");
 app.MapHealthChecks("/api/v1/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {

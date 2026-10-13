@@ -19,6 +19,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<OpenHandsNET.Infrastructure.Sandbox.SandboxRecord> Sandboxes =>
         Set<OpenHandsNET.Infrastructure.Sandbox.SandboxRecord>();
 
+    /// <summary>App conversations.</summary>
+    public DbSet<OpenHandsNET.Infrastructure.Conversations.ConversationRecord> Conversations =>
+        Set<OpenHandsNET.Infrastructure.Conversations.ConversationRecord>();
+
+    /// <summary>Conversation start tasks.</summary>
+    public DbSet<OpenHandsNET.Infrastructure.Conversations.StartTaskRecord> StartTasks =>
+        Set<OpenHandsNET.Infrastructure.Conversations.StartTaskRecord>();
+
     /// <summary>Sandbox spec templates.</summary>
     public DbSet<OpenHandsNET.Infrastructure.Sandbox.SandboxSpecRecord> SandboxSpecs =>
         Set<OpenHandsNET.Infrastructure.Sandbox.SandboxSpecRecord>();
