@@ -88,6 +88,15 @@
         </div>
         break;
 
+    case "decision_auto":
+        <div class="ev-card">
+            <div class="ev-head">
+                <span>&#x26A1; auto @(Event.Str("chosen") ?? "approve")</span>
+                <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+            </div>
+        </div>
+        break;
+
     case "HookExecutionEvent":
         <div class="ev-card">
             <div class="ev-head">

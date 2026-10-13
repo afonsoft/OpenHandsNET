@@ -127,6 +127,54 @@ public sealed class AgentRunnerLoopTests
     }
 
     [Fact]
+    public async Task AlwaysAllow_Emits_DecisionAuto_And_Runs_Routine_Risky()
+    {
+        const string script = """
+            [{"tool":{"name":"bash","arguments":{"command":"echo hi"}}},
+             {"tool":{"name":"finish","arguments":{"final_message":"ok"}}}]
+            """;
+        await using var fx = new AgentRunnerFixture(
+            script, confirmationMode: false);
+        await fx.Runner.RunAsync(CancellationToken.None);
+
+        var decision = fx.Events.Events.OfType<DecisionAutoEvent>().Single();
+        decision.Chosen.ShouldBe("approve");
+        decision.Reason.ShouldBe("always_allow");
+        decision.AskedId.ShouldBe(
+            fx.Events.Events.OfType<ActionEvent>()
+                .Single(e => e.ToolName == "bash").Id);
+        fx.Executor.Commands.ShouldContain("echo hi");
+        fx.Events.Events.OfType<ConversationStateUpdateEvent>()
+            .Count(e => e.Value?.ToString().Contains("waiting") == true)
+            .ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task AlwaysAllow_Destructive_Still_Pauses_For_Human()
+    {
+        const string script = """
+            [{"tool":{"name":"bash","arguments":{"command":"git push --force origin main"}}},
+             {"tool":{"name":"finish","arguments":{"final_message":"ok"}}}]
+            """;
+        await using var fx = new AgentRunnerFixture(
+            script, confirmationMode: false);
+        var run = fx.Runner.RunAsync(CancellationToken.None);
+
+        await WaitForAsync(() =>
+            fx.Events.Events.OfType<ConversationStateUpdateEvent>()
+                .LastOrDefault(e => e.Key == "execution_status"
+                    && e.Value?.ToString().Contains("waiting") == true));
+        fx.Events.Events.OfType<DecisionAutoEvent>().ShouldBeEmpty();
+        fx.Executor.Commands.ShouldBeEmpty();
+
+        var actionId = fx.Events.Events.OfType<ActionEvent>()
+            .Single(e => e.ToolName == "bash").Id;
+        fx.Runner.ResolveConfirmation(actionId, approved: true);
+        await run.WaitAsync(TimeSpan.FromSeconds(10));
+        fx.Executor.Commands.ShouldContain("git push --force origin main");
+    }
+
+    [Fact]
     public async Task InterruptEvent_Stops_Loop_At_Iteration_Boundary()
     {
         const string script = """

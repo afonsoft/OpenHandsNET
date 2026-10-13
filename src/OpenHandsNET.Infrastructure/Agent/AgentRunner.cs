@@ -345,7 +345,24 @@ public sealed class AgentRunner(
                     continue;
                 }
 
-                if (tool.Risky && confirmationMode)
+                // SPEC-15 RF-003: always-allow auto-aprova ação rotineira
+                // (auditável via decision_auto); destrutiva sempre pergunta.
+                var alwaysAsk = tool.Risky &&
+                    AutonomyGuardrail.RequiresHumanApproval(
+                        call.Name, actionEvent.Action);
+                if (tool.Risky && !confirmationMode && !alwaysAsk)
+                {
+                    lastEventId = (await events.AppendAsync(conversationId,
+                        new DecisionAutoEvent
+                        {
+                            ParentId = lastEventId,
+                            AskedId = actionEvent.Id,
+                            Chosen = "approve",
+                            Reason = "always_allow",
+                        }, ct)).Id;
+                }
+
+                if (tool.Risky && (confirmationMode || alwaysAsk))
                 {
                     await SetStatusAsync(events, db, conv,
                         "waiting_for_confirmation", null, ct,

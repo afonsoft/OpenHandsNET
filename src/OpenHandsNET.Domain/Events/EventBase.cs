@@ -41,6 +41,7 @@ public static class EventTree
 [JsonDerivedType(typeof(AcpToolCallEvent), "ACPToolCallEvent")]
 [JsonDerivedType(typeof(HookExecutionEvent), "HookExecutionEvent")]
 [JsonDerivedType(typeof(LlmCompletionLogEvent), "LLMCompletionLogEvent")]
+[JsonDerivedType(typeof(DecisionAutoEvent), "decision_auto")]
 public abstract record EventBase
 {
     /// <summary>Unique event id — ULID/UUID7 string (lexicographic == temporal order).</summary>

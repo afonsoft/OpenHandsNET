@@ -180,6 +180,12 @@ documentado (host daemon já é trust-boundary).
   - `ProvisionGhAuthAsync(sb, ownerId, ct)` — novo método.
 - `ISandboxService.StartAsync` — assinatura inalterada (env resolvido
   internamente via `conversationId`).
+- `decision_auto` (EventStream V1, `source:"agent"`) — divergência
+  documentada: o modelo de pergunta do OpenHandsNET é booleano
+  (`waiting_for_confirmation`), sem lista de opções; portanto
+  `chosen` carrega `"approve"` e `reason` carrega `"always_allow"` em vez
+  de `"recommended_option"`. Payload: `asked_id` (ActionEvent id),
+  `chosen`, `reason`.
 
 ## 6. NFR
 
