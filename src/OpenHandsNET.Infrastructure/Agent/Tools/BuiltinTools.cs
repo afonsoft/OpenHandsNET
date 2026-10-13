@@ -207,18 +207,35 @@ public static class BuiltinTools
         Handler: (ctx, args, ct) => Task.FromResult(
             ToolResult.Error("browser tool is not implemented yet (SPEC-03 RF-005)")));
 
-    /// <summary>Skill invocation — stub until SPEC-11 lands.</summary>
+    /// <summary>Skill invocation — injects skill content as context (SPEC-11 RF-003).</summary>
     public static AgentTool InvokeSkill() => new(
         new ToolSchema("invoke_skill",
-            "Invoke a named skill (not available yet).",
+            "Load a named skill's instructions into context.",
             Schema("""
                 {"type":"object","properties":{
                   "name":{"type":"string"}},
                  "required":["name"]}
                 """)),
         Risky: false,
-        Handler: (ctx, args, ct) => Task.FromResult(
-            ToolResult.Error("invoke_skill lands with SPEC-11")));
+        Handler: async (ctx, args, ct) =>
+        {
+            var skills = ctx.Services
+                .GetService<Application.Skills.ISkillService>();
+            if (skills is null)
+            {
+                return ToolResult.Error("skill service unavailable");
+            }
+
+            var name = args.GetProperty("name").GetString()!;
+            var skill = await skills.FindByNameAsync(name, null, null, ct);
+            return skill is null
+                ? ToolResult.Error($"skill '{name}' not found")
+                : ToolResult.Ok(new
+                {
+                    name = skill.Name,
+                    content = skill.ContentMd,
+                });
+        });
 
     /// <summary>Ends the run — handled by the loop (marker observation).</summary>
     public static AgentTool Finish() => new(

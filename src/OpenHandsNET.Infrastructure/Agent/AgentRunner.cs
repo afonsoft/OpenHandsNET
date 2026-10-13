@@ -92,6 +92,19 @@ public sealed class AgentRunner(
             ConversationExecutionStatus.Running, ct);
         using var pump = Subscribe(events);
 
+        // SPEC-11: hooks de ciclo de vida — falhas não abortam (salvo blocking).
+        var hooks = services.GetService<Application.Hooks.IHookService>();
+        if (hooks is not null)
+        {
+            await hooks.RunAsync(Domain.Hooks.HookEvent.OnConversationStart,
+                new Application.Hooks.HookContext
+                {
+                    ConversationId = conversationId,
+                    Sandbox = sandbox,
+                    Services = services,
+                }, ct);
+        }
+
         try
         {
             await LoopAsync(events, db, conv, sandbox, executor, tools, llm,
@@ -117,6 +130,7 @@ public sealed class AgentRunner(
         var (history, lastEventId) = await BuildHistoryAsync(
             events, tools, conv, ct);
         var confirmationMode = conv.ConfirmationMode;
+        var hooks = services.GetService<Application.Hooks.IHookService>();
 
         for (var iteration = 0; iteration < opt.MaxIterations; iteration++)
         {
@@ -130,6 +144,17 @@ public sealed class AgentRunner(
             {
                 history.Add(ToLlmMessage(pending));
                 lastEventId = pending.Id;
+                if (hooks is not null)
+                {
+                    await hooks.RunAsync(Domain.Hooks.HookEvent.OnMessage,
+                        new Application.Hooks.HookContext
+                        {
+                            ConversationId = conversationId,
+                            Sandbox = sandbox,
+                            Services = services,
+                            MessageId = pending.Id,
+                        }, ct);
+                }
             }
 
             var request = await condenser.CondenseAsync(history, ct);
@@ -270,6 +295,28 @@ public sealed class AgentRunner(
                     continue;
                 }
 
+                // SPEC-11: on_tool_pre — hook blocking pode vetar a ação.
+                if (hooks is not null && await hooks.RunAsync(
+                        Domain.Hooks.HookEvent.OnToolPre,
+                        new Application.Hooks.HookContext
+                        {
+                            ConversationId = conversationId,
+                            Sandbox = sandbox,
+                            Services = services,
+                            ToolName = call.Name,
+                            ActionId = actionEvent.Id,
+                            HookInput = actionEvent.Action,
+                        }, ct))
+                {
+                    var vetoId = await ObserveAsync(events, conversationId,
+                        actionEvent,
+                        ToolResult.Error("blocked by hook"), ct);
+                    history.Add(LlmMessage.ToolResult(
+                        call.Id, "{\"error\":\"blocked by hook\"}"));
+                    lastEventId = vetoId;
+                    continue;
+                }
+
                 if (tool.Risky && confirmationMode)
                 {
                     await SetStatusAsync(events, db, conv,
@@ -322,6 +369,20 @@ public sealed class AgentRunner(
                 history.Add(LlmMessage.ToolResult(
                     call.Id, result.Observation.GetRawText()));
 
+                // SPEC-11: on_tool_post — auditoria após a observação.
+                if (hooks is not null)
+                {
+                    await hooks.RunAsync(Domain.Hooks.HookEvent.OnToolPost,
+                        new Application.Hooks.HookContext
+                        {
+                            ConversationId = conversationId,
+                            Sandbox = sandbox,
+                            Services = services,
+                            ToolName = call.Name,
+                            ActionId = actionEvent.Id,
+                        }, ct);
+                }
+
                 if (call.Name == "finish")
                 {
                     var finalText = result.Observation.TryGetProperty(
@@ -346,6 +407,19 @@ public sealed class AgentRunner(
 
                     await SetStatusAsync(events, db, conv, "finished",
                         ConversationExecutionStatus.Finished, ct);
+                    if (hooks is not null)
+                    {
+                        await hooks.RunAsync(Domain.Hooks.HookEvent.OnFinish,
+                            new Application.Hooks.HookContext
+                            {
+                                ConversationId = conversationId,
+                                Sandbox = sandbox,
+                                Services = services,
+                                ToolName = call.Name,
+                                ActionId = actionEvent.Id,
+                            }, CancellationToken.None);
+                    }
+
                     return;
                 }
 
@@ -505,8 +579,22 @@ public sealed class AgentRunner(
 
         if (!hasSystem)
         {
+            // SPEC-11 RF-002: resolve skills por trigger (always/keyword/task)
+            // usando a última mensagem do usuário e as tags da conversa.
+            var lastUserText = all.OfType<MessageEvent>()
+                .Where(m => m.Source == EventSource.User)
+                .Select(m => ToLlmMessage(m).Content)
+                .LastOrDefault();
+            var skills = services.GetService<Application.Skills.ISkillService>()
+                is { } skillSvc
+                ? await skillSvc.ResolveForConversationAsync(
+                    conversationId, lastUserText, null,
+                    conv.CreatedByUserId, conv.OrgId?.ToString(), ct)
+                : [];
             var prompt = SystemPromptBuilder.Build(
-                conv.SelectedRepository, tools.All.Select(t => t.Schema).ToList());
+                conv.SelectedRepository,
+                tools.All.Select(t => t.Schema).ToList(),
+                skills);
             var sp = new SystemPromptEvent
             {
                 ParentId = lastId,

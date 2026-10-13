@@ -90,6 +90,8 @@ app.MapSettingsEndpoints();
 app.MapMiscEndpoints();
 app.MapWebhookEndpoints();
 app.MapGitEndpoints();
+app.MapSkillEndpoints();
+app.MapHookEndpoints();
 app.MapHub<ConversationHub>("/hubs/conversations");
 app.MapHealthChecks("/api/v1/health");
 app.MapHealthChecks("/api/v1/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions

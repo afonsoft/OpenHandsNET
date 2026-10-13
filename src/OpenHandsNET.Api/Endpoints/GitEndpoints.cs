@@ -26,19 +26,21 @@ public static class GitEndpoints
         conv.MapGet("/{id:guid}/files", ListFilesAsync);
         conv.MapGet("/{id:guid}/file", ReadFileAsync);
 
-        var creds = app.MapGroup("/api/v1/git/credentials").WithTags("Git Credentials");
-        creds.MapGet("/", async (
+        app.MapGet("/api/v1/git/credentials", async (
             OpenHandsNET.Infrastructure.Git.GitCredentialProvider store,
-            CancellationToken ct) => Results.Ok(await store.ListAsync(ct)));
-        creds.MapPut("/{host}", PutCredentialAsync);
-        creds.MapDelete("/{host}", async (
+            CancellationToken ct) => Results.Ok(await store.ListAsync(ct)))
+            .WithTags("Git Credentials");
+        app.MapPut("/api/v1/git/credentials/{host}", PutCredentialAsync)
+            .WithTags("Git Credentials");
+        app.MapDelete("/api/v1/git/credentials/{host}", async (
             string host,
             OpenHandsNET.Infrastructure.Git.GitCredentialProvider store,
             HttpContext http, CancellationToken ct) =>
             await store.DeleteAsync(host, ct)
                 ? Results.NoContent()
                 : OpenHandsNetProblemFactory.Create(
-                    http, 404, $"No credential for {host}"));
+                    http, 404, $"No credential for {host}"))
+            .WithTags("Git Credentials");
 
         return app;
     }

@@ -10,7 +10,9 @@ namespace OpenHandsNET.Infrastructure.Agent;
 public static class SystemPromptBuilder
 {
     /// <summary>Default agent persona + rules.</summary>
-    public static string Build(string? selectedRepository, IReadOnlyList<ToolSchema> tools)
+    public static string Build(string? selectedRepository,
+        IReadOnlyList<ToolSchema> tools,
+        IReadOnlyList<OpenHandsNET.Domain.Skills.Skill>? skills = null)
     {
         var sb = new StringBuilder();
         sb.AppendLine("""
@@ -38,6 +40,17 @@ public static class SystemPromptBuilder
         foreach (var t in tools)
         {
             sb.AppendLine($"- {t.Name}: {t.Description}");
+        }
+
+        // Skills (SPEC-11): conteúdo injetado como contexto, nunca como
+        // instruções com prioridade sobre as regras acima.
+        if (skills is { Count: > 0 })
+        {
+            sb.AppendLine().AppendLine("Additional context (skills):");
+            foreach (var s in skills)
+            {
+                sb.AppendLine().AppendLine($"### {s.Name}").AppendLine(s.ContentMd);
+            }
         }
 
         return sb.ToString();

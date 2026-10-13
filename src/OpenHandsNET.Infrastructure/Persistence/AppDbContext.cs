@@ -73,6 +73,13 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// <summary>Skill documents.</summary>
     public DbSet<SkillRecord> Skills => Set<SkillRecord>();
 
+    /// <summary>Skills resolved into conversations (join).</summary>
+    public DbSet<ConversationSkillRecord> ConversationSkills =>
+        Set<ConversationSkillRecord>();
+
+    /// <summary>Lifecycle hook configurations.</summary>
+    public DbSet<HookConfigRecord> HookConfigs => Set<HookConfigRecord>();
+
     /// <summary>Outbound webhook registrations.</summary>
     public DbSet<WebhookRegistrationRecord> WebhookRegistrations =>
         Set<WebhookRegistrationRecord>();
