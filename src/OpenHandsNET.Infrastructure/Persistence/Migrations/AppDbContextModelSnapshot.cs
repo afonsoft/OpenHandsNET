@@ -51,6 +51,9 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                     b.Property<string>("AgentType")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("ConfirmationMode")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT");
 
@@ -64,6 +67,9 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("LlmModel")
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("PendingKickoff")
+                        .HasColumnType("INTEGER");
 
                     b.Property<bool>("Pinned")
                         .HasColumnType("INTEGER");

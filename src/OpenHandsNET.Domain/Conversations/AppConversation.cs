@@ -44,4 +44,5 @@ public sealed record AppConversation(
     bool Pinned,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    string? CreatedByUserId = null);
+    string? CreatedByUserId = null,
+    bool ConfirmationMode = false);

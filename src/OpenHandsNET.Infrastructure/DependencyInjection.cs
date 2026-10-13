@@ -72,6 +72,61 @@ public static class DependencyInjection
             OpenHandsNET.Infrastructure.Conversations.AppConversationService>();
         services.AddHostedService<
             OpenHandsNET.Infrastructure.Conversations.ConversationStartWorker>();
+
+        // Agent engine (SPEC-09): LLM provider + tool registry + runner host.
+        services.Configure<OpenHandsNET.Application.Agent.AgentLlmOptions>(
+            configuration.GetSection("AgentLlm"));
+        services.PostConfigure<OpenHandsNET.Application.Agent.AgentLlmOptions>(o =>
+        {
+            // Chaves flat legadas (estilo upstream): LLM__MODEL/BASE_URL/API_KEY.
+            o.Model = configuration["LLM:MODEL"] ?? o.Model;
+            o.BaseUrl ??= configuration["LLM:BASE_URL"];
+            o.ApiKey ??= configuration["LLM:API_KEY"];
+        });
+        services.AddHttpClient("agent-llm");
+        services.AddSingleton<
+            OpenHandsNET.Application.Agent.ITaskTrackerService,
+            OpenHandsNET.Infrastructure.Agent.InMemoryTaskTrackerService>();
+        services.AddSingleton<
+            OpenHandsNET.Application.Agent.IToolRegistry,
+            OpenHandsNET.Infrastructure.Agent.ToolRegistry>();
+        services.AddSingleton<
+            OpenHandsNET.Application.Agent.ICondenser,
+            OpenHandsNET.Infrastructure.Agent.NoOpCondenser>();
+        services.AddSingleton<OpenHandsNET.Infrastructure.Agent.AgentRunnerHost>();
+        services.AddSingleton<OpenHandsNET.Application.Agent.IAgentRunnerHost>(
+            sp => sp.GetRequiredService<
+                OpenHandsNET.Infrastructure.Agent.AgentRunnerHost>());
+        services.AddSingleton<OpenHandsNET.Application.Agent.IAgentLlmProvider>(sp =>
+        {
+            var opts = sp.GetRequiredService<Microsoft.Extensions.Options
+                .IOptions<OpenHandsNET.Application.Agent.AgentLlmOptions>>();
+            var o = opts.Value;
+            var deploymentMode = configuration["DeploymentMode"] ?? "oss";
+            var requested = (o.Provider ?? "").Trim();
+            var autoMock = requested.Length == 0
+                && string.IsNullOrEmpty(o.ApiKey)
+                && deploymentMode.Equals("oss", StringComparison.OrdinalIgnoreCase);
+            var useMock = requested.Equals("mock", StringComparison.OrdinalIgnoreCase)
+                || autoMock;
+            if (useMock)
+            {
+                // Guardrail: mock nunca em cloud/self_hosted sem AllowMock.
+                if (!deploymentMode.Equals("oss", StringComparison.OrdinalIgnoreCase)
+                    && !o.AllowMock)
+                {
+                    throw new InvalidOperationException(
+                        "MockLlmProvider is dev/test only (deployment_mode != oss " +
+                        "requires AgentLlm:AllowMock=true).");
+                }
+
+                return new OpenHandsNET.Infrastructure.Agent.MockLlmProvider(opts);
+            }
+
+            return Microsoft.Extensions.DependencyInjection.ActivatorUtilities
+                .CreateInstance<
+                    OpenHandsNET.Infrastructure.Agent.OpenAiCompatLlmProvider>(sp);
+        });
         return services;
     }
 

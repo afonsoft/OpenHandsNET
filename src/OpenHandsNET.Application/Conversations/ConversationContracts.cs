@@ -8,10 +8,15 @@ public sealed record CreateConversationRequest(
     string? SelectedRepository,
     string? AgentType,
     string? LlmModel,
-    Guid? SandboxSpecId);
+    Guid? SandboxSpecId,
+    bool ConfirmationMode = false);
 
-/// <summary>User/agent message seed for a new conversation.</summary>
-public sealed record InitialMessage(string Role, IReadOnlyList<object> Content);
+/// <summary>
+/// User/agent message seed for a new conversation. <paramref name="Run"/>
+/// controls whether the agent loop starts right after READY.
+/// </summary>
+public sealed record InitialMessage(
+    string Role, IReadOnlyList<object> Content, bool Run = true);
 
 /// <summary>Paged search over conversations.</summary>
 public sealed record ConversationQuery(

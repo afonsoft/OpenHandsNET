@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using OpenHandsNET.Application.Conversations;
 using OpenHandsNET.Domain.Conversations;
+using OpenHandsNET.Domain.Events;
 using OpenHandsNET.Infrastructure.Persistence;
 using OpenHandsNET.Application.Sandbox;
 
@@ -14,7 +15,8 @@ namespace OpenHandsNET.Infrastructure.Conversations;
 public sealed class AppConversationService(
     AppDbContext db,
     IStartTaskService tasks,
-    ISandboxService sandboxes) : IAppConversationService
+    ISandboxService sandboxes,
+    OpenHandsNET.Application.Events.IEventService events) : IAppConversationService
 {
     /// <inheritdoc />
     public async Task<AppConversationStartTask> CreateAsync(
@@ -29,6 +31,9 @@ public sealed class AppConversationService(
             SelectedRepository = request.SelectedRepository,
             AgentType = request.AgentType,
             LlmModel = request.LlmModel,
+            ConfirmationMode = request.ConfirmationMode,
+            // Sinaliza ao worker que o agente deve iniciar ao chegar em READY.
+            PendingKickoff = request.InitialMessage?.Run == true,
             ExecutionStatus = ConversationExecutionStatus.Starting.ToString(),
             CreatedAt = now, UpdatedAt = now,
         };
@@ -40,6 +45,21 @@ public sealed class AppConversationService(
         db.Conversations.Add(conv);
         db.StartTasks.Add(task);
         await db.SaveChangesAsync(ct);
+
+        // A mensagem inicial entra no stream imediatamente (upstream parity).
+        if (request.InitialMessage is { } initial)
+        {
+            await events.AppendAsync(conv.Id, new MessageEvent
+            {
+                Source = EventSource.User,
+                LlmMessage = System.Text.Json.JsonSerializer.SerializeToElement(new
+                {
+                    role = initial.Role,
+                    content = initial.Content,
+                }, EventJson.Options),
+            }, ct);
+        }
+
         await tasks.EnqueueAsync(task.Id, ct);
         return task.ToDomain();
     }

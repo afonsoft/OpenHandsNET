@@ -14,6 +14,7 @@ public sealed record CreateAppConversationRequest
     public string? LlmModel { get; init; }
     public Guid? SandboxSpecId { get; init; }
     public Guid? SandboxId { get; init; }
+    public bool ConfirmationMode { get; init; }
     public JsonElement? LlmConfig { get; init; }
     public JsonElement? ObservabilityConfig { get; init; }
 }
@@ -50,6 +51,7 @@ public sealed record AppConversationDto
     public required string ExecutionStatus { get; init; }
     public IReadOnlyList<string> Tags { get; init; } = [];
     public bool Pinned { get; init; }
+    public bool ConfirmationMode { get; init; }
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset UpdatedAt { get; init; }
 }
