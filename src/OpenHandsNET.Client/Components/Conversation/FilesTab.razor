@@ -1,0 +1,81 @@
+@using OpenHandsNET.Client.Services
+@inject OpenHandsNetApiClient Api
+
+<div class="file-layout">
+    <div class="file-tree">
+        <div class="dir" @onclick="() => LoadAsync()">&#x1F4C2; /workspace</div>
+        @foreach (var (entry, depth) in _flat)
+        {
+            <div class="@(entry.IsDirectory ? "dir" : "file")"
+                 style="padding-left:@(8 + depth * 14)px"
+                 @onclick="() => OnItemClick(entry)">
+                @(entry.IsDirectory ? "▸" : "·") @Name(entry.Path)
+            </div>
+        }
+    </div>
+    <div class="file-view">
+        @if (_fileContent is null)
+        {
+            <div class="empty-state">select a file</div>
+        }
+        else
+        {
+            <div class="diff-meta">@_filePath</div>
+            <pre>@_fileContent</pre>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ConversationStateService State { get; set; } = default!;
+
+    private readonly List<(FileItem Entry, int Depth)> _flat = [];
+    private readonly HashSet<string> _expanded = [];
+    private string? _filePath;
+    private string? _fileContent;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private static string Name(string path) =>
+        path.TrimEnd('/').Split('/').Last();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            var root = await Api.ListFilesAsync(State.Conversation!.Id);
+            _flat.Clear();
+            foreach (var f in root.OrderBy(f => f.Path))
+            {
+                _flat.Add((f, 0));
+            }
+        }
+        catch { }
+    }
+
+    private async Task OnItemClick(FileItem entry)
+    {
+        if (entry.IsDirectory)
+        {
+            if (!_expanded.Add(entry.Path))
+            {
+                _expanded.Remove(entry.Path);
+                _flat.RemoveAll(f => f.Entry.Path.StartsWith(entry.Path + "/"));
+                return;
+            }
+
+            var children = await Api.ListFilesAsync(
+                State.Conversation!.Id, entry.Path);
+            var insertAt = _flat.FindIndex(f => f.Entry.Path == entry.Path) + 1;
+            var depth = _flat[insertAt - 1].Depth + 1;
+            _flat.InsertRange(insertAt,
+                children.OrderBy(c => c.Path).Select(c => (c, depth)));
+        }
+        else
+        {
+            _filePath = entry.Path;
+            _fileContent = "loading…";
+            _fileContent = await Api.ReadFileAsync(State.Conversation!.Id, entry.Path);
+        }
+    }
+}

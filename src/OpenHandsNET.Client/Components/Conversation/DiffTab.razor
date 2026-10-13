@@ -1,0 +1,71 @@
+@using OpenHandsNET.Client.Services
+@inject OpenHandsNetApiClient Api
+
+<div style="display:flex;flex-direction:column;height:100%">
+    <div class="diff-meta">
+        @_files.Count arquivo(s) alterado(s) · <span style="color:var(--green)">+@_adds</span> ·
+        <span style="color:var(--red)">−@_dels</span>
+        <button style="float:right" @onclick="LoadAsync">↻</button>
+    </div>
+    <div style="flex:1;overflow:auto">
+        @if (_diff is null)
+        {
+            <div class="empty-state">loading…</div>
+        }
+        else if (_files.Count == 0 && _diff.Length == 0)
+        {
+            <div class="empty-state">no repository changes yet</div>
+        }
+        else
+        {
+            <pre style="margin:0;padding:8px 0">
+                @foreach (var line in _diff.Split('\n'))
+                {
+                    <span class="diff-line @LineClass(line)">@line</span>
+                }
+            </pre>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ConversationStateService State { get; set; } = default!;
+
+    private string? _diff;
+    private readonly List<string> _files = [];
+    private int _adds, _dels;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            var changes = await Api.GetGitChangesAsync(State.Conversation!.Id);
+            _files.Clear();
+            if (changes.TryGetProperty("files", out var f)
+                || changes.TryGetProperty("items", out f))
+            {
+                foreach (var item in f.EnumerateArray())
+                {
+                    _files.Add(
+                        item.ValueKind == System.Text.Json.JsonValueKind.String
+                            ? item.GetString()!
+                            : item.TryGetProperty("path", out var p)
+                                ? p.GetString()! : item.ToString());
+                }
+            }
+
+            _diff = await Api.GetGitDiffAsync(State.Conversation.Id);
+            _adds = _diff.Split('\n').Count(l => l.StartsWith('+') && !l.StartsWith("+++"));
+            _dels = _diff.Split('\n').Count(l => l.StartsWith('-') && !l.StartsWith("---"));
+        }
+        catch { _diff ??= ""; }
+    }
+
+    private static string LineClass(string line) =>
+        line.StartsWith("+++") || line.StartsWith("---") ? "hunk"
+        : line.StartsWith('+') ? "add"
+        : line.StartsWith('-') ? "del"
+        : line.StartsWith("@@") ? "hunk" : "";
+}

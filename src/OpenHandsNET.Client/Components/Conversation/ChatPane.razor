@@ -1,0 +1,80 @@
+@using OpenHandsNET.Client.Services
+@inject IJSRuntime JS
+
+<div class="chat-scroll" id="chat-scroll" @ref="_scroll">
+    @if (State.LoadingBacklog)
+    {
+        <div class="ev-card condense">loading history…</div>
+    }
+    @foreach (var e in State.Events)
+    {
+        <EventCard Event="e" />
+    }
+</div>
+@if (State.ErrorMessage is { } err)
+{
+    <div class="ev-card error" style="margin:0 16px 8px">
+        <div class="ev-head"><span>error</span></div>
+        <pre>@err</pre>
+    </div>
+}
+@if (State.PendingAction is { } pending)
+{
+    <ConfirmationBanner Pending="pending" OnConfirm="OnConfirm" />
+}
+<div class="chat-input">
+    <input placeholder="Envie uma mensagem ao agente…"
+           @bind="_draft" @bind:event="oninput"
+           @onkeydown="OnKey" disabled="@_sending" />
+    <button class="primary" @onclick="SendAsync"
+            disabled="@(_sending || string.IsNullOrWhiteSpace(_draft))">Send</button>
+    @if (State.ExecutionStatus is "RUNNING")
+    {
+        <button title="Interrupt run" @onclick="() => State.InterruptAsync()">&#x23F9;</button>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ConversationStateService State { get; set; } = default!;
+
+    private ElementReference _scroll;
+    private string _draft = "";
+    private bool _sending;
+    private int _lastCount;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (State.Events.Count != _lastCount)
+        {
+            _lastCount = State.Events.Count;
+            try
+            {
+                await JS.InvokeVoidAsync("eval",
+                    "document.getElementById('chat-scroll')?.scrollTo({top:1e9})");
+            }
+            catch { }
+        }
+    }
+
+    private async Task OnKey(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter")
+        {
+            await SendAsync();
+        }
+    }
+
+    private async Task SendAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_draft)) { return; }
+        _sending = true;
+        try
+        {
+            await State.SendMessageAsync(_draft.Trim());
+            _draft = "";
+        }
+        finally { _sending = false; }
+    }
+
+    private async Task OnConfirm(bool approved) => await State.ConfirmAsync(approved);
+}

@@ -1,16 +1,23 @@
-﻿@inherits LayoutComponentBase
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
-
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
+@inherits LayoutComponentBase
+<div class="shell">
+    <nav class="side-nav">
+        <a href="/" title="Conversations" class="@(IsActive("/") ? "active" : "")">&#x1F4AC;</a>
+        <a href="/settings" title="Settings" class="@(IsActive("/settings") ? "active" : "")">&#x2699;&#xFE0F;</a>
+        <div class="spacer"></div>
+        <a href="https://github.com/afonsoft/OpenHandsNET" target="_blank" title="Repository">&lt;/&gt;</a>
+    </nav>
+    <main class="content">
+        @Body
     </main>
 </div>
+
+@code {
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private bool IsActive(string prefix) =>
+        Nav.Uri.Equals(Nav.BaseUri, StringComparison.OrdinalIgnoreCase)
+            ? prefix == "/"
+            : prefix != "/" && Nav.Uri.StartsWith(
+                new Uri(new Uri(Nav.BaseUri), prefix.TrimStart('/')).ToString(),
+                StringComparison.OrdinalIgnoreCase);
+}

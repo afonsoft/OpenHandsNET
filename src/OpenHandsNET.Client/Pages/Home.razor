@@ -1,7 +1,158 @@
-﻿@page "/"
+@page "/"
+@using OpenHandsNET.Client.Services
+@inject OpenHandsNetApiClient Api
+@inject NavigationManager Nav
+@implements IDisposable
 
-<PageTitle>Home</PageTitle>
+<PageTitle>OpenHandsNET</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="home-wrap">
+    <h1>OpenHandsNET</h1>
+    <p class="sub">Agent-driven software development — cloud &amp; self-hosted.</p>
 
-Welcome to your new app.
+    <div class="new-conv">
+        <textarea placeholder="Descreva a tarefa para o agente…"
+                  @bind="_initialMessage" @bind:event="oninput"></textarea>
+        <div class="row">
+            <input placeholder="selected_repository (opcional — ex.: owner/repo ou https://…)"
+                   @bind="_repository" @bind:event="oninput" />
+            <label title="Pedir confirmação antes de executar ações">
+                <input type="checkbox" @bind="_confirmMode" /> confirmação
+            </label>
+            <button class="primary" @onclick="StartAsync" disabled="@_starting">
+                @(_starting ? "Iniciando…" : "Run")
+            </button>
+        </div>
+        @if (_progress.Count > 0)
+        {
+            <div class="start-progress">
+                @foreach (var (status, active) in _progress)
+                {
+                    <div class="step @(active ? "active" : "done")">
+                        @(active ? "▸" : "✓") @status
+                    </div>
+                }
+            </div>
+        }
+        @if (_error is not null)
+        {
+            <div class="start-progress"><div class="step" style="color:var(--red)">@_error</div></div>
+        }
+    </div>
+
+    <div class="conv-list">
+        @if (_conversations is null)
+        {
+            <p class="sub">Carregando…</p>
+        }
+        else if (_conversations.Count == 0)
+        {
+            <p class="sub">Nenhuma conversa ainda — crie a primeira acima.</p>
+        }
+        else
+        {
+            @foreach (var c in _conversations)
+            {
+                <a class="conv-card" href="/conversations/@c.Id">
+                    <span class="badge @BadgeClass(c.ExecutionStatus)">
+                        <span class="dot"></span>@c.ExecutionStatus
+                    </span>
+                    <span class="title">@(c.Title ?? "untitled")</span>
+                    <span class="meta">@(c.SelectedRepository ?? "")</span>
+                    <span class="meta">@c.UpdatedAt.LocalDateTime.ToString("g")</span>
+                </a>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private IReadOnlyList<ConversationItem>? _conversations;
+    private string _initialMessage = "";
+    private string _repository = "";
+    private bool _confirmMode;
+    private bool _starting;
+    private string? _error;
+    private readonly List<(string Status, bool Active)> _progress = [];
+    private readonly string[] _pipeline =
+        ["WORKING", "SETTING_UP_WORKSPACE", "SETTING_UP_GIT", "SETTING_UP_SKILLS", "READY"];
+    private System.Timers.Timer? _poll;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { _conversations = await Api.ListConversationsAsync(); }
+        catch { _conversations = []; }
+    }
+
+    private static string BadgeClass(string status) =>
+        "badge " + status.ToLowerInvariant().Replace(' ', '_');
+
+    private async Task StartAsync()
+    {
+        _starting = true;
+        _error = null;
+        _progress.Clear();
+        try
+        {
+            var task = await Api.CreateConversationAsync(
+                string.IsNullOrWhiteSpace(_initialMessage) ? null : _initialMessage,
+                string.IsNullOrWhiteSpace(_repository) ? null : _repository,
+                run: true, confirmationMode: _confirmMode);
+            TrackStatus(task.Status);
+            _poll = new System.Timers.Timer(1200);
+            _poll.Elapsed += async (_, _) => await PollTaskAsync(task.Id);
+            _poll.AutoReset = true;
+            _poll.Start();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _starting = false;
+        }
+    }
+
+    private async Task PollTaskAsync(string taskId)
+    {
+        try
+        {
+            var t = await Api.GetStartTaskAsync(taskId);
+            if (t is null) { return; }
+            await InvokeAsync(() => { TrackStatus(t.Status); StateHasChanged(); });
+            if (t.Status is "READY")
+            {
+                _poll?.Stop();
+                Nav.NavigateTo($"/conversations/{t.AppConversationId}");
+            }
+            else if (t.Status is "ERROR")
+            {
+                _poll?.Stop();
+                await InvokeAsync(() =>
+                {
+                    _error = t.Detail ?? "start task failed";
+                    _starting = false;
+                    StateHasChanged();
+                });
+            }
+        }
+        catch { /* retry no próximo tick */ }
+    }
+
+    private void TrackStatus(string status)
+    {
+        var idx = Array.IndexOf(_pipeline, status);
+        for (var i = 0; i < _progress.Count; i++)
+        {
+            _progress[i] = (_progress[i].Status, false);
+        }
+
+        for (var i = 0; i <= idx && i < _pipeline.Length; i++)
+        {
+            if (_progress.All(p => p.Status != _pipeline[i]))
+            {
+                _progress.Add((_pipeline[i], i == idx && status != "READY"));
+            }
+        }
+    }
+
+    public void Dispose() => _poll?.Dispose();
+}

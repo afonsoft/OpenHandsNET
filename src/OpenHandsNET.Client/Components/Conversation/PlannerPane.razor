@@ -1,0 +1,28 @@
+@using OpenHandsNET.Client.Services
+
+@if (State.Plan.Count > 0)
+{
+    <div class="planner">
+        <h4>Plan</h4>
+        <ul>
+            @foreach (var item in State.Plan)
+            {
+                <li class="@item.Status">
+                    <span>@StatusIcon(item.Status)</span>
+                    <span>@item.Title</span>
+                </li>
+            }
+        </ul>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public ConversationStateService State { get; set; } = default!;
+
+    private static string StatusIcon(string status) => status switch
+    {
+        "done" or "completed" => "✓",
+        "in_progress" => "▸",
+        _ => "○",
+    };
+}

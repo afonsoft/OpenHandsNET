@@ -1,0 +1,134 @@
+@using OpenHandsNET.Client.Services
+@using System.Text.Json
+
+@* Renderiza um evento V1 conforme o kind — paridade visual com o Agent Canvas. *@
+
+@switch (Event.Kind)
+{
+    case "MessageEvent":
+        <div class="msg @(Event.Role() == "user" ? "user" : "agent")">
+            @Event.MessageText()
+        </div>
+        break;
+
+    case "ActionEvent":
+        <div class="ev-card">
+            <div class="ev-head">
+                <span class="tool">&#x2699; @Event.ToolName()</span>
+                <span>action</span>
+                <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+            </div>
+            @if (Event.ToolCommand() is { } cmd)
+            {
+                <pre>$ @cmd</pre>
+            }
+            else
+            {
+                <details class="ev-details">
+                    <summary>arguments</summary>
+                    <pre>@Pretty(Event.Get("tool"))</pre>
+                </details>
+            }
+        </div>
+        break;
+
+    case "ObservationEvent":
+        <div class="ev-card obs">
+            <div class="ev-head">
+                <span>&#x1F4E4; observation</span>
+                <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+            </div>
+            <details class="ev-details" open="@Expanded">
+                <summary>output</summary>
+                <pre>@ObsText()</pre>
+            </details>
+        </div>
+        break;
+
+    case "TokenEvent":
+        @* agregado no TopBar — não renderiza no fluxo *@
+        break;
+
+    case "StreamingDeltaEvent":
+        <div class="msg agent" style="opacity:.75">
+            @(Event.Str("delta") ?? Event.Str("text") ?? "")
+        </div>
+        break;
+
+    case "UserRejectObservation":
+        <div class="ev-card error">
+            <div class="ev-head"><span>&#x2716; action rejected</span></div>
+            @if (Event.Str("reason") is { } reason)
+            {
+                <pre>@reason</pre>
+            }
+        </div>
+        break;
+
+    case "AgentErrorEvent":
+    case "ServerErrorEvent":
+        <div class="ev-card error">
+            <div class="ev-head">
+                <span>&#x26A0; @Event.Kind</span>
+                <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+            </div>
+            <pre>@(Event.Str("error") ?? Event.Str("message") ?? Event.Raw.ToString())</pre>
+        </div>
+        break;
+
+    case "CondensationRequestEvent":
+    case "CondensationEvent":
+    case "CondensationSummaryEvent":
+        <div class="ev-card condense">— context condensed —</div>
+        break;
+
+    case "ConversationStateUpdateEvent":
+        <div class="ev-card condense">
+            — @StateText() —
+        </div>
+        break;
+
+    case "HookExecutionEvent":
+        <div class="ev-card">
+            <div class="ev-head">
+                <span class="tool">&#x1FA9D; hook: @(Event.Str("hook") ?? Event.Str("name") ?? "")</span>
+                <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+            </div>
+        </div>
+        break;
+
+    default:
+        <div class="ev-card">
+            <div class="ev-head"><span>@Event.Kind</span></div>
+        </div>
+        break;
+}
+
+@code {
+    [Parameter, EditorRequired] public ClientEvent Event { get; set; } = default!;
+    [Parameter] public bool Expanded { get; set; }
+
+    private string ObsText()
+    {
+        var obs = Event.Get("observation");
+        return obs.ValueKind == JsonValueKind.String
+            ? obs.GetString() ?? ""
+            : obs.ValueKind == JsonValueKind.Object
+                ? obs.TryGetProperty("output", out var o)
+                    && o.ValueKind == JsonValueKind.String
+                        ? o.GetString() ?? ""
+                        : obs.TryGetProperty("final_message", out var fm)
+                            ? fm.GetString() ?? "" : Pretty(obs)
+            : "";
+    }
+
+    private string StateText()
+    {
+        var v = Event.Get("value");
+        return v.ValueKind == JsonValueKind.String ? v.GetString() ?? "state update"
+            : v.ValueKind == JsonValueKind.Object ? v.ToString() : "state update";
+    }
+
+    private static string Pretty(JsonElement el) =>
+        JsonSerializer.Serialize(el, new JsonSerializerOptions { WriteIndented = true });
+}

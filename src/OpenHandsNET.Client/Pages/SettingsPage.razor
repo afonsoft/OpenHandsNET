@@ -1,0 +1,123 @@
+@page "/settings"
+@using OpenHandsNET.Client.Services
+@using System.Text.Json
+@inject OpenHandsNetApiClient Api
+
+<PageTitle>settings · OpenHandsNET</PageTitle>
+
+<div class="settings-wrap">
+    <h1>Settings</h1>
+
+    <h3>Agent / LLM</h3>
+    <div class="field">
+        <label>llm model (ex.: gpt-4o, claude-sonnet-4, litellm_proxy/…)</label>
+        <input @bind="_model" @bind:event="oninput" />
+    </div>
+    <div class="field">
+        <label>llm api key secret name (referencia /api/v1/secrets)</label>
+        <input @bind="_apiKeySecret" @bind:event="oninput" />
+    </div>
+    <div class="field">
+        <label>agent type</label>
+        <select @bind="_agentType">
+            <option value="default">default</option>
+            <option value="plan">plan</option>
+            <option value="readonly">readonly</option>
+        </select>
+    </div>
+    <button class="primary" @onclick="SaveSettingsAsync" disabled="@_saving">
+        @(_saving ? "saving…" : "Save settings")
+    </button>
+    @if (_saved)
+    {
+        <span style="color:var(--green);margin-left:10px">saved ✓</span>
+    }
+
+    <h3 style="margin-top:32px">Secrets</h3>
+    <p class="sub" style="color:var(--fg-dim)">
+        Valores são cifrados no servidor (DataProtection) — só o nome volta.
+    </p>
+    <div class="row" style="display:flex;gap:8px;margin-bottom:12px">
+        <input placeholder="name (ex.: llm_api_key)" @bind="_secretName"
+               style="flex:1" />
+        <input placeholder="value" type="password" @bind="_secretValue"
+               style="flex:2" />
+        <button @onclick="AddSecretAsync"
+                disabled="@(string.IsNullOrWhiteSpace(_secretName) || string.IsNullOrWhiteSpace(_secretValue))">
+            Add
+        </button>
+    </div>
+    @foreach (var name in _secrets)
+    {
+        <div class="secret-row">
+            <span class="name">@name</span>
+            <button class="danger" @onclick="() => DeleteSecretAsync(name)">delete</button>
+        </div>
+    }
+
+    <h3 style="margin-top:32px">
+        <a href="/settings/skills" style="color:var(--fg)">Skills →</a>
+    </h3>
+</div>
+
+@code {
+    private string _model = "";
+    private string _apiKeySecret = "";
+    private string _agentType = "default";
+    private bool _saving, _saved;
+    private string _secretName = "";
+    private string _secretValue = "";
+    private List<string> _secrets = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var s = await Api.GetSettingsAsync();
+            if (s.ValueKind == JsonValueKind.Object)
+            {
+                _model = GetStr(s, "llm_model") ?? "";
+                _apiKeySecret = GetStr(s, "llm_api_key_secret") ?? "";
+                _agentType = GetStr(s, "agent_type") ?? "default";
+            }
+        }
+        catch { }
+        try { _secrets = (await Api.ListSecretsAsync()).ToList(); }
+        catch { }
+    }
+
+    private static string? GetStr(JsonElement el, string name) =>
+        el.TryGetProperty(name, out var v) ? v.GetString() : null;
+
+    private async Task SaveSettingsAsync()
+    {
+        _saving = true;
+        _saved = false;
+        try
+        {
+            var doc = JsonSerializer.SerializeToElement(new
+            {
+                llm_model = _model,
+                llm_api_key_secret = _apiKeySecret,
+                agent_type = _agentType,
+            });
+            await Api.SaveSettingsAsync(doc);
+            _saved = true;
+        }
+        finally { _saving = false; }
+    }
+
+    private async Task AddSecretAsync()
+    {
+        await Api.PutSecretAsync(_secretName.Trim(), _secretValue);
+        _secrets.Add(_secretName.Trim());
+        _secretName = "";
+        _secretValue = "";
+    }
+
+    private async Task DeleteSecretAsync(string name)
+    {
+        await Api.DeleteSecretAsync(name);
+        _secrets.Remove(name);
+    }
+}
