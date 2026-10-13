@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using OpenHandsNET.Api.DTOs;
 using OpenHandsNET.Domain.Configuration;
@@ -13,7 +14,8 @@ namespace OpenHandsNET.Api.Endpoints;
 public static class SettingsEndpoints
 {
     private const string SettingsKey = "settings";
-    private const string SecretPrefix = "secret:";
+    private const string SecretScope = "app";
+    private const string SecretOwner = "system"; // SPEC-08 refina owner real
 
     /// <summary>Maps settings and secrets endpoints.</summary>
     public static IEndpointRouteBuilder MapSettingsEndpoints(this IEndpointRouteBuilder app)
@@ -45,37 +47,42 @@ public static class SettingsEndpoints
             return Results.NoContent();
         }).WithTags("Settings");
 
-        // Secrets: valor persistido, resposta expõe só metadados (nunca o valor).
+        // Secrets (SPEC-10): ciphertext em `secrets` via DataProtection;
+        // resposta expõe só metadados (nunca o valor).
         app.MapGet("/api/v1/secrets", async (AppDbContext db, CancellationToken ct) =>
-            Results.Ok(await db.AppSettings
-                .Where(s => s.Key.StartsWith(SecretPrefix))
-                .Select(s => new { name = s.Key.Substring(SecretPrefix.Length) })
+            Results.Ok(await db.Secrets
+                .Where(s => s.Scope == SecretScope && s.OwnerId == SecretOwner)
+                .Select(s => new { name = s.Name })
                 .ToListAsync(ct))).WithTags("Secrets");
 
         app.MapGet("/api/v1/secrets/{name}", async (
             string name, AppDbContext db, CancellationToken ct) =>
-            await db.AppSettings.FirstOrDefaultAsync(s => s.Key == SecretPrefix + name, ct) is { } row
+            await db.Secrets.FindAsync([SecretScope, SecretOwner, name], ct) is { } row
                 ? Results.Ok(new SecretMetaDto
                 {
-                    Name = name, CreatedAt = DateTimeOffset.UnixEpoch,
+                    Name = name, CreatedAt = row.CreatedAt,
                 })
                 : Results.NotFound()).WithTags("Secrets");
 
         app.MapPut("/api/v1/secrets/{name}", async (
-            string name, JsonElement body, AppDbContext db, CancellationToken ct) =>
+            string name, JsonElement body, AppDbContext db,
+            IDataProtectionProvider dp, CancellationToken ct) =>
         {
             var value = body.TryGetProperty("value", out var v) ? v.GetString() : null;
-            var row = await db.AppSettings.FirstOrDefaultAsync(s => s.Key == SecretPrefix + name, ct);
+            var protector = dp.CreateProtector("openhandsnet.secrets");
+            var row = await db.Secrets.FindAsync([SecretScope, SecretOwner, name], ct);
             if (row is null)
             {
-                db.AppSettings.Add(new AppSetting
+                db.Secrets.Add(new SecretRecord
                 {
-                    Key = SecretPrefix + name, Value = value ?? "",
+                    Scope = SecretScope, OwnerId = SecretOwner, Name = name,
+                    Ciphertext = protector.Protect(value ?? ""),
+                    CreatedAt = DateTimeOffset.UtcNow,
                 });
             }
             else
             {
-                row.Value = value ?? "";
+                row.Ciphertext = protector.Protect(value ?? "");
             }
 
             await db.SaveChangesAsync(ct);
@@ -85,9 +92,9 @@ public static class SettingsEndpoints
         app.MapDelete("/api/v1/secrets/{name}", async (
             string name, AppDbContext db, CancellationToken ct) =>
         {
-            if (await db.AppSettings.FirstOrDefaultAsync(s => s.Key == SecretPrefix + name, ct) is { } row)
+            if (await db.Secrets.FindAsync([SecretScope, SecretOwner, name], ct) is { } row)
             {
-                db.AppSettings.Remove(row);
+                db.Secrets.Remove(row);
                 await db.SaveChangesAsync(ct);
             }
 

@@ -9,6 +9,10 @@
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="Docker.DotNet.Enhanced" />
+    <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" />
+    <!-- Pin explícito: levanta System.Security.Cryptography.Xml transitivo p/ versão sem CVE -->
+    <PackageReference Include="System.Security.Cryptography.Xml" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <!-- Pin explícito: levanta SQLitePCLRaw.lib.e_sqlite3 transitivo para versão sem CVE -->
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />

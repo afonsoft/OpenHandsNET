@@ -40,7 +40,7 @@ public sealed class EventStore(AppDbContext db, IEventBus bus) : IEventService
         var query = ApplyFilters(db.Events.Where(r => r.ConversationId == conversationId), q);
 
         var desc = q.Sort == EventSortOrder.TimestampDesc;
-        if (TryDecodeCursor(q.PageId, out var curTs, out var curId))
+        if (CursorPaginator.TryDecode(q.PageId, out var curTs, out var curId))
         {
             // String.Compare: SQLite/PG traduzem para comparação lexicográfica.
             query = desc
@@ -59,7 +59,7 @@ public sealed class EventStore(AppDbContext db, IEventBus bus) : IEventService
         var hasMore = rows.Count > limit;
         var page = hasMore ? rows.Take(limit).ToList() : rows;
         var nextPageId = hasMore && page.Count > 0
-            ? EncodeCursor(page[^1])
+            ? CursorPaginator.Encode(page[^1].TimestampTicks, page[^1].Id)
             : null;
 
         return new EventPage(page.Select(Deserialize).ToList(), nextPageId);
@@ -111,36 +111,6 @@ public sealed class EventStore(AppDbContext db, IEventBus bus) : IEventService
         }
 
         return q;
-    }
-
-    private static string EncodeCursor(EventRecord r) =>
-        Convert.ToBase64String(Encoding.UTF8.GetBytes($"{r.TimestampTicks}:{r.Id}"));
-
-    private static bool TryDecodeCursor(string? pageId, out long ticks, out string id)
-    {
-        ticks = 0;
-        id = string.Empty;
-        if (string.IsNullOrEmpty(pageId))
-        {
-            return false;
-        }
-
-        try
-        {
-            var raw = Encoding.UTF8.GetString(Convert.FromBase64String(pageId));
-            var sep = raw.IndexOf(':', StringComparison.Ordinal);
-            if (sep <= 0 || !long.TryParse(raw[..sep], out ticks))
-            {
-                return false;
-            }
-
-            id = raw[(sep + 1)..];
-            return id.Length > 0;
-        }
-        catch (FormatException)
-        {
-            return false;
-        }
     }
 
     private static EventBase Deserialize(EventRecord r) =>

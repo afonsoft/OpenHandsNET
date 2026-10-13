@@ -80,7 +80,7 @@ public sealed class AppConversationService(
             q = q.Where(r => r.CreatedAt >= query.CreatedAtGte);
         }
 
-        if (TryDecodeCursor(query.PageId, out var ticks, out var id))
+        if (CursorPaginator.TryDecode(query.PageId, out var ticks, out var id))
         {
             q = q.Where(r => r.CreatedAt.UtcTicks < ticks
                 || (r.CreatedAt.UtcTicks == ticks && string.Compare(r.Id.ToString(), id) < 0));
@@ -97,7 +97,7 @@ public sealed class AppConversationService(
         return new ConversationPage(
             page.Select(r => r.ToDomain()).ToList(),
             hasMore && last is not null
-                ? EncodeCursor(last.CreatedAt.UtcTicks, last.Id)
+                ? CursorPaginator.Encode(last.CreatedAt.UtcTicks, last.Id.ToString())
                 : null);
     }
 
@@ -214,34 +214,9 @@ public sealed class AppConversationService(
         };
     }
 
-    internal static string EncodeCursor(long ticks, Guid id) =>
-        Convert.ToBase64String(Encoding.UTF8.GetBytes($"{ticks}:{id}"));
-
-    internal static bool TryDecodeCursor(string? cursor, out long ticks, out string id)
-    {
-        ticks = 0;
-        id = "";
-        if (string.IsNullOrEmpty(cursor))
-        {
-            return false;
-        }
-
-        try
-        {
-            var raw = Encoding.UTF8.GetString(Convert.FromBase64String(cursor));
-            var parts = raw.Split(':');
-            if (parts.Length == 2 && long.TryParse(parts[0], out ticks))
-            {
-                id = parts[1];
-                return true;
-            }
-        }
-        catch (FormatException)
-        {
-        }
-
-        return false;
-    }
+    /// <summary>Cursor codec delegado ao <see cref="CursorPaginator"/> compartilhado.</summary>
+    internal static bool TryDecodeCursor(string? cursor, out long ticks, out string id) =>
+        CursorPaginator.TryDecode(cursor, out ticks, out id);
 
     private static string Flatten(InitialMessage msg) =>
         string.Join(' ', msg.Content.Select(c =>

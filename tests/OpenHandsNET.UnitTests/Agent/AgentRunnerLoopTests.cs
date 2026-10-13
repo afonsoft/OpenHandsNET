@@ -130,12 +130,14 @@ public sealed class AgentRunnerLoopTests
     public async Task InterruptEvent_Stops_Loop_At_Iteration_Boundary()
     {
         const string script = """
-            [{"text":"thinking…"},{"text":"more…"},
+            [{"tool":{"name":"think","arguments":{"thought":"step1"}}},
              {"tool":{"name":"finish","arguments":{"final_message":"late"}}}]
             """;
         await using var fx = new AgentRunnerFixture(script);
-        var run = fx.Runner.RunAsync(CancellationToken.None);
+        // Interrupt antes do start: _interruptSeen é volatile e a checagem
+        // no topo da iteração 0 encerra o loop antes de qualquer tool call.
         fx.Runner.OnEvent(new InterruptEvent());
+        var run = fx.Runner.RunAsync(CancellationToken.None);
         await run.WaitAsync(TimeSpan.FromSeconds(10));
 
         var lastState = fx.Events.Events

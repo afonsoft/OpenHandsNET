@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.DataProtection;
 using OpenHandsNET.Api.Endpoints;
 using OpenHandsNET.Api.Hubs;
 using OpenHandsNET.Api.Options;
 using OpenHandsNET.Infrastructure;
+using OpenHandsNET.Infrastructure.Persistence;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using Serilog;
@@ -48,6 +50,9 @@ builder.Services.AddOpenTelemetry()
 
 // Infrastructure (EF Core + DatabaseMigrator + health checks).
 builder.Services.AddInfrastructure(builder.Configuration);
+// DataProtection keys persistidas no banco (SPEC-10: secrets cifrados at-rest).
+builder.Services.AddDataProtection()
+    .PersistKeysToDbContext<AppDbContext>();
 // V1 wire contract: snake_case payloads (paridade upstream).
 builder.Services.ConfigureHttpJsonOptions(o =>
 {

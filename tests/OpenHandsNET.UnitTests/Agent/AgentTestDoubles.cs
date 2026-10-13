@@ -152,7 +152,8 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
 
         var opt = options ?? new AgentLlmOptions();
         var sc = new ServiceCollection();
-        sc.AddDbContext<AppDbContext>(o => o.UseSqlite(_conn));
+        sc.AddDbContext<AppDbContext>(o => o.UseSqlite(_conn)
+            .UseSnakeCaseNamingConvention());
         sc.AddSingleton<IEventService>(Events);
         sc.AddSingleton<ISandboxExecutor>(Executor);
         sc.AddSingleton<ISandboxService>(new FakeSandboxService(SandboxId));

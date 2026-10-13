@@ -1,15 +1,17 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using OpenHandsNET.Infrastructure.Persistence;
 using OpenHandsNET.Domain.Conversations;
 
 namespace OpenHandsNET.Infrastructure.Conversations;
 
 /// <summary>Persisted conversation row.</summary>
-public sealed class ConversationRecord
+public sealed class ConversationRecord : IOrgScoped
 {
     public required Guid Id { get; set; }
     public string? Title { get; set; }
     public Guid? SandboxId { get; set; }
+    public Guid? OrgId { get; set; }
     public string? SelectedRepository { get; set; }
     public string? AgentType { get; set; }
     public string? LlmModel { get; set; }
