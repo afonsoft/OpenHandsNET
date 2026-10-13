@@ -16,7 +16,8 @@ namespace OpenHandsNET.Infrastructure.Agent;
 /// </summary>
 public sealed class AgentRunnerHost(
     IServiceScopeFactory scopes,
-    ILogger<AgentRunnerHost> logger) : IAgentRunnerHost
+    ILogger<AgentRunnerHost> logger,
+    Sandbox.SandboxSleepService sleep) : IAgentRunnerHost
 {
     private sealed record RunnerEntry(
         AgentRunner Runner, Task Task, CancellationTokenSource Interrupt);
@@ -35,6 +36,8 @@ public sealed class AgentRunnerHost(
         await gate.WaitAsync(ct);
         try
         {
+            // SPEC-16: atividade cancela sleep pendente do sandbox.
+            sleep.CancelSleep(conversationId);
             if (_runners.TryGetValue(conversationId, out var e)
                 && !e.Task.IsCompleted)
             {
@@ -65,6 +68,8 @@ public sealed class AgentRunnerHost(
                 {
                     _runners.TryRemove(conversationId, out _);
                     await scope.DisposeAsync();
+                    // SPEC-16 RF-001: fim do run → agenda sleep com graça.
+                    sleep.ScheduleSleep(conversationId);
                 }
             }, CancellationToken.None);
             _runners[conversationId] = new RunnerEntry(runner, task, interrupt);

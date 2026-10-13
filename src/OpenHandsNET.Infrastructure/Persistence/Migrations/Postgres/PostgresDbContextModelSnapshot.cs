@@ -1113,6 +1113,14 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("character varying(20)")
                         .HasColumnName("status");
 
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<long>("UpdatedAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("updated_at_ticks");
+
                     b.HasKey("Id")
                         .HasName("pk_sandboxes");
 

@@ -15,7 +15,13 @@ public interface ISandboxService
     /// <summary>Pauses the sandbox (workspace preserved).</summary>
     Task<Domain.Sandbox.Sandbox> PauseAsync(Guid sandboxId, CancellationToken ct);
 
-    /// <summary>Resumes a paused sandbox.</summary>
+    /// <summary>
+    /// Stops a paused sandbox (SPEC-16 RF-003) — frees RAM while keeping the
+    /// container fs and workspace; resume performs <c>docker start</c>.
+    /// </summary>
+    Task<Domain.Sandbox.Sandbox> StopAsync(Guid sandboxId, CancellationToken ct);
+
+    /// <summary>Resumes a paused or stopped sandbox.</summary>
     Task<Domain.Sandbox.Sandbox> ResumeAsync(Guid sandboxId, CancellationToken ct);
 
     /// <summary>Stops + removes the container (idempotent).</summary>

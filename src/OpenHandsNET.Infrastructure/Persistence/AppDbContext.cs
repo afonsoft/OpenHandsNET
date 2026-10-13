@@ -141,6 +141,16 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
                     break;
                 case Sandbox.SandboxRecord s:
                     s.CreatedAtTicks = s.CreatedAt.UtcTicks;
+                    if (entry.State == EntityState.Added && s.UpdatedAt == default)
+                    {
+                        s.UpdatedAt = s.CreatedAt;
+                    }
+                    else if (entry.State == EntityState.Modified)
+                    {
+                        s.UpdatedAt = DateTimeOffset.UtcNow;
+                    }
+
+                    s.UpdatedAtTicks = s.UpdatedAt.UtcTicks;
                     s.ExpiresAtTicks = s.ExpiresAt?.UtcTicks;
                     break;
                 case OrgInvitationRecord i:

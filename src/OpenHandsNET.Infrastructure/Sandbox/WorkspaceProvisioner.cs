@@ -43,6 +43,19 @@ public sealed class SandboxOptions
 
     /// <summary>Warm pool size (SPEC-14 RF-005) — 0 disables.</summary>
     public int WarmPoolSize { get; set; }
+
+    /// <summary>
+    /// SPEC-16 RF-001: segundos de graça após o fim do run antes do
+    /// <c>docker pause</c>. 0 = pausa imediata; -1 = desliga o auto-sleep
+    /// (o timeout watcher continua pausando por <c>ExpiresAt</c>).
+    /// </summary>
+    public int IdleSleepSeconds { get; set; } = 30;
+
+    /// <summary>
+    /// SPEC-16 RF-003: horas em <c>Paused</c> antes do <c>docker stop</c>
+    /// (libera RAM; workspace e container fs persistem). 0 = nunca stop.
+    /// </summary>
+    public double SleepStopAfterHours { get; set; }
 }
 
 /// <summary>
@@ -78,6 +91,29 @@ public sealed class WorkspaceProvisioner(
             options.Value.WorkspaceRoot, ".warm", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         return Path.GetFullPath(dir);
+    }
+
+    /// <summary>
+    /// SPEC-16 RF-006: removes a conversation workspace from the host —
+    /// só quando a conversa é deletada/arquivada (container já removido).
+    /// </summary>
+    public void RemoveWorkspace(Guid conversationId)
+    {
+        var path = PreparePath(conversationId);
+        try
+        {
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, recursive: true);
+                logger.LogInformation(
+                    "Workspace {Path} removed with conversation {Id}",
+                    path, conversationId);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            logger.LogWarning(ex, "Workspace {Path} cleanup failed", path);
+        }
     }
 
     /// <summary>

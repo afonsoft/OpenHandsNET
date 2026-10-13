@@ -73,6 +73,7 @@ public static class DependencyInjection
             OpenHandsNET.Infrastructure.Sandbox.DockerSandboxExecutor>();
         services.AddHostedService<OpenHandsNET.Infrastructure.Sandbox.OrphanSweepService>();
         services.AddHostedService<OpenHandsNET.Infrastructure.Sandbox.SandboxTimeoutWatcher>();
+        services.AddSingleton<OpenHandsNET.Infrastructure.Sandbox.SandboxSleepService>();
 
         // Git/SCM (SPEC-12): git CLI no container, credenciais via secrets+askpass.
         services.Configure<OpenHandsNET.Infrastructure.Git.GitOptions>(

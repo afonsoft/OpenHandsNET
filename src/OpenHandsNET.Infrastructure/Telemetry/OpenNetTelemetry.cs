@@ -52,6 +52,17 @@ public static class OpenNetTelemetry
         Metrics.CreateCounter("openhandsnet_sandbox_seconds",
             "Sandbox lifetime seconds");
 
+    /// <summary>Sandboxes paused/stopped for sleep (SPEC-16).</summary>
+    public static readonly Prometheus.Counter SandboxSleeps =
+        Metrics.CreateCounter("openhandsnet_sandbox_sleeps",
+            "Sandbox sleeps (pause/stop)");
+
+    /// <summary>Sandbox wakes — label <c>from</c> = <c>pause|stop</c> (SPEC-16).</summary>
+    public static readonly Prometheus.Counter SandboxWakes =
+        Metrics.CreateCounter("openhandsnet_sandbox_wakes",
+            "Sandbox resumes from sleep",
+            new CounterConfiguration { LabelNames = ["from"] });
+
     /// <summary>Starts a telemetry span with conversation correlation.</summary>
     public static Activity? StartSpan(
         string name, Guid? conversationId = null, string? sandboxId = null)

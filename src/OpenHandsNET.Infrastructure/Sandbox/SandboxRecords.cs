@@ -14,6 +14,7 @@ public sealed class SandboxRecord
     public required string Status { get; set; }
     public string? AgentUrl { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
     public DateTimeOffset? ExpiresAt { get; set; }
     public string? LastError { get; set; }
 
@@ -22,6 +23,9 @@ public sealed class SandboxRecord
 
     /// <summary>Espelho numérico de <see cref="CreatedAt"/> para ORDER BY.</summary>
     public long CreatedAtTicks { get; set; }
+
+    /// <summary>Espelho numérico de <see cref="UpdatedAt"/> para WHERE.</summary>
+    public long UpdatedAtTicks { get; set; }
 
     /// <summary>Espelho numérico de <see cref="ExpiresAt"/> para WHERE.</summary>
     public long? ExpiresAtTicks { get; set; }

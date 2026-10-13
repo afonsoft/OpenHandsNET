@@ -25,4 +25,9 @@
   <ItemGroup>
     <EmbeddedResource Include="Skills/Embedded/*.md" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Testes dirigem internals (ex.: SandboxTimeoutWatcher.Interval). -->
+    <InternalsVisibleTo Include="OpenHandsNET.IntegrationTests" />
+    <InternalsVisibleTo Include="OpenHandsNET.UnitTests" />
+  </ItemGroup>
 </Project>

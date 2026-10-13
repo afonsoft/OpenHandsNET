@@ -152,10 +152,60 @@ public sealed class DockerSandboxService(
         var record = await RequireAsync(sandboxId, ct);
         if (record.ContainerId is not null)
         {
-            await docker.Containers.PauseContainerAsync(record.ContainerId, ct);
+            try
+            {
+                await docker.Containers.PauseContainerAsync(
+                    record.ContainerId, ct);
+                record.Status = SandboxStatus.Paused.ToString();
+            }
+            catch (DockerApiException ex)
+            {
+                // SPEC-16 NFR: cgroup pause indisponível (rootless/v1) →
+                // fallback stop preserva fs/workspace (processos morrem).
+                logger.LogWarning(ex,
+                    "docker pause failed for {ContainerId} — falling back to stop",
+                    record.ContainerId);
+                await docker.Containers.StopContainerAsync(
+                    record.ContainerId, new ContainerStopParameters(), ct);
+                record.Status = SandboxStatus.Stopped.ToString();
+            }
+        }
+        else
+        {
+            record.Status = SandboxStatus.Paused.ToString();
         }
 
-        record.Status = SandboxStatus.Paused.ToString();
+        Telemetry.OpenNetTelemetry.SandboxSleeps.Inc();
+        await db.SaveChangesAsync(ct);
+        return record.ToDomain();
+    }
+
+    /// <inheritdoc />
+    public async Task<DomainSandbox> StopAsync(Guid sandboxId, CancellationToken ct)
+    {
+        var record = await RequireAsync(sandboxId, ct);
+        if (record.ContainerId is not null &&
+            record.Status is nameof(SandboxStatus.Running) or nameof(SandboxStatus.Paused))
+        {
+            try
+            {
+                if (record.Status == nameof(SandboxStatus.Paused))
+                {
+                    await docker.Containers.UnpauseContainerAsync(
+                        record.ContainerId, ct);
+                }
+
+                await docker.Containers.StopContainerAsync(
+                    record.ContainerId, new ContainerStopParameters(), ct);
+                record.Status = SandboxStatus.Stopped.ToString();
+                Telemetry.OpenNetTelemetry.SandboxSleeps.Inc();
+            }
+            catch (DockerContainerNotFoundException)
+            {
+                record.Status = SandboxStatus.Missing.ToString();
+            }
+        }
+
         await db.SaveChangesAsync(ct);
         return record.ToDomain();
     }
@@ -164,9 +214,31 @@ public sealed class DockerSandboxService(
     public async Task<DomainSandbox> ResumeAsync(Guid sandboxId, CancellationToken ct)
     {
         var record = await RequireAsync(sandboxId, ct);
+        var wakeFrom = record.Status == nameof(SandboxStatus.Stopped)
+            ? "stop" : "pause";
         if (record.ContainerId is null)
         {
             record.Status = SandboxStatus.Missing.ToString();
+        }
+        else if (record.Status == nameof(SandboxStatus.Stopped))
+        {
+            // SPEC-16 RF-003: docker start + probe antes de declarar Running.
+            try
+            {
+                await docker.Containers.StartContainerAsync(
+                    record.ContainerId, null, ct);
+                await docker.Containers.InspectContainerAsync(record.ContainerId, ct);
+                record.Status = SandboxStatus.Running.ToString();
+            }
+            catch (DockerContainerNotFoundException)
+            {
+                record.Status = SandboxStatus.Missing.ToString();
+            }
+            catch (DockerApiException ex)
+            {
+                record.Status = SandboxStatus.Error.ToString();
+                record.LastError = ex.Message;
+            }
         }
         else
         {
@@ -179,6 +251,15 @@ public sealed class DockerSandboxService(
             {
                 record.Status = SandboxStatus.Missing.ToString();
             }
+        }
+
+        // SPEC-16 RF-004: wake é atividade — renova o lease do timeout watcher.
+        if (record.Status == nameof(SandboxStatus.Running))
+        {
+            Telemetry.OpenNetTelemetry.SandboxWakes.WithLabels(wakeFrom).Inc();
+            var spec = await GetSpecAsync(record.SpecId, ct);
+            record.ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(
+                spec?.TimeoutMinutes ?? 60);
         }
 
         await db.SaveChangesAsync(ct);
@@ -594,7 +675,7 @@ public sealed class DockerSandboxService(
 
     private async Task ReconcileAsync(SandboxRecord record, CancellationToken ct)
     {
-        if (record.Status is nameof(SandboxStatus.Paused) or nameof(SandboxStatus.Error)
+        if (record.Status is nameof(SandboxStatus.Error) or nameof(SandboxStatus.Missing)
             || record.ContainerId is null)
         {
             return;
@@ -604,11 +685,17 @@ public sealed class DockerSandboxService(
         {
             var inspect = await docker.Containers.InspectContainerAsync(
                 record.ContainerId, ct);
+            // SPEC-16 RF-005: "exited"/"created" é o estado *esperado* de um
+            // record Stopped (docker stop preserva o container); só é Error
+            // quando o record dizia que estava vivo.
             var status = inspect.State?.Status switch
             {
                 "running" => SandboxStatus.Running,
                 "paused" => SandboxStatus.Paused,
-                "exited" or "dead" => SandboxStatus.Error,
+                "created" => record.Status == nameof(SandboxStatus.Starting)
+                    ? SandboxStatus.Starting : SandboxStatus.Stopped,
+                "exited" or "dead" => record.Status == nameof(SandboxStatus.Stopped)
+                    ? SandboxStatus.Stopped : SandboxStatus.Error,
                 _ => SandboxStatus.Error,
             };
             if (status.ToString() != record.Status)
