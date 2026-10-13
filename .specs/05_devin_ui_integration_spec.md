@@ -8,7 +8,7 @@
 | Type | `Frontend / Feature` |
 | Stack | `Blazor WASM · Tailwind v4 · SignalR client · xterm.js · Monaco` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Done` |
 | Ticket | [#6](https://github.com/afonsoft/OpenHandsNET/issues/6) (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | `04_rest_and_signalr_api_spec` |
 | Reuses | `afonsoft/open-webui` (Client: chat, layout, settings, auth, i18n) |
