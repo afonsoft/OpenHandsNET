@@ -4,7 +4,9 @@ services:
     build: .
     image: openhandsnet:latest
     container_name: openhandsnet
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
       - OPENHANDSNET_Database__ConnectionString=Data Source=/app/data/openhandsnet.db
     ports:

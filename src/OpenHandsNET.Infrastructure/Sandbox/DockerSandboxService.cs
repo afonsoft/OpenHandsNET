@@ -28,6 +28,9 @@ public sealed class DockerSandboxService(
     public async Task<DomainSandbox> StartAsync(
         Guid specId, Guid? conversationId, CancellationToken ct)
     {
+        using var span = Telemetry.OpenNetTelemetry.StartSpan(
+            "sandbox_op", conversationId);
+        span?.SetTag("op", "start");
         var spec = await GetSpecAsync(specId, ct)
             ?? throw new InvalidOperationException($"Sandbox spec {specId} not found");
 
@@ -53,6 +56,7 @@ public sealed class DockerSandboxService(
             var labels = new Dictionary<string, string>
             {
                 [$"{LabelPrefix}managed"] = "true",
+                [$"{LabelPrefix}owner"] = options.Value.InstanceOwner,
                 [$"{LabelPrefix}sandbox_id"] = record.Id.ToString(),
             };
             if (conversationId is not null)
@@ -168,6 +172,8 @@ public sealed class DockerSandboxService(
             }
         }
 
+        Telemetry.OpenNetTelemetry.SandboxSeconds
+            .Inc((DateTimeOffset.UtcNow - record.CreatedAt).TotalSeconds);
         db.Sandboxes.Remove(record);
         await db.SaveChangesAsync(ct);
     }
@@ -257,6 +263,7 @@ public sealed class DockerSandboxService(
                     ["label"] = new Dictionary<string, bool>
                     {
                         [$"{LabelPrefix}managed=true"] = true,
+                        [$"{LabelPrefix}owner={options.Value.InstanceOwner}"] = true,
                     },
                 },
             }, ct);
@@ -274,8 +281,22 @@ public sealed class DockerSandboxService(
             }
 
             logger.LogWarning("Removing orphan sandbox container {ContainerId}", c.ID[..12]);
-            await docker.Containers.RemoveContainerAsync(
-                c.ID, new ContainerRemoveParameters { Force = true }, ct);
+            try
+            {
+                await docker.Containers.RemoveContainerAsync(
+                    c.ID, new ContainerRemoveParameters { Force = true }, ct);
+            }
+            catch (DockerContainerNotFoundException)
+            {
+                // already gone
+            }
+            catch (DockerApiException ex)
+            {
+                // daemon races (ex.: removal already in progress) não bloqueiam o sweep
+                logger.LogWarning(ex,
+                    "Orphan container {ContainerId} removal reported an error (ignored)",
+                    c.ID[..12]);
+            }
         }
     }
 

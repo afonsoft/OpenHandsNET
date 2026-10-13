@@ -134,6 +134,9 @@ public sealed class AgentRunner(
 
         for (var iteration = 0; iteration < opt.MaxIterations; iteration++)
         {
+            using var iterSpan = Telemetry.OpenNetTelemetry.StartSpan(
+                "agent_iteration", conversationId, sandbox.Id.ToString());
+            iterSpan?.SetTag("iteration", iteration);
             if (await CheckSignalsAsync(events, db, conv))
             {
                 return;
@@ -167,6 +170,9 @@ public sealed class AgentRunner(
             var responseId = "";
             try
             {
+                using var llmSpan = Telemetry.OpenNetTelemetry.StartSpan(
+                    "llm_call", conversationId, sandbox.Id.ToString());
+                llmSpan?.SetTag("model", opt.Model);
                 await foreach (var chunk in llm.ChatStreamAsync(
                     request, toolSchemas, new LlmOptions(), ct))
                 {
@@ -207,6 +213,10 @@ public sealed class AgentRunner(
                                 CompletionTokens = end.Usage.CompletionTokens,
                                 CostUsd = end.Usage.CostUsd,
                             }, ct);
+                            Telemetry.OpenNetTelemetry.LlmTokens
+                                .WithLabels("prompt").Inc(end.Usage.PromptTokens);
+                            Telemetry.OpenNetTelemetry.LlmTokens
+                                .WithLabels("completion").Inc(end.Usage.CompletionTokens);
                             break;
                     }
                 }
@@ -341,6 +351,10 @@ public sealed class AgentRunner(
                 }
 
                 ToolResult result;
+                using var toolSpan = Telemetry.OpenNetTelemetry.StartSpan(
+                    "tool_call", conversationId, sandbox.Id.ToString());
+                toolSpan?.SetTag("tool", call.Name);
+                Telemetry.OpenNetTelemetry.ToolCalls.WithLabels(call.Name).Inc();
                 try
                 {
                     using var toolCts =

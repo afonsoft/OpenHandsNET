@@ -13,6 +13,14 @@ public sealed class SandboxOptions
     /// <summary>Default sandbox image when a spec does not set one.</summary>
     public string DefaultImage { get; set; } =
         OpenHandsNET.Domain.Sandbox.SandboxSpec.DefaultImage;
+
+    /// <summary>
+    /// Identificador de instância gravado na label <c>openhandsnet.owner</c>.
+    /// O orphan sweep só remove containers do próprio owner — evita que
+    /// réplicas/instâncias distintas no mesmo daemon destruam sandboxes
+    /// umas das outras. Default estável garante crash recovery single-node.
+    /// </summary>
+    public string InstanceOwner { get; set; } = "default";
 }
 
 /// <summary>

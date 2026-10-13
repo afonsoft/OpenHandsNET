@@ -29,6 +29,8 @@ public sealed class EventStore(AppDbContext db, IEventBus bus) : IEventService
         };
         db.Events.Add(record);
         await db.SaveChangesAsync(ct);
+        Telemetry.OpenNetTelemetry.EventsAppended
+            .WithLabels(e.EventKind).Inc();
         await bus.PublishAsync(conversationId, e, ct);
         return e;
     }

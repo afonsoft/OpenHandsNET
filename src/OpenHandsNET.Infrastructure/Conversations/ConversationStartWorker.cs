@@ -40,6 +40,8 @@ public sealed class ConversationStartWorker(
 
     private async Task ProcessAsync(Guid taskId, CancellationToken ct)
     {
+        using var span = Telemetry.OpenNetTelemetry.StartSpan("start_task");
+        span?.SetTag("task_id", taskId.ToString());
         await using var scope = scopes.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var sandboxService = scope.ServiceProvider.GetRequiredService<ISandboxService>();
@@ -129,6 +131,7 @@ public sealed class ConversationStartWorker(
         var kickoff = conv.PendingKickoff;
         conv.PendingKickoff = false;
         await db.SaveChangesAsync(ct);
+        Telemetry.OpenNetTelemetry.ConversationsStarted.Inc();
         logger.LogInformation(
             "Conversation {ConversationId} READY (sandbox {SandboxId})",
             conv.Id, sandbox.Id);

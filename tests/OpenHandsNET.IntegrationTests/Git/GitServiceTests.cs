@@ -31,6 +31,7 @@ public sealed class GitServiceTests : IAsyncLifetime
     private DockerSandboxExecutor _executor = null!;
     private GitService _git = null!;
     private bool _dockerUp;
+    private readonly string _owner = $"test-{Guid.NewGuid():N}";
     private readonly List<OpenHandsNET.Domain.Sandbox.Sandbox> _sandboxes = [];
 
     public async Task InitializeAsync()
@@ -55,7 +56,7 @@ public sealed class GitServiceTests : IAsyncLifetime
             Options.Create(new SandboxOptions { WorkspaceRoot = _wsRoot }),
             NullLogger<WorkspaceProvisioner>.Instance);
         _service = new DockerSandboxService(_db, _docker, provisioner,
-            Options.Create(new SandboxOptions()),
+            Options.Create(new SandboxOptions { InstanceOwner = _owner }),
             NullLogger<DockerSandboxService>.Instance);
         _executor = new DockerSandboxExecutor(_docker);
         var dp = new ServiceCollection().AddDataProtection().Services

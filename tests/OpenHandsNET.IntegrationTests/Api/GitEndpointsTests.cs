@@ -27,6 +27,7 @@ public sealed class GitEndpointsTests : IDisposable
             builder.UseSetting("Database:ConnectionString", $"Data Source={_dbPath}");
             builder.UseSetting("Observability:OtlpEndpoint", string.Empty);
             builder.UseSetting("Sandbox:DefaultImage", "bash:5");
+            builder.UseSetting("Sandbox:InstanceOwner", $"test-{Guid.NewGuid():N}");
             builder.UseSetting("Sandbox:WorkspaceRoot",
                 Path.Combine(Path.GetTempPath(), $"ohn-gitapi-ws-{Guid.NewGuid():N}"));
         });
