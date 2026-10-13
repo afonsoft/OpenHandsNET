@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using OpenHandsNET.Application.Agent;
 
 namespace OpenHandsNET.Infrastructure.Agent.Tools;
@@ -164,27 +165,33 @@ public static class BuiltinTools
             return ToolResult.Ok(new { ok = true, count = items.Count });
         });
 
-    /// <summary>Commits the workspace (git add -A + commit) inside the sandbox.</summary>
+    /// <summary>Commits the workspace repo via <c>IGitService</c> (SPEC-12).</summary>
     public static AgentTool GitCommit(TimeSpan timeout) => new(
         new ToolSchema("git_commit",
-            "Stage all changes in /workspace and create a git commit.",
+            "Stage changes in /workspace/repo and create a git commit as the agent author.",
             Schema("""
                 {"type":"object","properties":{
-                  "message":{"type":"string","description":"Commit message"}},
+                  "message":{"type":"string","description":"Commit message"},
+                  "files":{"type":"array","items":{"type":"string"},
+                    "description":"Optional explicit file list (default: all)"}},
                  "required":["message"]}
                 """)),
         Risky: true,
         Handler: async (ctx, args, ct) =>
         {
-            var message = args.GetProperty("message").GetString()!
-                .Replace("'", "'\\''", StringComparison.Ordinal);
-            var result = await ctx.Executor.ExecAsync(ctx.Sandbox,
-                $"cd /workspace && git add -A && git -c user.name=openhandsnet " +
-                $"-c user.email=agent@openhandsnet.local commit -m '{message}'",
-                timeout, ct);
-            return result.ExitCode == 0
-                ? ToolResult.Ok(new { ok = true, output = result.StdOut })
-                : ToolResult.Error(result.StdErr is { Length: > 0 } e ? e : result.StdOut);
+            var git = ctx.Services
+                .GetRequiredService<OpenHandsNET.Application.Git.IGitService>();
+            var files = args.TryGetProperty("files", out var f)
+                ? f.EnumerateArray().Select(e => e.GetString()!).ToList()
+                : null;
+            var result = await git.CommitAsync(ctx.Sandbox,
+                args.GetProperty("message").GetString()!, files, ct);
+            return result.Success
+                ? ToolResult.Ok(new
+                {
+                    ok = true, hash = result.Hash, output = result.Output,
+                })
+                : ToolResult.Error(result.Error ?? result.Output);
         });
 
     /// <summary>Playwright browser — stub until SPEC-03 RF-005 lands.</summary>

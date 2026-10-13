@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OpenHandsNET.Application.Sandbox;
 using OpenHandsNET.Domain.Conversations;
 using OpenHandsNET.Infrastructure.Persistence;
@@ -68,8 +69,28 @@ public sealed class ConversationStartWorker(
         await AdvanceAsync(db, task, StartTaskStatus.PreparingRepository, ct);
         if (!string.IsNullOrEmpty(conv.SelectedRepository))
         {
-            await workspaces.CloneRepositoryAsync(
-                conv.Id, conv.SelectedRepository, ct);
+            var gitOpt = scope.ServiceProvider
+                .GetRequiredService<IOptions<Git.GitOptions>>().Value;
+            var branch = gitOpt.WorkBranch
+                .Replace("{id}", conv.Id.ToString("N")[..8],
+                    StringComparison.Ordinal);
+            if (gitOpt.CloneMode.Equals("host", StringComparison.OrdinalIgnoreCase))
+            {
+                await workspaces.CloneRepositoryAsync(
+                    conv.Id, conv.SelectedRepository, branch, ct);
+            }
+            else
+            {
+                // Default: clone dentro do container (isolado; token via askpass).
+                var git = scope.ServiceProvider
+                    .GetRequiredService<Application.Git.IGitService>();
+                var sbDomain = await sandboxService.GetAsync(sandbox.Id, ct);
+                if (sbDomain is not null)
+                {
+                    await git.CloneAsync(
+                        sbDomain, conv.SelectedRepository, branch, ct);
+                }
+            }
         }
 
         await AdvanceAsync(db, task, StartTaskStatus.SettingUpSkills, ct);

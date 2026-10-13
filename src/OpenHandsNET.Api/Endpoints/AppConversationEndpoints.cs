@@ -86,11 +86,7 @@ public static class AppConversationEndpoints
             OpenHandsNetProblemFactory.Create(
                 http, 501, "ACP model switching not supported yet"));
 
-        // Proxies → sandbox executor.
-        group.MapGet("/{id:guid}/file", ReadFileAsync);
-        group.MapGet("/{id:guid}/files", ListFilesAsync);
-        group.MapGet("/{id:guid}/git/changes", GitChangesAsync);
-        group.MapGet("/{id:guid}/git/diff", GitDiffAsync);
+        // Proxies git/files foram para GitEndpoints (SPEC-12).
         group.MapGet("/{id:guid}/skills", () => Results.Ok(Array.Empty<object>()));
         group.MapGet("/{id:guid}/hooks", () => Results.Ok(Array.Empty<object>()));
 
@@ -202,90 +198,6 @@ public static class AppConversationEndpoints
         Results.Ok((await svc.SearchAsync(
                 ParseStatus(status), page_id, limit ?? 100, ct))
             .Select(ToDto));
-
-    private static async Task<IResult> ReadFileAsync(
-        Guid id, string path, IAppConversationService svc,
-        ISandboxExecutor executor, HttpContext http, CancellationToken ct)
-    {
-        var sb = await SandboxOfAsync(id, svc, http, ct);
-        if (sb is null)
-        {
-            return OpenHandsNetProblemFactory.Create(http, 409,
-                OpenHandsNetProblemFactory.SandboxNotRunning);
-        }
-
-        var content = await executor.ReadFileAsync(sb, path, ct);
-        return Results.Text(content);
-    }
-
-    private static async Task<IResult> ListFilesAsync(
-        Guid id, string? path, IAppConversationService svc,
-        ISandboxExecutor executor, HttpContext http, CancellationToken ct)
-    {
-        var sb = await SandboxOfAsync(id, svc, http, ct);
-        if (sb is null)
-        {
-            return OpenHandsNetProblemFactory.Create(http, 409,
-                OpenHandsNetProblemFactory.SandboxNotRunning);
-        }
-
-        var files = await executor.ListFilesAsync(
-            sb, path ?? "/workspace", ct);
-        return Results.Ok(files.Select(f => new
-        {
-            path = f.Path, is_directory = f.IsDirectory, size = f.Size,
-        }));
-    }
-
-    private static async Task<IResult> GitChangesAsync(
-        Guid id, IAppConversationService svc,
-        ISandboxExecutor executor, HttpContext http, CancellationToken ct)
-    {
-        var sb = await SandboxOfAsync(id, svc, http, ct);
-        if (sb is null)
-        {
-            return OpenHandsNetProblemFactory.Create(http, 409,
-                OpenHandsNetProblemFactory.SandboxNotRunning);
-        }
-
-        var diff = await executor.GetGitDiffAsync(sb, ct);
-        return Results.Ok(diff.ChangedFiles);
-    }
-
-    private static async Task<IResult> GitDiffAsync(
-        Guid id, IAppConversationService svc,
-        ISandboxExecutor executor, HttpContext http, CancellationToken ct)
-    {
-        var sb = await SandboxOfAsync(id, svc, http, ct);
-        if (sb is null)
-        {
-            return OpenHandsNetProblemFactory.Create(http, 409,
-                OpenHandsNetProblemFactory.SandboxNotRunning);
-        }
-
-        var diff = await executor.GetGitDiffAsync(sb, ct);
-        return Results.Ok(new
-        {
-            files = diff.ChangedFiles, patch = diff.Patch,
-            additions = diff.Additions, deletions = diff.Deletions,
-        });
-    }
-
-    private static async Task<Domain.Sandbox.Sandbox?> SandboxOfAsync(
-        Guid conversationId, IAppConversationService svc, HttpContext http,
-        CancellationToken ct)
-    {
-        var conv = await svc.GetAsync(conversationId, ct);
-        if (conv?.SandboxId is null)
-        {
-            return null;
-        }
-
-        var sandboxes = http.RequestServices
-            .GetRequiredService<ISandboxService>();
-        var sb = await sandboxes.GetAsync(conv.SandboxId.Value, ct);
-        return sb?.Status is Domain.Sandbox.SandboxStatus.Running ? sb : null;
-    }
 
     private static CreateConversationRequest Map(CreateAppConversationRequest b) =>
         new(b.InitialMessage is null ? null : new InitialMessage(

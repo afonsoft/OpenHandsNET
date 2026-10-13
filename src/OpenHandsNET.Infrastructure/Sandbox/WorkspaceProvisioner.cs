@@ -31,29 +31,39 @@ public sealed class WorkspaceProvisioner(
     }
 
     /// <summary>
-    /// Clones <paramref name="repoUrl"/> into the workspace (shallow) if it is
-    /// empty. Runs on the host so the sandbox sees the repo already mounted.
+    /// Clones <paramref name="repoUrl"/> into <c>{workspace}/repo</c> and creates
+    /// the work branch. Host clone mode (SPEC-12): menos isolado — dev/air-gapped.
     /// </summary>
     public async Task CloneRepositoryAsync(
-        Guid conversationId, string repoUrl, CancellationToken ct)
+        Guid conversationId, string repoUrl, string workBranch, CancellationToken ct)
     {
-        var path = await PrepareAsync(conversationId, ct);
-        if (Directory.EnumerateFileSystemEntries(path).Any())
+        var workspace = await PrepareAsync(conversationId, ct);
+        var repoDir = Path.Combine(workspace, "repo");
+        if (Directory.Exists(repoDir) &&
+            Directory.EnumerateFileSystemEntries(repoDir).Any())
         {
-            return; // workspace já populado — nunca sobrescreve trabalho existente
+            return; // repo já existe — nunca sobrescreve trabalho existente
         }
 
-        logger.LogInformation("Cloning {Repo} into workspace {Workspace}", repoUrl, path);
+        logger.LogInformation("Cloning {Repo} into workspace {Workspace} (host mode)",
+            repoUrl, repoDir);
+        await RunGitAsync(workspace, ct, "clone", repoUrl, repoDir);
+        await RunGitAsync(repoDir, ct, "checkout", "-b", workBranch);
+    }
+
+    private static async Task RunGitAsync(
+        string workdir, CancellationToken ct, params string[] args)
+    {
         var psi = new ProcessStartInfo("git")
         {
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            WorkingDirectory = path,
+            WorkingDirectory = workdir,
         };
-        psi.ArgumentList.Add("clone");
-        psi.ArgumentList.Add("--depth=1");
-        psi.ArgumentList.Add(repoUrl);
-        psi.ArgumentList.Add(".");
+        foreach (var a in args)
+        {
+            psi.ArgumentList.Add(a);
+        }
 
         using var proc = Process.Start(psi)
             ?? throw new InvalidOperationException("git not available on host");
@@ -61,7 +71,8 @@ public sealed class WorkspaceProvisioner(
         await proc.WaitForExitAsync(ct);
         if (proc.ExitCode != 0)
         {
-            throw new InvalidOperationException($"git clone failed: {stderr.Trim()}");
+            throw new InvalidOperationException(
+                $"git {args[0]} failed: {stderr.Trim()}");
         }
     }
 }
