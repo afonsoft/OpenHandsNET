@@ -36,7 +36,7 @@ SPECs (Spec-Driven Development) do port do ecossistema **OpenHands** para
 | `12_git_scm_integration_spec.md` | Clone, changes/diff/log, `git_commit`, credenciais | 03, 10 | [#13](https://github.com/afonsoft/OpenHandsNET/issues/13) |
 | `13_devops_observability_spec.md` | Dockerfile, compose profiles, CI, Serilog+OTel | 01 | [#14](https://github.com/afonsoft/OpenHandsNET/issues/14) |
 | `14_enterprise_operations_spec.md` | Sizing de sandbox, DinD+egress, PG externo, doctor/support-bundle, warm pool, usage | 03, 06, 08, 10, 13 | [#29](https://github.com/afonsoft/OpenHandsNET/issues/29) |
-| `15_ui_mobile_and_smart_autonomy_spec.md` | Mobile UX (drawer, repo sem owner), autonomia smart/always-allow, repasse de credencial GH ao sandbox | 03, 04, 09, 12 | `[a criar]` |
+| `15_ui_mobile_and_smart_autonomy_spec.md` | Mobile UX (drawer, repo sem owner), autonomia smart/always-allow, repasse de credencial GH ao sandbox | 03, 04, 09, 12 | [#33](https://github.com/afonsoft/OpenHandsNET/issues/33) |
 
 Build order: `01 → (02 ∥ 03 ∥ 10 ∥ 13) → (04 ∥ 09 ∥ 11 ∥ 12) → (05 ∥ 06 ∥ 08) → 07 → 14 → 15`.
 

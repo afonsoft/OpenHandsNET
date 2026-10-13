@@ -8,8 +8,8 @@
 | Type | `Feature / UX / Security` |
 | Stack | `.NET 10 · Blazor WASM · Tailwind v4 · Docker.DotNet · gh CLI` |
 | Repository | `afonsoft/OpenHandsNET` (+ superfícies em `afonsoft/open-webui`) |
-| Status | `Approved` |
-| Ticket | `[a criar]` (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
+| Status | `Done` |
+| Ticket | [#33](https://github.com/afonsoft/OpenHandsNET/issues/33) · afonsoft/open-webui#344 (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | `03_runtime_sandbox_spec`, `04_rest_and_signalr_api_spec`, `09_agent_engine_spec`, `12_git_scm_integration_spec` |
 | Consumed by | `05` (UI), `06` (CLI), `08` (secrets/RBAC) |
 
