@@ -14,6 +14,8 @@
     <!-- Pin explícito: levanta System.Security.Cryptography.Xml transitivo p/ versão sem CVE -->
     <PackageReference Include="System.Security.Cryptography.Xml" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Ulid" />
+    <PackageReference Include="YamlDotNet" />
     <PackageReference Include="prometheus-net.AspNetCore" />
     <PackageReference Include="ModelContextProtocol" />
     <!-- Pin explícito: levanta SQLitePCLRaw.lib.e_sqlite3 transitivo para versão sem CVE -->

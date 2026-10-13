@@ -10,13 +10,21 @@ using OpenHandsNET.Infrastructure.Persistence;
 namespace OpenHandsNET.Infrastructure.Sandbox;
 
 /// <summary>
-/// Warm pool (SPEC-14 RF-005): keeps <c>Sandbox:WarmPoolSize</c> pre-created,
-/// running containers labelled <c>openhandsnet.pool=warm</c>. Because Docker
-/// labels are immutable post-create, a claimed warm container keeps the label
-/// — liveness is decided by the DB: a warm container referenced by a sandbox
-/// row is <b>claimed</b>; one referenced by nothing is a <b>free slot</b>.
-/// Each warm container pre-mounts a disposable workspace dir; on claim the
-/// dir is renamed to the conversation path, which preserves the bind target.
+/// Warm pool (SPEC-14 RF-005, SPEC-17 RF-006/007): keeps pre-created,
+/// running containers labelled <c>openhandsnet.pool=warm</c> —
+/// <b>por imagem</b>: <c>Sandbox:WarmPoolSize</c> cobre a imagem default e
+/// <c>Sandbox:WarmPoolImages</c> (<c>img:count;…</c>) adiciona pools extras
+/// (<c>openhandsnet.pool_key=&lt;image&gt;</c>). Containers de imagem-agente
+/// nascem <b>dormant</b> (<c>OHN_DEFERRED_INIT=true</c> +
+/// <c>OHN_INIT_API_KEY</c> na label <c>openhandsnet.init_key</c>) e são
+/// ativados no claim via <c>POST /api/init</c> (paridade deferred-init
+/// upstream); imagens legadas seguem <c>sleep infinity</c>.
+/// Because Docker labels are immutable post-create, a claimed warm container
+/// keeps the label — liveness is decided by the DB: a warm container
+/// referenced by a sandbox row is <b>claimed</b>; one referenced by nothing
+/// is a <b>free slot</b>. Each warm container pre-mounts a disposable
+/// workspace dir; on claim the dir is renamed to the conversation path,
+/// which preserves the bind target.
 /// </summary>
 public sealed class WarmPoolService(
     IDockerClient docker,
@@ -28,10 +36,17 @@ public sealed class WarmPoolService(
     /// <summary>Label marking a pool container.</summary>
     public const string PoolLabel = $"{DockerSandboxService.LabelPrefix}pool";
 
+    /// <summary>Label com a imagem-pool (<c>pool_key</c> do sandbox record).</summary>
+    public const string PoolKeyLabel = $"{DockerSandboxService.LabelPrefix}pool_key";
+
+    /// <summary>Label com a init key bootstrap de containers dormant.</summary>
+    public const string InitKeyLabel = $"{DockerSandboxService.LabelPrefix}init_key";
+
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (options.Value.WarmPoolSize <= 0)
+        var targets = PoolTargets();
+        if (targets.Count == 0)
         {
             return;
         }
@@ -77,7 +92,7 @@ public sealed class WarmPoolService(
     /// </summary>
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        if (options.Value.WarmPoolSize > 0)
+        if (PoolTargets().Count > 0)
         {
             try
             {
@@ -92,75 +107,132 @@ public sealed class WarmPoolService(
     }
 
     /// <summary>
-    /// Claim a free warm container for a conversation (null = pool miss →
-    /// caller creates cold). A claimed container id is written into the
-    /// sandbox row by the caller — the pool then replenishes on next tick.
+    /// Claim a free warm container of <paramref name="image"/> for a
+    /// conversation (null = pool miss → caller creates cold). A claimed
+    /// container id is written into the sandbox row by the caller — the pool
+    /// then replenishes on next tick.
     /// </summary>
-    public async Task<string?> TryClaimAsync(CancellationToken ct)
+    public async Task<string?> TryClaimAsync(string image, CancellationToken ct)
     {
-        if (options.Value.WarmPoolSize <= 0)
+        if (!PoolTargets().ContainsKey(image))
         {
             return null;
         }
 
         var claimedIds = await ClaimedContainerIdsAsync(ct);
         var warm = await ListWarmContainersAsync(ct);
-        var free = warm.FirstOrDefault(c => !claimedIds.Contains(c.ID));
+        var free = warm.FirstOrDefault(c => !claimedIds.Contains(c.ID)
+            && PoolKeyOf(c) == image);
         return free?.ID;
     }
 
-    /// <summary>Current count of free warm slots.</summary>
-    public async Task<int> FreeCountAsync(CancellationToken ct)
+    /// <summary>Current count of free warm slots for <paramref name="image"/>.</summary>
+    public async Task<int> FreeCountAsync(string image, CancellationToken ct)
     {
         var claimedIds = await ClaimedContainerIdsAsync(ct);
         var warm = await ListWarmContainersAsync(ct);
-        return warm.Count(c => !claimedIds.Contains(c.ID));
+        return warm.Count(c => !claimedIds.Contains(c.ID)
+            && PoolKeyOf(c) == image);
     }
+
+    /// <summary>
+    /// Mapa <c>image → count</c>: <see cref="SandboxOptions.WarmPoolSize"/>
+    /// cobre a imagem default; <see cref="SandboxOptions.WarmPoolImages"/>
+    /// adiciona pools por imagem (<c>imgA:2;imgB:1</c>).
+    /// </summary>
+    internal IReadOnlyDictionary<string, int> PoolTargets()
+    {
+        var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        if (options.Value.WarmPoolSize > 0)
+        {
+            map[options.Value.DefaultImage] = options.Value.WarmPoolSize;
+        }
+
+        foreach (var part in (options.Value.WarmPoolImages ?? "")
+            .Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var colon = part.LastIndexOf(':');
+            if (colon > 0 && int.TryParse(part[(colon + 1)..], out var n) && n > 0)
+            {
+                map[part[..colon].Trim()] = n;
+            }
+        }
+
+        return map;
+    }
+
+    private static string PoolKeyOf(ContainerListResponse c) =>
+        c.Labels is not null && c.Labels.TryGetValue(PoolKeyLabel, out var k)
+            ? k : c.Image;
 
     private async Task EnsurePoolSizeAsync(CancellationToken ct)
     {
-        var target = options.Value.WarmPoolSize;
-        var free = await FreeCountAsync(ct);
-        for (var i = free; i < target; i++)
+        foreach (var (image, target) in PoolTargets())
         {
-            await CreateWarmContainerAsync(ct);
+            var free = await FreeCountAsync(image, ct);
+            for (var i = free; i < target; i++)
+            {
+                await CreateWarmContainerAsync(image, ct);
+            }
         }
     }
 
-    private async Task CreateWarmContainerAsync(CancellationToken ct)
+    private async Task CreateWarmContainerAsync(string image, CancellationToken ct)
     {
         var spec = await DefaultSpecAsync(ct);
+        var isAgentImage = options.Value.IsAgentImage(image);
         var labels = new Dictionary<string, string>
         {
             [$"{DockerSandboxService.LabelPrefix}managed"] = "true",
             [$"{DockerSandboxService.LabelPrefix}owner"] =
                 options.Value.InstanceOwner,
             [PoolLabel] = "warm",
+            [PoolKeyLabel] = image,
         };
+
+        var env = new List<string>();
+        if (isAgentImage)
+        {
+            // SPEC-17 RF-007: nasce dormant — claim ativa via /api/init.
+            var initKey = Ulid.NewUlid().ToString();
+            labels[InitKeyLabel] = initKey;
+            env.Add("OHN_DEFERRED_INIT=true");
+            env.Add($"OHN_INIT_API_KEY={initKey}");
+            env.Add("OHN_WORKSPACE=/workspace");
+        }
+
         // Workspace bind pré-montado num dir descartável: no claim o dir é
         // renomeado para o path da conversa (rename preserva o bind target).
         var warmWs = workspaces.PrepareWarmPath();
-        var created = await docker.Containers.CreateContainerAsync(
-            new CreateContainerParameters
+        var createParams = new CreateContainerParameters
+        {
+            Image = image,
+            Labels = labels,
+            Env = env,
+            HostConfig = new HostConfig
             {
-                Image = spec.Image,
-                Labels = labels,
-                HostConfig = new HostConfig
-                {
-                    Memory = spec.MemoryMb * 1024L * 1024L,
-                    NanoCPUs = (long)(spec.CpuLimit * 1_000_000_000L),
-                    PidsLimit = spec.PidsLimit,
-                    Binds =
-                    [
-                        $"{warmWs}:{Domain.Sandbox.SandboxSpec.WorkspacePath}:rw",
-                    ],
-                    AutoRemove = false,
-                },
-                WorkingDir = Domain.Sandbox.SandboxSpec.WorkspacePath,
-                Cmd = ["sleep", "infinity"],
-            }, ct);
+                Memory = spec.MemoryMb * 1024L * 1024L,
+                NanoCPUs = (long)(spec.CpuLimit * 1_000_000_000L),
+                PidsLimit = spec.PidsLimit,
+                Binds =
+                [
+                    $"{warmWs}:{Domain.Sandbox.SandboxSpec.WorkspacePath}:rw",
+                ],
+                AutoRemove = false,
+            },
+            WorkingDir = Domain.Sandbox.SandboxSpec.WorkspacePath,
+        };
+        if (!isAgentImage)
+        {
+            createParams.Cmd = ["sleep", "infinity"];
+        }
+
+        var created = await docker.Containers.CreateContainerAsync(
+            createParams, ct);
         await docker.Containers.StartContainerAsync(created.ID, null, ct);
-        logger.LogInformation("warm pool container {ContainerId} ready", created.ID[..12]);
+        logger.LogInformation(
+            "warm pool container {ContainerId} ready (image {Image}, dormant {Dormant})",
+            created.ID[..12], image, isAgentImage);
     }
 
     private async Task<IReadOnlyList<ContainerListResponse>> ListWarmContainersAsync(

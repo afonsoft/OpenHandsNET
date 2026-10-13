@@ -69,8 +69,15 @@ public static class DependencyInjection
             OpenHandsNET.Infrastructure.Sandbox.WarmPoolService>());
         services.AddScoped<OpenHandsNET.Application.Sandbox.ISandboxService,
             OpenHandsNET.Infrastructure.Sandbox.DockerSandboxService>();
+        // SPEC-17: executor dual-mode — HTTP agent in-container quando a
+        // imagem traz o sandbox-agent; docker exec como fallback legado.
+        services.AddHttpClient("sandbox-agent");
+        services.AddSingleton<
+            OpenHandsNET.Infrastructure.Sandbox.SandboxAgentClient>();
         services.AddScoped<OpenHandsNET.Application.Sandbox.ISandboxExecutor,
-            OpenHandsNET.Infrastructure.Sandbox.DockerSandboxExecutor>();
+            OpenHandsNET.Infrastructure.Sandbox.SandboxAgentExecutor>();
+        services.AddScoped<
+            OpenHandsNET.Infrastructure.Sandbox.BlueprintService>();
         services.AddHostedService<OpenHandsNET.Infrastructure.Sandbox.OrphanSweepService>();
         services.AddHostedService<OpenHandsNET.Infrastructure.Sandbox.SandboxTimeoutWatcher>();
         services.AddSingleton<OpenHandsNET.Infrastructure.Sandbox.SandboxSleepService>();

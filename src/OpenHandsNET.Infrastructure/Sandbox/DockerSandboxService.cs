@@ -1,5 +1,6 @@
 using Docker.DotNet;
 using Docker.DotNet.Models;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -22,8 +23,27 @@ public sealed class DockerSandboxService(
     WarmPoolService warmPool,
     IOptions<SandboxOptions> options,
     ILogger<DockerSandboxService> logger,
-    Git.GitCredentialProvider? gitCredentials = null) : ISandboxService
+    Git.GitCredentialProvider? gitCredentials = null,
+    Microsoft.AspNetCore.DataProtection.IDataProtectionProvider? dp = null,
+    SandboxAgentClient? agentClient = null) : ISandboxService
 {
+    /// <summary>Protector da session key do agente in-container (SPEC-17).</summary>
+    private Microsoft.AspNetCore.DataProtection.IDataProtector? SessionProtector =>
+        dp?.CreateProtector("openhandsnet.sandbox.session");
+
+    /// <summary>Gera ULID de session key, protege no record, devolve plaintext.</summary>
+    private string? NewSessionKey(SandboxRecord record)
+    {
+        if (SessionProtector is null)
+        {
+            return null;
+        }
+
+        var key = Ulid.NewUlid().ToString();
+        record.SessionKeyProtected = SessionProtector.Protect(key);
+        return key;
+    }
+
     /// <summary>Label prefix on all managed containers.</summary>
     public const string LabelPrefix = "openhandsnet.";
 
@@ -37,6 +57,7 @@ public sealed class DockerSandboxService(
         var spec = await GetSpecAsync(specId, ct)
             ?? throw new InvalidOperationException($"Sandbox spec {specId} not found");
         spec = await ApplyProfileAsync(spec, conversationId, ct);
+        spec = await ApplyBlueprintOverridesAsync(spec, conversationId, ct);
 
         var record = new SandboxRecord
         {
@@ -53,12 +74,17 @@ public sealed class DockerSandboxService(
             // customizadas têm imagem/recursos próprios e não cabem no pool.
             var warmId = specId == Guid.Empty && spec.MountWorkspace
                 && conversationId is not null
-                ? await TryClaimWarmAsync(record.Id, conversationId.Value, ct)
+                ? await TryClaimWarmAsync(
+                    record.Id, conversationId.Value, spec.Image, ct)
                 : null;
             if (warmId is not null)
             {
                 record.ContainerId = warmId;
                 record.Pool = "warm";
+                record.PoolKey = spec.Image;
+                // SPEC-17 RF-007: container warm nasce dormant — claim ativa
+                // via POST /api/init (bootstrap key na label do container).
+                await ActivateWarmAsync(record, ct);
                 record.Status = SandboxStatus.Running.ToString();
                 await db.SaveChangesAsync(ct);
                 logger.LogInformation(
@@ -96,27 +122,57 @@ public sealed class DockerSandboxService(
             env.AddRange(egress.EgressEnv());
             env.AddRange(await ResolveCredentialEnvAsync(conversationId, ct));
 
-            var container = await docker.Containers.CreateContainerAsync(
-                new CreateContainerParameters
+            // SPEC-17: imagem-agente não leva Cmd (entrypoint é o agente);
+            // session key vai por env e fica protegida no record.
+            var isAgentImage = options.Value.IsAgentImage(spec.Image);
+            if (isAgentImage)
+            {
+                var sessionKey = NewSessionKey(record);
+                if (sessionKey is not null)
                 {
-                    Image = spec.Image,
-                    Name = $"ohn-sandbox-{record.Id:N}",
-                    Labels = labels,
-                    Env = env,
-                    HostConfig = new HostConfig
-                    {
-                        Memory = spec.MemoryMb * 1024L * 1024L,
-                        NanoCPUs = (long)(spec.CpuLimit * 1_000_000_000L),
-                        PidsLimit = spec.PidsLimit,
-                        Binds = binds,
-                        AutoRemove = false,
-                    },
-                    NetworkingConfig = await BuildNetworkingConfigAsync(ct),
-                    WorkingDir = Domain.Sandbox.SandboxSpec.WorkspacePath,
-                    // Keep the sandbox alive; agent drives work via exec.
-                    Cmd = ["sleep", "infinity"],
-                    Tty = false,
-                }, ct);
+                    env.Add($"OHN_SESSION_KEY={sessionKey}");
+                    env.Add("OHN_DEFERRED_INIT=false");
+                    env.Add("OHN_WORKSPACE=/workspace");
+                }
+            }
+
+            var hostConfig = new HostConfig
+            {
+                Memory = spec.MemoryMb * 1024L * 1024L,
+                NanoCPUs = (long)(spec.CpuLimit * 1_000_000_000L),
+                PidsLimit = spec.PidsLimit,
+                Binds = binds,
+                AutoRemove = false,
+            };
+            if (isAgentImage && options.Value.PublishAgentPort)
+            {
+                // Docker Desktop / daemon remoto: publica 8000 em 127.0.0.1.
+                hostConfig.PortBindings = new Dictionary<string, IList<PortBinding>>
+                {
+                    ["8000/tcp"] = [new PortBinding
+                    { HostIP = "127.0.0.1", HostPort = "" }],
+                };
+            }
+
+            var createParams = new CreateContainerParameters
+            {
+                Image = spec.Image,
+                Name = $"ohn-sandbox-{record.Id:N}",
+                Labels = labels,
+                Env = env,
+                HostConfig = hostConfig,
+                NetworkingConfig = await BuildNetworkingConfigAsync(ct),
+                WorkingDir = Domain.Sandbox.SandboxSpec.WorkspacePath,
+                Tty = false,
+            };
+            if (!isAgentImage)
+            {
+                // Imagem legada sem agente: mantém o container vivo para exec.
+                createParams.Cmd = ["sleep", "infinity"];
+            }
+
+            var container = await docker.Containers.CreateContainerAsync(
+                createParams, ct);
 
             await docker.Containers.StartContainerAsync(container.ID, null, ct);
             record.ContainerId = container.ID;
@@ -126,6 +182,13 @@ public sealed class DockerSandboxService(
             if (options.Value.EnableDinD)
             {
                 await StartDinDSidecarAsync(container.ID, ct);
+            }
+
+            // SPEC-17: registra a URL do agente para o executor HTTP.
+            if (isAgentImage && agentClient is not null)
+            {
+                record.AgentUrl = (await agentClient.ResolveBaseUrlAsync(
+                    container.ID, ct))?.ToString();
             }
 
             record.Status = SandboxStatus.Running.ToString();
@@ -500,9 +563,9 @@ public sealed class DockerSandboxService(
     /// conversation path (rename keeps the bind target) and returns the id.
     /// </summary>
     private async Task<string?> TryClaimWarmAsync(
-        Guid sandboxId, Guid conversationId, CancellationToken ct)
+        Guid sandboxId, Guid conversationId, string image, CancellationToken ct)
     {
-        var containerId = await warmPool.TryClaimAsync(ct);
+        var containerId = await warmPool.TryClaimAsync(image, ct);
         if (containerId is null)
         {
             return null;
@@ -543,6 +606,109 @@ public sealed class DockerSandboxService(
                 // best-effort cleanup; pool prune/sweep picks leftovers
             }
             return null;
+        }
+    }
+
+    /// <summary>
+    /// SPEC-17 RF-004: aplica <c>image</c>/<c>env</c> resolvidos pelo blueprint
+    /// de um sandbox anterior da mesma conversa (repo persistido no workspace).
+    /// </summary>
+    private async Task<Domain.Sandbox.SandboxSpec> ApplyBlueprintOverridesAsync(
+        Domain.Sandbox.SandboxSpec spec, Guid? conversationId,
+        CancellationToken ct)
+    {
+        if (conversationId is null)
+        {
+            return spec;
+        }
+
+        var prior = await db.Sandboxes
+            .Where(s => s.ConversationId == conversationId
+                && (s.BlueprintImage != null || s.BlueprintEnvJson != null))
+            .OrderByDescending(s => s.CreatedAtTicks)
+            .Select(s => new { s.BlueprintImage, s.BlueprintEnvJson })
+            .FirstOrDefaultAsync(ct);
+        if (prior is null)
+        {
+            return spec;
+        }
+
+        var env = spec.Env is null
+            ? new Dictionary<string, string>()
+            : new Dictionary<string, string>(spec.Env);
+        if (prior.BlueprintEnvJson is not null)
+        {
+            try
+            {
+                foreach (var kv in System.Text.Json.JsonSerializer
+                    .Deserialize<Dictionary<string, string>>(
+                        prior.BlueprintEnvJson) ?? [])
+                {
+                    env[kv.Key] = kv.Value;
+                }
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                // blueprint env corrompido — ignora
+            }
+        }
+
+        return spec with
+        {
+            Image = prior.BlueprintImage ?? spec.Image,
+            Env = env,
+        };
+    }
+
+    /// <summary>
+    /// SPEC-17 RF-007: ativa um container warm dormant — lê a init key da
+    /// label <c>openhandsnet.init_key</c>, gera session key nova e chama
+    /// <c>POST /api/init</c>. Falha/legado sem agente → segue em exec-fallback.
+    /// </summary>
+    private async Task ActivateWarmAsync(SandboxRecord record, CancellationToken ct)
+    {
+        if (agentClient is null || record.ContainerId is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var inspect = await docker.Containers
+                .InspectContainerAsync(record.ContainerId, ct);
+            var initKey = inspect.Config?.Labels is { } l
+                && l.TryGetValue($"{LabelPrefix}init_key", out var k) ? k : null;
+            var baseUrl = await agentClient.ResolveBaseUrlAsync(
+                record.ContainerId, ct);
+            if (initKey is null || baseUrl is null)
+            {
+                return; // imagem legada no pool — sem agente, segue exec
+            }
+
+            var sessionKey = NewSessionKey(record);
+            if (sessionKey is null)
+            {
+                return;
+            }
+
+            var ok = await agentClient.InitAsync(baseUrl, initKey, sessionKey,
+                Domain.Sandbox.SandboxSpec.WorkspacePath, null, ct);
+            if (ok)
+            {
+                record.AgentUrl = baseUrl.ToString();
+            }
+            else
+            {
+                logger.LogWarning(
+                    "warm container {ContainerId} /api/init failed — exec fallback",
+                    record.ContainerId[..12]);
+            }
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            logger.LogWarning(e,
+                "warm activation failed for {ContainerId} — exec fallback",
+                record.ContainerId[..12]);
         }
     }
 

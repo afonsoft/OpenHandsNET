@@ -8,10 +8,12 @@
     <Project Path="src/OpenHandsNET.Client/OpenHandsNET.Client.csproj" />
     <Project Path="src/OpenHandsNET.Domain/OpenHandsNET.Domain.csproj" />
     <Project Path="src/OpenHandsNET.Infrastructure/OpenHandsNET.Infrastructure.csproj" />
+    <Project Path="src/OpenHandsNET.SandboxAgent/OpenHandsNET.SandboxAgent.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/OpenHandsNET.Client.Tests/OpenHandsNET.Client.Tests.csproj" />
     <Project Path="tests/OpenHandsNET.IntegrationTests/OpenHandsNET.IntegrationTests.csproj" />
+    <Project Path="tests/OpenHandsNET.SandboxAgent.Tests/OpenHandsNET.SandboxAgent.Tests.csproj" />
     <Project Path="tests/OpenHandsNET.UnitTests/OpenHandsNET.UnitTests.csproj" />
   </Folder>
 </Solution>

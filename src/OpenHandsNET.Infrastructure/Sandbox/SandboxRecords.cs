@@ -21,6 +21,33 @@ public sealed class SandboxRecord
     /// <summary>Origem do sandbox: <c>cold</c> (criado sob demanda) ou <c>warm</c> (pool).</summary>
     public string Pool { get; set; } = "cold";
 
+    /// <summary>SPEC-17: chave do pool que originou o container (imagem).</summary>
+    public string? PoolKey { get; set; }
+
+    /// <summary>SPEC-17: resultado do blueprint — <c>ok|failed|none</c>.</summary>
+    public string BlueprintStatus { get; set; } = "none";
+
+    /// <summary>SPEC-17: cauda (4 KB) do log de provisionamento.</summary>
+    public string? BlueprintLogTail { get; set; }
+
+    /// <summary>
+    /// SPEC-17: session key do agente in-container, protegida por
+    /// DataProtection — nunca plaintext, nunca serializada.
+    /// </summary>
+    public string? SessionKeyProtected { get; set; }
+
+    /// <summary>
+    /// SPEC-17 RF-004: override de imagem vindo do <c>openhandsnet.yaml</c> —
+    /// aplicado quando um novo sandbox é criado para a conversa.
+    /// </summary>
+    public string? BlueprintImage { get; set; }
+
+    /// <summary>
+    /// SPEC-17 RF-004: env resolvido pelo blueprint (JSON) — merge no
+    /// <c>spec.Env</c> efetivo no próximo start do container.
+    /// </summary>
+    public string? BlueprintEnvJson { get; set; }
+
     /// <summary>Espelho numérico de <see cref="CreatedAt"/> para ORDER BY.</summary>
     public long CreatedAtTicks { get; set; }
 
@@ -34,7 +61,8 @@ public sealed class SandboxRecord
         Id, SpecId, ConversationId, ContainerId,
         Enum.Parse<SandboxStatus>(Status, ignoreCase: true),
         AgentUrl is null ? null : new Uri(AgentUrl),
-        CreatedAt, ExpiresAt, LastError, Pool);
+        CreatedAt, ExpiresAt, LastError, Pool,
+        PoolKey, BlueprintStatus, BlueprintLogTail);
 }
 
 /// <summary>Persisted sandbox spec row (env serialized as JSON).</summary>

@@ -65,6 +65,13 @@ public static class SandboxEndpoints
             return Results.NoContent();
         });
 
+        // SPEC-17 §5: cauda do log de provisionamento (blueprint).
+        sandboxes.MapGet("/{id:guid}/blueprint-log", async (
+            Guid id, ISandboxService svc, HttpContext http, CancellationToken ct) =>
+            await svc.GetAsync(id, ct) is { } s
+                ? Results.Ok(new { blueprint_log = s.BlueprintLogTail ?? "" })
+                : OpenHandsNetProblemFactory.Create(http, 404, $"Sandbox {id} not found"));
+
         // Secrets do sandbox: metadados apenas — valores nunca trafegam (SPEC-08).
         sandboxes.MapGet("/{id:guid}/settings/secrets", () =>
             Results.Ok(Array.Empty<object>()));
@@ -121,6 +128,8 @@ public static class SandboxEndpoints
         ConversationId = s.ConversationId?.ToString(),
         Status = s.Status.ToString().ToUpperInvariant(),
         Pool = s.Pool,
+        PoolKey = s.PoolKey,
+        BlueprintStatus = s.BlueprintStatus,
         CreatedAt = s.CreatedAt, ExpiresAt = s.ExpiresAt,
     };
 

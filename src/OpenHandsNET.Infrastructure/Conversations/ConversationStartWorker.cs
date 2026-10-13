@@ -113,6 +113,23 @@ public sealed class ConversationStartWorker(
             }
         }
 
+        // SPEC-17 RF-004: blueprint após o clone — SDK installers +
+        // .openhands/setup.sh dentro do container. Falha não bloqueia READY.
+        var sbForBlueprint = await sandboxService.GetAsync(sandbox.Id, ct);
+        if (sbForBlueprint is not null)
+        {
+            await AdvanceAsync(
+                db, task, StartTaskStatus.SettingUpEnvironment, ct);
+            var blueprint = scope.ServiceProvider
+                .GetRequiredService<Sandbox.BlueprintService>();
+            var executor = scope.ServiceProvider
+                .GetRequiredService<ISandboxExecutor>();
+            var spec = await blueprint.ResolveAsync(
+                conv.Id, conv.OrgId, ct);
+            await blueprint.RunAsync(
+                sbForBlueprint, conv.Id, spec, executor, ct);
+        }
+
         await AdvanceAsync(db, task, StartTaskStatus.SettingUpSkills, ct);
         // SPEC-11 RF-005: resolve + persiste skills da conversa antes de READY.
         {

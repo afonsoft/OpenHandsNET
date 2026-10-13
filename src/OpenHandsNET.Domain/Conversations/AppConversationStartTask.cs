@@ -16,6 +16,9 @@ public enum StartTaskStatus
     /// <summary>Cloning/preparing the selected repository.</summary>
     PreparingRepository,
 
+    /// <summary>Blueprint: SDK installers + .openhands/setup.sh (SPEC-17).</summary>
+    SettingUpEnvironment,
+
     /// <summary>Installing skills/hooks.</summary>
     SettingUpSkills,
 
