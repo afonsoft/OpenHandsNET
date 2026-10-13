@@ -15,6 +15,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     /// <summary>Append-only conversation event stream.</summary>
     public DbSet<EventRecord> Events => Set<EventRecord>();
 
+    /// <summary>Sandbox containers bound to conversations.</summary>
+    public DbSet<OpenHandsNET.Infrastructure.Sandbox.SandboxRecord> Sandboxes =>
+        Set<OpenHandsNET.Infrastructure.Sandbox.SandboxRecord>();
+
+    /// <summary>Sandbox spec templates.</summary>
+    public DbSet<OpenHandsNET.Infrastructure.Sandbox.SandboxSpecRecord> SandboxSpecs =>
+        Set<OpenHandsNET.Infrastructure.Sandbox.SandboxSpecRecord>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
