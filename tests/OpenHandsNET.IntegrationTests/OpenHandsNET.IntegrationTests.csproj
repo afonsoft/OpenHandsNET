@@ -11,6 +11,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Testcontainers" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection" />
     <!-- Pin explícito: levanta SSH.NET transitivo para versão sem CVE -->
     <PackageReference Include="SSH.NET" />
   </ItemGroup>

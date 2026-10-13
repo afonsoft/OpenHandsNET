@@ -22,6 +22,7 @@ public sealed class EventStoreTests : IAsyncLifetime
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseSqlite($"Data Source={_dbPath}")
+            .UseSnakeCaseNamingConvention()
             .Options;
         _db = new AppDbContext(options);
         await _db.Database.MigrateAsync();
@@ -171,7 +172,8 @@ public sealed class EventStoreTests : IAsyncLifetime
         loaded.Payload.ShouldContain("\"kind\":\"MessageEvent\"");
         // Sem UPDATE/DELETE exposto: re-append do mesmo id deve falhar (PK).
         await using var db2 = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlite($"Data Source={_dbPath}").Options);
+            .UseSqlite($"Data Source={_dbPath}")
+            .UseSnakeCaseNamingConvention().Options);
         db2.Events.Add(new EventRecord
         {
             Id = e.Id,
@@ -197,7 +199,8 @@ public sealed class EventStorePerfTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         _db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlite($"Data Source={_dbPath}").Options);
+            .UseSqlite($"Data Source={_dbPath}")
+            .UseSnakeCaseNamingConvention().Options);
         await _db.Database.MigrateAsync();
         _store = new EventStore(_db, new InMemoryEventBus());
     }

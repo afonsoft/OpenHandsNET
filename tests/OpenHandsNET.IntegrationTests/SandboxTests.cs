@@ -30,7 +30,8 @@ public sealed class DockerSandboxTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         _db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlite($"Data Source={_dbPath}").Options);
+            .UseSqlite($"Data Source={_dbPath}")
+            .UseSnakeCaseNamingConvention().Options);
         await _db.Database.MigrateAsync();
         try
         {

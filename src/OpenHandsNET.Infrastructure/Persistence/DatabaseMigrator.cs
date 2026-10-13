@@ -19,16 +19,11 @@ public sealed class DatabaseMigrator(
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var pending = await db.Database.GetPendingMigrationsAsync(cancellationToken);
         var pendingList = pending.ToList();
-        if (pendingList.Count > 0)
-        {
-            logger.LogInformation(
-                "Applying {Count} pending migration(s): {Migrations}", pendingList.Count, pendingList);
-            await db.Database.MigrateAsync(cancellationToken);
-        }
-        else
-        {
-            await db.Database.EnsureCreatedAsync(cancellationToken);
-        }
+        // Sempre migrations (SPEC-10: EnsureCreated proibido em produção) —
+        // MigrateAsync cria a base quando ela não existe.
+        logger.LogInformation(
+            "Applying {Count} pending migration(s)", pendingList.Count);
+        await db.Database.MigrateAsync(cancellationToken);
     }
 
     /// <inheritdoc />

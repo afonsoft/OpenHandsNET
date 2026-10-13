@@ -29,17 +29,24 @@ public static class DependencyInjection
             EnsureSqliteDirectory(connectionString);
         }
 
-        services.AddDbContext<AppDbContext>(options =>
+        services.Configure<MultiTenancyOptions>(
+            configuration.GetSection("MultiTenancy"));
+        if (provider.Equals("PostgreSql", StringComparison.OrdinalIgnoreCase))
         {
-            if (provider.Equals("PostgreSql", StringComparison.OrdinalIgnoreCase))
-            {
-                options.UseNpgsql(connectionString);
-            }
-            else
-            {
-                options.UseSqlite(connectionString);
-            }
-        });
+            // Migration set separada (Persistence/Migrations/Postgres).
+            services.AddDbContext<PostgresDbContext>(options =>
+                options.UseNpgsql(connectionString)
+                    .UseSnakeCaseNamingConvention());
+            services.AddScoped<AppDbContext>(sp =>
+                sp.GetRequiredService<PostgresDbContext>());
+        }
+        else
+        {
+            services.AddDbContext<AppDbContext>(options =>
+                options.UseSqlite(connectionString)
+                    .UseSnakeCaseNamingConvention()
+                    .AddInterceptors(new SqlitePragmaInterceptor()));
+        }
         services.AddHealthChecks().AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);
         services.AddHostedService<DatabaseMigrator>();
 
