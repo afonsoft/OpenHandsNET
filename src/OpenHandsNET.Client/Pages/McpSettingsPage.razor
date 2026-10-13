@@ -1,0 +1,228 @@
+@page "/settings/mcp"
+@using OpenHandsNET.Client.Services
+@using System.Text.Json
+@inject OpenHandsNetApiClient Api
+
+<PageTitle>mcp · OpenHandsNET</PageTitle>
+
+<div class="settings-wrap">
+    <h1>MCP Servers</h1>
+    <p class="sub" style="color:var(--fg-dim)">
+        Servidores Model Context Protocol — tools externas expostas ao agente
+        como <code>mcp__servidor__tool</code>.
+    </p>
+
+    @if (_error is not null)
+    {
+        <p style="color:var(--red)">@_error</p>
+    }
+
+    @if (_servers is null)
+    {
+        <p>loading…</p>
+    }
+    else if (_servers.Count == 0)
+    {
+        <p style="color:var(--fg-dim)">nenhum servidor configurado.</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr><th>name</th><th>transport</th><th>endpoint/command</th>
+                    <th>status</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var s in _servers)
+                {
+                    var cfg = s.GetProperty("config");
+                    var name = cfg.GetProperty("name").GetString() ?? "?";
+                    var transport = cfg.TryGetProperty("transport", out var tr)
+                        ? tr.GetString() : "stdio";
+                    var endpoint = cfg.TryGetProperty("url", out var u)
+                        && u.ValueKind == JsonValueKind.String
+                            ? u.GetString()
+                            : cfg.TryGetProperty("command", out var c)
+                                ? c.GetString() : "-";
+                    var status = s.TryGetProperty("status", out var st)
+                        ? st.GetString() : "?";
+                    <tr>
+                        <td>@name</td>
+                        <td>@transport</td>
+                        <td><code>@endpoint</code></td>
+                        <td>
+                            <span class="badge">@status</span>
+                            @if (status == "auth_required")
+                            {
+                                <a href="/api/v1/mcp/oauth/authorize?server=@name"
+                                   style="margin-left:8px">Authenticate</a>
+                            }
+                        </td>
+                        <td>
+                            <button @onclick="() => ProbeAsync(name)"
+                                    title="probe /mcp/test">probe</button>
+                            <button @onclick="() => DeleteAsync(name)">delete</button>
+                        </td>
+                    </tr>
+                    @if (_probeResults.TryGetValue(name, out var pr))
+                    {
+                        <tr><td colspan="5" style="color:var(--fg-dim);
+                            font-size:12px">@pr</td></tr>
+                    }
+                }
+            </tbody>
+        </table>
+    }
+
+    <h2 style="margin-top:24px">Add server</h2>
+    <div class="field">
+        <label>name</label>
+        <input @bind="_newName" />
+    </div>
+    <div class="field">
+        <label>transport</label>
+        <select @bind="_newTransport">
+            <option value="stdio">stdio (no sandbox via docker exec)</option>
+            <option value="http">streamable http</option>
+            <option value="sse">sse (legado)</option>
+        </select>
+    </div>
+    @if (_newTransport == "stdio")
+    {
+        <div class="field">
+            <label>command (ex.: npx)</label>
+            <input @bind="_newCommand" />
+        </div>
+        <div class="field">
+            <label>args (um por linha)</label>
+            <textarea @bind="_newArgs" rows="3" style="width:100%"></textarea>
+        </div>
+    }
+    else
+    {
+        <div class="field">
+            <label>url (ex.: https://mcp.example.com/mcp)</label>
+            <input @bind="_newUrl" />
+        </div>
+        <div class="field">
+            <label>oauth authorize url (opcional)</label>
+            <input @bind="_newOauthAuth" />
+        </div>
+        <div class="field">
+            <label>oauth token url (opcional)</label>
+            <input @bind="_newOauthToken" />
+        </div>
+        <div class="field">
+            <label>oauth client id (opcional)</label>
+            <input @bind="_newOauthClient" />
+        </div>
+    }
+    <label style="display:flex;gap:6px;align-items:center;margin:8px 0">
+        <input type="checkbox" @bind="_newRequireConfirm" />
+        require confirmation (tools passam pelo confirmation_mode)
+    </label>
+    <button class="primary" @onclick="SaveAsync"
+            disabled="@string.IsNullOrWhiteSpace(_newName)">Save server</button>
+</div>
+
+@code {
+    private IReadOnlyList<JsonElement>? _servers;
+    private readonly Dictionary<string, string> _probeResults = new();
+    private string? _error;
+    private string? _newName;
+    private string _newTransport = "stdio";
+    private string? _newCommand;
+    private string? _newArgs;
+    private string? _newUrl;
+    private string? _newOauthAuth;
+    private string? _newOauthToken;
+    private string? _newOauthClient;
+    private bool _newRequireConfirm;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _servers = await Api.ListMcpServersAsync();
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private object BuildConfig() => _newTransport == "stdio"
+        ? new
+        {
+            name = _newName, transport = "stdio",
+            command = _newCommand,
+            args = _newArgs?.Split('\n',
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+            require_confirmation = _newRequireConfirm,
+        }
+        : new
+        {
+            name = _newName, transport = _newTransport,
+            url = _newUrl,
+            oauth_authorize_url = EmptyToNull(_newOauthAuth),
+            oauth_token_url = EmptyToNull(_newOauthToken),
+            oauth_client_id = EmptyToNull(_newOauthClient),
+            require_confirmation = _newRequireConfirm,
+        };
+
+    private static string? EmptyToNull(string? s) =>
+        string.IsNullOrWhiteSpace(s) ? null : s;
+
+    private async Task SaveAsync()
+    {
+        try
+        {
+            await Api.SaveMcpServerAsync(BuildConfig());
+            _newName = _newCommand = _newArgs = _newUrl = null;
+            _newOauthAuth = _newOauthToken = _newOauthClient = null;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task DeleteAsync(string name)
+    {
+        try
+        {
+            await Api.DeleteMcpServerAsync(name);
+            _probeResults.Remove(name);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task ProbeAsync(string name)
+    {
+        try
+        {
+            var cfg = _servers!
+                .First(s => s.GetProperty("config")
+                    .GetProperty("name").GetString() == name)
+                .GetProperty("config");
+            var r = await Api.ProbeMcpServerAsync(cfg);
+            _probeResults[name] = r.GetProperty("ok").GetBoolean()
+                ? $"ok — {r.GetProperty("tools_count").GetInt32()} tools "
+                    + $"em {r.GetProperty("latency_ms").GetInt64()} ms"
+                : $"erro: {(r.TryGetProperty("error", out var e)
+                    ? e.GetString() : "desconhecido")}";
+        }
+        catch (Exception ex)
+        {
+            _probeResults[name] = $"probe falhou: {ex.Message}";
+        }
+    }
+}

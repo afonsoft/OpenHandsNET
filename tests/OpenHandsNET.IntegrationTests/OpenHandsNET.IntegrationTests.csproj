@@ -22,4 +22,7 @@
     <Using Include="Xunit" />
     <Using Include="Shouldly" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Mcp/fake_mcp_stdio.py" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

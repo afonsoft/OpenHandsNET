@@ -76,6 +76,9 @@ builder.Services.ConfigureHttpJsonOptions(o =>
     o.SerializerOptions.PropertyNamingPolicy =
         System.Text.Json.JsonNamingPolicy.SnakeCaseLower;
     o.SerializerOptions.PropertyNameCaseInsensitive = true;
+    o.SerializerOptions.Converters.Add(
+        new System.Text.Json.Serialization.JsonStringEnumConverter(
+            System.Text.Json.JsonNamingPolicy.SnakeCaseLower));
 });
 builder.Services.AddSignalR().AddJsonProtocol(o =>
 {
@@ -125,6 +128,7 @@ app.MapWebhookEndpoints();
 app.MapGitEndpoints();
 app.MapSkillEndpoints();
 app.MapHookEndpoints();
+app.MapMcpEndpoints();
 app.MapHub<ConversationHub>("/hubs/conversations");
 app.MapHealthChecks("/api/v1/health");
 app.MapHealthChecks("/api/v1/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
