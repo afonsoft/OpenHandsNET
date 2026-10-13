@@ -62,6 +62,16 @@ public static class DependencyInjection
             OpenHandsNET.Infrastructure.Sandbox.DockerSandboxExecutor>();
         services.AddHostedService<OpenHandsNET.Infrastructure.Sandbox.OrphanSweepService>();
         services.AddHostedService<OpenHandsNET.Infrastructure.Sandbox.SandboxTimeoutWatcher>();
+
+        // Conversations (SPEC-04): aggregate service + start-task queue/worker.
+        services.AddSingleton<OpenHandsNET.Infrastructure.Conversations.StartTaskService>();
+        services.AddSingleton<OpenHandsNET.Application.Conversations.IStartTaskService>(
+            sp => sp.GetRequiredService<
+                OpenHandsNET.Infrastructure.Conversations.StartTaskService>());
+        services.AddScoped<OpenHandsNET.Application.Conversations.IAppConversationService,
+            OpenHandsNET.Infrastructure.Conversations.AppConversationService>();
+        services.AddHostedService<
+            OpenHandsNET.Infrastructure.Conversations.ConversationStartWorker>();
         return services;
     }
 
