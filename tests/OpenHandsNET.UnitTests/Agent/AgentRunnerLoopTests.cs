@@ -1,0 +1,182 @@
+using OpenHandsNET.Application.Agent;
+using OpenHandsNET.Application.Sandbox;
+using OpenHandsNET.Domain.Events;
+using Shouldly;
+
+namespace OpenHandsNET.UnitTests.Agent;
+
+/// <summary>
+/// SPEC-09 AC: loop ReAct MockLlm → tool → observation → finish; state machine,
+/// confirmation mode, interrupt, max_iterations e streaming deltas.
+/// </summary>
+public sealed class AgentRunnerLoopTests
+{
+    private const string FinishScript = """
+        [{"tool":{"name":"finish","arguments":{"final_message":"done"}}}]
+        """;
+
+    [Fact]
+    public async Task Script_With_Finish_Ends_In_Finished_Status()
+    {
+        await using var fx = new AgentRunnerFixture(FinishScript);
+        await fx.Runner.RunAsync(CancellationToken.None);
+
+        var kinds = fx.Events.Events.Select(e => e.EventKind).ToList();
+        kinds.ShouldContain("SystemPromptEvent");
+        kinds.ShouldContain("ActionEvent");
+        kinds.ShouldContain("ObservationEvent");
+        kinds.ShouldContain("MessageEvent"); // final_message
+        var lastState = fx.Events.Events
+            .OfType<ConversationStateUpdateEvent>()
+            .Last(e => e.Key == "execution_status");
+        lastState.Value!.Value.GetString().ShouldBe("finished");
+        (await fx.RecordStatusAsync()).ShouldBe("Finished");
+    }
+
+    [Fact]
+    public async Task Bash_Tool_Executes_And_Emits_Observation_With_Output()
+    {
+        const string script = """
+            [{"tool":{"name":"bash","arguments":{"command":"echo hi"}}},
+             {"tool":{"name":"finish","arguments":{"final_message":"ok"}}}]
+            """;
+        await using var fx = new AgentRunnerFixture(script);
+        fx.Executor.ExecHandler = _ => new CommandResult(0, "hi\n", "", false);
+        await fx.Runner.RunAsync(CancellationToken.None);
+
+        fx.Executor.Commands.ShouldContain("echo hi");
+        var obs = fx.Events.Events.OfType<ObservationEvent>()
+            .First(e => e.ToolName == "bash");
+        obs.Observation.GetProperty("output").GetString().ShouldBe("hi\n");
+        obs.Observation.GetProperty("exit_code").GetInt32().ShouldBe(0);
+        var action = fx.Events.Events.OfType<ActionEvent>().First();
+        obs.ActionId.ShouldBe(action.Id);
+        obs.ParentId.ShouldBe(action.Id);
+    }
+
+    [Fact]
+    public async Task Text_Deltas_Emit_StreamingDeltaEvents_Before_Message()
+    {
+        const string script = """
+            [{"text":"hello world"},
+             {"tool":{"name":"finish","arguments":{"final_message":"fim"}}}]
+            """;
+        await using var fx = new AgentRunnerFixture(script);
+        await fx.Runner.RunAsync(CancellationToken.None);
+
+        var deltas = fx.Events.Events.OfType<StreamingDeltaEvent>().ToList();
+        deltas.ShouldNotBeEmpty();
+        string.Concat(deltas.Select(d => d.Content)).ShouldBe("hello world ");
+        var all = fx.Events.Events.ToList();
+        var firstDeltaIdx = all.FindIndex(e => e is StreamingDeltaEvent);
+        var agentMsgIdx = all.FindIndex(
+            e => e is MessageEvent { Source: EventSource.Agent });
+        firstDeltaIdx.ShouldBeLessThan(agentMsgIdx);
+        fx.Events.Events.OfType<TokenEvent>().ShouldNotBeEmpty();
+    }
+
+    [Fact]
+    public async Task Confirmation_Mode_Pauses_Risky_Action_Until_Approved()
+    {
+        const string script = """
+            [{"tool":{"name":"bash","arguments":{"command":"rm -rf /tmp/x"}}},
+             {"tool":{"name":"finish","arguments":{"final_message":"ok"}}}]
+            """;
+        await using var fx = new AgentRunnerFixture(
+            script, confirmationMode: true);
+        var run = fx.Runner.RunAsync(CancellationToken.None);
+
+        // Aguarda o estado waiting_for_confirmation (Value é objeto com status).
+        await WaitForAsync(() =>
+            fx.Events.Events.OfType<ConversationStateUpdateEvent>()
+                .LastOrDefault(e => e.Key == "execution_status"
+                    && e.Value?.ToString().Contains("waiting") == true));
+        var pendingActionId = fx.Events.Events.OfType<ActionEvent>()
+            .Single(e => e.ToolName == "bash").Id;
+
+        fx.Executor.Commands.ShouldBeEmpty(); // não executou ainda
+        fx.Runner.ResolveConfirmation(pendingActionId, approved: true);
+        await run.WaitAsync(TimeSpan.FromSeconds(10));
+
+        fx.Executor.Commands.ShouldContain("rm -rf /tmp/x");
+    }
+
+    [Fact]
+    public async Task Rejected_Action_Skips_Execution_And_Continues()
+    {
+        const string script = """
+            [{"tool":{"name":"bash","arguments":{"command":"danger"}}},
+             {"tool":{"name":"finish","arguments":{"final_message":"ok"}}}]
+            """;
+        await using var fx = new AgentRunnerFixture(
+            script, confirmationMode: true);
+        var run = fx.Runner.RunAsync(CancellationToken.None);
+
+        await WaitForAsync(() =>
+            fx.Events.Events.OfType<ConversationStateUpdateEvent>()
+                .LastOrDefault(e => e.Key == "execution_status"
+                    && e.Value?.ToString().Contains("waiting") == true));
+        var actionId = fx.Events.Events.OfType<ActionEvent>().Single().Id;
+        fx.Runner.ResolveConfirmation(actionId, approved: false);
+        await run.WaitAsync(TimeSpan.FromSeconds(10));
+
+        fx.Executor.Commands.ShouldBeEmpty();
+        fx.Events.Events.OfType<ObservationEvent>()
+            .ShouldNotContain(e => e.ToolName == "bash");
+        (await fx.RecordStatusAsync()).ShouldBe("Finished");
+    }
+
+    [Fact]
+    public async Task InterruptEvent_Stops_Loop_At_Iteration_Boundary()
+    {
+        const string script = """
+            [{"text":"thinking…"},{"text":"more…"},
+             {"tool":{"name":"finish","arguments":{"final_message":"late"}}}]
+            """;
+        await using var fx = new AgentRunnerFixture(script);
+        var run = fx.Runner.RunAsync(CancellationToken.None);
+        fx.Runner.OnEvent(new InterruptEvent());
+        await run.WaitAsync(TimeSpan.FromSeconds(10));
+
+        var lastState = fx.Events.Events
+            .OfType<ConversationStateUpdateEvent>()
+            .Last(e => e.Key == "execution_status");
+        lastState.Value!.Value.GetString().ShouldBe("idle");
+        fx.Events.Events.OfType<ActionEvent>()
+            .ShouldNotContain(e => e.ToolName == "finish");
+    }
+
+    [Fact]
+    public async Task MaxIterations_Bound_Ends_In_Stuck()
+    {
+        const string script = """
+            [{"text":"a"},{"text":"b"},{"text":"c"},{"text":"d"}]
+            """;
+        await using var fx = new AgentRunnerFixture(script,
+            new AgentLlmOptions { MaxIterations = 2 });
+        await fx.Runner.RunAsync(CancellationToken.None);
+
+        var lastState = fx.Events.Events
+            .OfType<ConversationStateUpdateEvent>()
+            .Last(e => e.Key == "execution_status");
+        lastState.Value!.Value.GetString().ShouldBe("stuck");
+        (await fx.RecordStatusAsync()).ShouldBe("Error");
+    }
+
+    private static async Task<T> WaitForAsync<T>(
+        Func<T?> probe, int timeoutMs = 10000) where T : class
+    {
+        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+        while (DateTime.UtcNow < deadline)
+        {
+            if (probe() is { } hit)
+            {
+                return hit;
+            }
+
+            await Task.Delay(50);
+        }
+
+        throw new TimeoutException("condition not met");
+    }
+}

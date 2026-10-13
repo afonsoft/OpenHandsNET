@@ -16,6 +16,10 @@ public sealed class ConversationRecord
     public required string ExecutionStatus { get; set; }
     public string? TagsJson { get; set; }
     public bool Pinned { get; set; }
+    public bool ConfirmationMode { get; set; }
+
+    /// <summary>Agente deve iniciar ao atingir READY (initial_message.run).</summary>
+    public bool PendingKickoff { get; set; }
     public string? CreatedByUserId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
@@ -26,7 +30,7 @@ public sealed class ConversationRecord
         TagsJson is null
             ? []
             : System.Text.Json.JsonSerializer.Deserialize<List<string>>(TagsJson) ?? [],
-        Pinned, CreatedAt, UpdatedAt, CreatedByUserId);
+        Pinned, CreatedAt, UpdatedAt, CreatedByUserId, ConfirmationMode);
 }
 
 /// <summary>Persisted start-task row.</summary>

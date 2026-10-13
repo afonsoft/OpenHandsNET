@@ -1,0 +1,58 @@
+using System.Text.Json;
+using Microsoft.Extensions.Options;
+using OpenHandsNET.Application.Agent;
+using OpenHandsNET.Infrastructure.Agent.Tools;
+
+namespace OpenHandsNET.Infrastructure.Agent;
+
+/// <summary>
+/// Static catalog of built-in tools (SPEC-09 RF-003); <c>mcp__{server}__{tool}</c>
+/// names resolve to a stub bridge until SPEC-07 lands.
+/// </summary>
+public sealed class ToolRegistry : IToolRegistry
+{
+    private readonly IReadOnlyList<AgentTool> _tools;
+
+    /// <summary>Builds the built-in catalog.</summary>
+    public ToolRegistry(ITaskTrackerService tracker, IOptions<AgentLlmOptions> options)
+    {
+        var bashTimeout = TimeSpan.FromSeconds(options.Value.BashToolTimeoutSeconds);
+        _tools =
+        [
+            BuiltinTools.Bash(bashTimeout),
+            BuiltinTools.FileRead(),
+            BuiltinTools.FileWrite(),
+            BuiltinTools.FileEdit(),
+            BuiltinTools.Think(),
+            BuiltinTools.TaskTracker(tracker),
+            BuiltinTools.GitCommit(bashTimeout),
+            BuiltinTools.Browser(),
+            BuiltinTools.InvokeSkill(),
+            BuiltinTools.Finish(),
+        ];
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<AgentTool> All => _tools;
+
+    /// <inheritdoc />
+    public AgentTool? Find(string name)
+    {
+        var hit = _tools.FirstOrDefault(t =>
+            t.Schema.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        if (hit is not null)
+        {
+            return hit;
+        }
+
+        // mcp__{server}__{tool} — bridge chega com SPEC-07.
+        return name.StartsWith("mcp__", StringComparison.Ordinal)
+            ? new AgentTool(
+                new ToolSchema(name, "MCP tool (bridge pending SPEC-07)",
+                    JsonDocument.Parse("""{"type":"object"}""").RootElement.Clone()),
+                Risky: true,
+                Handler: (ctx, args, ct) => Task.FromResult(
+                    ToolResult.Error("MCP tool bridge lands with SPEC-07")))
+            : null;
+    }
+}

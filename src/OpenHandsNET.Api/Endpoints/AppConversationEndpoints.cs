@@ -148,6 +148,7 @@ public static class AppConversationEndpoints
     private static async Task<IResult> SendMessageAsync(
         Guid id, SendMessageRequest body,
         IAppConversationService svc, IEventService events,
+        OpenHandsNET.Application.Agent.IAgentRunnerHost runnerHost,
         HttpContext http, CancellationToken ct)
     {
         var error = await svc.ValidateSendMessageAsync(id, ct);
@@ -178,6 +179,11 @@ public static class AppConversationEndpoints
             }, EventJson.Options),
         };
         await events.AppendAsync(id, message, ct);
+        if (body.Run)
+        {
+            await runnerHost.NotifyMessageAsync(id, ct);
+        }
+
         return Results.NoContent();
     }
 
@@ -284,8 +290,10 @@ public static class AppConversationEndpoints
     private static CreateConversationRequest Map(CreateAppConversationRequest b) =>
         new(b.InitialMessage is null ? null : new InitialMessage(
                 b.InitialMessage.Role,
-                b.InitialMessage.Content.Cast<object>().ToList()),
-            b.SelectedRepository, b.AgentType, b.LlmModel, b.SandboxSpecId);
+                b.InitialMessage.Content.Cast<object>().ToList(),
+                b.InitialMessage.Run),
+            b.SelectedRepository, b.AgentType, b.LlmModel, b.SandboxSpecId,
+            b.ConfirmationMode);
 
     private static StartTaskStatus? ParseStatus(string? s) =>
         Enum.TryParse<StartTaskStatus>(s, ignoreCase: true, out var v) ? v : null;
@@ -304,7 +312,7 @@ public static class AppConversationEndpoints
         SelectedRepository = c.SelectedRepository, AgentType = c.AgentType,
         LlmModel = c.LlmModel,
         ExecutionStatus = c.ExecutionStatus.ToString().ToUpperInvariant(),
-        Tags = c.Tags, Pinned = c.Pinned,
+        Tags = c.Tags, Pinned = c.Pinned, ConfirmationMode = c.ConfirmationMode,
         CreatedAt = c.CreatedAt, UpdatedAt = c.UpdatedAt,
     };
 }

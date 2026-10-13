@@ -79,10 +79,20 @@ public sealed class ConversationStartWorker(
         conv.UpdatedAt = DateTimeOffset.UtcNow;
         task.Status = StartTaskStatus.Ready.ToString();
         task.UpdatedAt = DateTimeOffset.UtcNow;
+        var kickoff = conv.PendingKickoff;
+        conv.PendingKickoff = false;
         await db.SaveChangesAsync(ct);
         logger.LogInformation(
             "Conversation {ConversationId} READY (sandbox {SandboxId})",
             conv.Id, sandbox.Id);
+
+        // initial_message.run → acorda o agente (SPEC-09).
+        if (kickoff)
+        {
+            var host = scope.ServiceProvider
+                .GetRequiredService<OpenHandsNET.Application.Agent.IAgentRunnerHost>();
+            await host.NotifyMessageAsync(conv.Id, ct);
+        }
     }
 
     private static async Task AdvanceAsync(

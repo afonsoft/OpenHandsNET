@@ -12,7 +12,8 @@ namespace OpenHandsNET.Api.Hubs;
 /// terminal I/O bridges to the sandbox bash session.
 /// </summary>
 public sealed class ConversationHub(
-    IEventService events, TerminalBridgeService terminals) : Hub
+    IEventService events, TerminalBridgeService terminals,
+    OpenHandsNET.Application.Agent.IAgentRunnerHost runnerHost) : Hub
 {
     /// <summary>
     /// Entra no grupo da conversa e faz stream: backlog a partir de
@@ -76,37 +77,22 @@ public sealed class ConversationHub(
     }
 
     /// <summary>
-    /// Confirmation mode: registra a decisão do usuário como evento (SPEC-09
-    /// consome no agent loop).
+    /// Confirmation mode: registra a decisão do usuário e destrava o runner
+    /// que aguarda a ação pendente (SPEC-09 RF-004).
     /// </summary>
     public async Task ConfirmAction(
         Guid conversationId, string actionId, bool approved, string? reason,
-        CancellationToken ct)
-    {
-        EventBase e = approved
-            ? new MessageEvent
-            {
-                Source = EventSource.User,
-                LlmMessage = System.Text.Json.JsonSerializer.SerializeToElement(new
-                {
-                    role = "user",
-                    content = new[] { new
-                    {
-                        type = "text",
-                        text = $"[confirmed] action {actionId}",
-                    } },
-                }, EventJson.Options),
-            }
-            : new UserRejectObservation
-            {
-                Source = EventSource.Environment,
-                ToolName = "",
-                ToolCallId = "",
-                RejectionReason = reason ?? "rejected by user",
-                ActionId = actionId,
-            };
-        await events.AppendAsync(conversationId, e, ct);
-    }
+        CancellationToken ct) =>
+        await runnerHost.ConfirmActionAsync(
+            conversationId, actionId, approved, reason, ct);
+
+    /// <summary>Interrompe o run corrente com graça (SPEC-09).</summary>
+    public async Task Interrupt(Guid conversationId, CancellationToken ct) =>
+        await runnerHost.InterruptAsync(conversationId, ct);
+
+    /// <summary>Pausa o run corrente (resumível) — SPEC-09.</summary>
+    public async Task Pause(Guid conversationId, CancellationToken ct) =>
+        await runnerHost.PauseAsync(conversationId, ct);
 
     /// <summary>stdin do terminal interativo.</summary>
     public async Task TerminalIn(Guid conversationId, string data, CancellationToken ct) =>
