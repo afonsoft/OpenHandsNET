@@ -345,8 +345,9 @@ public sealed class DockerSandboxService(
 
     /// <summary>
     /// Profile resolution (SPEC-14 RF-001): spec.Profile → conversation →
-    /// org settings → global default. A resolved profile overrides the
-    /// resource fields; explicit custom specs keep their own values.
+    /// org settings → global default (default spec only). A resolved profile
+    /// overrides the resource fields; custom specs keep their explicit
+    /// values unless a profile is explicitly requested.
     /// </summary>
     private async Task<Domain.Sandbox.SandboxSpec> ApplyProfileAsync(
         Domain.Sandbox.SandboxSpec spec, Guid? conversationId, CancellationToken ct)
@@ -370,7 +371,13 @@ public sealed class DockerSandboxService(
                 name = ReadOrgSandboxProfile(orgJson);
             }
         }
-        name ??= options.Value.Profile;
+        // Global default only shapes the built-in spec — a custom spec's
+        // explicit resources are intentional and stay untouched.
+        name ??= spec.Id == Guid.Empty ? options.Value.Profile : null;
+        if (name is null)
+        {
+            return spec;
+        }
 
         var profile = SandboxProfiles.Resolve(name);
         if (profile is null)
