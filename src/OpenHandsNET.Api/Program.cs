@@ -88,6 +88,105 @@ builder.Services.AddSignalR().AddJsonProtocol(o =>
 builder.Services.AddSingleton<TerminalBridgeService>();
 builder.Services.AddProblemDetails();
 
+// Dual auth (SPEC-08 RF-002): cookie session (browser) + Bearer sk-* (API key),
+// plus optional OIDC broker when Auth:Provider=oidc. "smart" dispatches on the
+// Authorization header so RequireAuthorization() accepts either.
+var authProvider = builder.Configuration["Auth:Provider"] ?? "none";
+var authBuilder = builder.Services.AddAuthentication("smart")
+    .AddPolicyScheme("smart", "cookie or apikey", o =>
+        o.ForwardDefaultSelector = ctx =>
+            ctx.Request.Headers.Authorization.ToString()
+                .StartsWith("Bearer sk-", StringComparison.OrdinalIgnoreCase)
+                ? OpenHandsNET.Api.Auth.ApiKeyAuthenticationHandler.SchemeName
+                : OpenHandsNET.Api.Endpoints.AuthEndpoints.CookieScheme)
+    .AddCookie(OpenHandsNET.Api.Endpoints.AuthEndpoints.CookieScheme, o =>
+    {
+        o.Cookie.Name = "openhandsnet_auth";
+        o.Cookie.HttpOnly = true;
+        o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        o.Cookie.SameSite = SameSiteMode.Lax;
+        // Chunked cookie parity (RF-001): >4KB sessions split into .0,.1,... parts.
+        o.CookieManager = new Microsoft.AspNetCore.Authentication.Cookies.ChunkingCookieManager();
+        o.ExpireTimeSpan = TimeSpan.FromDays(14);
+        o.SlidingExpiration = true;
+        // APIs return 401/403, not redirects.
+        o.Events.OnRedirectToLogin = ctx =>
+        {
+            ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        };
+        o.Events.OnRedirectToAccessDenied = ctx =>
+        {
+            ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return Task.CompletedTask;
+        };
+    })
+    .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions,
+        OpenHandsNET.Api.Auth.ApiKeyAuthenticationHandler>(
+        OpenHandsNET.Api.Auth.ApiKeyAuthenticationHandler.SchemeName, _ => { });
+
+if (authProvider.Equals("oidc", StringComparison.OrdinalIgnoreCase))
+{
+    authBuilder.AddOpenIdConnect("oidc", o =>
+    {
+        o.Authority = builder.Configuration["Auth:Authority"];
+        o.ClientId = builder.Configuration["Auth:ClientId"];
+        o.ClientSecret = builder.Configuration["Auth:ClientSecret"];
+        o.ResponseType = "code";
+        o.UsePkce = true;
+        o.SignInScheme = OpenHandsNET.Api.Endpoints.AuthEndpoints.CookieScheme;
+        o.CallbackPath = "/oauth/oidc/callback";
+        o.SaveTokens = true;
+        // JIT provisioning: resolve broker claims into a local user cookie.
+        o.Events.OnTicketReceived = async ctx =>
+        {
+            var email = ctx.Principal?.FindFirst(
+                System.Security.Claims.ClaimTypes.Email)?.Value
+                ?? ctx.Principal?.FindFirst("preferred_username")?.Value;
+            if (email is null)
+            {
+                ctx.HandleResponse();
+                ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
+            var users = ctx.HttpContext.RequestServices
+                .GetRequiredService<OpenHandsNET.Application.Identity.IUserService>();
+            var user = await users.GetOrCreateAsync(
+                email,
+                ctx.Principal?.FindFirst("name")?.Value,
+                ctx.Principal?.FindFirst("idp_type")?.Value,
+                ctx.HttpContext.RequestServices
+                    .GetRequiredService<IConfiguration>()
+                    .GetValue("MultiTenancy:Enabled", false));
+            // Replace the IdP principal with our local user claims.
+            ctx.Principal = new System.Security.Claims.ClaimsPrincipal(
+                new System.Security.Claims.ClaimsIdentity(
+                    [
+                        new System.Security.Claims.Claim(
+                            System.Security.Claims.ClaimTypes.NameIdentifier,
+                            user.UserId.ToString()),
+                        new System.Security.Claims.Claim(
+                            System.Security.Claims.ClaimTypes.Email, user.Email),
+                        new System.Security.Claims.Claim("auth_type", "cookie"),
+                        new System.Security.Claims.Claim(
+                            "idp_type", user.IdpType ?? "oidc"),
+                    ],
+                    OpenHandsNET.Api.Endpoints.AuthEndpoints.CookieScheme));
+        };
+    });
+}
+
+builder.Services.AddAuthorization();
+builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider,
+    OpenHandsNET.Api.Policies.PermissionPolicyProvider>();
+builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler,
+    OpenHandsNET.Api.Policies.PermissionHandler>();
+builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationMiddlewareResultHandler,
+    OpenHandsNET.Api.Policies.PermissionResultHandler>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<OpenHandsNET.Application.Identity.ICurrentUserAccessor,
+    OpenHandsNET.Api.Auth.HttpCurrentUserAccessor>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -118,7 +217,22 @@ app.Use(async (ctx, next) =>
 // and must NOT be combined with it (request reaches end of pipeline -> 500).
 app.MapStaticAssets();
 
+// SPEC-08 RF-013: deployment_mode surfaced on every response.
+var deploymentMode = builder.Configuration["DeploymentMode"] ?? "oss";
+app.Use(async (ctx, next) =>
+{
+    ctx.Response.Headers["X-Deployment-Mode"] = deploymentMode;
+    await next();
+});
+
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapSystemEndpoints();
+app.MapAuthEndpoints();
+app.MapKeysEndpoints();
+app.MapOrgEndpoints();
+app.MapAdminEndpoints();
 app.MapAppConversationEndpoints();
 app.MapEventEndpoints();
 app.MapSandboxEndpoints();

@@ -106,6 +106,10 @@ public sealed class UserRecord
     public string? RolesJson { get; set; }
     public string? CurrentOrgId { get; set; }
     public DateTimeOffset? DisabledAt { get; set; }
+    public string? IdpType { get; set; }
+    public bool EmailVerified { get; set; }
+    public DateTimeOffset? TosAcceptedAt { get; set; }
+    public bool OnboardingDone { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }
 
@@ -119,6 +123,7 @@ public sealed class ApiKeyRecord : IOrgScoped
     public required string KeyHash { get; set; }
     public string? Name { get; set; }
     public string? ScopesJson { get; set; }
+    public DateTimeOffset? NotBefore { get; set; }
     public DateTimeOffset? ExpiresAt { get; set; }
     public DateTimeOffset? LastUsedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
@@ -131,6 +136,10 @@ public sealed class OrganizationRecord
     public required string Slug { get; set; }
     public required string Name { get; set; }
     public Guid? PlanId { get; set; }
+    public DateTimeOffset? SuspendedAt { get; set; }
+    public string? SettingsJson { get; set; }
+    public int? QuotaDailyMax { get; set; }
+    public int? QuotaConcurrentMax { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }
 
@@ -152,6 +161,7 @@ public sealed class OrgInvitationRecord
     public required string Email { get; set; }
     public required string Role { get; set; }
     public DateTimeOffset ExpiresAt { get; set; }
+    public long ExpiresAtTicks { get; set; }
     public DateTimeOffset? AcceptedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }
@@ -163,8 +173,38 @@ public sealed class AuditEventRecord
     public Guid? OrgId { get; set; }
     public string? UserId { get; set; }
     public required string Action { get; set; }
+    public string? TargetType { get; set; }
+    public string? TargetId { get; set; }
+    public string? Ip { get; set; }
+    public string? UserAgent { get; set; }
     public string? PayloadJson { get; set; }
     public DateTimeOffset Timestamp { get; set; }
+    public long TimestampTicks { get; set; }
+}
+
+/// <summary>RFC 8628 device authorization session (SPEC-08 RF-009).</summary>
+public sealed class DeviceCodeRecord
+{
+    public required Guid Id { get; set; }
+    public required string DeviceCodeHash { get; set; }
+    public required string UserCode { get; set; }
+    public Guid? ApprovedByUserId { get; set; }
+    public bool Denied { get; set; }
+    public DateTimeOffset? ApprovedAt { get; set; }
+    public DateTimeOffset ExpiresAt { get; set; }
+    public long ExpiresAtTicks { get; set; }
+    public DateTimeOffset LastPolledAt { get; set; }
+    public int PollCount { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+/// <summary>Instance-level feature flag (SPEC-08 RF-010 admin surface).</summary>
+public sealed class FeatureFlagRecord
+{
+    public required string Name { get; set; }
+    public bool Enabled { get; set; }
+    public string? Description { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 }
 
 /// <summary>Billing plan catalog row (SPEC-08).</summary>
