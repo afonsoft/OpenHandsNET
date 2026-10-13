@@ -8,7 +8,7 @@
 | Type | `Feature` |
 | Stack | `.NET 10 · C# 14 · Semantic Kernel` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Done` (PR [#19](https://github.com/afonsoft/OpenHandsNET/pull/19)) |
 | Ticket | `[A CRIAR]` (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | `02_event_stream_spec`, `03_runtime_sandbox_spec` |
 | Feeds | `04_rest_and_signalr_api_spec` (invocado pelo start-task worker / send-message) |
