@@ -8,7 +8,7 @@
 | Type | `Feature / API` |
 | Stack | `.NET 10 · git CLI (in-sandbox) · EF Core` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Done` |
 | Ticket | [#13](https://github.com/afonsoft/OpenHandsNET/issues/13) (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | `03_runtime_sandbox_spec`, `10_persistence_efcore_spec` |
 | Consumed by | `04` (proxies file/git), `05` (diff/commits tabs), `09` (`git_commit` tool) |
