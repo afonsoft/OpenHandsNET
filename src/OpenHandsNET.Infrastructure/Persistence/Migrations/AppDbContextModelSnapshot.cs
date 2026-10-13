@@ -1104,6 +1104,14 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("status");
 
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<long>("UpdatedAtTicks")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("updated_at_ticks");
+
                     b.HasKey("Id")
                         .HasName("pk_sandboxes");
 

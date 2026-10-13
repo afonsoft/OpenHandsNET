@@ -16,7 +16,8 @@ public sealed class AppConversationService(
     AppDbContext db,
     IStartTaskService tasks,
     ISandboxService sandboxes,
-    OpenHandsNET.Application.Events.IEventService events) : IAppConversationService
+    OpenHandsNET.Application.Events.IEventService events,
+    Sandbox.WorkspaceProvisioner provisioner) : IAppConversationService
 {
     /// <inheritdoc />
     public async Task<AppConversationStartTask> CreateAsync(
@@ -186,6 +187,8 @@ public sealed class AppConversationService(
             await sandboxes.DeleteAsync(record.SandboxId.Value, ct);
         }
 
+        // SPEC-16 RF-006: workspace só sai do host junto com a conversa.
+        provisioner.RemoveWorkspace(record.Id);
         return true;
     }
 
@@ -210,11 +213,35 @@ public sealed class AppConversationService(
         }
 
         var sandbox = await sandboxes.GetAsync(record.SandboxId.Value, ct);
+
+        // SPEC-16 RF-002: mensagem para sandbox Paused/Stopped acorda o
+        // runtime no caminho (docker unpause/start).
+        if (sandbox?.Status is Domain.Sandbox.SandboxStatus.Paused
+            or Domain.Sandbox.SandboxStatus.Stopped)
+        {
+            sandbox = await sandboxes.ResumeAsync(record.SandboxId.Value, ct);
+        }
+
+        if (sandbox?.Status == Domain.Sandbox.SandboxStatus.Running)
+        {
+            // SPEC-16 RF-004: atividade renova o lease do timeout watcher.
+            var s = await db.Sandboxes.FindAsync([record.SandboxId.Value], ct);
+            var spec = s is null ? null
+                : await db.SandboxSpecs.FindAsync([s.SpecId], ct);
+            if (s is not null)
+            {
+                s.ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(
+                    spec?.TimeoutMinutes ?? 60);
+                await db.SaveChangesAsync(ct);
+            }
+
+            return null;
+        }
+
         return sandbox?.Status switch
         {
-            Domain.Sandbox.SandboxStatus.Running => null,
             Domain.Sandbox.SandboxStatus.Error or Domain.Sandbox.SandboxStatus.Missing
-                => SendMessageError.ServiceUnavailable,
+                => SendMessageError.Gone,
             _ => SendMessageError.ConflictSandboxNotRunning,
         };
     }

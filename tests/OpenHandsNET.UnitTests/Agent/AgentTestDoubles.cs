@@ -116,6 +116,7 @@ internal sealed class FakeSandboxService(Guid sandboxId) : ISandboxService
         Task.FromResult(Make(sandboxId));
 
     public Task<Sandbox> PauseAsync(Guid id, CancellationToken ct) => Task.FromResult(Make(id));
+    public Task<Sandbox> StopAsync(Guid id, CancellationToken ct) => Task.FromResult(Make(id));
     public Task<Sandbox> ResumeAsync(Guid id, CancellationToken ct) => Task.FromResult(Make(id));
     public Task DeleteAsync(Guid id, CancellationToken ct) => Task.CompletedTask;
 
