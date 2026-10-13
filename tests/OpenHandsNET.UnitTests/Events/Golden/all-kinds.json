@@ -1,0 +1,209 @@
+[
+  {
+    "kind": "ActionEvent",
+    "id": "01J5Y0H3AEXAMPLEACTION001",
+    "timestamp": "2026-01-01T10:00:00+00:00",
+    "source": "agent",
+    "parent_id": null,
+    "thought": [{"type": "text", "text": "vou listar os arquivos"}],
+    "reasoning_content": null,
+    "thinking_blocks": [],
+    "responses_reasoning_item": null,
+    "action": {"command": "ls -la"},
+    "tool_name": "bash",
+    "tool_call_id": "call_abc123",
+    "tool_call": {"id": "call_abc123", "type": "function", "function": {"name": "bash", "arguments": "{\"command\":\"ls -la\"}"}},
+    "llm_response_id": "resp_xyz",
+    "security_risk": "LOW"
+  },
+  {
+    "kind": "MessageEvent",
+    "id": "01J5Y0H3AEXAMPLEMESSAGE01",
+    "timestamp": "2026-01-01T10:00:01+00:00",
+    "source": "user",
+    "parent_id": null,
+    "llm_message": {"role": "user", "content": [{"type": "text", "text": "oi"}]},
+    "llm_response_id": null,
+    "activated_skills": [],
+    "extended_content": [],
+    "sender": "afonso",
+    "critic_result": null
+  },
+  {
+    "kind": "ObservationEvent",
+    "id": "01J5Y0H3AEXAMPLEOBS00001",
+    "timestamp": "2026-01-01T10:00:02+00:00",
+    "source": "environment",
+    "parent_id": "01J5Y0H3AEXAMPLEACTION001",
+    "tool_name": "bash",
+    "tool_call_id": "call_abc123",
+    "observation": {"content": [{"type": "text", "text": "total 4"}]},
+    "action_id": "01J5Y0H3AEXAMPLEACTION001",
+    "extended_content": []
+  },
+  {
+    "kind": "AgentErrorEvent",
+    "id": "01J5Y0H3AEXAMPLEAGERR001",
+    "timestamp": "2026-01-01T10:00:03+00:00",
+    "source": "agent",
+    "parent_id": null,
+    "tool_name": "bash",
+    "tool_call_id": "call_abc124",
+    "error": "tool timed out"
+  },
+  {
+    "kind": "UserRejectObservation",
+    "id": "01J5Y0H3AEXAMPLEREJ00001",
+    "timestamp": "2026-01-01T10:00:04+00:00",
+    "source": "environment",
+    "parent_id": null,
+    "tool_name": "bash",
+    "tool_call_id": "call_abc125",
+    "rejection_reason": "não execute",
+    "rejection_source": "user",
+    "action_id": "01J5Y0H3AEXAMPLEACTION001"
+  },
+  {
+    "kind": "SystemPromptEvent",
+    "id": "01J5Y0H3AEXAMPLESYSP0001",
+    "timestamp": "2026-01-01T10:00:05+00:00",
+    "source": "agent",
+    "parent_id": null,
+    "system_prompt": {"type": "text", "text": "Você é um agente..."},
+    "tools": [{"name": "bash", "description": "run shell"}],
+    "dynamic_context": {"type": "text", "text": "repo: OpenHandsNET"}
+  },
+  {
+    "kind": "TokenEvent",
+    "id": "01J5Y0H3AEXAMPLETOKEN001",
+    "timestamp": "2026-01-01T10:00:06+00:00",
+    "source": "agent",
+    "parent_id": null,
+    "prompt_token_ids": [101, 202],
+    "response_token_ids": [303]
+  },
+  {
+    "kind": "StreamingDeltaEvent",
+    "id": "01J5Y0H3AEXAMPLEDELTA001",
+    "timestamp": "2026-01-01T10:00:07+00:00",
+    "source": "agent",
+    "parent_id": null,
+    "content": "par",
+    "reasoning_content": null
+  },
+  {
+    "kind": "ConversationStateUpdateEvent",
+    "id": "01J5Y0H3AEXAMPLESTATE001",
+    "timestamp": "2026-01-01T10:00:08+00:00",
+    "source": "environment",
+    "parent_id": null,
+    "key": "execution_status",
+    "value": "running"
+  },
+  {
+    "kind": "ConversationErrorEvent",
+    "id": "01J5Y0H3AEXAMPLECONVERR1",
+    "timestamp": "2026-01-01T10:00:09+00:00",
+    "source": "environment",
+    "parent_id": null,
+    "code": "ConversationRuntimeError",
+    "detail": "sandbox died",
+    "classification": null
+  },
+  {
+    "kind": "Condensation",
+    "id": "01J5Y0H3AEXAMPLECOND0001",
+    "timestamp": "2026-01-01T10:00:10+00:00",
+    "source": "environment",
+    "parent_id": null,
+    "forgotten_event_ids": ["evt1", "evt2"],
+    "summary": "resumo do contexto",
+    "summary_offset": 4,
+    "llm_response_id": "resp_c1"
+  },
+  {
+    "kind": "CondensationRequest",
+    "id": "01J5Y0H3AEXAMPLECONDREQ1",
+    "timestamp": "2026-01-01T10:00:11+00:00",
+    "source": "environment",
+    "parent_id": null
+  },
+  {
+    "kind": "CondensationSummaryEvent",
+    "id": "01J5Y0H3AEXAMPLECONDSUM1",
+    "timestamp": "2026-01-01T10:00:12+00:00",
+    "source": "environment",
+    "parent_id": null,
+    "summary": "contexto condensado"
+  },
+  {
+    "kind": "InterruptEvent",
+    "id": "01J5Y0H3AEXAMPLEINT0001",
+    "timestamp": "2026-01-01T10:00:13+00:00",
+    "source": "user",
+    "parent_id": null
+  },
+  {
+    "kind": "PauseEvent",
+    "id": "01J5Y0H3AEXAMPLEPAUSE001",
+    "timestamp": "2026-01-01T10:00:14+00:00",
+    "source": "user",
+    "parent_id": null
+  },
+  {
+    "kind": "ServerErrorEvent",
+    "id": "01J5Y0H3AEXAMPLESRVERR1",
+    "timestamp": "2026-01-01T10:00:15+00:00",
+    "source": "environment",
+    "parent_id": null,
+    "code": "McpConnectionError",
+    "detail": "falha ao conectar no servidor MCP"
+  },
+  {
+    "kind": "ACPToolCallEvent",
+    "id": "01J5Y0H3AEXAMPLEACP0001",
+    "timestamp": "2026-01-01T10:00:16+00:00",
+    "source": "agent",
+    "parent_id": null,
+    "tool_call_id": "acp_1",
+    "title": "Read file",
+    "status": "completed",
+    "tool_kind": "read",
+    "raw_input": {"path": "/x"},
+    "raw_output": {"text": "ok"},
+    "content": [{"type": "content", "content": {"type": "text", "text": "ok"}}],
+    "is_error": false
+  },
+  {
+    "kind": "HookExecutionEvent",
+    "id": "01J5Y0H3AEXAMPLEHOOK001",
+    "timestamp": "2026-01-01T10:00:17+00:00",
+    "source": "hook",
+    "parent_id": null,
+    "hook_event_type": "pre_tool_use",
+    "hook_command": "./hooks/lint.sh",
+    "tool_name": "bash",
+    "success": true,
+    "blocked": false,
+    "exit_code": 0,
+    "stdout": "ok",
+    "stderr": "",
+    "reason": null,
+    "additional_context": null,
+    "error": null,
+    "action_id": null,
+    "message_id": null,
+    "hook_input": {"tool": "bash"}
+  },
+  {
+    "kind": "LLMCompletionLogEvent",
+    "id": "01J5Y0H3AEXAMPLELLMLOG1",
+    "timestamp": "2026-01-01T10:00:18+00:00",
+    "source": "environment",
+    "parent_id": null,
+    "filename": "completion_001.json",
+    "log_data": "{\"choices\":[]}",
+    "model_name": "gpt-4o",
+    "usage_id": "usage_1"
+  }
+]

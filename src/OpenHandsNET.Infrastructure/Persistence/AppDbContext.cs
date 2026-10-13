@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using OpenHandsNET.Domain.Configuration;
+using OpenHandsNET.Infrastructure.Eventing;
 
 namespace OpenHandsNET.Infrastructure.Persistence;
 
@@ -10,6 +11,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 {
     /// <summary>Key-value application settings.</summary>
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
+
+    /// <summary>Append-only conversation event stream.</summary>
+    public DbSet<EventRecord> Events => Set<EventRecord>();
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)

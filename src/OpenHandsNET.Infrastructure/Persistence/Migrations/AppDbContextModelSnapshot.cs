@@ -41,6 +41,45 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
 
                     b.ToTable("app_settings", (string)null);
                 });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Eventing.EventRecord", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ParentId")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("TimestampTicks")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConversationId", "Kind");
+
+                    b.HasIndex("ConversationId", "TimestampTicks");
+
+                    b.ToTable("events", (string)null);
+                });
 #pragma warning restore 612, 618
         }
     }
