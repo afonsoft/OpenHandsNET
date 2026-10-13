@@ -17,6 +17,12 @@ public sealed class SandboxRecord
     public DateTimeOffset? ExpiresAt { get; set; }
     public string? LastError { get; set; }
 
+    /// <summary>Espelho numérico de <see cref="CreatedAt"/> para ORDER BY.</summary>
+    public long CreatedAtTicks { get; set; }
+
+    /// <summary>Espelho numérico de <see cref="ExpiresAt"/> para WHERE.</summary>
+    public long? ExpiresAtTicks { get; set; }
+
     public Domain.Sandbox.Sandbox ToDomain() => new(
         Id, SpecId, ConversationId, ContainerId,
         Enum.Parse<SandboxStatus>(Status, ignoreCase: true),

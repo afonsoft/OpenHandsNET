@@ -62,12 +62,12 @@ public sealed class StartTaskService : IStartTaskService
 
         if (AppConversationService.TryDecodeCursor(pageId, out var ticks, out var id))
         {
-            q = q.Where(r => r.CreatedAt.UtcTicks < ticks
-                || (r.CreatedAt.UtcTicks == ticks
+            q = q.Where(r => r.CreatedAtTicks < ticks
+                || (r.CreatedAtTicks == ticks
                     && string.Compare(r.Id.ToString(), id) < 0));
         }
 
-        return (await q.OrderByDescending(r => r.CreatedAt)
+        return (await q.OrderByDescending(r => r.CreatedAtTicks)
                 .ThenByDescending(r => r.Id)
                 .Take(Math.Clamp(limit, 1, 100))
                 .ToListAsync(ct))

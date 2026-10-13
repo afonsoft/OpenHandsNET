@@ -1,10 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>openhandsnet</ToolCommandName>
+    <PackageId>OpenHandsNET.Cli</PackageId>
+    <Description>OpenHandsNET command line — device flow login, cloud conversations, headless CI runs, interactive TUI.</Description>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Spectre.Console" />
     <PackageReference Include="Spectre.Console.Cli" />
-    <PackageReference Include="System.CommandLine" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
   </ItemGroup>
 </Project>

@@ -88,6 +88,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("created_at");
 
+                    b.Property<long>("CreatedAtTicks")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("created_at_ticks");
+
                     b.Property<string>("CreatedByUserId")
                         .HasColumnType("TEXT")
                         .HasColumnName("created_by_user_id");
@@ -135,11 +139,15 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("updated_at");
 
+                    b.Property<long>("UpdatedAtTicks")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("updated_at_ticks");
+
                     b.HasKey("Id")
                         .HasName("pk_conversations");
 
-                    b.HasIndex("CreatedAt")
-                        .HasDatabaseName("ix_conversations_created_at");
+                    b.HasIndex("CreatedAtTicks")
+                        .HasDatabaseName("ix_conversations_created_at_ticks");
 
                     b.HasIndex("ExecutionStatus")
                         .HasDatabaseName("ix_conversations_execution_status");
@@ -162,6 +170,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("created_at");
 
+                    b.Property<long>("CreatedAtTicks")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("created_at_ticks");
+
                     b.Property<string>("Detail")
                         .HasColumnType("TEXT")
                         .HasColumnName("detail");
@@ -179,6 +191,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("updated_at");
+
+                    b.Property<long>("UpdatedAtTicks")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("updated_at_ticks");
 
                     b.HasKey("Id")
                         .HasName("pk_conversation_start_tasks");
@@ -899,9 +915,17 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("created_at");
 
+                    b.Property<long>("CreatedAtTicks")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("created_at_ticks");
+
                     b.Property<DateTimeOffset?>("ExpiresAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("expires_at");
+
+                    b.Property<long?>("ExpiresAtTicks")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("expires_at_ticks");
 
                     b.Property<string>("LastError")
                         .HasColumnType("TEXT")

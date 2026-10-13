@@ -26,6 +26,13 @@ public sealed class ConversationRecord : IOrgScoped
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 
+    /// <summary>
+    /// Espelho numérico de <see cref="CreatedAt"/> (UtcTicks) — SQLite não
+    /// ordena DateTimeOffset; sincronizado no SaveChanges (ver AppDbContext).
+    /// </summary>
+    public long CreatedAtTicks { get; set; }
+    public long UpdatedAtTicks { get; set; }
+
     public AppConversation ToDomain() => new(
         Id, Title, SandboxId, SelectedRepository, AgentType, LlmModel,
         Enum.Parse<ConversationExecutionStatus>(ExecutionStatus, ignoreCase: true),
@@ -45,6 +52,8 @@ public sealed class StartTaskRecord
     public string? Detail { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
+    public long CreatedAtTicks { get; set; }
+    public long UpdatedAtTicks { get; set; }
 
     public AppConversationStartTask ToDomain() => new(
         Id, Enum.Parse<StartTaskStatus>(Status, ignoreCase: true),
@@ -61,7 +70,7 @@ public sealed class ConversationRecordConfiguration : IEntityTypeConfiguration<C
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Title).HasMaxLength(500);
         builder.Property(e => e.ExecutionStatus).HasMaxLength(20).IsRequired();
-        builder.HasIndex(e => e.CreatedAt);
+        builder.HasIndex(e => e.CreatedAtTicks);
         builder.HasIndex(e => e.ExecutionStatus);
     }
 }
