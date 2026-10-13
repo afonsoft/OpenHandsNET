@@ -49,6 +49,19 @@ public static class DependencyInjection
         services.AddSingleton<WebhookDispatcher>();
         services.AddHostedService<EventDispatcher>();
         services.AddHttpClient("webhooks");
+
+        // Sandbox (SPEC-03): Docker lifecycle + executor + workspace + watchers.
+        services.Configure<OpenHandsNET.Infrastructure.Sandbox.SandboxOptions>(
+            configuration.GetSection("Sandbox"));
+        services.AddSingleton(_ =>
+            OpenHandsNET.Infrastructure.Sandbox.DockerClientFactory.Create());
+        services.AddSingleton<OpenHandsNET.Infrastructure.Sandbox.WorkspaceProvisioner>();
+        services.AddScoped<OpenHandsNET.Application.Sandbox.ISandboxService,
+            OpenHandsNET.Infrastructure.Sandbox.DockerSandboxService>();
+        services.AddScoped<OpenHandsNET.Application.Sandbox.ISandboxExecutor,
+            OpenHandsNET.Infrastructure.Sandbox.DockerSandboxExecutor>();
+        services.AddHostedService<OpenHandsNET.Infrastructure.Sandbox.OrphanSweepService>();
+        services.AddHostedService<OpenHandsNET.Infrastructure.Sandbox.SandboxTimeoutWatcher>();
         return services;
     }
 

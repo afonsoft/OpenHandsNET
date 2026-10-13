@@ -80,6 +80,84 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
 
                     b.ToTable("events", (string)null);
                 });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Sandbox.SandboxRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AgentUrl")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ContainerId")
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("ConversationId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("SpecId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConversationId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("sandboxes", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Sandbox.SandboxSpecRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("CpuLimit")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("EnvJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Image")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("MemoryMb")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("MountWorkspace")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TimeoutMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("sandbox_specs", (string)null);
+                });
 #pragma warning restore 612, 618
         }
     }
