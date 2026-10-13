@@ -8,8 +8,8 @@
 | Type | `Infra + Feature` |
 | Stack | `.NET 10 · Docker.DotNet · EF Core (PG) · Spectre.Console` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Draft` |
-| Ticket | `[a criar via create-issues]` (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
+| Status | `Done` |
+| Ticket | [#29](https://github.com/afonsoft/OpenHandsNET/issues/29) (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | `03_runtime_sandbox`, `08_enterprise_security_rbac`, `10_persistence_efcore`, `13_devops_observability` |
 | Touches | Sandbox (03), Persistence (10), CLI (06), API (04), Observability (13) |
 
