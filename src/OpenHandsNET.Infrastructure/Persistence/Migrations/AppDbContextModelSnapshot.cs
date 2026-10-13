@@ -126,6 +126,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("sandbox_id");
 
+                    b.Property<string>("SandboxProfile")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("sandbox_profile");
+
                     b.Property<string>("SelectedRepository")
                         .HasColumnType("TEXT")
                         .HasColumnName("selected_repository");
@@ -1085,6 +1089,11 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("last_error");
 
+                    b.Property<string>("Pool")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("pool");
+
                     b.Property<Guid>("SpecId")
                         .HasColumnType("TEXT")
                         .HasColumnName("spec_id");
@@ -1141,6 +1150,14 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT")
                         .HasColumnName("name");
+
+                    b.Property<int>("PidsLimit")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("pids_limit");
+
+                    b.Property<string>("Profile")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("profile");
 
                     b.Property<int>("TimeoutMinutes")
                         .HasColumnType("INTEGER")

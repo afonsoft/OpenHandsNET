@@ -29,13 +29,15 @@ public sealed class GitService(
 
     /// <inheritdoc />
     public async Task CloneAsync(
-        DomainSandbox sandbox, string repoUrl, string workBranch, CancellationToken ct)
+        DomainSandbox sandbox, string repoUrl, string workBranch,
+        string? ownerId, CancellationToken ct)
     {
         var url = NormalizeUrl(repoUrl);
         // URL com credencial embutida nunca chega a logs — redação defensiva.
         var safeUrl = SecretRedactor.Redact(url);
         var host = TryHost(url);
-        var token = host is null ? null : await credentials.ResolveTokenAsync(host, ct);
+        var token = host is null ? null
+            : await credentials.ResolveTokenAsync(host, ownerId, ct);
 
         string askPassPath = "";
         try
@@ -80,6 +82,40 @@ public sealed class GitService(
                     TimeSpan.FromSeconds(10), ct);
             }
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> ProvisionGhAuthAsync(
+        DomainSandbox sandbox, string? ownerId, CancellationToken ct)
+    {
+        var token = await credentials.ResolveTokenAsync(
+            "github.com", ownerId, ct);
+        if (token is null)
+        {
+            return false;
+        }
+
+        var hostsB64 = Convert.ToBase64String(
+            System.Text.Encoding.UTF8.GetBytes(
+                GitCredentialProvider.GhHostsFile("github.com", token)));
+        // hosts.yml autentica gh mesmo sem GH_TOKEN no env (ex.: warm pool);
+        // credential.helper faz git https usar o gh como askpass.
+        var r = await executor.ExecAsync(sandbox,
+            "d=\"$HOME/.config/gh\" && mkdir -p \"$d\" && " +
+            $"echo '{hostsB64}' | base64 -d > \"$d/hosts.yml\" && " +
+            "chmod 600 \"$d/hosts.yml\" && " +
+            "git config --global credential.helper '!gh auth git-credential'",
+            TimeSpan.FromSeconds(30), ct);
+        if (r.ExitCode != 0)
+        {
+            logger.LogWarning("gh/git auth provision failed in sandbox {Id}: {Err}",
+                sandbox.Id, SecretRedactor.Redact(r.StdErr.Trim()));
+            return false;
+        }
+
+        logger.LogInformation(
+            "gh/git credentials provisioned in sandbox {Id}", sandbox.Id);
+        return true;
     }
 
     /// <inheritdoc />

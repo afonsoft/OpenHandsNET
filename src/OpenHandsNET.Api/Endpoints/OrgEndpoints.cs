@@ -202,6 +202,13 @@ public static class OrgEndpoints
                 ? Results.NoContent() : Results.NotFound();
         }).RequireAuthorization("perm:manage_org_quota");
 
+        // SPEC-14 RF-005: aggregated usage — tokens/cost (usage_records),
+        // live sandbox seconds and run counts.
+        g.MapGet("/{org_id:guid}/usage", async (
+            Guid org_id, IUsageService usage, CancellationToken ct) =>
+            Results.Ok(await usage.GetOrgUsageAsync(org_id, ct)))
+            .RequireAuthorization("perm:view_billing");
+
         // Invitations (batch + token)
         g.MapPost("/{org_id:guid}/members/invite", async (
             Guid org_id, [FromBody] InviteRequest req,

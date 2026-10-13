@@ -45,4 +45,5 @@ public sealed record AppConversation(
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     string? CreatedByUserId = null,
-    bool ConfirmationMode = false);
+    bool ConfirmationMode = false,
+    string? SandboxProfile = null);

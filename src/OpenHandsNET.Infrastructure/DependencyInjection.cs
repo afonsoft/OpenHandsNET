@@ -63,6 +63,10 @@ public static class DependencyInjection
         services.AddSingleton(_ =>
             OpenHandsNET.Infrastructure.Sandbox.DockerClientFactory.Create());
         services.AddSingleton<OpenHandsNET.Infrastructure.Sandbox.WorkspaceProvisioner>();
+        services.AddScoped<OpenHandsNET.Infrastructure.Sandbox.DockerNetworkPolicy>();
+        services.AddSingleton<OpenHandsNET.Infrastructure.Sandbox.WarmPoolService>();
+        services.AddHostedService(p => p.GetRequiredService<
+            OpenHandsNET.Infrastructure.Sandbox.WarmPoolService>());
         services.AddScoped<OpenHandsNET.Application.Sandbox.ISandboxService,
             OpenHandsNET.Infrastructure.Sandbox.DockerSandboxService>();
         services.AddScoped<OpenHandsNET.Application.Sandbox.ISandboxExecutor,

@@ -14,4 +14,5 @@ public sealed record Sandbox(
     Uri? AgentUrl,
     DateTimeOffset CreatedAt,
     DateTimeOffset? ExpiresAt,
-    string? LastError);
+    string? LastError,
+    string Pool = "cold");

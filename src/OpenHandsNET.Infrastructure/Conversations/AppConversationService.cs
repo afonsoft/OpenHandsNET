@@ -31,6 +31,9 @@ public sealed class AppConversationService(
             SelectedRepository = request.SelectedRepository,
             AgentType = request.AgentType,
             LlmModel = request.LlmModel,
+            SandboxProfile = Domain.Sandbox.SandboxProfiles
+                .IsValid(request.SandboxProfile)
+                    ? request.SandboxProfile : null,
             ConfirmationMode = request.ConfirmationMode,
             // Sinaliza ao worker que o agente deve iniciar ao chegar em READY.
             PendingKickoff = request.InitialMessage?.Run == true,

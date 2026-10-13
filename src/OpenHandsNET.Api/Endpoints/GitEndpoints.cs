@@ -28,15 +28,18 @@ public static class GitEndpoints
 
         app.MapGet("/api/v1/git/credentials", async (
             OpenHandsNET.Infrastructure.Git.GitCredentialProvider store,
-            CancellationToken ct) => Results.Ok(await store.ListAsync(ct)))
+            OpenHandsNET.Application.Identity.ICurrentUserAccessor current,
+            CancellationToken ct) =>
+            Results.Ok(await store.ListAsync(current.User?.UserId.ToString(), ct)))
             .WithTags("Git Credentials");
         app.MapPut("/api/v1/git/credentials/{host}", PutCredentialAsync)
             .WithTags("Git Credentials");
         app.MapDelete("/api/v1/git/credentials/{host}", async (
             string host,
             OpenHandsNET.Infrastructure.Git.GitCredentialProvider store,
+            OpenHandsNET.Application.Identity.ICurrentUserAccessor current,
             HttpContext http, CancellationToken ct) =>
-            await store.DeleteAsync(host, ct)
+            await store.DeleteAsync(host, current.RequireUserId().ToString(), ct)
                 ? Results.NoContent()
                 : OpenHandsNetProblemFactory.Create(
                     http, 404, $"No credential for {host}"))
@@ -200,6 +203,7 @@ public static class GitEndpoints
     private static async Task<IResult> PutCredentialAsync(
         string host, JsonElement body,
         OpenHandsNET.Infrastructure.Git.GitCredentialProvider store,
+        OpenHandsNET.Application.Identity.ICurrentUserAccessor current,
         HttpContext http, CancellationToken ct)
     {
         var kind = body.TryGetProperty("kind", out var k)
@@ -213,7 +217,8 @@ public static class GitEndpoints
                 http, 400, "token or ssh_key required");
         }
 
-        await store.PutAsync(host, kind, secret, ct);
+        await store.PutAsync(
+            host, kind, secret, current.RequireUserId().ToString(), ct);
         return Results.NoContent();
     }
 

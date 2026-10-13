@@ -14,6 +14,7 @@ public sealed record CreateAppConversationRequest
     public string? LlmModel { get; init; }
     public Guid? SandboxSpecId { get; init; }
     public Guid? SandboxId { get; init; }
+    public string? SandboxProfile { get; init; }
     public bool ConfirmationMode { get; init; }
     public JsonElement? LlmConfig { get; init; }
     public JsonElement? ObservabilityConfig { get; init; }
@@ -48,6 +49,7 @@ public sealed record AppConversationDto
     public string? SelectedRepository { get; init; }
     public string? AgentType { get; init; }
     public string? LlmModel { get; init; }
+    public string? SandboxProfile { get; init; }
     public required string ExecutionStatus { get; init; }
     public IReadOnlyList<string> Tags { get; init; } = [];
     public bool Pinned { get; init; }
@@ -86,6 +88,7 @@ public sealed record SandboxDto
     public required string SpecId { get; init; }
     public string? ConversationId { get; init; }
     public required string Status { get; init; }
+    public string Pool { get; init; } = "cold";
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset? ExpiresAt { get; init; }
 }
@@ -101,6 +104,8 @@ public sealed record SandboxSpecDto
     public int TimeoutMinutes { get; init; } = 60;
     public Dictionary<string, string>? Env { get; init; }
     public bool MountWorkspace { get; init; } = true;
+    public int PidsLimit { get; init; } = 512;
+    public string? Profile { get; init; }
 }
 
 /// <summary>Secret metadata (value nunca trafega).</summary>

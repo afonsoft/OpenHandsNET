@@ -52,12 +52,20 @@ public sealed class GitServiceTests : IAsyncLifetime
         }
 
         await EnsureGitImageAsync();
-        var provisioner = new WorkspaceProvisioner(
-            Options.Create(new SandboxOptions { WorkspaceRoot = _wsRoot }),
+        var opts = Options.Create(new SandboxOptions
+        {
+            WorkspaceRoot = _wsRoot, InstanceOwner = _owner,
+        });
+        var provisioner = new WorkspaceProvisioner(opts,
             NullLogger<WorkspaceProvisioner>.Instance);
+        var egress = new DockerNetworkPolicy(_docker, opts,
+            NullLogger<DockerNetworkPolicy>.Instance);
+        var pool = new WarmPoolService(_docker, opts, provisioner,
+            new ServiceCollection().BuildServiceProvider()
+                .GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<WarmPoolService>.Instance);
         _service = new DockerSandboxService(_db, _docker, provisioner,
-            Options.Create(new SandboxOptions { InstanceOwner = _owner }),
-            NullLogger<DockerSandboxService>.Instance);
+            egress, pool, opts, NullLogger<DockerSandboxService>.Instance);
         _executor = new DockerSandboxExecutor(_docker);
         var dp = new ServiceCollection().AddDataProtection().Services
             .BuildServiceProvider()
@@ -147,7 +155,7 @@ public sealed class GitServiceTests : IAsyncLifetime
         var origin = await SeedOriginRepoAsync(sb);
 
         await _git.CloneAsync(sb, origin, "openhands/abc12345",
-            CancellationToken.None);
+            null, CancellationToken.None);
         (await _git.HasRepositoryAsync(sb, CancellationToken.None))
             .ShouldBeTrue();
 
@@ -203,7 +211,7 @@ public sealed class GitServiceTests : IAsyncLifetime
 
         var sb = await StartAsync();
         var ex = await Should.ThrowAsync<InvalidOperationException>(() =>
-            _git.CloneAsync(sb, "file:///tmp/does-not-exist", "b",
+            _git.CloneAsync(sb, "file:///tmp/does-not-exist", "b", null,
                 CancellationToken.None));
         ex.Message.ShouldContain("git clone failed");
     }

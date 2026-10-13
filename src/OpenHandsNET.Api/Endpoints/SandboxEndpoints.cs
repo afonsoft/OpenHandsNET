@@ -88,7 +88,8 @@ public static class SandboxEndpoints
             var spec = new SandboxSpec(
                 Guid.TryParse(body.Id, out var g) ? g : Guid.NewGuid(),
                 body.Name, body.Image, body.MemoryMb, body.CpuLimit,
-                body.TimeoutMinutes, body.Env, body.MountWorkspace);
+                body.TimeoutMinutes, body.Env, body.MountWorkspace,
+                body.PidsLimit, body.Profile);
             await svc.UpsertSpecAsync(spec, ct);
             return Results.Created(
                 $"/api/v1/sandbox-specs/{spec.Id}", ToDto(spec));
@@ -119,6 +120,7 @@ public static class SandboxEndpoints
         Id = s.Id.ToString(), SpecId = s.SpecId.ToString(),
         ConversationId = s.ConversationId?.ToString(),
         Status = s.Status.ToString().ToUpperInvariant(),
+        Pool = s.Pool,
         CreatedAt = s.CreatedAt, ExpiresAt = s.ExpiresAt,
     };
 
@@ -129,5 +131,6 @@ public static class SandboxEndpoints
         TimeoutMinutes = s.TimeoutMinutes,
         Env = s.Env?.ToDictionary(kv => kv.Key, kv => kv.Value),
         MountWorkspace = s.MountWorkspace,
+        PidsLimit = s.PidsLimit, Profile = s.Profile,
     };
 }
