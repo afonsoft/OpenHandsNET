@@ -107,3 +107,77 @@ Esta SPEC não define endpoints (ver SPEC 04). Expõe apenas:
 3. Options + `.env.exemplo` + README quickstart (verify: env override).
 4. Dockerfile multi-stage + compose (verify: compose up).
 5. Testes de arquitetura (NetArchTest) + CI build (verify: test).
+
+## 8. Deliverables — arquivos a criar/modificar
+
+```text
+OpenHandsNET.slnx                     # dotnet new slnx
+global.json                           # pin SDK 10.0.x (rollForward latestMinor)
+Directory.Build.props                 # LangVersion=preview/14, Nullable=enable, ImplicitUsings,
+                                      # TreatWarningsAsErrors, EnforceCodeStyleInBuild
+Directory.Packages.props              # CPM (central package management)
+src/OpenHandsNET.Domain/              # csproj sem deps
+src/OpenHandsNET.Application/         # contratos: IEventService, ISandboxService,
+                                      # IAppConversationService, IAgentLlmProvider, ISkillService,
+                                      # IHookService, IGitService, ISecretStore, IBillingProvider
+src/OpenHandsNET.Infrastructure/      # EF Core, DatabaseMigrator, Docker.DotNet, secrets
+src/OpenHandsNET.Api/Program.cs       # Serilog → OTel → Options → EF → Migrator →
+                                      # MapStaticAssets → route groups → hubs → SPA fallback
+src/OpenHandsNET.Api/appsettings.json | appsettings.Development.json
+src/OpenHandsNET.Client/              # Blazor WASM — portar shell de
+                                      # open-webui-net/src/OpenWebUI.Client (Layout, Pages, Services)
+cli/OpenHandsNET.Cli/
+tests/OpenHandsNET.UnitTests/ tests/OpenHandsNET.IntegrationTests/ tests/OpenHandsNET.Client.Tests/
+src/OpenHandsNET.Infrastructure/Persistence/DatabaseMigrator.cs  # MigrateAsync no boot
+src/OpenHandsNET.Api/Options/OpenHandsNetOptions.cs              # bind OPENHANDSNET_*
+Dockerfile  docker-compose.yaml  .dockerignore  .env.exemplo  .gitignore  nuget.config
+tests/OpenHandsNET.UnitTests/Architecture/DependencyRulesTests.cs  # NetArchTest forward-only
+```
+
+## 9. Referências e links
+
+### Internas (repo)
+- `migration-plan/research/stack-research.md` — decisões de stack e divergências do guia.
+- `migration-plan/research/domain-candidates.md` — mapa de domínios.
+- `docs/reference/upstream-baseline.md` — SHAs dos clones upstream.
+- `CLAUDE.md` — regras do repo.
+
+### Referência .NET (padrão a copiar)
+- Estrutura: https://github.com/afonsoft/open-webui/tree/5a7d920/src
+- Boot `Program.cs`: https://github.com/afonsoft/open-webui/blob/5a7d920/src/OpenWebUI.Api/Program.cs
+- Client WASM: https://github.com/afonsoft/open-webui/tree/5a7d920/src/OpenWebUI.Client
+- `CLAUDE.md` upstream: https://github.com/afonsoft/open-webui/blob/5a7d920/CLAUDE.md
+
+### Docs Microsoft / libs
+- .NET 10: https://learn.microsoft.com/dotnet/core/whats-new/dotnet-10/overview
+- C# 14: https://learn.microsoft.com/dotnet/csharp/whats-new/csharp-14
+- `dotnet sln` / `.slnx`: https://learn.microsoft.com/dotnet/core/tools/dotnet-sln
+- Hosted services: https://learn.microsoft.com/aspnet/core/fundamentals/host/hosted-services
+- Options pattern: https://learn.microsoft.com/aspnet/core/fundamentals/configuration/options
+- EF Core: https://learn.microsoft.com/ef/core/ · SQLite: https://learn.microsoft.com/ef/core/providers/sqlite/ · Npgsql: https://www.npgsql.org/efcore/
+- Serilog ASP.NET: https://github.com/serilog/serilog-aspnetcore
+- OpenTelemetry .NET: https://opentelemetry.io/docs/languages/net/ e https://learn.microsoft.com/dotnet/core/diagnostics/observability-with-otel
+- Docker multi-stage: https://learn.microsoft.com/aspnet/core/host-and-deploy/docker/building-net-docker-images
+- NetArchTest: https://github.com/BenMorris/NetArchTest
+- xUnit: https://xunit.net/ · Shouldly: https://github.com/shouldly/shouldly · bUnit: https://bunit.dev/
+- Health checks: https://learn.microsoft.com/aspnet/core/host-and-deploy/health-checks
+- CPM: https://learn.microsoft.com/nuget/consume-packages/central-package-management
+
+## 10. Guardrails de execução (Devin)
+
+- **Branch:** código sempre via `feature/spec-01-…` + PR; nunca commitar em `main`.
+- **Workflows:** não criar/alterar `.github/workflows/` sem aprovação explícita.
+- **Secrets:** proibido commitar `.env`, tokens, `data/*.db`, `bin/`, `obj/`.
+- **Pacotes:** versões estáveis >7 dias publicadas; sem `*`/`latest`/pré-release.
+- **Pré-requisitos Devin:** .NET SDK 10 (`dotnet --version`); Docker opcional
+  nesta SPEC (só para compose/smoke — pular se indisponível).
+- Documentação pt-BR; código, projetos e APIs em inglês.
+
+## 11. Definition of Done
+
+- [ ] Todos os RFs implementados e critérios de aceite (§6) verificados.
+- [ ] `dotnet build OpenHandsNET.slnx -c Release` e `dotnet test` verdes.
+- [ ] `dotnet run --project src/OpenHandsNET.Api` serve o WASM em `:8080`.
+- [ ] `docker compose up -d --build` funciona com `.env.exemplo` copiado para `.env`.
+- [ ] `DependencyRulesTests` reprova referência reversa (provar com teste falho intencional).
+- [ ] SPEC marcada `Done`; issue vinculada fechada pelo PR.

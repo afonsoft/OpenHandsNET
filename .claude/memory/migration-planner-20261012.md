@@ -20,10 +20,22 @@ cloud-api, search-events OpenAPI, cli/cloud, local-setup, enterprise.
 - Epic: **E10** → https://github.com/afonsoft/OpenHandsNET/issues/1
 - Slices (SPEC → Issue → blocked_by):
   - 01 → #2 — (raiz)
-  - 02 → #3 — #2 | 03 → #4 — #2
-  - 04 → #5 — #3, #4
+  - 02 → #3 — #2 | 03 → #4 — #2 | 10 → #11 — #2 | 13 → #14 — #2
+  - 04 → #5 — #3, #4 | 09 → #10 — #3, #4
+  - 11 → #12 — #3, #11 | 12 → #13 — #4, #11
   - 05 → #6 — #5 | 06 → #7 — #5 | 08 → #9 — #5 | 07 → #8 — #5
+- Build order: `01 → (02 ∥ 03 ∥ 10 ∥ 13) → (04 ∥ 09 ∥ 11 ∥ 12) → (05 ∥ 08 ∥ 06) → 07`.
 - Labels canônicos criados no repo (epic/slice/feature/bug + status set).
+
+## Rodada 2 — enriquecimento (mesmo commit posterior)
+
+- SPECs 01–08 ganharam §8 Deliverables, §9 Referências (permalinks `blob/<sha>` +
+  docs.openhands.dev + libs Microsoft/NuGet), §10 Guardrails/Devin, §11 DoD.
+- Novas SPECs **Approved**: 09 Agent Engine (IAgentLlmProvider+SK, ReAct loop,
+  confirmation mode), 10 Persistência EF (DbContext único, 20 tabelas, Sqlite/PG),
+  11 Skills & Hooks, 12 Git/SCM (clone/diff/git_commit/askpass), 13 DevOps &
+  Observability (Dockerfile, compose profiles, CI, OTel).
+- Issues #10–#14 criadas com `slice`+`todo` e `blocked_by` reais; Epic #1 atualizado.
 
 ## Correções vs guia do usuário (registradas)
 

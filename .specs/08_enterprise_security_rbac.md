@@ -123,3 +123,82 @@ em `X-Deployment-Mode` header + `/config`.
 4. Quota service + 429 + auto-pause (verify: concurrency tests).
 5. Audit pipeline + admin endpoints + export (verify: audit tests).
 6. Secrets store cifrado + flags + `deployment_mode` (verify: serialization tests).
+
+## 8. Deliverables — arquivos a criar/modificar
+
+```text
+src/OpenHandsNET.Domain/Identity/{User,Organization,OrgMember,OrgInvitation,
+  ApiKey,ApiKeyScope,AuditEvent,Plan,Subscription,UsageRecord}.cs
+src/OpenHandsNET.Application/Identity/{IAuthService,IApiKeyService,IOrgService,
+  IQuotaService,ISecretStore,IBillingProvider,IAuditService}.cs
+src/OpenHandsNET.Infrastructure/Identity/JwtTokenService.cs        # access+refresh
+src/OpenHandsNET.Infrastructure/Identity/ApiKeyService.cs          # sk-* SHA-256
+src/OpenHandsNET.Infrastructure/Identity/DeviceFlowService.cs      # RFC 8628
+src/OpenHandsNET.Infrastructure/Identity/OrgService.cs             # orgs+members+invitations
+src/OpenHandsNET.Infrastructure/Identity/QuotaService.cs           # reserva atômica
+src/OpenHandsNET.Infrastructure/Identity/AuditService.cs           # append-only + export
+src/OpenHandsNET.Infrastructure/Identity/SecretStore.cs            # AES-256/DPAPI
+src/OpenHandsNET.Api/Endpoints/{Auth,ApiKeys,Orgs,Admin,Billing}Endpoints.cs
+src/OpenHandsNET.Api/Endpoints/OAuthEndpoints.cs                   # device code+token
+src/OpenHandsNET.Api/Auth/CurrentOrgAccessor.cs                    # X-Org-Id→claims
+src/OpenHandsNET.Api/Middleware/DeploymentModeMiddleware.cs        # X-Deployment-Mode
+tests/OpenHandsNET.IntegrationTests/Identity/{AuthFlowTests,OrgIsolationTests,
+  QuotaTests,AuditTests}.cs
+tests/OpenHandsNET.UnitTests/Identity/{ApiKeyHashTests,SecretStoreTests}.cs
+```
+
+## 9. Referências e links
+
+### Internas (repo)
+- `migration-plan/research/api-inventory.md` §7 — lista completa de rotas enterprise.
+- `migration-plan/research/risk-assessment.md` — licenciamento Polyform.
+- `.specs/06_cli_spec.md` — consumidor do device flow.
+- `.specs/10_persistence_efcore_spec.md` — tabelas/query filters.
+
+### Upstream — conceitos (Polyform — **não portar código**)
+- Rotas SaaS: https://github.com/OpenHands/enterprise/tree/693589e/server/routes/
+  (`auth.py`, `oauth_v2.py`, `oauth_device.py`, `api_keys.py`, `billing.py`, `orgs.py`,
+  `org_invitations.py`, `org_secrets.py`, `quota.py`, `readiness.py`, `user_provisioning.py`,
+  `super_admins.py`, `feature_flags.py`, `instance_admin.py`)
+- `DEPLOYMENT_MODE` vs `app_mode` (regra crítica): https://github.com/OpenHands/enterprise/blob/693589e/server/constants.py
+  e https://github.com/OpenHands/enterprise/blob/693589e/AGENTS.md
+- Cloud deploy (Keycloak+K8s): https://github.com/OpenHands/OpenHands-Cloud/blob/d242d12/docs/ARCHITECTURE.md
+
+### Documentação oficial
+- Enterprise (SSO, RBAC, BYOK, integrações DC): https://docs.openhands.dev/enterprise
+- Cloud API auth (`Bearer <API_KEY>`): https://docs.openhands.dev/openhands/usage/cloud/cloud-api
+
+### Bibliotecas / padrões
+- JWT bearer: https://learn.microsoft.com/aspnet/core/security/authentication/ ·
+  `Microsoft.AspNetCore.Authentication.JwtBearer`
+- OIDC: https://learn.microsoft.com/aspnet/core/security/authentication/oidc ·
+  `Microsoft.AspNetCore.Authentication.OpenIdConnect`
+- Device flow RFC 8628: https://www.rfc-editor.org/rfc/rfc8628
+- EF global query filters: https://learn.microsoft.com/ef/core/querying/filters
+- Data Protection API (secrets at rest): https://learn.microsoft.com/aspnet/core/security/data-protection/introduction
+- `Microsoft.FeatureManagement`: https://learn.microsoft.com/azure/azure-app-configuration/feature-management-dotnet-reference
+- Keycloak (OIDC de teste): https://www.keycloak.org/documentation
+- Rate limiting nativo: https://learn.microsoft.com/aspnet/core/performance/rate-limit
+
+## 10. Guardrails de execução (Devin)
+
+- **Nunca** copiar código do `enterprise/`/`OpenHands-Cloud/` (Polyform) —
+  conceitos e nomes de endpoints apenas.
+- API keys: armazenar SHA-256; exibir plaintext **uma única vez** no create.
+- Secrets: AES-256 (chave `OPENHANDSNET_SECRET_KEY`, DPAPI ou KMS); serialização
+  sempre mascarada `"********"`.
+- `deployment_mode` ≠ `app_mode` — modelar como dois conceitos (lição upstream).
+- Multi-tenant off (OSS): `OrgId` nullable, query filter desabilitado; on: filtro
+  global obrigatório + teste de isolamento.
+- `429` inclui `Retry-After` + `detail` `quota_exceeded`.
+- Logs: `user_id`/`org_id`/`ip` ok; nunca token/email em texto claro além do
+  necessário (PII minimizada).
+
+## 11. Definition of Done
+
+- [ ] Auth OSS (JWT+refresh+`sk-*`) + primeiro-admin funcionais.
+- [ ] Device flow + OIDC (Keycloak fixture) verde.
+- [ ] Orgs/convites/roles + isolamento por query filter provado por teste.
+- [ ] Quota 429 + liberação + auto-pause; audit append-only + export.
+- [ ] `deployment_mode` correto; secrets nunca serializados em claro.
+- [ ] `dotnet test` verde; SPEC `Done`; issue fechada pelo PR.

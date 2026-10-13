@@ -122,3 +122,77 @@ Consome SPEC 04 inteiro + hub `/hubs/conversations`. Nenhum endpoint novo.
 4. Files/Diff/Commits (Monaco interop) (verify: E2E).
 5. Planner + confirmation banner (verify: E2E confirmation flow).
 6. Start-task progress + shared view + polish Lighthouse≥90 (verify: audit).
+
+## 8. Deliverables — arquivos a criar/modificar
+
+```text
+src/OpenHandsNET.Client/Pages/Home.razor                   # lista + nova conversa
+src/OpenHandsNET.Client/Pages/ConversationPage.razor       # shell multi-pane
+src/OpenHandsNET.Client/Pages/SharedConversationPage.razor # view-only
+src/OpenHandsNET.Client/Pages/Settings/{LlmSettings,McpSettings,
+  SecretsSettings,AgentSettings}Page.razor                 # portar de open-webui-net
+src/OpenHandsNET.Client/Components/Conversation/ChatPane.razor
+src/OpenHandsNET.Client/Components/Conversation/EventCard.razor        # por kind
+src/OpenHandsNET.Client/Components/Conversation/PlannerPane.razor
+src/OpenHandsNET.Client/Components/Conversation/ConfirmationBanner.razor
+src/OpenHandsNET.Client/Components/Conversation/TerminalTab.razor      # xterm
+src/OpenHandsNET.Client/Components/Conversation/BrowserTab.razor       # screenshots
+src/OpenHandsNET.Client/Components/Conversation/FilesTab.razor         # tree+viewer
+src/OpenHandsNET.Client/Components/Conversation/DiffTab.razor          # Monaco diff
+src/OpenHandsNET.Client/Components/Conversation/CommitsTab.razor
+src/OpenHandsNET.Client/Components/Conversation/UsageTab.razor
+src/OpenHandsNET.Client/Services/ConversationStateService.cs # fonte única reativa
+src/OpenHandsNET.Client/Services/OpenHandsNetApiClient.cs    # typed HttpClient
+src/OpenHandsNET.Client/Services/ConversationHubClient.cs    # SignalR client
+src/OpenHandsNET.Client/wwwroot/js/{xtermInterop,monacoInterop,splitPane}.js
+src/OpenHandsNET.Client/tailwind.input.css                   # gerar c/ tailwindcss CLI
+tests/OpenHandsNET.Client.Tests/                            # bUnit
+```
+
+## 9. Referências e links
+
+### Internas (repo)
+- `.specs/04_rest_and_signalr_api_spec.md` — contratos REST+hub consumidos.
+- `.specs/02_event_stream_spec.md` — kinds renderizados por `EventCard`.
+
+### UI upstream a espelhar (Agent Canvas, baseline `d7e14e2`, MIT)
+- Página da conversa: https://github.com/OpenHands/OpenHands/blob/d7e14e2/src/routes/conversation.tsx
+- Tabs: …/src/routes/{planner-tab,task-list-tab,browser-tab,files-tab,commits-tab,usage-tab}.tsx
+- Home/nova conversa: …/src/routes/home.tsx · compartilhada: …/src/routes/shared-conversation.tsx
+- Settings: …/src/routes/{llm-settings,mcp-settings,agent-settings,condenser-settings}.tsx
+- Componentes de conversa: https://github.com/OpenHands/OpenHands/tree/d7e14e2/src/components/features/conversation/
+
+### Base Blazor a reusar (open-webui-net, baseline `5a7d920`)
+- Páginas: https://github.com/afonsoft/open-webui/tree/5a7d920/src/OpenWebUI.Client/Pages
+  (`ChatPage.razor`, `Ide.razor`, `TerminalPage.razor`, `Workspace.razor`, `SharedChat.razor`)
+- Componentes: …/Components (`ChatView.razor`, `ChatWorkspacePanel.razor`, `Ide*`, `Terminal*`)
+- Layout: …/Layout/MainLayout.razor · Services: …/Services/
+- `tailwind.input.css`: …/src/OpenWebUI.Client/tailwind.input.css
+
+### Bibliotecas / framework
+- Blazor WASM: https://learn.microsoft.com/aspnet/core/blazor/hosting-models#blazor-webassembly
+- JS interop: https://learn.microsoft.com/aspnet/core/blazor/javascript-interoperability/call-javascript-from-dotnet
+- SignalR client (.NET + JS): https://learn.microsoft.com/aspnet/core/signalr/dotnet-client
+- xterm.js: https://xtermjs.org/ (+ addon-fit)
+- Monaco Editor: https://microsoft.github.io/monaco-editor/ (diff editor API)
+- Tailwind v4: https://tailwindcss.com/docs/installation (CLI: `tailwindcss -i … -o …`)
+- bUnit: https://bunit.dev/ · Playwright .NET E2E: https://playwright.dev/dotnet/
+
+## 10. Guardrails de execução (Devin)
+
+- Componentes **nunca** chamam `HttpClient`/hub direto — sempre via
+  `ConversationStateService`/`OpenHandsNetApiClient` (regra upstream: hooks→DAL).
+- Um writer por estado: `ConversationStateService` é a única fonte de verdade da página.
+- CSS: editar `tailwind.input.css` e regerar `wwwroot/css/tailwind.css` (artefato
+  commitado — não editar a saída à mão).
+- i18n mínimo en+pt-BR; strings em resource/JSON (não hardcode).
+- Acessibilidade: tabs com `role=tablist`, navegação por teclado, foco visível.
+- E2E Devin: mock hub/API primeiro (`[Category("E2E")]` opt-in); não depender de LLM real.
+
+## 11. Definition of Done
+
+- [ ] Todos os RFs (§4) e critérios (§6) verificados em E2E/bUnit.
+- [ ] Multi-pane funcional: chat + terminal + browser + files + diff + commits + usage.
+- [ ] Confirmation flow aprova/rejeita em tempo real; backlog recupera após F5.
+- [ ] Lighthouse ≥ 90 em home + conversa; sem erros de console.
+- [ ] `dotnet test` + `dotnet build` verdes; SPEC `Done`; issue fechada pelo PR.

@@ -128,3 +128,77 @@ env (nunca em args de comando/ logs).
 3. Pause/resume/delete + orphan sweep + timeout watcher (verify: lifecycle tests).
 4. Workspace mount + repo clone (verify: e2e start-conversation path).
 5. Playwright no worker (verify: browse action → screenshot observation).
+
+## 8. Deliverables — arquivos a criar/modificar
+
+```text
+src/OpenHandsNET.Domain/Sandbox/{Sandbox,SandboxSpec,SandboxStatus}.cs
+src/OpenHandsNET.Application/Sandbox/ISandboxService.cs      # lifecycle CRUD+status
+src/OpenHandsNET.Application/Sandbox/ISandboxExecutor.cs     # exec/file/git boundary
+src/OpenHandsNET.Application/Sandbox/{BashSession,CommandResult,FileEntry,GitDiff}.cs
+src/OpenHandsNET.Infrastructure/Sandbox/DockerSandboxService.cs     # Docker.DotNet impl
+src/OpenHandsNET.Infrastructure/Sandbox/DockerSandboxExecutor.cs    # exec+bash session+files+git
+src/OpenHandsNET.Infrastructure/Sandbox/BashSessionImpl.cs          # docker exec -i multiplex
+src/OpenHandsNET.Infrastructure/Sandbox/SandboxTimeoutWatcher.cs    # hosted service
+src/OpenHandsNET.Infrastructure/Sandbox/OrphanSweepService.cs       # label sweep no boot
+src/OpenHandsNET.Infrastructure/Sandbox/WorkspaceProvisioner.cs     # mkdir + clone repo
+src/OpenHandsNET.Infrastructure/Playwright/BrowserService.cs        # browse/screenshot (RF-005)
+tests/OpenHandsNET.IntegrationTests/Sandbox/DockerSandboxTests.cs   # Testcontainers
+tests/OpenHandsNET.IntegrationTests/Sandbox/BashSessionTests.cs     # estado persistente
+tests/OpenHandsNET.UnitTests/Sandbox/SandboxLifecycleTests.cs       # mocks Docker.DotNet
+```
+
+Imagem de sandbox default (`A DEFINIR` publicação própria): começar com
+`nikolaik/python-nodejs:python3.13-nodejs22` ou `mcr.microsoft.com/devcontainers/dotnet`
+para dev; spec permite `SandboxSpec.Image` custom.
+
+## 9. Referências e links
+
+### Internas (repo)
+- `migration-plan/research/api-inventory.md` §4 (sandboxes) e §6 (agent-server in-sandbox).
+- `migration-plan/research/risk-assessment.md` — isolamento/riscos do runtime.
+- `.specs/02_event_stream_spec.md` — `ObservationEvent` (`CmdOutputObservation`-equivalente).
+- `.specs/12_git_scm_integration_spec.md` — clone/diff/commits detalhados.
+
+### Upstream — código-fonte (baseline `acca181`, MIT; conceitos — não portar linha a linha)
+- Bash via tmux: https://github.com/OpenHands/software-agent-sdk/blob/acca181/openhands-agent-server/openhands/agent_server/bash_router.py
+  e `bash_service.py` (mesmo dir)
+- Files: …/agent_server/file_router.py · Git: …/git_router.py + `git_provider_service.py`
+- Conversas/eventos in-sandbox: …/conversation_router.py, …/event_router.py
+- Workspace router: …/ (arquivos `workspace*.py` no mesmo dir)
+- SDK workspace: https://github.com/OpenHands/software-agent-sdk/tree/acca181/openhands-workspace
+
+### Cloud (Polyform — conceitos apenas)
+- Arquitetura de runtimes/warm pool/Runtime API:
+  https://github.com/OpenHands/OpenHands-Cloud/blob/d242d12/docs/ARCHITECTURE.md
+- Docs cloud: https://docs.openhands.dev/openhands/usage/cloud/openhands-cloud
+- Local setup (docker run upstream): https://docs.openhands.dev/openhands/usage/run-openhands/local-setup
+
+### Bibliotecas / framework
+- Docker.DotNet: https://github.com/dotnet/Docker.DotNet
+- Docker Engine API (exec/archive): https://docs.docker.com/reference/api/engine/
+- Testcontainers .NET: https://dotnet.testcontainers.org/
+- Microsoft.Playwright: https://playwright.dev/dotnet/docs/intro
+- `System.Diagnostics.Process` (host-side git pré-clone fallback):
+  https://learn.microsoft.com/dotnet/api/system.diagnostics.process
+
+## 10. Guardrails de execução (Devin)
+
+- **Nada executa no host** fora do container (única exceção: `allow_host_mcp` de SPEC 07).
+- Labels obrigatórias em todo container: `openhandsnet.managed=true`,
+  `openhandsnet.conversation_id=<uuid>`, `openhandsnet.org_id=<uuid?>`.
+- Secrets → env vars mascaradas; **nunca** em `docker inspect`-visível além de env
+  (aceitável) nem em args/stdout/logs.
+- `TimeoutMinutes` default 60; watcher emite `SandboxTimeoutEvent` → `Paused`.
+- Pré-requisito Devin: daemon Docker (`docker info`); testes marcados
+  `[Category("Docker")]` para skip em ambientes sem daemon.
+- Cuidado: `docker exec` long-lived — tratar EOF/cancelamento com `CancellationToken`
+  e não segurar locks EF no hot path (lição upstream `ConversationState` FIFOLock).
+
+## 11. Definition of Done
+
+- [ ] Lifecycle completo verificado contra Docker real (Testcontainers).
+- [ ] Bash session persistente + `exit_code`/marker corretos; file ops round-trip.
+- [ ] Pause/resume/delete + orphan sweep + timeout watcher funcionando.
+- [ ] Workspace montado + `selected_repository` clonado antes do 1º evento.
+- [ ] `dotnet test --filter Category=Docker` verde; SPEC `Done`; issue fechada.

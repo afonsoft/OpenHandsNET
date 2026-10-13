@@ -112,3 +112,66 @@ flag explícita.
 3. EventStream wiring (call→eventos) + tool prefixing no agente (verify: integration).
 4. OAuth authorize/callback/refresh (verify: IdP mock).
 5. Settings UI + `mcp/test` probe (verify: E2E).
+
+## 8. Deliverables — arquivos a criar/modificar
+
+```text
+src/OpenHandsNET.Domain/Mcp/{McpServerConfig,McpTransport}.cs
+src/OpenHandsNET.Application/Mcp/IMcpClientService.cs    # connect/list/call per conversation
+src/OpenHandsNET.Application/Mcp/IMcpOAuthService.cs     # authorize/callback/refresh
+src/OpenHandsNET.Application/Mcp/McpToolCatalog.cs       # cache por conversa, prefixo mcp__s__t
+src/OpenHandsNET.Infrastructure/Mcp/McpClientService.cs  # MCP C# SDK wrapper
+src/OpenHandsNET.Infrastructure/Mcp/StdioMcpHost.cs      # spawn no sandbox (ou host c/ flag)
+src/OpenHandsNET.Infrastructure/Mcp/McpOAuthService.cs   # state+PKCE + secrets store
+src/OpenHandsNET.Api/Endpoints/McpEndpoints.cs           # servers CRUD + test + tool-call + oauth
+src/OpenHandsNET.Client/Pages/McpSettingsPage.razor      # CRUD + status + tools list
+tests/OpenHandsNET.IntegrationTests/Mcp/McpClientTests.cs        # fixture stdio server
+tests/OpenHandsNET.UnitTests/Mcp/{McpToolCatalogTests,McpOAuthStateTests}.cs
+```
+
+## 9. Referências e links
+
+### Internas (repo)
+- `migration-plan/research/api-inventory.md` §1 (mcp routers) e §6.
+- `.specs/02_event_stream_spec.md` — `ACPToolCallEvent`/`ObservationEvent`.
+- `.specs/08_enterprise_security_rbac.md` — secrets store + OAuth tokens.
+- `.specs/09_agent_engine_spec.md` — exposição das tools MCP ao loop do agente.
+
+### Upstream — código-fonte (baseline `acca181`, MIT)
+- SDK MCP config (flat map `name→server`): https://github.com/OpenHands/software-agent-sdk/blob/acca181/openhands-sdk/openhands/sdk/mcp/config.py
+- Pacote MCP completo: https://github.com/OpenHands/software-agent-sdk/tree/acca181/openhands-sdk/openhands/sdk/mcp
+- Testes MCP upstream (wire-compat, OAuth, security): https://github.com/OpenHands/software-agent-sdk/tree/acca181/tests/sdk/mcp
+- Agent-server MCP router: …/openhands-agent-server/openhands/agent_server/mcp_router.py
+- App-server MCP OAuth (Polyform — conceitos): …/693589e/openhands/app_server/mcp/
+
+### Especificação MCP
+- Spec oficial: https://modelcontextprotocol.io/specification (lifecycle, tools, transports)
+- MCP C# SDK: https://github.com/modelcontextprotocol/csharp-sdk (stdio + HTTP/SSE client)
+- OAuth 2.1 + PKCE RFC 7636: https://www.rfc-editor.org/rfc/rfc7636
+- `.mcp.json` convenção (Claude Code): https://code.claude.com/docs/en/mcp (flat-map
+  equivalente — upstream migra wrapper→flat, SPEC adota flat desde já)
+
+### Bibliotecas / framework
+- `System.Text.Json` schema→C#: https://learn.microsoft.com/dotnet/standard/serialization/
+- Process spawning stdio: https://learn.microsoft.com/dotnet/api/system.diagnostics.process
+
+## 10. Guardrails de execução (Devin)
+
+- Config **flat map** `name → server` (paridade SDK); aceitar import de `.mcp.json`
+  wrapper só via migração explícita (como upstream faz).
+- stdio em sandbox por padrão; `allow_host_mcp=true` exigido para spawn no host
+  (dev only) — jamais ligado por default.
+- Tokens OAuth só no secrets store; log nunca inclui headers `Authorization`.
+- Falha de um servidor = catálogo degradado + `ServerErrorEvent`, nunca crash da conversa.
+- `CallToolAsync` timeout default 60s, configurável por servidor; todo call gera
+  par `ACPToolCallEvent`→`ObservationEvent` (auditável).
+- Servidor com `require_confirmation=true` → tools passam pelo confirmation mode
+  da conversa (SPEC 09).
+
+## 11. Definition of Done
+
+- [ ] CRUD de servidores + conexão stdio/SSE/HTTP funcionais.
+- [ ] `ListTools`/`CallTool` integrados ao catálogo do agente com prefixo `mcp__`.
+- [ ] Fluxo OAuth completo (authorize→callback→refresh) com IdP de teste.
+- [ ] `POST /mcp/test` probe real (tools_count + latência); UI de settings ok.
+- [ ] `dotnet test` verde; SPEC `Done`; issue fechada pelo PR.

@@ -113,3 +113,73 @@ Implementado por SPEC 04 — referência upstream a honrar:
 2. EF entity + `EventStore` append-only + índices (verify: integration test).
 3. `EventService` com search/count/batch/subscribe (verify: unit tests).
 4. `IEventBus` in-memory channel + webhook dispatcher skeleton (verify: ordering test).
+
+## 8. Deliverables — arquivos a criar/modificar
+
+```text
+src/OpenHandsNET.Domain/Events/EventBase.cs           # abstract record + kind discriminator
+src/OpenHandsNET.Domain/Events/{Action,Message,Observation,AgentError,
+  UserRejectObservation,SystemPrompt,Token,StreamingDelta,
+  ConversationStateUpdate,ConversationError,Condensation,
+  CondensationRequest,CondensationSummary,Interrupt,Pause,
+  ServerError,AcpToolCall,HookExecution,LlmCompletionLog}Event.cs
+src/OpenHandsNET.Domain/Events/EventSource.cs         # enum agent|user|environment|hook
+src/OpenHandsNET.Domain/Events/EventJsonConverter.cs  # [JsonPolymorphic kind] + snake_case
+src/OpenHandsNET.Application/Events/IEventService.cs  # Append/Search/Count/GetBatch/Subscribe
+src/OpenHandsNET.Application/Events/EventQuery.cs     # record + EventSortOrder + EventPage
+src/OpenHandsNET.Application/Events/IEventBus.cs      # fan-out in-process (Channel<T>)
+src/OpenHandsNET.Infrastructure/Eventing/EventStore.cs        # EF append-only
+src/OpenHandsNET.Infrastructure/Eventing/EventDispatcher.cs   # hosted service → bus/webhooks
+src/OpenHandsNET.Infrastructure/Eventing/WebhookDispatcher.cs # retry/backoff skeleton
+tests/OpenHandsNET.UnitTests/Events/EventSerializationTests.cs    # round-trip 19 kinds
+tests/OpenHandsNET.UnitTests/Events/Golden/                       # fixtures .json (Verify)
+tests/OpenHandsNET.IntegrationTests/EventStoreTests.cs            # paging/ordering real DB
+```
+
+## 9. Referências e links
+
+### Internas (repo)
+- `migration-plan/research/api-inventory.md` §3 — contrato events search/count.
+- `docs/reference/openhands-upstream/search-events-openapi.md` — extrato OpenAPI (schema
+  dos 19 kinds, `EventPage`, `sort_order`, `limit≤100`).
+
+### Upstream — código-fonte (baseline `acca181`, MIT)
+- Modelo base: https://github.com/OpenHands/software-agent-sdk/blob/acca181/openhands-sdk/openhands/sdk/event/base.py
+- Tipos/kinds: https://github.com/OpenHands/software-agent-sdk/blob/acca181/openhands-sdk/openhands/sdk/event/types.py
+- `user_action` (Message/Interrupt/etc.): https://github.com/OpenHands/software-agent-sdk/blob/acca181/openhands-sdk/openhands/sdk/event/user_action.py
+- `conversation_state` (state update): https://github.com/OpenHands/software-agent-sdk/blob/acca181/openhands-sdk/openhands/sdk/event/conversation_state.py
+- `condenser` (Condensation*): https://github.com/OpenHands/software-agent-sdk/blob/acca181/openhands-sdk/openhands/sdk/event/condenser.py
+- `token`/`streaming_delta`/`llm_completion_log`: …/event/token.py, …/streaming_delta.py, …/llm_completion_log.py
+- `hook_execution`, `acp_tool_call`, `conversation_error`, `security`: ids. no dir …/event/
+- **Política de compat de eventos** (deprecated handlers permanentes, golden fixtures):
+  https://github.com/OpenHands/software-agent-sdk/blob/acca181/openhands-sdk/openhands/sdk/AGENTS.md
+- Fixtures de teste upstream: https://github.com/OpenHands/software-agent-sdk/tree/acca181/tests/sdk/event/
+
+### Documentação oficial
+- Events search (OpenAPI): https://docs.openhands.dev/openhands/usage/cloud/api-reference/events/search-events
+- Cloud API (contexto V1): https://docs.openhands.dev/openhands/usage/cloud/cloud-api
+
+### Bibliotecas / framework
+- `System.Text.Json` polymorphism: https://learn.microsoft.com/dotnet/standard/serialization/system-text-json/polymorphism
+- ULID (Cysharp): https://github.com/Cysharp/Ulid
+- Verify (snapshot/golden): https://github.com/VerifyTests/Verify
+- `System.Threading.Channels`: https://learn.microsoft.com/dotnet/core/extensions/channels
+- EF Core value conversion JSON: https://learn.microsoft.com/ef/core/modeling/value-conversions
+
+## 10. Guardrails de execução (Devin)
+
+- `kind` discrimina por **string exata** do upstream (ex.: `"StreamingDeltaEvent"`),
+  serializada `snake_case` nos demais campos (`parent_id`, `event_id`…).
+- Eventos **imutáveis** e **append-only**: nunca UPDATE/DELETE na tabela `events`.
+- Nenhum estado muda fora do EventStream (invariante central do upstream).
+- IDs ULID/UUID7 string (ordenação lexicográfica == temporal); nunca inteiros.
+- Fixtures golden: derivar do OpenAPI upstream; **não copiar** payloads do enterprise.
+- Compat: desserialização tolerante a campos extras (política upstream de backward-compat).
+
+## 11. Definition of Done
+
+- [ ] Golden tests dos 19 kinds verdes (round-trip byte-equivalente de campos-chave).
+- [ ] `SearchAsync` honra `kind__eq`/timestamps/`sort_order`/`page_id`/`limit≤100`.
+- [ ] Store EF append-only + índices; benchmark 10k eventos/conv < 200ms/página.
+- [ ] `SubscribeAsync` entrega em ordem; dispatcher dispara bus + webhook skeleton.
+- [ ] `dotnet test` verde; SPEC `Done`; issue fechada pelo PR.

@@ -143,3 +143,80 @@ SSE (não SignalR) para clients REST puros.
 4. Proxies file/git/skills/hooks/download → `ISandboxExecutor` (verify: integration).
 5. Webhooks + pending-messages + settings/secrets (verify: contract tests).
 6. `stream-start` SSE (verify: curl).
+
+## 8. Deliverables — arquivos a criar/modificar
+
+```text
+src/OpenHandsNET.Api/Endpoints/AppConversationEndpoints.cs   # grupo completo RF-001
+src/OpenHandsNET.Api/Endpoints/StartTaskEndpoints.cs         # start-tasks search/count/ids
+src/OpenHandsNET.Api/Endpoints/EventEndpoints.cs             # events search/count/ids
+src/OpenHandsNET.Api/Endpoints/SandboxEndpoints.cs           # sandboxes + sandbox-specs
+src/OpenHandsNET.Api/Endpoints/SettingsEndpoints.cs          # settings + secrets
+src/OpenHandsNET.Api/Endpoints/MiscEndpoints.cs              # config/user/skills/pending-messages
+src/OpenHandsNET.Api/Endpoints/WebhookEndpoints.cs           # events/conversations/secrets/mcp-oauth-state
+src/OpenHandsNET.Api/Hubs/ConversationHub.cs                 # RF-005
+src/OpenHandsNET.Api/DTOs/                                   # request/response snake_case
+src/OpenHandsNET.Application/Conversations/AppConversationService.cs
+src/OpenHandsNET.Application/Conversations/AppConversationStartTaskService.cs
+src/OpenHandsNET.Infrastructure/HostedServices/ConversationStartWorker.cs  # task→sandbox→READY
+src/OpenHandsNET.Infrastructure/HostedServices/TerminalBridgeService.cs    # hub↔BashSession
+src/OpenHandsNET.Api/ProblemDetails/OpenHandsNetProblemFactory.cs          # RFC 9457 + textos V1
+tests/OpenHandsNET.IntegrationTests/Api/AppConversationApiTests.cs         # WebApplicationFactory
+tests/OpenHandsNET.IntegrationTests/Api/EventApiTests.cs
+tests/OpenHandsNET.IntegrationTests/Api/SignalRConversationHubTests.cs     # HubConnection client
+tests/OpenHandsNET.UnitTests/Api/StartTaskStateMachineTests.cs
+```
+
+## 9. Referências e links
+
+### Internas (repo)
+- `migration-plan/research/api-inventory.md` — inventário completo §1–§9 (fonte primária).
+- `docs/reference/openhands-upstream/cloud-api.md` — extrato da doc cloud-api.
+- `docs/reference/openhands-upstream/search-events-openapi.md` — schemas de eventos.
+- `docs/reference/openhands-upstream/cli-and-setup.md` — extrato CLI/local-setup.
+
+### Upstream — código-fonte
+- App server V1 (app-conversations, eventos, sandboxes, webhooks — **Polyform,
+  conceitos apenas**): https://github.com/OpenHands/enterprise/tree/693589e/openhands/app_server/
+  (`v1_router.py` + subdirs `app_conversation/`, `event/`, `sandbox/`, `webhook/`…)
+- Agent-server in-sandbox (MIT): https://github.com/OpenHands/software-agent-sdk/tree/acca181/openhands-agent-server/openhands/agent_server/
+- Cliente TS canônico dos contratos: https://github.com/OpenHands/software-agent-sdk/tree/acca181/clients/typescript
+
+### Documentação oficial
+- Cloud API (start-task, polling, auth): https://docs.openhands.dev/openhands/usage/cloud/cloud-api
+- Events search OpenAPI: https://docs.openhands.dev/openhands/usage/cloud/api-reference/events/search-events
+- OpenHands Cloud: https://docs.openhands.dev/openhands/usage/cloud/openhands-cloud
+
+### Bibliotecas / framework
+- Minimal APIs: https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis/overview
+- Route groups: https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis/route-handlers#route-groups
+- SignalR intro+hubs: https://learn.microsoft.com/aspnet/core/signalr/introduction ·
+  https://learn.microsoft.com/aspnet/core/signalr/hubs
+- SignalR auth: https://learn.microsoft.com/aspnet/core/signalr/authn-and-authz
+- SignalR .NET client: https://learn.microsoft.com/aspnet/core/signalr/dotnet-client
+- `TypedResults.ServerSentEvents` (SSE nativo): https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.typedresults.serversentevents
+- Problem details / RFC 9457: https://learn.microsoft.com/aspnet/core/web-api/handle-errors · https://www.rfc-editor.org/rfc/rfc9457.html
+- Integration tests (`WebApplicationFactory`): https://learn.microsoft.com/aspnet/core/test/integration-tests
+- `IAsyncEnumerable` streaming: https://learn.microsoft.com/dotnet/api/system.collections.generic.iasyncenumerable-1
+
+## 10. Guardrails de execução (Devin)
+
+- REST = **paridade V1** (`snake_case`, mesmos paths/status codes); divergências
+  só quando documentadas em §5 (SignalR no edge, `stream-start` SSE).
+- `limit` clamp `[1,100]`; `page_id` opaco (base64 do cursor, não offset).
+- Erros: `problem+json` com `detail` igual ao texto upstream quando existir.
+- Nunca retornar secrets; `secrets` endpoints devolvem só metadados.
+- Sem lock de estado no hot path (ver regra upstream FIFOLock): serviço usa
+  `Channel`/`SemaphoreSlim` fora do request pipeline.
+- Auth obrigatória desde já (SPEC 08 entrega policies completas; aqui, bearer
+  `sk-*`/JWT do usuário OSS já exigido — nada de endpoints abertos além de
+  `/api/v1/config` e `/api/v1/health`).
+
+## 11. Definition of Done
+
+- [ ] Tabela RF-001 implementada com status codes exatos (incl. 404/409/410/503).
+- [ ] `stream-start` emite transições até `READY|ERROR`; polling consistente.
+- [ ] Hub: join/backlog (`lastSeenEventId`)/terminal/confirm testados com `HubConnection`.
+- [ ] Testes de contrato validam payloads contra schemas de
+  `docs/reference/openhands-upstream/` (golden).
+- [ ] `dotnet test` verde; SPEC `Done`; issue fechada pelo PR.

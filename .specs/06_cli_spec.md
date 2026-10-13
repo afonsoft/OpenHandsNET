@@ -107,3 +107,72 @@ endpoints de auth de SPEC 08 (device flow: `POST /oauth/device/code`,
 3. `cloud`/`run` + polling start-task + `--json`/`--watch` (verify: mock API).
 4. TUI Spectre + hub listener + confirmação (verify: manual + snapshot de saída).
 5. `serve` + empacotamento `dotnet tool`/single-file (verify: e2e local).
+
+## 8. Deliverables — arquivos a criar/modificar
+
+```text
+cli/OpenHandsNET.Cli/OpenHandsNET.Cli.csproj        # PackAsTool, ToolCommandName=openhandsnet
+cli/OpenHandsNET.Cli/Program.cs                     # System.CommandLine root
+cli/OpenHandsNET.Cli/Commands/LoginCommand.cs       # device flow + --api-key
+cli/OpenHandsNET.Cli/Commands/LogoutCommand.cs
+cli/OpenHandsNET.Cli/Commands/CloudCommand.cs       # -t|-f|--watch|--server-url|--repo
+cli/OpenHandsNET.Cli/Commands/RunCommand.cs         # headless CI (--json|--exit-on-finish|--timeout-min)
+cli/OpenHandsNET.Cli/Commands/ConversationsCommand.cs # list|status|delete
+cli/OpenHandsNET.Cli/Commands/ServeCommand.cs       # sobe Api local
+cli/OpenHandsNET.Cli/Commands/TuiCommand.cs         # default (sem args)
+cli/OpenHandsNET.Cli/Services/CredentialStore.cs    # ~/.openhandsnet/credentials.json (0600)
+cli/OpenHandsNET.Cli/Services/DeviceFlowClient.cs   # RFC 8628
+cli/OpenHandsNET.Cli/Services/CloudApiClient.cs     # REST typed client
+cli/OpenHandsNET.Cli/Services/SignalRListener.cs    # eventos live
+cli/OpenHandsNET.Cli/Tui/ConversationTui.cs         # Spectre layout + slash commands
+cli/OpenHandsNET.Cli/Tui/EventRenderer.cs           # colored por source/kind
+tests/OpenHandsNET.UnitTests/Cli/{CredentialStoreTests,CloudCommandTests,RunCommandTests}.cs
+```
+
+## 9. Referências e links
+
+### Internas (repo)
+- `docs/reference/openhands-upstream/cli-and-setup.md` — extratos verificados
+  (flags `login|logout|cloud -t|-f`, env `OPENHANDS_CLOUD_URL`).
+- `migration-plan/research/api-inventory.md` §8.
+- `.specs/04_rest_and_signalr_api_spec.md` — endpoints consumidos.
+- `.specs/08_enterprise_security_rbac.md` — device flow + `sk-*` server-side.
+
+### Upstream — código-fonte (baseline `0403f1a`, MIT)
+- Device flow: https://github.com/OpenHands/OpenHands-CLI/blob/0403f1a/openhands_cli/auth/device_flow.py
+- Token storage: …/openhands_cli/auth/token_storage.py · API client: …/api_client.py
+- Login/logout: …/openhands_cli/auth/{login_command,logout_command}.py
+- Cloud mode: …/openhands_cli/cloud/{command,conversation}.py
+- Argparsers (verbos/flags canônicos): https://github.com/OpenHands/OpenHands-CLI/tree/0403f1a/openhands_cli/argparsers
+- TUI (Textual → inspiração p/ Spectre): https://github.com/OpenHands/OpenHands-CLI/tree/0403f1a/openhands_cli/tui
+
+### Documentação oficial
+- CLI cloud (`login|cloud`, `OPENHANDS_CLOUD_URL`): https://docs.openhands.dev/openhands/usage/cli/cloud
+- Local setup (`openhands serve`): https://docs.openhands.dev/openhands/usage/run-openhands/local-setup
+
+### Bibliotecas / padrões
+- Spectre.Console: https://spectreconsole.net/ (prompts, live display, markup)
+- System.CommandLine: https://learn.microsoft.com/dotnet/standard/commandline/
+- Device Authorization Grant RFC 8628: https://www.rfc-editor.org/rfc/rfc8628
+- SignalR .NET client: https://learn.microsoft.com/aspnet/core/signalr/dotnet-client
+- `dotnet tool` packaging: https://learn.microsoft.com/dotnet/core/tools/global-tools-how-to-create
+- Single-file publish: https://learn.microsoft.com/dotnet/core/deploying/single-file/overview
+
+## 10. Guardrails de execução (Devin)
+
+- `~/.openhandsnet/credentials.json` com `0600` (Unix) / ACL restrita (Windows).
+- Nunca logar tokens/api keys — sanitizar em todo output (`***` últimos 4 chars).
+- `--json` desliga rich output por completo (linha única por evento ou JSON final).
+- Exit codes: `0` ok/finished · `1` erro genérico · `2` agent error/stuck · `3` timeout.
+- Sem referência ao projeto Api (contratos HTTP apenas — ver SPEC 01 invariants).
+- `--server-url` > `OPENHANDSNET_SERVER_URL` > `OPENHANDSNET_CLOUD_URL` > default.
+- Device flow só existe se servidor `deployment_mode != oss` ou auth OIDC ativa;
+  em OSS local, `--api-key` é o caminho.
+
+## 11. Definition of Done
+
+- [ ] `login`/`logout`/`cloud -t|-f`/`run`/`conversations`/`serve`/TUI funcionam.
+- [ ] `run --json --exit-on-finish` com exit codes corretos por terminal state.
+- [ ] TUI renderiza eventos live + confirmação; Ctrl+C sai limpo.
+- [ ] `dotnet tool install` do pacote funciona (`openhandsnet --version`).
+- [ ] `dotnet test` verde; SPEC `Done`; issue fechada pelo PR.
