@@ -8,7 +8,7 @@
 | Type | `Feature` |
 | Stack | `.NET 10 · Spectre.Console · System.CommandLine` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Done` |
 | Ticket | [#7](https://github.com/afonsoft/OpenHandsNET/issues/7) (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | `04_rest_and_signalr_api_spec` |
 | Upstream | `OpenHands/OpenHands-CLI` (MIT) |
