@@ -37,6 +37,19 @@ cloud-api, search-events OpenAPI, cli/cloud, local-setup, enterprise.
   Observability (Dockerfile, compose profiles, CI, OTel).
 - Issues #10–#14 criadas com `slice`+`todo` e `blocked_by` reais; Epic #1 atualizado.
 
+## Rodada 3 — correção SPEC-08 (re-escrita v2, status Draft)
+
+- Usuário enviou análise do código real `enterprise/server/` (auth/authorization,
+  routes/*) com 10 correções: Keycloak broker OIDC (não SAML/Okta direto),
+  cookie `keycloak_auth` chunked, dual auth cookie+Bearer, API key org-binding
+  (X-Org-Id > binding > current_org_id), RBAC permission-based (~30 perms,
+  ROLE_PERMISSIONS), dois níveis de role (org_member.role_id vs user.role_id
+  superadmin), invariante último super-admin → 409, device flow → API key 7d,
+  provision-user + rollback, invites batch (admin não convida owner), audit =
+  logging+PostHog (nossa AuditLog é melhoria).
+- SPEC-08 reescrita fiel ao modelo real → **status Draft**; issue #9 `todo→backlog`
+  aguardando re-aprovação.
+
 ## Correções vs guia do usuário (registradas)
 
 - Eventos V1 (`kind`, ULID, `parent_id`) — não V0 (`id` int + action/args).
