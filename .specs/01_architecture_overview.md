@@ -20,7 +20,7 @@
 **So that** todos os domínios (eventos, sandbox, API, UI, CLI) tenham um lar óbvio
 e o código permaneça testável e consistente com o ecossistema afonsoft.
 
-**Problem context:** o guia de migração (`docs/reference/openhandsnet_…_guide.md`,
+**Problem context:** o guia de migração (`openhandsnet_full_specification_and_migration_guide.md`,
 seção 7) propõe `Core/Runtime/Web/Cli`. O padrão já validado em
 `afonsoft/open-webui` usa Clean Architecture de 5 projetos; adotá-lo maximiza
 reuso de layout/chat e reduz divergência de convenções.

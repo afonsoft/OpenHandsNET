@@ -7,7 +7,7 @@ e o template de `afonsoft/open-webui`.
 ## Convenção
 
 - Os 8 módulos seguem a numeração definida em
-  `docs/reference/openhandsnet_full_specification_and_migration_guide.md` (seção 8).
+  `openhandsnet_full_specification_and_migration_guide.md` (raiz) (seção 8).
 - Cada arquivo usa o template SPEC SDD: `0. Metadata` → `7. Task Plan`.
 - `Status`: `Draft` → `Approved` → `Completed` (mover para `docs/specs/` ao entregar).
 - Documentação em pt-BR; código/endpoints em inglês.
