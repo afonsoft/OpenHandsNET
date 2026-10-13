@@ -8,7 +8,7 @@
 | Type | `Feature / API` |
 | Stack | `.NET 10 · MCP C# SDK (stdio + HTTP/SSE)` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Done` |
 | Ticket | [#8](https://github.com/afonsoft/OpenHandsNET/issues/8) (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | `04_rest_and_signalr_api_spec` |
 
