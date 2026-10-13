@@ -295,6 +295,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("text")
                         .HasColumnName("name");
 
+                    b.Property<DateTimeOffset?>("NotBefore")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("not_before");
+
                     b.Property<Guid?>("OrgId")
                         .HasColumnType("uuid")
                         .HasColumnName("org_id");
@@ -340,6 +344,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("text")
                         .HasColumnName("action");
 
+                    b.Property<string>("Ip")
+                        .HasColumnType("text")
+                        .HasColumnName("ip");
+
                     b.Property<Guid?>("OrgId")
                         .HasColumnType("uuid")
                         .HasColumnName("org_id");
@@ -348,9 +356,25 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("text")
                         .HasColumnName("payload_json");
 
+                    b.Property<string>("TargetId")
+                        .HasColumnType("text")
+                        .HasColumnName("target_id");
+
+                    b.Property<string>("TargetType")
+                        .HasColumnType("text")
+                        .HasColumnName("target_type");
+
                     b.Property<DateTimeOffset>("Timestamp")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("timestamp");
+
+                    b.Property<long>("TimestampTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("timestamp_ticks");
+
+                    b.Property<string>("UserAgent")
+                        .HasColumnType("text")
+                        .HasColumnName("user_agent");
 
                     b.Property<string>("UserId")
                         .HasColumnType("text")
@@ -385,6 +409,96 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasName("pk_conversation_skills");
 
                     b.ToTable("conversation_skills", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.DeviceCodeRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("approved_at");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("approved_by_user_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("Denied")
+                        .HasColumnType("boolean")
+                        .HasColumnName("denied");
+
+                    b.Property<string>("DeviceCodeHash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("device_code_hash");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<long>("ExpiresAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("expires_at_ticks");
+
+                    b.Property<DateTimeOffset>("LastPolledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_polled_at");
+
+                    b.Property<int>("PollCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("poll_count");
+
+                    b.Property<string>("UserCode")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("user_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_device_codes");
+
+                    b.HasIndex("DeviceCodeHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_device_codes_device_code_hash");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_device_codes_expires_at");
+
+                    b.HasIndex("UserCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_device_codes_user_code");
+
+                    b.ToTable("device_codes", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.FeatureFlagRecord", b =>
+                {
+                    b.Property<string>("Name")
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("enabled");
+
+                    b.HasKey("Name")
+                        .HasName("pk_feature_flags");
+
+                    b.ToTable("feature_flags", (string)null);
                 });
 
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.HookConfigRecord", b =>
@@ -491,6 +605,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
+                    b.Property<long>("ExpiresAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("expires_at_ticks");
+
                     b.Property<Guid>("OrgId")
                         .HasColumnType("uuid")
                         .HasColumnName("org_id");
@@ -566,10 +684,26 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("uuid")
                         .HasColumnName("plan_id");
 
+                    b.Property<int?>("QuotaConcurrentMax")
+                        .HasColumnType("integer")
+                        .HasColumnName("quota_concurrent_max");
+
+                    b.Property<int?>("QuotaDailyMax")
+                        .HasColumnType("integer")
+                        .HasColumnName("quota_daily_max");
+
+                    b.Property<string>("SettingsJson")
+                        .HasColumnType("text")
+                        .HasColumnName("settings_json");
+
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("slug");
+
+                    b.Property<DateTimeOffset?>("SuspendedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("suspended_at");
 
                     b.HasKey("Id")
                         .HasName("pk_organizations");
@@ -846,9 +980,25 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("text")
                         .HasColumnName("email");
 
+                    b.Property<bool>("EmailVerified")
+                        .HasColumnType("boolean")
+                        .HasColumnName("email_verified");
+
+                    b.Property<string>("IdpType")
+                        .HasColumnType("text")
+                        .HasColumnName("idp_type");
+
+                    b.Property<bool>("OnboardingDone")
+                        .HasColumnType("boolean")
+                        .HasColumnName("onboarding_done");
+
                     b.Property<string>("RolesJson")
                         .HasColumnType("text")
                         .HasColumnName("roles_json");
+
+                    b.Property<DateTimeOffset?>("TosAcceptedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("tos_accepted_at");
 
                     b.HasKey("Id")
                         .HasName("pk_users");

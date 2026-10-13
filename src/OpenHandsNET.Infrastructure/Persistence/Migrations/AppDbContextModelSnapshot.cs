@@ -286,6 +286,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("name");
 
+                    b.Property<DateTimeOffset?>("NotBefore")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("not_before");
+
                     b.Property<Guid?>("OrgId")
                         .HasColumnType("TEXT")
                         .HasColumnName("org_id");
@@ -331,6 +335,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("action");
 
+                    b.Property<string>("Ip")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ip");
+
                     b.Property<Guid?>("OrgId")
                         .HasColumnType("TEXT")
                         .HasColumnName("org_id");
@@ -339,9 +347,25 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("payload_json");
 
+                    b.Property<string>("TargetId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("target_id");
+
+                    b.Property<string>("TargetType")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("target_type");
+
                     b.Property<DateTimeOffset>("Timestamp")
                         .HasColumnType("TEXT")
                         .HasColumnName("timestamp");
+
+                    b.Property<long>("TimestampTicks")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("timestamp_ticks");
+
+                    b.Property<string>("UserAgent")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("user_agent");
 
                     b.Property<string>("UserId")
                         .HasColumnType("TEXT")
@@ -376,6 +400,96 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasName("pk_conversation_skills");
 
                     b.ToTable("conversation_skills", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.DeviceCodeRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("ApprovedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("approved_at");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("approved_by_user_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("Denied")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("denied");
+
+                    b.Property<string>("DeviceCodeHash")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("device_code_hash");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("expires_at");
+
+                    b.Property<long>("ExpiresAtTicks")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("expires_at_ticks");
+
+                    b.Property<DateTimeOffset>("LastPolledAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_polled_at");
+
+                    b.Property<int>("PollCount")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("poll_count");
+
+                    b.Property<string>("UserCode")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("user_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_device_codes");
+
+                    b.HasIndex("DeviceCodeHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_device_codes_device_code_hash");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_device_codes_expires_at");
+
+                    b.HasIndex("UserCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_device_codes_user_code");
+
+                    b.ToTable("device_codes", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.FeatureFlagRecord", b =>
+                {
+                    b.Property<string>("Name")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("enabled");
+
+                    b.HasKey("Name")
+                        .HasName("pk_feature_flags");
+
+                    b.ToTable("feature_flags", (string)null);
                 });
 
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.HookConfigRecord", b =>
@@ -482,6 +596,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("expires_at");
 
+                    b.Property<long>("ExpiresAtTicks")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("expires_at_ticks");
+
                     b.Property<Guid>("OrgId")
                         .HasColumnType("TEXT")
                         .HasColumnName("org_id");
@@ -557,10 +675,26 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("plan_id");
 
+                    b.Property<int?>("QuotaConcurrentMax")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("quota_concurrent_max");
+
+                    b.Property<int?>("QuotaDailyMax")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("quota_daily_max");
+
+                    b.Property<string>("SettingsJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("settings_json");
+
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasColumnType("TEXT")
                         .HasColumnName("slug");
+
+                    b.Property<DateTimeOffset?>("SuspendedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("suspended_at");
 
                     b.HasKey("Id")
                         .HasName("pk_organizations");
@@ -837,9 +971,25 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("email");
 
+                    b.Property<bool>("EmailVerified")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("email_verified");
+
+                    b.Property<string>("IdpType")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("idp_type");
+
+                    b.Property<bool>("OnboardingDone")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("onboarding_done");
+
                     b.Property<string>("RolesJson")
                         .HasColumnType("TEXT")
                         .HasColumnName("roles_json");
+
+                    b.Property<DateTimeOffset?>("TosAcceptedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tos_accepted_at");
 
                     b.HasKey("Id")
                         .HasName("pk_users");

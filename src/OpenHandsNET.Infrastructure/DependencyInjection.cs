@@ -95,6 +95,40 @@ public static class DependencyInjection
         services.AddHostedService<
             OpenHandsNET.Infrastructure.Skills.BuiltinSkillSeedService>();
 
+        // Identity & RBAC (SPEC-08): orgs, keys, device flow, admin, audit.
+        services.Configure<OpenHandsNET.Infrastructure.Identity.AuthOptions>(
+            configuration.GetSection(
+                OpenHandsNET.Infrastructure.Identity.AuthOptions.SectionName));
+        services.AddScoped<OpenHandsNET.Application.Identity.IEffectiveOrgResolver,
+            OpenHandsNET.Infrastructure.Identity.EffectiveOrgResolver>();
+        services.AddScoped<OpenHandsNET.Application.Identity.IUserService,
+            OpenHandsNET.Infrastructure.Identity.UserService>();
+        services.AddScoped<OpenHandsNET.Application.Identity.IApiKeyService,
+            OpenHandsNET.Infrastructure.Identity.ApiKeyService>();
+        services.AddScoped<OpenHandsNET.Application.Identity.IOrgService,
+            OpenHandsNET.Infrastructure.Identity.OrgService>();
+        services.AddScoped<OpenHandsNET.Application.Identity.IInvitationService,
+            OpenHandsNET.Infrastructure.Identity.InvitationService>();
+        services.AddScoped<OpenHandsNET.Application.Identity.ISuperAdminService,
+            OpenHandsNET.Infrastructure.Identity.SuperAdminService>();
+        services.AddScoped<OpenHandsNET.Application.Identity.IAdminUserService,
+            OpenHandsNET.Infrastructure.Identity.AdminUserService>();
+        services.AddScoped<OpenHandsNET.Application.Identity.IProvisioningService,
+            OpenHandsNET.Infrastructure.Identity.ProvisioningService>();
+        services.AddScoped<OpenHandsNET.Application.Identity.IDeviceFlowService,
+            OpenHandsNET.Infrastructure.Identity.DeviceFlowService>();
+        services.AddScoped<OpenHandsNET.Application.Identity.IQuotaService,
+            OpenHandsNET.Infrastructure.Identity.QuotaService>();
+        services.AddScoped<OpenHandsNET.Application.Identity.IAuditService,
+            OpenHandsNET.Infrastructure.Identity.AuditService>();
+        services.AddScoped<OpenHandsNET.Application.Identity.IFeatureFlagService,
+            OpenHandsNET.Infrastructure.Identity.FeatureFlagService>();
+        services.AddSingleton<OpenHandsNET.Application.Identity.IAnalyticsService,
+            OpenHandsNET.Infrastructure.Identity.NullAnalyticsService>();
+        services.AddSingleton<
+            OpenHandsNET.Infrastructure.Identity.Provisioning.IBrokerUserAdmin,
+            OpenHandsNET.Infrastructure.Identity.Provisioning.NullBrokerUserAdmin>();
+
         // MCP (SPEC-07): settings CRUD + client singleton + OAuth + probe.
         services.Configure<OpenHandsNET.Infrastructure.Mcp.McpOptions>(
             configuration.GetSection(

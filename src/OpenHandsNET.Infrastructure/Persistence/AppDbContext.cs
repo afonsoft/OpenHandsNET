@@ -111,6 +111,12 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// <summary>Metered usage rows.</summary>
     public DbSet<UsageRecord> UsageRecords => Set<UsageRecord>();
 
+    /// <summary>Device-flow authorization sessions (SPEC-08 RF-009).</summary>
+    public DbSet<DeviceCodeRecord> DeviceCodes => Set<DeviceCodeRecord>();
+
+    /// <summary>Instance feature flags.</summary>
+    public DbSet<FeatureFlagRecord> FeatureFlags => Set<FeatureFlagRecord>();
+
     /// <summary>ASP.NET DataProtection keys (PersistKeysToDbContext).</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
@@ -136,6 +142,15 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
                 case Sandbox.SandboxRecord s:
                     s.CreatedAtTicks = s.CreatedAt.UtcTicks;
                     s.ExpiresAtTicks = s.ExpiresAt?.UtcTicks;
+                    break;
+                case OrgInvitationRecord i:
+                    i.ExpiresAtTicks = i.ExpiresAt.UtcTicks;
+                    break;
+                case DeviceCodeRecord d:
+                    d.ExpiresAtTicks = d.ExpiresAt.UtcTicks;
+                    break;
+                case AuditEventRecord a:
+                    a.TimestampTicks = a.Timestamp.UtcTicks;
                     break;
             }
         }

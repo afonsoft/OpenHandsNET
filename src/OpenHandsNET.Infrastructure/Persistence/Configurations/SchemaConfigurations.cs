@@ -165,6 +165,31 @@ public sealed class AuditEventConfiguration : IEntityTypeConfiguration<AuditEven
 }
 
 /// <inheritdoc />
+public sealed class DeviceCodeConfiguration : IEntityTypeConfiguration<DeviceCodeRecord>
+{
+    /// <inheritdoc />
+    public void Configure(EntityTypeBuilder<DeviceCodeRecord> b)
+    {
+        b.ToTable("device_codes");
+        b.HasKey(e => e.Id);
+        b.HasIndex(e => e.DeviceCodeHash).IsUnique();
+        b.HasIndex(e => e.UserCode).IsUnique();
+        b.HasIndex(e => e.ExpiresAt);
+    }
+}
+
+/// <inheritdoc />
+public sealed class FeatureFlagConfiguration : IEntityTypeConfiguration<FeatureFlagRecord>
+{
+    /// <inheritdoc />
+    public void Configure(EntityTypeBuilder<FeatureFlagRecord> b)
+    {
+        b.ToTable("feature_flags");
+        b.HasKey(e => e.Name);
+    }
+}
+
+/// <inheritdoc />
 public sealed class PlanConfiguration : IEntityTypeConfiguration<PlanRecord>
 {
     /// <inheritdoc />
