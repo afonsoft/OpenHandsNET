@@ -9,7 +9,7 @@
 | Stack | `.NET 10 · Docker.DotNet · Dockerfile (ubuntu:24.04) · Minimal API in-container` |
 | Repository | `afonsoft/OpenHandsNET` |
 | Status | `Approved` |
-| Ticket | `[a criar]` (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
+| Ticket | [#37](https://github.com/afonsoft/OpenHandsNET/issues/37) (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | `03_runtime_sandbox_spec`, `12_git_scm_integration_spec`, `14_enterprise_operations_spec`, `16_persistent_sandbox_lifecycle` |
 | Touches | `runtime/` (novo), `src/OpenHandsNET.SandboxAgent` (novo), `DockerSandboxService`, `DockerSandboxExecutor`, `ConversationStartWorker`, `WorkspaceProvisioner`, `WarmPoolService` |
 

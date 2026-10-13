@@ -9,7 +9,7 @@
 | Stack | `.NET 10 · Docker.DotNet · EF Core` |
 | Repository | `afonsoft/OpenHandsNET` |
 | Status | `Approved` |
-| Ticket | `[a criar]` (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
+| Ticket | [#36](https://github.com/afonsoft/OpenHandsNET/issues/36) (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | `03_runtime_sandbox_spec`, `10_persistence_efcore`, `14_enterprise_operations_spec` |
 | Touches | `DockerSandboxService`, `SandboxTimeoutWatcher`, `ConversationStartWorker`, `AppConversationService`, `SandboxEndpoints`, `AppConversationEndpoints` |
 

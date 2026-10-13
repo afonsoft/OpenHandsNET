@@ -37,8 +37,8 @@ SPECs (Spec-Driven Development) do port do ecossistema **OpenHands** para
 | `13_devops_observability_spec.md` | Dockerfile, compose profiles, CI, Serilog+OTel | 01 | [#14](https://github.com/afonsoft/OpenHandsNET/issues/14) |
 | `14_enterprise_operations_spec.md` | Sizing de sandbox, DinD+egress, PG externo, doctor/support-bundle, warm pool, usage | 03, 06, 08, 10, 13 | [#29](https://github.com/afonsoft/OpenHandsNET/issues/29) |
 | `15_ui_mobile_and_smart_autonomy_spec.md` | Mobile UX (drawer, repo sem owner), autonomia smart/always-allow, repasse de credencial GH ao sandbox | 03, 04, 09, 12 | [#33](https://github.com/afonsoft/OpenHandsNET/issues/33) |
-| `16_persistent_sandbox_lifecycle_spec.md` | Sleep/wake (pause·stop·resume), wake-on-message, lease por atividade, GC de workspace | 03, 10, 14 | `[a criar]` |
-| `17_runtime_image_blueprint_spec.md` | Imagem Ubuntu própria, sandbox-agent PID 1 (HTTP, deferred-init), blueprint `openhandsnet.yaml` + `.openhands/setup.sh`, SDK auto-detect, warm pool por imagem | 03, 12, 14, 16 | `[a criar]` |
+| `16_persistent_sandbox_lifecycle_spec.md` | Sleep/wake (pause·stop·resume), wake-on-message, lease por atividade, GC de workspace | 03, 10, 14 | [#36](https://github.com/afonsoft/OpenHandsNET/issues/36) |
+| `17_runtime_image_blueprint_spec.md` | Imagem Ubuntu própria, sandbox-agent PID 1 (HTTP, deferred-init), blueprint `openhandsnet.yaml` + `.openhands/setup.sh`, SDK auto-detect, warm pool por imagem | 03, 12, 14, 16 | [#37](https://github.com/afonsoft/OpenHandsNET/issues/37) |
 
 Build order: `01 → (02 ∥ 03 ∥ 10 ∥ 13) → (04 ∥ 09 ∥ 11 ∥ 12) → (05 ∥ 06 ∥ 08) → 07 → 14 → 15 → 16 → 17`.
 
