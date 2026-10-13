@@ -18,8 +18,11 @@ public sealed class DockerSandboxService(
     AppDbContext db,
     IDockerClient docker,
     WorkspaceProvisioner workspaces,
+    DockerNetworkPolicy egress,
+    WarmPoolService warmPool,
     IOptions<SandboxOptions> options,
-    ILogger<DockerSandboxService> logger) : ISandboxService
+    ILogger<DockerSandboxService> logger,
+    Git.GitCredentialProvider? gitCredentials = null) : ISandboxService
 {
     /// <summary>Label prefix on all managed containers.</summary>
     public const string LabelPrefix = "openhandsnet.";
@@ -33,6 +36,7 @@ public sealed class DockerSandboxService(
         span?.SetTag("op", "start");
         var spec = await GetSpecAsync(specId, ct)
             ?? throw new InvalidOperationException($"Sandbox spec {specId} not found");
+        spec = await ApplyProfileAsync(spec, conversationId, ct);
 
         var record = new SandboxRecord
         {
@@ -45,12 +49,36 @@ public sealed class DockerSandboxService(
 
         try
         {
+            // Warm-pool claim: só para spec default (specId vazio) — specs
+            // customizadas têm imagem/recursos próprios e não cabem no pool.
+            var warmId = specId == Guid.Empty && spec.MountWorkspace
+                && conversationId is not null
+                ? await TryClaimWarmAsync(record.Id, conversationId.Value, ct)
+                : null;
+            if (warmId is not null)
+            {
+                record.ContainerId = warmId;
+                record.Pool = "warm";
+                record.Status = SandboxStatus.Running.ToString();
+                await db.SaveChangesAsync(ct);
+                logger.LogInformation(
+                    "Sandbox {SandboxId} attached warm container {ContainerId}",
+                    record.Id, warmId[..12]);
+                return record.ToDomain();
+            }
+
             await EnsureImageAsync(spec.Image, ct);
             var binds = new List<string>();
             if (spec.MountWorkspace && conversationId is not null)
             {
                 var hostPath = await workspaces.PrepareAsync(conversationId.Value, ct);
                 binds.Add($"{hostPath}:{Domain.Sandbox.SandboxSpec.WorkspacePath}:rw");
+            }
+
+            // DinD alternativa fraca: socket mount explícito (SPEC-14 RF-002).
+            if (options.Value.DockerSocketMount && !options.Value.EnableDinD)
+            {
+                binds.Add("/var/run/docker.sock:/var/run/docker.sock");
             }
 
             var labels = new Dictionary<string, string>
@@ -64,20 +92,26 @@ public sealed class DockerSandboxService(
                 labels[$"{LabelPrefix}conversation_id"] = conversationId.Value.ToString();
             }
 
+            var env = spec.Env?.Select(kv => $"{kv.Key}={kv.Value}").ToList() ?? [];
+            env.AddRange(egress.EgressEnv());
+            env.AddRange(await ResolveCredentialEnvAsync(conversationId, ct));
+
             var container = await docker.Containers.CreateContainerAsync(
                 new CreateContainerParameters
                 {
                     Image = spec.Image,
                     Name = $"ohn-sandbox-{record.Id:N}",
                     Labels = labels,
-                    Env = spec.Env?.Select(kv => $"{kv.Key}={kv.Value}").ToList() ?? [],
+                    Env = env,
                     HostConfig = new HostConfig
                     {
                         Memory = spec.MemoryMb * 1024L * 1024L,
                         NanoCPUs = (long)(spec.CpuLimit * 1_000_000_000L),
+                        PidsLimit = spec.PidsLimit,
                         Binds = binds,
                         AutoRemove = false,
                     },
+                    NetworkingConfig = await BuildNetworkingConfigAsync(ct),
                     WorkingDir = Domain.Sandbox.SandboxSpec.WorkspacePath,
                     // Keep the sandbox alive; agent drives work via exec.
                     Cmd = ["sleep", "infinity"],
@@ -86,11 +120,20 @@ public sealed class DockerSandboxService(
 
             await docker.Containers.StartContainerAsync(container.ID, null, ct);
             record.ContainerId = container.ID;
+
+            // DinD opt-in (SPEC-14 RF-002): sidecar privileged compartilhando
+            // o netns do sandbox → DOCKER_HOST=tcp://localhost:2375.
+            if (options.Value.EnableDinD)
+            {
+                await StartDinDSidecarAsync(container.ID, ct);
+            }
+
             record.Status = SandboxStatus.Running.ToString();
             await db.SaveChangesAsync(ct);
             logger.LogInformation(
-                "Sandbox {SandboxId} running (container {ContainerId}, image {Image})",
-                record.Id, container.ID[..12], spec.Image);
+                "Sandbox {SandboxId} running (container {ContainerId}, image {Image}, profile {Profile})",
+                record.Id, container.ID[..12], spec.Image,
+                spec.Profile ?? "custom");
         }
         catch (Exception ex)
         {
@@ -300,9 +343,247 @@ public sealed class DockerSandboxService(
         }
     }
 
+    /// <summary>
+    /// Profile resolution (SPEC-14 RF-001): spec.Profile → conversation →
+    /// org settings → global default. A resolved profile overrides the
+    /// resource fields; explicit custom specs keep their own values.
+    /// </summary>
+    private async Task<Domain.Sandbox.SandboxSpec> ApplyProfileAsync(
+        Domain.Sandbox.SandboxSpec spec, Guid? conversationId, CancellationToken ct)
+    {
+        var name = spec.Profile;
+        if (name is null && conversationId is not null)
+        {
+            var conv = await db.Conversations
+                .AsNoTracking()
+                .Where(c => c.Id == conversationId)
+                .Select(c => new { c.SandboxProfile, c.OrgId })
+                .FirstOrDefaultAsync(ct);
+            name = conv?.SandboxProfile;
+            if (name is null && conv?.OrgId is not null)
+            {
+                var orgJson = await db.Organizations
+                    .AsNoTracking()
+                    .Where(o => o.Id == conv.OrgId)
+                    .Select(o => o.SettingsJson)
+                    .FirstOrDefaultAsync(ct);
+                name = ReadOrgSandboxProfile(orgJson);
+            }
+        }
+        name ??= options.Value.Profile;
+
+        var profile = SandboxProfiles.Resolve(name);
+        if (profile is null)
+        {
+            logger.LogWarning("Unknown sandbox profile '{Profile}' — keeping spec resources", name);
+            return spec;
+        }
+
+        return spec with
+        {
+            MemoryMb = profile.MemoryMb,
+            CpuLimit = profile.CpuLimit,
+            PidsLimit = profile.PidsLimit,
+            Profile = name,
+        };
+    }
+
+    private static string? ReadOrgSandboxProfile(string? settingsJson)
+    {
+        if (settingsJson is null)
+        {
+            return null;
+        }
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(settingsJson);
+            return doc.RootElement.TryGetProperty("sandbox_profile", out var p)
+                && p.ValueKind == System.Text.Json.JsonValueKind.String
+                    ? p.GetString() : null;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Claims a warm container: moves its pre-mounted workspace dir to the
+    /// conversation path (rename keeps the bind target) and returns the id.
+    /// </summary>
+    private async Task<string?> TryClaimWarmAsync(
+        Guid sandboxId, Guid conversationId, CancellationToken ct)
+    {
+        var containerId = await warmPool.TryClaimAsync(ct);
+        if (containerId is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var inspect = await docker.Containers.InspectContainerAsync(containerId, ct);
+            var wsMount = inspect.Mounts.FirstOrDefault(m =>
+                m.Destination == Domain.Sandbox.SandboxSpec.WorkspacePath);
+            if (wsMount is not null)
+            {
+                var target = workspaces.PreparePath(conversationId);
+                if (!Directory.Exists(target))
+                {
+                    Directory.Move(wsMount.Source, target);
+                }
+                else
+                {
+                    Directory.Delete(wsMount.Source, recursive: true);
+                }
+            }
+            await workspaces.PrepareAsync(conversationId, ct);
+            return containerId;
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            logger.LogWarning(e,
+                "Warm claim of {ContainerId} failed — falling back to cold start",
+                containerId[..12]);
+            try
+            {
+                await docker.Containers.RemoveContainerAsync(containerId,
+                    new ContainerRemoveParameters { Force = true }, ct);
+            }
+            catch (DockerApiException)
+            {
+                // best-effort cleanup; pool prune/sweep picks leftovers
+            }
+            return null;
+        }
+    }
+
+    /// <summary>Egress network wiring: internal network for deny/allowlist.</summary>
+    private async Task<NetworkingConfig?> BuildNetworkingConfigAsync(CancellationToken ct)
+    {
+        var net = await egress.EnsureNetworkAsync(ct);
+        return net is null ? null : new NetworkingConfig
+        {
+            EndpointsConfig = new Dictionary<string, EndpointSettings>
+            {
+                [net] = new(),
+            },
+        };
+    }
+
+    /// <summary>
+    /// DinD sidecar sharing the sandbox net namespace (SPEC-14 RF-002):
+    /// privileged <c>docker:dind</c> + shared workspace bind; the sandbox
+    /// reaches the daemon via <c>DOCKER_HOST=tcp://localhost:2375</c>.
+    /// </summary>
+    private async Task StartDinDSidecarAsync(string sandboxContainerId, CancellationToken ct)
+    {
+        const string dindImage = "docker:27-dind";
+        await EnsureImageAsync(dindImage, ct);
+        var inspect = await docker.Containers.InspectContainerAsync(sandboxContainerId, ct);
+        var wsMount = inspect.Mounts.FirstOrDefault(m =>
+            m.Destination == Domain.Sandbox.SandboxSpec.WorkspacePath);
+        var binds = wsMount is null ? []
+            : new List<string>
+            {
+                $"{wsMount.Source}:{Domain.Sandbox.SandboxSpec.WorkspacePath}:rw",
+            };
+        var sidecar = await docker.Containers.CreateContainerAsync(
+            new CreateContainerParameters
+            {
+                Image = dindImage,
+                Name = $"ohn-dind-{sandboxContainerId[..12]}",
+                Labels = new Dictionary<string, string>
+                {
+                    [$"{LabelPrefix}managed"] = "true",
+                    [$"{LabelPrefix}owner"] = options.Value.InstanceOwner,
+                    [$"{LabelPrefix}dind_for"] = sandboxContainerId,
+                },
+                HostConfig = new HostConfig
+                {
+                    Privileged = true,
+                    Binds = binds,
+                    NetworkMode = $"container:{sandboxContainerId}",
+                    AutoRemove = true,
+                },
+                Env = ["DOCKER_TLS_CERTDIR="],
+            }, ct);
+        await docker.Containers.StartContainerAsync(sidecar.ID, null, ct);
+        logger.LogInformation("DinD sidecar {SidecarId} for sandbox {ContainerId}",
+            sidecar.ID[..12], sandboxContainerId[..12]);
+    }
+
     private async Task<SandboxRecord> RequireAsync(Guid id, CancellationToken ct) =>
         await db.Sandboxes.FindAsync([id], ct)
             ?? throw new KeyNotFoundException($"Sandbox {id} not found");
+
+    /// <summary>
+    /// SPEC-15 RF-004: injeta <c>GH_TOKEN</c>/<c>GITHUB_TOKEN</c> (github.com) ou
+    /// <c>GH_ENTERPRISE_TOKEN</c>+<c>GH_HOST</c> (GHES) no container quando o
+    /// dono da conversa (ou o escopo <c>system</c>) tem credencial git para o
+    /// host. Env do container = mesmo domínio de confiança do askpass.
+    /// </summary>
+    private async Task<List<string>> ResolveCredentialEnvAsync(
+        Guid? conversationId, CancellationToken ct)
+    {
+        if (conversationId is null || gitCredentials is null)
+        {
+            return [];
+        }
+
+        var conv = await db.Conversations.AsNoTracking()
+            .Where(c => c.Id == conversationId.Value)
+            .Select(c => new { c.CreatedByUserId, c.SelectedRepository })
+            .FirstOrDefaultAsync(ct);
+        if (conv is null)
+        {
+            return [];
+        }
+
+        var env = new List<string>();
+        var ghToken = await gitCredentials.ResolveTokenAsync(
+            "github.com", conv.CreatedByUserId, ct);
+        if (ghToken is not null)
+        {
+            env.Add($"GH_TOKEN={ghToken}");
+            env.Add($"GITHUB_TOKEN={ghToken}");
+        }
+
+        var repoHost = TryRepoHost(conv.SelectedRepository);
+        if (repoHost is not null &&
+            !repoHost.Equals("github.com", StringComparison.OrdinalIgnoreCase))
+        {
+            var entToken = await gitCredentials.ResolveTokenAsync(
+                repoHost, conv.CreatedByUserId, ct);
+            if (entToken is not null)
+            {
+                env.Add($"GH_ENTERPRISE_TOKEN={entToken}");
+                env.Add($"GH_HOST={repoHost}");
+            }
+        }
+
+        return env;
+    }
+
+    /// <summary>Extrai o host de <c>selected_repository</c> (url ou owner/repo).</summary>
+    private static string? TryRepoHost(string? selectedRepository)
+    {
+        if (string.IsNullOrEmpty(selectedRepository))
+        {
+            return null;
+        }
+
+        if (Uri.TryCreate(selectedRepository, UriKind.Absolute, out var uri))
+        {
+            return uri.Host;
+        }
+
+        return selectedRepository.Count(c => c == '/') == 1
+            && !selectedRepository.StartsWith('/')
+            && !selectedRepository.StartsWith("file:", StringComparison.Ordinal)
+            ? "github.com"
+            : null;
+    }
 
     private async Task ReconcileAsync(SandboxRecord record, CancellationToken ct)
     {

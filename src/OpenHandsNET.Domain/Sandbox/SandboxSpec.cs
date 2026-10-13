@@ -12,7 +12,9 @@ public sealed record SandboxSpec(
     double CpuLimit = 2.0,
     int TimeoutMinutes = 60,
     IReadOnlyDictionary<string, string>? Env = null,
-    bool MountWorkspace = true)
+    bool MountWorkspace = true,
+    int PidsLimit = 512,
+    string? Profile = null)
 {
     /// <summary>Default dev image (git + bash + runtimes) until we publish our own.</summary>
     public const string DefaultImage = "nikolaik/python-nodejs:python3.13-nodejs22";

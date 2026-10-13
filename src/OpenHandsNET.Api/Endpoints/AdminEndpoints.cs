@@ -142,6 +142,18 @@ public static class AdminEndpoints
                 ? Results.NoContent() : Results.NotFound())
             .RequireAuthorization("perm:manage_feature_flags");
 
+        // SPEC-14 RF-004: diagnostics ZIP — readiness, redacted logs, counts,
+        // versions and effective config (secrets masked by construction).
+        app.MapGet("/api/v1/support-bundle", async (
+            OpenHandsNET.Infrastructure.Observability.SupportBundleService svc,
+            CancellationToken ct) =>
+        {
+            var bytes = await svc.GenerateAsync(ct);
+            return Results.File(bytes, "application/zip",
+                $"openhandsnet-support-{DateTimeOffset.UtcNow:yyyyMMdd-HHmmss}.zip");
+        }).RequireAuthorization("perm:manage_super_admins")
+          .WithTags("Admin");
+
         return app;
     }
 

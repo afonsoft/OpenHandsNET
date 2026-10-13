@@ -33,4 +33,4 @@ public sealed record GitCommitResult(
 
 /// <summary>Stored credential metadata (value lives encrypted in secrets).</summary>
 public sealed record GitCredentialMeta(
-    string Host, string Kind, DateTimeOffset CreatedAt);
+    string Host, string Kind, string Owner, DateTimeOffset CreatedAt);

@@ -1,6 +1,7 @@
 using Docker.DotNet;
 using Docker.DotNet.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using OpenHandsNET.Application.Sandbox;
@@ -47,12 +48,20 @@ public sealed class DockerSandboxTests : IAsyncLifetime
             return;
         }
 
-        var provisioner = new WorkspaceProvisioner(
-            Options.Create(new SandboxOptions { WorkspaceRoot = _wsRoot }),
+        var opts = Options.Create(new SandboxOptions
+        {
+            WorkspaceRoot = _wsRoot, InstanceOwner = _owner,
+        });
+        var provisioner = new WorkspaceProvisioner(opts,
             NullLogger<WorkspaceProvisioner>.Instance);
+        var egress = new DockerNetworkPolicy(_docker, opts,
+            NullLogger<DockerNetworkPolicy>.Instance);
+        var pool = new WarmPoolService(_docker, opts, provisioner,
+            new ServiceCollection().BuildServiceProvider()
+                .GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<WarmPoolService>.Instance);
         _service = new DockerSandboxService(
-            _db, _docker, provisioner,
-            Options.Create(new SandboxOptions { InstanceOwner = _owner }),
+            _db, _docker, provisioner, egress, pool, opts,
             NullLogger<DockerSandboxService>.Instance);
         _executor = new DockerSandboxExecutor(_docker);
     }

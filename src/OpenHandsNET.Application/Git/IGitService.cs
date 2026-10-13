@@ -14,7 +14,18 @@ public interface IGitService
 
     /// <summary>Clones <paramref name="repoUrl"/> into <c>/workspace/repo</c> and creates the work branch.</summary>
     Task CloneAsync(
-        DomainSandbox sandbox, string repoUrl, string workBranch, CancellationToken ct);
+        DomainSandbox sandbox, string repoUrl, string workBranch,
+        string? ownerId, CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-15 RF-004: provisiona autenticação git/gh persistente no sandbox do
+    /// <paramref name="ownerId"/> — <c>~/.config/gh/hosts.yml</c> (0600) +
+    /// <c>git config --global credential.helper '!gh auth git-credential'</c> —
+    /// para que <c>gh</c>, <c>git push</c> e afins funcionem depois do clone.
+    /// No-op quando não há token para <c>github.com</c>.
+    /// </summary>
+    Task<bool> ProvisionGhAuthAsync(
+        DomainSandbox sandbox, string? ownerId, CancellationToken ct);
 
     /// <summary>Structured status buckets (porcelain v2).</summary>
     Task<GitChanges> GetChangesAsync(DomainSandbox sandbox, CancellationToken ct);

@@ -204,7 +204,7 @@ public static class AppConversationEndpoints
                 b.InitialMessage.Content.Cast<object>().ToList(),
                 b.InitialMessage.Run),
             b.SelectedRepository, b.AgentType, b.LlmModel, b.SandboxSpecId,
-            b.ConfirmationMode);
+            b.ConfirmationMode, b.SandboxProfile);
 
     private static StartTaskStatus? ParseStatus(string? s) =>
         Enum.TryParse<StartTaskStatus>(s, ignoreCase: true, out var v) ? v : null;
@@ -221,7 +221,7 @@ public static class AppConversationEndpoints
     {
         Id = c.Id.ToString(), Title = c.Title, SandboxId = c.SandboxId?.ToString(),
         SelectedRepository = c.SelectedRepository, AgentType = c.AgentType,
-        LlmModel = c.LlmModel,
+        LlmModel = c.LlmModel, SandboxProfile = c.SandboxProfile,
         ExecutionStatus = c.ExecutionStatus.ToString().ToUpperInvariant(),
         Tags = c.Tags, Pinned = c.Pinned, ConfirmationMode = c.ConfirmationMode,
         CreatedAt = c.CreatedAt, UpdatedAt = c.UpdatedAt,

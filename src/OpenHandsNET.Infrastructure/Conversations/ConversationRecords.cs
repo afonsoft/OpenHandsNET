@@ -25,6 +25,9 @@ public sealed class ConversationRecord : IOrgScoped
 
     /// <summary>Override MCP da conversa (JSON de McpServerConfig[]).</summary>
     public string? McpConfigJson { get; set; }
+
+    /// <summary>Perfil de sizing do sandbox (SPEC-14 RF-001): small|medium|large.</summary>
+    public string? SandboxProfile { get; set; }
     public string? CreatedByUserId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
@@ -42,7 +45,8 @@ public sealed class ConversationRecord : IOrgScoped
         TagsJson is null
             ? []
             : System.Text.Json.JsonSerializer.Deserialize<List<string>>(TagsJson) ?? [],
-        Pinned, CreatedAt, UpdatedAt, CreatedByUserId, ConfirmationMode);
+        Pinned, CreatedAt, UpdatedAt, CreatedByUserId, ConfirmationMode,
+        SandboxProfile);
 }
 
 /// <summary>Persisted start-task row.</summary>

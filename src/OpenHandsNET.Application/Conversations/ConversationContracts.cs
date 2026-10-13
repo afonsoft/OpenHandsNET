@@ -9,7 +9,8 @@ public sealed record CreateConversationRequest(
     string? AgentType,
     string? LlmModel,
     Guid? SandboxSpecId,
-    bool ConfirmationMode = false);
+    bool ConfirmationMode = false,
+    string? SandboxProfile = null);
 
 /// <summary>
 /// User/agent message seed for a new conversation. <paramref name="Run"/>

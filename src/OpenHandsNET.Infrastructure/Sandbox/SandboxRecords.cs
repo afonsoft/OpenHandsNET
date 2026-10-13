@@ -17,6 +17,9 @@ public sealed class SandboxRecord
     public DateTimeOffset? ExpiresAt { get; set; }
     public string? LastError { get; set; }
 
+    /// <summary>Origem do sandbox: <c>cold</c> (criado sob demanda) ou <c>warm</c> (pool).</summary>
+    public string Pool { get; set; } = "cold";
+
     /// <summary>Espelho numérico de <see cref="CreatedAt"/> para ORDER BY.</summary>
     public long CreatedAtTicks { get; set; }
 
@@ -27,7 +30,7 @@ public sealed class SandboxRecord
         Id, SpecId, ConversationId, ContainerId,
         Enum.Parse<SandboxStatus>(Status, ignoreCase: true),
         AgentUrl is null ? null : new Uri(AgentUrl),
-        CreatedAt, ExpiresAt, LastError);
+        CreatedAt, ExpiresAt, LastError, Pool);
 }
 
 /// <summary>Persisted sandbox spec row (env serialized as JSON).</summary>
@@ -41,13 +44,15 @@ public sealed class SandboxSpecRecord
     public int TimeoutMinutes { get; set; }
     public string? EnvJson { get; set; }
     public bool MountWorkspace { get; set; }
+    public int PidsLimit { get; set; }
+    public string? Profile { get; set; }
 
     public SandboxSpec ToDomain() => new(
         Id, Name, Image, MemoryMb, CpuLimit, TimeoutMinutes,
         EnvJson is null ? null
             : System.Text.Json.JsonSerializer
                 .Deserialize<Dictionary<string, string>>(EnvJson),
-        MountWorkspace);
+        MountWorkspace, PidsLimit, Profile);
 
     public static SandboxSpecRecord From(SandboxSpec s) => new()
     {
@@ -56,6 +61,8 @@ public sealed class SandboxSpecRecord
         EnvJson = s.Env is null ? null
             : System.Text.Json.JsonSerializer.Serialize(s.Env),
         MountWorkspace = s.MountWorkspace,
+        PidsLimit = s.PidsLimit,
+        Profile = s.Profile,
     };
 }
 

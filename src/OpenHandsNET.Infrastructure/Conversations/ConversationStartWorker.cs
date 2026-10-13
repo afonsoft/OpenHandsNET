@@ -68,6 +68,18 @@ public sealed class ConversationStartWorker(
         conv.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(ct);
 
+        // SPEC-15 RF-004: gh/git auth persistente no sandbox do dono da
+        // conversa — roda com e sem selected_repository ("inicializar uma
+        // conversa"); no-op quando não há token cadastrado.
+        var gitService = scope.ServiceProvider
+            .GetRequiredService<Application.Git.IGitService>();
+        var sbForProvision = await sandboxService.GetAsync(sandbox.Id, ct);
+        if (sbForProvision is not null)
+        {
+            await gitService.ProvisionGhAuthAsync(
+                sbForProvision, conv.CreatedByUserId, ct);
+        }
+
         await AdvanceAsync(db, task, StartTaskStatus.PreparingRepository, ct);
         if (!string.IsNullOrEmpty(conv.SelectedRepository))
         {
@@ -78,19 +90,25 @@ public sealed class ConversationStartWorker(
                     StringComparison.Ordinal);
             if (gitOpt.CloneMode.Equals("host", StringComparison.OrdinalIgnoreCase))
             {
+                // Host mode: token do dono (ou system) via http.extraHeader.
+                var creds = scope.ServiceProvider.GetRequiredService<
+                    Git.GitCredentialProvider>();
+                var host = TryRepoHost(conv.SelectedRepository);
+                var token = host is null ? null
+                    : await creds.ResolveTokenAsync(host, conv.CreatedByUserId, ct);
                 await workspaces.CloneRepositoryAsync(
-                    conv.Id, conv.SelectedRepository, branch, ct);
+                    conv.Id, conv.SelectedRepository, branch, token, ct);
             }
             else
             {
                 // Default: clone dentro do container (isolado; token via askpass).
-                var git = scope.ServiceProvider
-                    .GetRequiredService<Application.Git.IGitService>();
-                var sbDomain = await sandboxService.GetAsync(sandbox.Id, ct);
+                var sbDomain = sbForProvision
+                    ?? await sandboxService.GetAsync(sandbox.Id, ct);
                 if (sbDomain is not null)
                 {
-                    await git.CloneAsync(
-                        sbDomain, conv.SelectedRepository, branch, ct);
+                    await gitService.CloneAsync(
+                        sbDomain, conv.SelectedRepository, branch,
+                        conv.CreatedByUserId, ct);
                 }
             }
         }
@@ -143,6 +161,21 @@ public sealed class ConversationStartWorker(
                 .GetRequiredService<OpenHandsNET.Application.Agent.IAgentRunnerHost>();
             await host.NotifyMessageAsync(conv.Id, ct);
         }
+    }
+
+    /// <summary>Extrai o host de <c>selected_repository</c> (url ou owner/repo).</summary>
+    private static string? TryRepoHost(string selectedRepository)
+    {
+        if (Uri.TryCreate(selectedRepository, UriKind.Absolute, out var uri))
+        {
+            return uri.Host;
+        }
+
+        return selectedRepository.Count(c => c == '/') == 1
+            && !selectedRepository.StartsWith('/')
+            && !selectedRepository.StartsWith("file:", StringComparison.Ordinal)
+            ? "github.com"
+            : null;
     }
 
     private static async Task AdvanceAsync(
