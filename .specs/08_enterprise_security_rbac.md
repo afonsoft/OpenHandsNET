@@ -8,7 +8,7 @@
 | Type | `Feature / API / Infra` |
 | Stack | `.NET 10 · ASP.NET Core Auth · OIDC · EF Core` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Draft` — **v2 rewrite**: remodelada fiel ao `enterprise/server/` real (correção da modelagem genérica anterior); aguarda re-aprovação |
+| Status | `Approved` — v2 fiel ao `enterprise/server/` real (reescrita aprovada) |
 | Ticket | [#9](https://github.com/afonsoft/OpenHandsNET/issues/9) (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | `04_rest_and_signalr_api_spec` |
 | Upstream | `enterprise/server/{auth,routes}/` — **Polyform Free Trial: conceitos/contratos apenas; todo o código C# é reimplementação original** |
