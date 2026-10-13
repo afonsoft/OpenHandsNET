@@ -17,4 +17,7 @@
     <Using Include="Xunit" />
     <Using Include="Shouldly" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Events/Golden/*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using OpenHandsNET.Application.Events;
+using OpenHandsNET.Infrastructure.Eventing;
 using OpenHandsNET.Infrastructure.Persistence;
 
 namespace OpenHandsNET.Infrastructure;
@@ -40,6 +42,13 @@ public static class DependencyInjection
         });
         services.AddHealthChecks().AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);
         services.AddHostedService<DatabaseMigrator>();
+
+        // Event stream (SPEC-02): store + in-process fan-out + dispatcher/webhooks.
+        services.AddSingleton<IEventBus, InMemoryEventBus>();
+        services.AddScoped<IEventService, EventStore>();
+        services.AddSingleton<WebhookDispatcher>();
+        services.AddHostedService<EventDispatcher>();
+        services.AddHttpClient("webhooks");
         return services;
     }
 
