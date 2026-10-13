@@ -1,0 +1,45 @@
+@using OpenHandsNET.Client.Services
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div class="term-host" id="@_id"></div>
+
+@code {
+    [Parameter, EditorRequired] public ConversationStateService State { get; set; } = default!;
+
+    private readonly string _id = $"term-{Guid.NewGuid():N}";
+    private int _written;
+    private bool _initialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("ohnTerm.init", _id);
+            _initialized = true;
+        }
+
+        if (!_initialized) { return; }
+
+        // Reescreve o buffer acumulado quando diverge do que já foi pro xterm.
+        var buf = State.TerminalBuffer.ToString();
+        if (buf.Length > _written)
+        {
+            await JS.InvokeVoidAsync("ohnTerm.write", _id, buf[_written..]);
+            _written = buf.Length;
+        }
+        else if (buf.Length < _written)
+        {
+            // buffer reset (ex.: nova run) → re-render completo
+            await JS.InvokeVoidAsync("ohnTerm.clear", _id);
+            await JS.InvokeVoidAsync("ohnTerm.write", _id, buf);
+            _written = buf.Length;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("ohnTerm.dispose", _id); }
+        catch { /* circuito já fechado */ }
+    }
+}

@@ -1,0 +1,39 @@
+@using OpenHandsNET.Client.Services
+@inject OpenHandsNetApiClient Api
+
+<div class="commit-list">
+    @if (_commits is null)
+    {
+        <div class="empty-state">loading…</div>
+    }
+    else if (_commits.Count == 0)
+    {
+        <div class="empty-state">no commits yet — the agent's git_commit calls appear here</div>
+    }
+    else
+    {
+        @foreach (var c in _commits)
+        {
+            <div class="commit-item">
+                <span class="when">@Str(c, "date")</span>
+                <span class="sha">@(Str(c, "sha")?[..Math.Min(8, (Str(c, "sha") ?? "").Length)])</span>
+                <span class="msg">@Str(c, "message")</span>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ConversationStateService State { get; set; } = default!;
+
+    private IReadOnlyList<System.Text.Json.JsonElement>? _commits;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { _commits = await Api.GetGitLogAsync(State.Conversation!.Id); }
+        catch { _commits = []; }
+    }
+
+    private static string? Str(System.Text.Json.JsonElement el, string name) =>
+        el.TryGetProperty(name, out var v) ? v.GetString() : null;
+}

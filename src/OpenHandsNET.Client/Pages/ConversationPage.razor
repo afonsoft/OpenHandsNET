@@ -1,0 +1,119 @@
+@page "/conversations/{Id}"
+@using OpenHandsNET.Client.Services
+@using OpenHandsNET.Client.Components.Conversation
+@inject ConversationStateService State
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@implements IAsyncDisposable
+
+<PageTitle>@(State.Conversation?.Title ?? "conversation") · OpenHandsNET</PageTitle>
+
+<div class="conv-page">
+    <div class="topbar">
+        <a href="/" title="back" style="font-size:16px">←</a>
+        <span class="title">@(State.Conversation?.Title ?? "loading…")</span>
+        @if (State.Conversation?.SelectedRepository is { } repo)
+        {
+            <span class="repo">&#x1F4C1; @repo</span>
+        }
+        @if (State.Conversation?.LlmModel is { } model)
+        {
+            <span class="repo">@model</span>
+        }
+        <span class="spacer"></span>
+        <span class="tokens">@(State.PromptTokens + State.CompletionTokens) tok ·
+            $@State.CostUsd.ToString("F4")</span>
+        <span class="badge @BadgeClass(State.ExecutionStatus)">
+            <span class="dot"></span>@State.ExecutionStatus
+        </span>
+        <span class="badge @(State.Connected ? "running" : "stopped")"
+              title="hub connection">
+            <span class="dot"></span>@(State.Connected ? "live" : "offline")
+        </span>
+    </div>
+
+    <div class="panes" id="conv-panes">
+        <div class="pane-left">
+            <ChatPane State="State" />
+            <PlannerPane State="State" />
+        </div>
+        <div class="pane-divider"></div>
+        <div class="pane-right">
+            <div class="tab-bar" role="tablist">
+                @foreach (var (tab, label) in _tabs)
+                {
+                    <button role="tab" aria-selected="@(_tab == tab)"
+                            class="@(_tab == tab ? "active" : "")"
+                            @onclick="() => _tab = tab">@label</button>
+                }
+            </div>
+            <div class="tab-body" role="tabpanel">
+                @if (_tab == "terminal")
+                {
+                    <TerminalTab State="State" />
+                }
+                else if (_tab == "browser")
+                {
+                    <BrowserTab State="State" />
+                }
+                else if (_tab == "files")
+                {
+                    <FilesTab State="State" />
+                }
+                else if (_tab == "diff")
+                {
+                    <DiffTab State="State" />
+                }
+                else if (_tab == "commits")
+                {
+                    <CommitsTab State="State" />
+                }
+                else
+                {
+                    <UsageTab State="State" />
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+
+    private string _tab = "terminal";
+
+    private static readonly (string Tab, string Label)[] _tabs =
+    [
+        ("terminal", "Terminal"), ("browser", "Browser"), ("files", "Files"),
+        ("diff", "Diff"), ("commits", "Commits"), ("usage", "Usage"),
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.Changed += OnChanged;
+        await State.OpenAsync(Id);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("ohnSplit.init", "conv-panes", Id);
+        }
+    }
+
+    private async void OnChanged()
+    {
+        try { await InvokeAsync(StateHasChanged); }
+        catch { }
+    }
+
+    private static string BadgeClass(string status) =>
+        "badge " + status.ToLowerInvariant().Replace(' ', '_');
+
+    public async ValueTask DisposeAsync()
+    {
+        State.Changed -= OnChanged;
+        await State.DisposeAsync();
+    }
+}

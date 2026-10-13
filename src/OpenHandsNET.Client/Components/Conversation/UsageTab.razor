@@ -1,0 +1,24 @@
+@using OpenHandsNET.Client.Services
+
+<div class="usage-grid">
+    <div class="usage-card">
+        <div class="num">@State.PromptTokens.ToString("N0")</div>
+        <div class="lbl">prompt tokens</div>
+    </div>
+    <div class="usage-card">
+        <div class="num">@State.CompletionTokens.ToString("N0")</div>
+        <div class="lbl">completion tokens</div>
+    </div>
+    <div class="usage-card">
+        <div class="num">$@State.CostUsd.ToString("F4")</div>
+        <div class="lbl">estimated cost</div>
+    </div>
+    <div class="usage-card">
+        <div class="num">@State.Events.Count</div>
+        <div class="lbl">events</div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ConversationStateService State { get; set; } = default!;
+}

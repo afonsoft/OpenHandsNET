@@ -1,0 +1,35 @@
+@using OpenHandsNET.Client.Services
+
+@if (State.Screenshots.Count == 0)
+{
+    <div class="empty-state">No browser activity yet — screenshots appear here when the agent browses.</div>
+}
+else
+{
+    <div class="browser-view">
+        <div class="shot">
+            <img src="data:image/png;base64,@Selected" alt="browser screenshot" />
+        </div>
+        @if (State.Screenshots.Count > 1)
+        {
+            <div class="film">
+                @for (var i = 0; i < State.Screenshots.Count; i++)
+                {
+                    var idx = i;
+                    <img src="data:image/png;base64,@State.Screenshots[idx]"
+                         class="@(idx == _sel ? "sel" : "")"
+                         @onclick="() => _sel = idx" alt="frame @idx" />
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public ConversationStateService State { get; set; } = default!;
+
+    private int _sel = -1;
+    private string Selected => State.Screenshots[
+        _sel < 0 || _sel >= State.Screenshots.Count
+            ? State.Screenshots.Count - 1 : _sel];
+}

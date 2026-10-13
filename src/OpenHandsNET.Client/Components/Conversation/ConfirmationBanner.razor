@@ -1,0 +1,15 @@
+@using OpenHandsNET.Client.Services
+
+<div class="confirm-banner" role="alertdialog" aria-label="Action confirmation">
+    <span>&#x1F512;</span>
+    <span class="what" title="@Pending.Summary">@Pending.Summary</span>
+    <button class="primary" @onclick="() => OnConfirm.InvokeAsync(true)">Approve</button>
+    <button class="danger" @onclick="() => OnConfirm.InvokeAsync(false)">Reject</button>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public ConversationStateService.PendingActionInfo Pending { get; set; } = default!;
+
+    [Parameter] public EventCallback<bool> OnConfirm { get; set; }
+}

@@ -1,0 +1,41 @@
+@page "/shared/{Id}"
+@using OpenHandsNET.Client.Services
+@using OpenHandsNET.Client.Components.Conversation
+@inject OpenHandsNetApiClient Api
+
+<PageTitle>shared conversation · OpenHandsNET</PageTitle>
+
+<div class="conv-page">
+    <div class="shared-banner">
+        &#x1F517; Shared conversation — view only.
+    </div>
+    <div class="chat-scroll" style="padding:16px">
+        @if (_events is null)
+        {
+            <div class="ev-card condense">loading…</div>
+        }
+        else if (_events.Count == 0)
+        {
+            <div class="empty-state">conversation not found or empty</div>
+        }
+        else
+        {
+            @foreach (var e in _events)
+            {
+                <EventCard Event="e" />
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+
+    private IReadOnlyList<ClientEvent>? _events;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { _events = await Api.GetEventsAsync(Id, limit: 100); }
+        catch { _events = []; }
+    }
+}
