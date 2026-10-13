@@ -27,6 +27,7 @@ public sealed class ObservabilityTests : IDisposable
             builder.UseSetting("Observability:OtlpEndpoint", string.Empty);
             builder.UseSetting("Sandbox:WorkspaceRoot",
                 Path.Combine(Path.GetTempPath(), $"ohn-obs-ws-{Guid.NewGuid():N}"));
+            builder.UseSetting("Sandbox:InstanceOwner", $"test-{Guid.NewGuid():N}");
         });
         _http = _factory.CreateClient();
     }

@@ -21,6 +21,7 @@ public sealed class DockerSandboxTests : IAsyncLifetime
         Path.GetTempPath(), $"ohn-sbx-{Guid.NewGuid():N}.db");
     private readonly string _wsRoot = Path.Combine(
         Path.GetTempPath(), $"ohn-ws-{Guid.NewGuid():N}");
+    private readonly string _owner = $"test-{Guid.NewGuid():N}";
     private AppDbContext _db = null!;
     private IDockerClient _docker = null!;
     private DockerSandboxService _service = null!;
@@ -50,7 +51,9 @@ public sealed class DockerSandboxTests : IAsyncLifetime
             Options.Create(new SandboxOptions { WorkspaceRoot = _wsRoot }),
             NullLogger<WorkspaceProvisioner>.Instance);
         _service = new DockerSandboxService(
-            _db, _docker, provisioner, Options.Create(new SandboxOptions()), NullLogger<DockerSandboxService>.Instance);
+            _db, _docker, provisioner,
+            Options.Create(new SandboxOptions { InstanceOwner = _owner }),
+            NullLogger<DockerSandboxService>.Instance);
         _executor = new DockerSandboxExecutor(_docker);
     }
 
@@ -174,6 +177,7 @@ public sealed class DockerSandboxTests : IAsyncLifetime
                 Labels = new Dictionary<string, string>
                 {
                     ["openhandsnet.managed"] = "true",
+                    ["openhandsnet.owner"] = _owner,
                     ["openhandsnet.sandbox_id"] = Guid.NewGuid().ToString(),
                 },
             }, CancellationToken.None);

@@ -116,18 +116,19 @@ public static class GitEndpoints
         IAppConversationService svc, ISandboxExecutor executor,
         HttpContext http, CancellationToken ct)
     {
-        var sb = await SandboxOfAsync(id, svc, http, ct);
-        if (sb is null)
-        {
-            return OpenHandsNetProblemFactory.Create(
-                http, 409, OpenHandsNetProblemFactory.SandboxNotRunning);
-        }
-
+        // Input inválido → 400 antes de qualquer checagem de estado.
         var dir = path ?? "/workspace";
         if (!IsValidWorkspacePath(dir))
         {
             return OpenHandsNetProblemFactory.Create(
                 http, 400, "path must stay under /workspace");
+        }
+
+        var sb = await SandboxOfAsync(id, svc, http, ct);
+        if (sb is null)
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 409, OpenHandsNetProblemFactory.SandboxNotRunning);
         }
 
         var files = await executor.ListFilesAsync(sb, dir, ct);
@@ -142,17 +143,17 @@ public static class GitEndpoints
         IAppConversationService svc, ISandboxExecutor executor,
         HttpContext http, CancellationToken ct)
     {
+        if (path is null || !IsValidWorkspacePath(path))
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 400, "path must stay under /workspace");
+        }
+
         var sb = await SandboxOfAsync(id, svc, http, ct);
         if (sb is null)
         {
             return OpenHandsNetProblemFactory.Create(
                 http, 409, OpenHandsNetProblemFactory.SandboxNotRunning);
-        }
-
-        if (!IsValidWorkspacePath(path))
-        {
-            return OpenHandsNetProblemFactory.Create(
-                http, 400, "path must stay under /workspace");
         }
 
         const int limit = 1024 * 1024; // 1 MB

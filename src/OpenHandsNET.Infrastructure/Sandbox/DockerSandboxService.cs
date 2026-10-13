@@ -56,6 +56,7 @@ public sealed class DockerSandboxService(
             var labels = new Dictionary<string, string>
             {
                 [$"{LabelPrefix}managed"] = "true",
+                [$"{LabelPrefix}owner"] = options.Value.InstanceOwner,
                 [$"{LabelPrefix}sandbox_id"] = record.Id.ToString(),
             };
             if (conversationId is not null)
@@ -262,6 +263,7 @@ public sealed class DockerSandboxService(
                     ["label"] = new Dictionary<string, bool>
                     {
                         [$"{LabelPrefix}managed=true"] = true,
+                        [$"{LabelPrefix}owner={options.Value.InstanceOwner}"] = true,
                     },
                 },
             }, ct);
