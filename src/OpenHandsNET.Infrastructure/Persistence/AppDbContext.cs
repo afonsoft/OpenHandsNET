@@ -114,6 +114,34 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// <summary>ASP.NET DataProtection keys (PersistKeysToDbContext).</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
+    /// <summary>
+    /// Espelha CreatedAt/UpdatedAt em colunas *Ticks — SQLite não ordena
+    /// <see cref="DateTimeOffset"/>; os espelhos são sincronizados aqui para
+    /// que serviços continuem escrevendo apenas os campos DateTimeOffset.
+    /// </summary>
+    public override Task<int> SaveChangesAsync(CancellationToken ct = default)
+    {
+        foreach (var entry in ChangeTracker.Entries())
+        {
+            switch (entry.Entity)
+            {
+                case Conversations.ConversationRecord c:
+                    c.CreatedAtTicks = c.CreatedAt.UtcTicks;
+                    c.UpdatedAtTicks = c.UpdatedAt.UtcTicks;
+                    break;
+                case Conversations.StartTaskRecord t:
+                    t.CreatedAtTicks = t.CreatedAt.UtcTicks;
+                    t.UpdatedAtTicks = t.UpdatedAt.UtcTicks;
+                    break;
+                case Sandbox.SandboxRecord s:
+                    s.CreatedAtTicks = s.CreatedAt.UtcTicks;
+                    s.ExpiresAtTicks = s.ExpiresAt?.UtcTicks;
+                    break;
+            }
+        }
+        return base.SaveChangesAsync(ct);
+    }
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

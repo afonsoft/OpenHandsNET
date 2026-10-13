@@ -97,6 +97,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<long>("CreatedAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_at_ticks");
+
                     b.Property<string>("CreatedByUserId")
                         .HasColumnType("text")
                         .HasColumnName("created_by_user_id");
@@ -144,11 +148,15 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
+                    b.Property<long>("UpdatedAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("updated_at_ticks");
+
                     b.HasKey("Id")
                         .HasName("pk_conversations");
 
-                    b.HasIndex("CreatedAt")
-                        .HasDatabaseName("ix_conversations_created_at");
+                    b.HasIndex("CreatedAtTicks")
+                        .HasDatabaseName("ix_conversations_created_at_ticks");
 
                     b.HasIndex("ExecutionStatus")
                         .HasDatabaseName("ix_conversations_execution_status");
@@ -171,6 +179,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<long>("CreatedAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_at_ticks");
+
                     b.Property<string>("Detail")
                         .HasColumnType("text")
                         .HasColumnName("detail");
@@ -188,6 +200,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
+
+                    b.Property<long>("UpdatedAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("updated_at_ticks");
 
                     b.HasKey("Id")
                         .HasName("pk_conversation_start_tasks");
@@ -908,9 +924,17 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<long>("CreatedAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_at_ticks");
+
                     b.Property<DateTimeOffset?>("ExpiresAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
+
+                    b.Property<long?>("ExpiresAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("expires_at_ticks");
 
                     b.Property<string>("LastError")
                         .HasColumnType("text")

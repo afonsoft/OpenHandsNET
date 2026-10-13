@@ -77,18 +77,19 @@ public sealed class AppConversationService(
 
         if (query.CreatedAtGte is not null)
         {
-            q = q.Where(r => r.CreatedAt >= query.CreatedAtGte);
+            var gte = query.CreatedAtGte.Value.UtcTicks;
+            q = q.Where(r => r.CreatedAtTicks >= gte);
         }
 
         if (CursorPaginator.TryDecode(query.PageId, out var ticks, out var id))
         {
-            q = q.Where(r => r.CreatedAt.UtcTicks < ticks
-                || (r.CreatedAt.UtcTicks == ticks && string.Compare(r.Id.ToString(), id) < 0));
+            q = q.Where(r => r.CreatedAtTicks < ticks
+                || (r.CreatedAtTicks == ticks && string.Compare(r.Id.ToString(), id) < 0));
         }
 
         var limit = Math.Clamp(query.Limit, 1, 100);
         var rows = await q
-            .OrderByDescending(r => r.CreatedAt).ThenByDescending(r => r.Id)
+            .OrderByDescending(r => r.CreatedAtTicks).ThenByDescending(r => r.Id)
             .Take(limit + 1)
             .ToListAsync(ct);
         var hasMore = rows.Count > limit;
@@ -113,7 +114,8 @@ public sealed class AppConversationService(
 
         if (query.CreatedAtGte is not null)
         {
-            q = q.Where(r => r.CreatedAt >= query.CreatedAtGte);
+            var gte = query.CreatedAtGte.Value.UtcTicks;
+            q = q.Where(r => r.CreatedAtTicks >= gte);
         }
 
         return q.LongCountAsync(ct);

@@ -207,7 +207,7 @@ public sealed class DockerSandboxService(
             q = q.Where(r => r.ConversationId == conversationId);
         }
 
-        var rows = await q.OrderByDescending(r => r.CreatedAt).ToListAsync(ct);
+        var rows = await q.OrderByDescending(r => r.CreatedAtTicks).ToListAsync(ct);
         foreach (var row in rows)
         {
             await ReconcileAsync(row, ct);

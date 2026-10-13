@@ -39,9 +39,9 @@ public sealed class SandboxTimeoutWatcher(
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var service = scope.ServiceProvider.GetRequiredService<ISandboxService>();
 
-        var now = DateTimeOffset.UtcNow;
+        var nowTicks = DateTimeOffset.UtcNow.UtcTicks;
         var expired = await db.Sandboxes
-            .Where(r => r.Status == "Running" && r.ExpiresAt < now)
+            .Where(r => r.Status == "Running" && r.ExpiresAtTicks < nowTicks)
             .ToListAsync(ct);
         foreach (var record in expired)
         {
