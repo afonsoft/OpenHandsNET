@@ -279,8 +279,22 @@ public sealed class DockerSandboxService(
             }
 
             logger.LogWarning("Removing orphan sandbox container {ContainerId}", c.ID[..12]);
-            await docker.Containers.RemoveContainerAsync(
-                c.ID, new ContainerRemoveParameters { Force = true }, ct);
+            try
+            {
+                await docker.Containers.RemoveContainerAsync(
+                    c.ID, new ContainerRemoveParameters { Force = true }, ct);
+            }
+            catch (DockerContainerNotFoundException)
+            {
+                // already gone
+            }
+            catch (DockerApiException ex)
+            {
+                // daemon races (ex.: removal already in progress) não bloqueiam o sweep
+                logger.LogWarning(ex,
+                    "Orphan container {ContainerId} removal reported an error (ignored)",
+                    c.ID[..12]);
+            }
         }
     }
 
