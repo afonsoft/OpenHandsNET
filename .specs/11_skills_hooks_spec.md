@@ -8,7 +8,7 @@
 | Type | `Feature / API` |
 | Stack | `.NET 10 · EF Core · Markdown` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Done` |
 | Ticket | [#12](https://github.com/afonsoft/OpenHandsNET/issues/12) (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | `02_event_stream_spec`, `10_persistence_efcore_spec` |
 | Consumed by | `09_agent_engine_spec` (system prompt + invoke_skill + hooks no loop) |
