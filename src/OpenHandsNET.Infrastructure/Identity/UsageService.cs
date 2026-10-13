@@ -30,19 +30,17 @@ public sealed class UsageService(AppDbContext db) : IUsageService
             })
             .FirstOrDefaultAsync(ct);
 
-        var convIds = db.Conversations.AsNoTracking()
-            .Where(c => c.OrgId == orgId)
-            .Select(c => c.Id);
-
         var nowTicks = now.UtcTicks;
-        var sandboxes = await db.Sandboxes.AsNoTracking()
-            .Where(s => s.ConversationId != null && convIds.Contains(s.ConversationId))
-            .Select(s => new
+        var sandboxes = await (
+            from s in db.Sandboxes.AsNoTracking()
+            join c in db.Conversations.AsNoTracking()
+                on s.ConversationId equals (Guid?)c.Id
+            where c.OrgId == orgId
+            select new
             {
                 s.Status, s.CreatedAt,
                 ExpiresTicks = s.ExpiresAtTicks ?? nowTicks,
-            })
-            .ToListAsync(ct);
+            }).ToListAsync(ct);
 
         var seconds = sandboxes.Sum(s =>
             Math.Max(0,
