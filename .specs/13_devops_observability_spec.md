@@ -8,7 +8,7 @@
 | Type | `Infra` |
 | Stack | `Docker · GitHub Actions · Serilog · OpenTelemetry` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Done` |
 | Ticket | [#14](https://github.com/afonsoft/OpenHandsNET/issues/14) (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | `01_architecture_overview` |
 | Touches | todas as SPECs (saúde, métricas, deploy) |
