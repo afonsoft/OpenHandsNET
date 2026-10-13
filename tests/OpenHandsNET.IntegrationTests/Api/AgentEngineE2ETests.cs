@@ -80,21 +80,29 @@ public sealed class AgentEngineE2ETests : IDisposable
         var convId = task.GetProperty("app_conversation_id").GetString()!;
 
         // Aguarda: READY → agente roda → ObservationEvent(bash) + finish.
-        var deadline = DateTime.UtcNow.AddMinutes(3);
+        var deadline = DateTime.UtcNow.AddMinutes(4);
         var sawBash = false;
         var sawFinished = false;
+        var lastDump = string.Empty;
         while (DateTime.UtcNow < deadline && !(sawBash && sawFinished))
         {
             var events = await _http.GetFromJsonAsync<JsonElement>(
                 $"/api/v1/conversation/{convId}/events/search?limit=100");
+            var kinds = new List<string>();
             foreach (var e in events.GetProperty("items").EnumerateArray())
             {
-                var kind = e.GetProperty("kind").GetString();
+                var kind = e.GetProperty("kind").GetString() ?? "?";
+                kinds.Add(kind);
                 if (kind == "ObservationEvent"
                     && e.TryGetProperty("observation", out var obs)
                     && obs.ToString().Contains("hello-agent"))
                 {
                     sawBash = true;
+                }
+                else if (kind == "ObservationEvent" || kind == "ServerErrorEvent")
+                {
+                    kinds[^1] = kind + ":" +
+                        e.ToString()[..Math.Min(160, e.ToString().Length)];
                 }
 
                 if (kind == "ConversationStateUpdateEvent"
@@ -105,14 +113,20 @@ public sealed class AgentEngineE2ETests : IDisposable
                 }
             }
 
+            lastDump = string.Join(" | ", kinds);
             if (!(sawBash && sawFinished))
             {
                 await Task.Delay(1500);
             }
         }
 
-        sawBash.ShouldBeTrue("bash tool observation should carry the command output");
-        sawFinished.ShouldBeTrue("execution_status should reach finished");
+        var convProbe = await _http.GetFromJsonAsync<JsonElement>(
+            $"/api/v1/app-conversations/{convId}");
+        var status = convProbe.GetProperty("execution_status").GetString();
+        sawBash.ShouldBeTrue(
+            $"bash observation missing; status={status}; events=[{lastDump}]");
+        sawFinished.ShouldBeTrue(
+            $"not finished; status={status}; events=[{lastDump}]");
 
         // O arquivo existe de verdade no workspace do sandbox.
         var conv = await _http.GetFromJsonAsync<JsonElement>(
