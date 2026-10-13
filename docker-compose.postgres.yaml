@@ -1,0 +1,29 @@
+# OpenHandsNET + PostgreSQL — compose com:
+#   docker compose -f docker-compose.yaml -f docker-compose.postgres.yaml up -d --build
+services:
+  app:
+    environment:
+      - OPENHANDSNET_Database__Provider=PostgreSql
+      - OPENHANDSNET_Database__ConnectionString=Host=postgres;Database=openhandsnet;Username=openhandsnet;Password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: openhandsnet-postgres
+    environment:
+      - POSTGRES_DB=openhandsnet
+      - POSTGRES_USER=openhandsnet
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - openhandsnet-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openhandsnet -d openhandsnet"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+volumes:
+  openhandsnet-pgdata:

@@ -1,0 +1,71 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  IMAGE: ghcr.io/afonsoft/openhandsnet
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  image:
+    name: container image → ghcr.io
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: setup buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+      - name: login ghcr
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: docker meta
+        id: meta
+        run: |
+          TAG=${GITHUB_REF_NAME#v}
+          echo "tags=${IMAGE}:${TAG},${IMAGE}:latest" >> "$GITHUB_OUTPUT"
+
+      - name: build + push
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  cli-tool:
+    name: CLI tool package artifact
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: setup dotnet 10
+        uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d # v5.0.0
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: pack CLI
+        run: |
+          dotnet pack cli/OpenHandsNET.Cli -c Release -o artifacts \
+            -p:Version=${GITHUB_REF_NAME#v} || \
+            echo "::warning::CLI pack not configured as tool yet (SPEC-06)"
+
+      - name: upload artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: openhandsnet-cli-${{ github.ref_name }}
+          path: artifacts/
+          if-no-files-found: ignore

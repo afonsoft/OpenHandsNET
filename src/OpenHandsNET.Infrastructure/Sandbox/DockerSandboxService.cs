@@ -28,6 +28,9 @@ public sealed class DockerSandboxService(
     public async Task<DomainSandbox> StartAsync(
         Guid specId, Guid? conversationId, CancellationToken ct)
     {
+        using var span = Telemetry.OpenNetTelemetry.StartSpan(
+            "sandbox_op", conversationId);
+        span?.SetTag("op", "start");
         var spec = await GetSpecAsync(specId, ct)
             ?? throw new InvalidOperationException($"Sandbox spec {specId} not found");
 
@@ -168,6 +171,8 @@ public sealed class DockerSandboxService(
             }
         }
 
+        Telemetry.OpenNetTelemetry.SandboxSeconds
+            .Inc((DateTimeOffset.UtcNow - record.CreatedAt).TotalSeconds);
         db.Sandboxes.Remove(record);
         await db.SaveChangesAsync(ct);
     }

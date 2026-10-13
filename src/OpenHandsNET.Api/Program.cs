@@ -6,6 +6,7 @@ using OpenHandsNET.Infrastructure;
 using OpenHandsNET.Infrastructure.Persistence;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+using Prometheus;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,11 +15,23 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddEnvironmentVariables("OPENHANDSNET_");
 
 // Serilog: two-stage bootstrap so startup failures are still logged.
-builder.Services.AddSerilog((services, lc) => lc
-    .ReadFrom.Configuration(builder.Configuration)
-    .ReadFrom.Services(services)
-    .Enrich.FromLogContext()
-    .WriteTo.Console());
+// Sinks: console + rolling file + OTLP (quando endpoint configurado).
+var serilogOtlp = builder.Configuration["Observability:OtlpEndpoint"];
+builder.Services.AddSerilog((services, lc) =>
+{
+    lc.ReadFrom.Configuration(builder.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext()
+        .Enrich.WithProperty("service", "openhandsnet-api")
+        .WriteTo.Console()
+        .WriteTo.File("logs/openhandsnet-.log",
+            rollingInterval: RollingInterval.Day,
+            retainedFileCountLimit: 14);
+    if (!string.IsNullOrWhiteSpace(serilogOtlp))
+    {
+        lc.WriteTo.OpenTelemetry(o => o.Endpoint = serilogOtlp);
+    }
+});
 
 // Options
 builder.Services.Configure<OpenHandsNetOptions>(builder.Configuration);
@@ -31,7 +44,9 @@ builder.Services.AddOpenTelemetry()
     {
         tracing.AddAspNetCoreInstrumentation()
             .AddHttpClientInstrumentation()
-            .AddEntityFrameworkCoreInstrumentation();
+            .AddEntityFrameworkCoreInstrumentation()
+            .AddSource(OpenHandsNET.Infrastructure.Telemetry
+                .OpenNetTelemetry.ActivitySourceName);
         if (otlpEnabled)
         {
             tracing.AddOtlpExporter(o => o.Endpoint = new Uri(otlpEndpoint!));
@@ -41,7 +56,9 @@ builder.Services.AddOpenTelemetry()
     {
         metrics.AddAspNetCoreInstrumentation()
             .AddHttpClientInstrumentation()
-            .AddRuntimeInstrumentation();
+            .AddRuntimeInstrumentation()
+            .AddMeter(OpenHandsNET.Infrastructure.Telemetry
+                .OpenNetTelemetry.MeterName);
         if (otlpEnabled)
         {
             metrics.AddOtlpExporter(o => o.Endpoint = new Uri(otlpEndpoint!));
@@ -77,6 +94,22 @@ if (app.Environment.IsDevelopment())
 
 app.UseSerilogRequestLogging();
 
+// SPEC-13 RF-004: correlation enrichers em todo log do request.
+// (Middleware roda pré-routing → conversation_id vem do path.)
+app.Use(async (ctx, next) =>
+{
+    using var tracePush = Serilog.Context.LogContext
+        .PushProperty("trace_id", ctx.TraceIdentifier);
+    var match = System.Text.RegularExpressions.Regex.Match(
+        ctx.Request.Path.Value ?? "",
+        @"/app-conversations/([0-9a-fA-F-]{36})");
+    using var convPush = match.Success
+        ? Serilog.Context.LogContext
+            .PushProperty("conversation_id", match.Groups[1].Value)
+        : null;
+    await next();
+});
+
 // .NET 10: MapStaticAssets serves the WASM client files (incl. _framework)
 // as endpoint-routed assets; UseBlazorFrameworkFiles is the legacy middleware
 // and must NOT be combined with it (request reaches end of pipeline -> 500).
@@ -98,6 +131,10 @@ app.MapHealthChecks("/api/v1/ready", new Microsoft.AspNetCore.Diagnostics.Health
 {
     Predicate = check => check.Tags.Contains("ready"),
 });
+app.MapReadinessEndpoints();
+
+// Prometheus scrape endpoint (SPEC-13 RF-004): openhandsnet_* counters.
+app.UseMetricServer("/metrics");
 
 // SPA fallback: any non-API route serves the Blazor WASM shell.
 app.MapFallbackToFile("index.html");
