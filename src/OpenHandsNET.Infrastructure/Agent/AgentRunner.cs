@@ -65,6 +65,7 @@ public sealed class AgentRunner(
         var sandboxes = services.GetRequiredService<ISandboxService>();
         var executor = services.GetRequiredService<ISandboxExecutor>();
         var tools = services.GetRequiredService<IToolRegistry>();
+        var mcp = services.GetService<Application.Mcp.IMcpClientService>();
         var llm = services.GetRequiredService<IAgentLlmProvider>();
         var condenser = services.GetRequiredService<ICondenser>();
         var opt = services.GetRequiredService<IOptions<AgentLlmOptions>>().Value;
@@ -107,8 +108,8 @@ public sealed class AgentRunner(
 
         try
         {
-            await LoopAsync(events, db, conv, sandbox, executor, tools, llm,
-                condenser, opt, ct);
+            await LoopAsync(events, db, conv, sandbox, executor, tools, mcp,
+                llm, condenser, opt, ct);
         }
         catch (OperationCanceledException)
         {
@@ -119,12 +120,22 @@ public sealed class AgentRunner(
                     : ConversationExecutionStatus.Running,
                 CancellationToken.None);
         }
+        finally
+        {
+            // SPEC-07 RF-002: conexões MCP órfãs fecham com a conversa.
+            if (mcp is not null)
+            {
+                await mcp.DisconnectAsync(
+                    conversationId, CancellationToken.None);
+            }
+        }
     }
 
     private async Task LoopAsync(
         IEventService events, AppDbContext db, ConversationRecord conv,
         Domain.Sandbox.Sandbox sandbox, ISandboxExecutor executor,
-        IToolRegistry tools, IAgentLlmProvider llm, ICondenser condenser,
+        IToolRegistry tools, Application.Mcp.IMcpClientService? mcp,
+        IAgentLlmProvider llm, ICondenser condenser,
         AgentLlmOptions opt, CancellationToken ct)
     {
         var (history, lastEventId) = await BuildHistoryAsync(
@@ -162,6 +173,13 @@ public sealed class AgentRunner(
 
             var request = await condenser.CondenseAsync(history, ct);
             var toolSchemas = tools.All.Select(t => t.Schema).ToList();
+            // SPEC-07: catálogo MCP dinâmico da conversa (falha → degradado).
+            if (mcp is not null)
+            {
+                toolSchemas.AddRange(
+                    (await mcp.ListToolsAsync(conversationId, ct))
+                    .Select(Application.Mcp.McpToolCatalog.ToSchema));
+            }
 
             var text = new System.Text.StringBuilder();
             var calls = new SortedDictionary<int, (string id, string name,

@@ -202,7 +202,33 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
             $"/api/v1/secrets/{Uri.EscapeDataString(name)}", ct))
             .EnsureSuccessStatusCode();
 
+    // ---- mcp (SPEC-07) ----------------------------------------------------
+
+    public Task<IReadOnlyList<JsonElement>> ListMcpServersAsync(
+        CancellationToken ct = default) => GetListAsync("/api/v1/mcp/servers", ct);
+
+    public async Task SaveMcpServerAsync(
+        object config, CancellationToken ct = default) =>
+        (await http.PostAsJsonAsync("/api/v1/mcp/servers", config, Json, ct))
+            .EnsureSuccessStatusCode();
+
+    public async Task DeleteMcpServerAsync(
+        string name, CancellationToken ct = default) =>
+        (await http.DeleteAsync(
+            $"/api/v1/mcp/servers/{Uri.EscapeDataString(name)}", ct))
+            .EnsureSuccessStatusCode();
+
+    public async Task<JsonElement> ProbeMcpServerAsync(
+        object config, CancellationToken ct = default) =>
+        await (await http.PostAsJsonAsync(
+            "/api/v1/mcp/test", new { server = config }, Json, ct))
+            .Content.ReadFromJsonAsync<JsonElement>(Json, ct);
+
     // ---- config ---------------------------------------------------------
+
+    private async Task<IReadOnlyList<JsonElement>> GetListAsync(
+        string url, CancellationToken ct) =>
+        await http.GetFromJsonAsync<List<JsonElement>>(url, Json, ct) ?? [];
 
     public Task<JsonElement> GetConfigAsync(CancellationToken ct = default) =>
         http.GetFromJsonAsync<JsonElement>("/api/v1/config", ct)!;

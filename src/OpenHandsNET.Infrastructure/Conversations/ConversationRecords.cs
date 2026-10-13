@@ -22,6 +22,9 @@ public sealed class ConversationRecord : IOrgScoped
 
     /// <summary>Agente deve iniciar ao atingir READY (initial_message.run).</summary>
     public bool PendingKickoff { get; set; }
+
+    /// <summary>Override MCP da conversa (JSON de McpServerConfig[]).</summary>
+    public string? McpConfigJson { get; set; }
     public string? CreatedByUserId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }

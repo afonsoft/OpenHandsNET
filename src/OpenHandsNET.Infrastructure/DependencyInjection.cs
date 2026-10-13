@@ -95,6 +95,21 @@ public static class DependencyInjection
         services.AddHostedService<
             OpenHandsNET.Infrastructure.Skills.BuiltinSkillSeedService>();
 
+        // MCP (SPEC-07): settings CRUD + client singleton + OAuth + probe.
+        services.Configure<OpenHandsNET.Infrastructure.Mcp.McpOptions>(
+            configuration.GetSection(
+                OpenHandsNET.Infrastructure.Mcp.McpOptions.SectionName));
+        services.AddScoped<OpenHandsNET.Application.Mcp.IMcpSettingsService,
+            OpenHandsNET.Infrastructure.Mcp.McpSettingsService>();
+        services.AddScoped<OpenHandsNET.Application.Mcp.IMcpOAuthService,
+            OpenHandsNET.Infrastructure.Mcp.McpOAuthService>();
+        services.AddHttpClient("mcp-oauth");
+        services.AddSingleton<
+            OpenHandsNET.Infrastructure.Mcp.McpClientService>();
+        services.AddSingleton<OpenHandsNET.Application.Mcp.IMcpClientService>(
+            sp => sp.GetRequiredService<
+                OpenHandsNET.Infrastructure.Mcp.McpClientService>());
+
         // Agent engine (SPEC-09): LLM provider + tool registry + runner host.
         services.Configure<OpenHandsNET.Application.Agent.AgentLlmOptions>(
             configuration.GetSection("AgentLlm"));

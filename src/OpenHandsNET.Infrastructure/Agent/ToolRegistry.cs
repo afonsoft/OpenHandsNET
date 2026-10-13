@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Infrastructure.Agent.Tools;
@@ -45,14 +46,25 @@ public sealed class ToolRegistry : IToolRegistry
             return hit;
         }
 
-        // mcp__{server}__{tool} — bridge chega com SPEC-07.
-        return name.StartsWith("mcp__", StringComparison.Ordinal)
-            ? new AgentTool(
-                new ToolSchema(name, "MCP tool (bridge pending SPEC-07)",
-                    JsonDocument.Parse("""{"type":"object"}""").RootElement.Clone()),
-                Risky: true,
-                Handler: (ctx, args, ct) => Task.FromResult(
-                    ToolResult.Error("MCP tool bridge lands with SPEC-07")))
-            : null;
+        // mcp__{server}__{tool} — SPEC-07: bridge para IMcpClientService.
+        if (!Application.Mcp.McpToolCatalog.TryParse(
+            name, out var server, out var tool))
+        {
+            return null;
+        }
+
+        return new AgentTool(
+            new ToolSchema(name, $"MCP tool {tool}@{server}",
+                JsonDocument.Parse("""{"type":"object"}""").RootElement.Clone()),
+            Risky: true,
+            Handler: async (ctx, args, ct) =>
+            {
+                var mcp = ctx.Services.GetService<
+                    Application.Mcp.IMcpClientService>();
+                return mcp is null
+                    ? ToolResult.Error("MCP client service indisponível")
+                    : await mcp.CallToolAsync(
+                        ctx.ConversationId, server, tool, args, ct);
+            });
     }
 }

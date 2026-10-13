@@ -15,6 +15,7 @@
     <PackageReference Include="System.Security.Cryptography.Xml" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="prometheus-net.AspNetCore" />
+    <PackageReference Include="ModelContextProtocol" />
     <!-- Pin explícito: levanta SQLitePCLRaw.lib.e_sqlite3 transitivo para versão sem CVE -->
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />
   </ItemGroup>

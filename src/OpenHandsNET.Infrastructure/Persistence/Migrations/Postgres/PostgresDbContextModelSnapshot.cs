@@ -115,6 +115,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("text")
                         .HasColumnName("llm_model");
 
+                    b.Property<string>("McpConfigJson")
+                        .HasColumnType("text")
+                        .HasColumnName("mcp_config_json");
+
                     b.Property<Guid?>("OrgId")
                         .HasColumnType("uuid")
                         .HasColumnName("org_id");
