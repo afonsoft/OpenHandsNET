@@ -81,6 +81,20 @@ Padrão **Plan-and-Execute**: ler `.specs/` → plano → implementar em
 `feature/*` → `build → test` → PR. SPECs: `write-specs` → aprovação →
 `create-issues` → `execute-specs`/`tdd-spec` → review → merge.
 
+## Autonomia do agente
+
+- **Execute antes de anunciar**: nunca termine o turno dizendo "vou
+  criar/alterar X" sem que X já exista — a chamada de ferramenta acontece
+  no mesmo turno, não no próximo.
+- **Erro de ferramenta é retry, não pausa**: falha de schema/args (ex.:
+  `expected object, got string`) → corrija os argumentos e repita na hora;
+  erro recuperável nunca espera `continue` do usuário.
+- **Verifique o artefato**: depois de write/edit, confirme com leitura ou
+  listagem antes de afirmar que o arquivo foi criado.
+- **Turno completo**: tarefas multi-passo seguem até entregar ou bater num
+  gate explícito (aprovação de SPEC, credencial, operação destrutiva) —
+  nunca pare no meio "aguardando".
+
 ## Response Style
 
 - Português (pt-BR) para o usuário; código/commits em inglês (Conventional Commits).
