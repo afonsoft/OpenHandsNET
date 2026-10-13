@@ -8,7 +8,7 @@
 | Type | `Feature / Infra` |
 | Stack | `.NET 10 · EF Core 10 · SQLite · Npgsql` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Done` (PR #20) |
 | Ticket | [#11](https://github.com/afonsoft/OpenHandsNET/issues/11) (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | `01_architecture_overview` |
 | Feeds | todas as SPECs de domínio (02–13 persistem via estas tabelas) |
