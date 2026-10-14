@@ -25,7 +25,8 @@ public sealed class SandboxAgentExecutor(
     IDataProtectionProvider? dp = null) : ISandboxExecutor
 {
     private readonly DockerSandboxExecutor _dockerExec = new(docker);
-    private readonly ConcurrentDictionary<Guid, Task<bool>> _capability = new();
+    private readonly ConcurrentDictionary<Guid,
+        Task<SandboxAgentClient.AgentAliveInfo?>> _capability = new();
     private readonly IDataProtector? _protector =
         dp?.CreateProtector("openhandsnet.sandbox.session");
 
@@ -41,6 +42,32 @@ public sealed class SandboxAgentExecutor(
         }
 
         return await transport.ExecAsync(command, timeout, ct);
+    }
+
+    /// <inheritdoc />
+    public async IAsyncEnumerable<ExecChunk> ExecStreamingAsync(
+        DomainSandbox sandbox, string command, TimeSpan timeout,
+        [System.Runtime.CompilerServices.EnumeratorCancellation]
+        CancellationToken ct)
+    {
+        var transport = await ResolveAsync(sandbox, ct);
+        if (transport is null || transport.AgentVersion < 2)
+        {
+            // Agente legado (v1) ou docker exec — agrega sem stream.
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var result = transport is null
+                ? await _dockerExec.ExecAsync(sandbox, command, timeout, ct)
+                : await transport.ExecAsync(command, timeout, ct);
+            yield return new ExecCompleted(
+                result, (long)sw.ElapsedMilliseconds, false);
+            yield break;
+        }
+
+        await foreach (var chunk in transport.ExecStreamAsync(
+            command, timeout, ct))
+        {
+            yield return chunk;
+        }
     }
 
     /// <inheritdoc />
@@ -142,7 +169,7 @@ public sealed class SandboxAgentExecutor(
         }
 
         var capable = await _capability.GetOrAdd(sandbox.Id, _ => ProbeAsync(sandbox));
-        if (!capable)
+        if (capable is null)
         {
             return null;
         }
@@ -155,23 +182,44 @@ public sealed class SandboxAgentExecutor(
             return null;
         }
 
-        return new SandboxAgentTransport(httpFactory, baseUrl, key);
+        return new SandboxAgentTransport(
+            httpFactory, baseUrl, key, capable.AgentVersion);
     }
 
-    private async Task<bool> ProbeAsync(DomainSandbox sandbox)
+    /// <inheritdoc/>
+    public async Task<SandboxAgentInfo?> AgentInfoAsync(
+        DomainSandbox sandbox, CancellationToken ct)
+    {
+        var alive = await _capability.GetOrAdd(
+            sandbox.Id, _ => ProbeAsync(sandbox));
+        return alive is null
+            ? null
+            : new SandboxAgentInfo(alive.AgentVersion, alive.State,
+                alive.UptimeS, alive.Sessions);
+    }
+
+    /// <summary>Agent version detected on this sandbox (null = legacy/none).</summary>
+    internal async Task<int?> AgentVersionAsync(
+        DomainSandbox sandbox, CancellationToken ct) =>
+        (await _capability.GetOrAdd(sandbox.Id, _ => ProbeAsync(sandbox)))
+            ?.AgentVersion;
+
+    private async Task<SandboxAgentClient.AgentAliveInfo?> ProbeAsync(
+        DomainSandbox sandbox)
     {
         try
         {
             var baseUrl = await agent.ResolveBaseUrlAsync(
                 sandbox.ContainerId!, CancellationToken.None);
-            return baseUrl is not null
-                && await agent.ProbeAliveAsync(baseUrl, CancellationToken.None);
+            return baseUrl is null
+                ? null
+                : await agent.ProbeAliveV2Async(baseUrl, CancellationToken.None);
         }
         catch (Exception ex)
         {
             logger.LogDebug(ex, "agent probe failed for sandbox {Id}",
                 sandbox.Id);
-            return false;
+            return null;
         }
     }
 
@@ -222,12 +270,84 @@ public sealed class SandboxAgentExecutor(
 
 /// <summary>Transporte HTTP fino contra o agente in-container.</summary>
 public sealed class SandboxAgentTransport(
-    IHttpClientFactory httpFactory, Uri baseUrl, string sessionKey)
+    IHttpClientFactory httpFactory, Uri baseUrl, string sessionKey,
+    int agentVersion = 1)
 {
+    /// <summary>Versão do protocolo do agente (SPEC-24 RF-002: ≥2 = SSE).</summary>
+    public int AgentVersion { get; } = agentVersion;
+
     private static readonly JsonSerializerOptions Json = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
     };
+
+    /// <summary>
+    /// <c>POST /exec/stream</c> (SPEC-24 RF-002): SSE <c>{channel,text}</c>
+    /// por chunk + <c>{type:"exit",…}</c> terminal.
+    /// </summary>
+    public async IAsyncEnumerable<ExecChunk> ExecStreamAsync(
+        string command, TimeSpan timeout,
+        [System.Runtime.CompilerServices.EnumeratorCancellation]
+        CancellationToken ct,
+        string? sessionId = null)
+    {
+        var req = NewRequest(HttpMethod.Post, "/exec/stream");
+        req.Content = JsonContent.Create(new
+        {
+            command,
+            timeout_seconds = (int)Math.Ceiling(timeout.TotalSeconds),
+            session_id = sessionId,
+        }, options: Json);
+        var res = await httpFactory.CreateClient("sandbox-agent").SendAsync(
+            req, HttpCompletionOption.ResponseHeadersRead, ct);
+        if (!res.IsSuccessStatusCode)
+        {
+            res.EnsureSuccessStatusCode();
+        }
+
+        await using var stream = await res.Content.ReadAsStreamAsync(ct);
+        using var reader = new StreamReader(stream);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (await reader.ReadLineAsync(ct) is { } line)
+        {
+            if (!line.StartsWith("data:", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var data = line["data:".Length..].Trim();
+            using var doc = JsonDocument.Parse(data);
+            var root = doc.RootElement;
+            if (root.TryGetProperty("type", out var t)
+                && t.GetString() == "exit")
+            {
+                yield return new ExecCompleted(
+                    new CommandResult(
+                        root.TryGetProperty("exit_code", out var ec)
+                            ? ec.GetInt32() : -1,
+                        root.TryGetProperty("std_out", out var so)
+                            ? so.GetString() ?? "" : "",
+                        root.TryGetProperty("std_err", out var se)
+                            ? se.GetString() ?? "" : "",
+                        root.TryGetProperty("timed_out", out var to)
+                            && to.GetBoolean()),
+                    root.TryGetProperty("duration_ms", out var dm)
+                        ? dm.GetInt64() : (long)sw.ElapsedMilliseconds,
+                    root.TryGetProperty("truncated", out var tr)
+                        && tr.GetBoolean());
+                yield break;
+            }
+
+            var channel = root.TryGetProperty("channel", out var ch)
+                ? ch.GetString() ?? "stdout" : "stdout";
+            var text = root.TryGetProperty("text", out var tx)
+                ? tx.GetString() ?? "" : "";
+            if (text.Length > 0)
+            {
+                yield return new OutputChunk(channel, text);
+            }
+        }
+    }
 
     public async Task<CommandResult> ExecAsync(
         string command, TimeSpan timeout, CancellationToken ct,

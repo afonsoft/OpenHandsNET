@@ -115,13 +115,19 @@ public sealed class AgentRunner(
                 }, ct);
         }
 
+        // SPEC-24 RF-003: counters de atividade do run (progress/summary).
+        var activity = new RunActivityTracker();
         try
         {
             await LoopAsync(events, db, conv, sandbox, executor, tools, mcp,
-                llm, condenser, opt, ct);
+                llm, condenser, opt, activity, ct);
         }
         catch (OperationCanceledException)
         {
+            // SPEC-24 RF-006: pausa/interrupção também fecha com summary.
+            await activity.SummaryAsync(events, conversationId,
+                _pauseRequested ? "paused" : "interrupted", null,
+                CancellationToken.None);
             await SetStatusAsync(events, db, conv,
                 _pauseRequested ? "paused" : "idle",
                 _pauseRequested
@@ -145,7 +151,8 @@ public sealed class AgentRunner(
         Domain.Sandbox.Sandbox sandbox, ISandboxExecutor executor,
         IToolRegistry tools, Application.Mcp.IMcpClientService? mcp,
         IAgentLlmProvider llm, ICondenser condenser,
-        AgentLlmOptions opt, CancellationToken ct)
+        AgentLlmOptions opt, RunActivityTracker activity,
+        CancellationToken ct)
     {
         var builder = services.GetRequiredService<Context.ConversationHistoryBuilder>();
         var contextMeter = services.GetRequiredService<IContextMeter>();
@@ -182,6 +189,8 @@ public sealed class AgentRunner(
             using var iterSpan = Telemetry.OpenNetTelemetry.StartSpan(
                 "agent_iteration", conversationId, sandbox.Id.ToString());
             iterSpan?.SetTag("iteration", iteration);
+            await activity.ProgressAsync(events, conversationId, iteration,
+                opt.MaxIterations, "iteration", ct);
             if (await CheckSignalsAsync(events, db, conv))
             {
                 return;
@@ -393,6 +402,10 @@ public sealed class AgentRunner(
                     logger.LogInformation(
                         "Context overflow — promoting model {From} → {To}",
                         fromModel, target);
+                    await activity.DiagnosticAsync(events, conversationId,
+                        "info", "context_promotion",
+                        $"context overflow — promoted {fromModel} → {target}",
+                        CancellationToken.None);
                     model = target;
                     conv.LlmModel = target;
                     await events.AppendAsync(conversationId,
@@ -417,6 +430,10 @@ public sealed class AgentRunner(
                     overflowRetried = true;
                     logger.LogWarning(cex,
                         "Context overflow — forcing compaction and retry");
+                    await activity.DiagnosticAsync(events, conversationId,
+                        "warn", "context_overflow",
+                        "context overflow — compacting and retrying",
+                        CancellationToken.None);
                     overflowPending = true;
                     iteration--;
                     continue;
@@ -428,6 +445,11 @@ public sealed class AgentRunner(
                     ToolName = "llm", ToolCallId = "",
                     Error = SecretRedactor.Redact(cex.Message),
                 }, CancellationToken.None);
+                await activity.DiagnosticAsync(events, conversationId,
+                    "error", "context_overflow",
+                    SecretRedactor.Redact(cex.Message), CancellationToken.None);
+                await activity.SummaryAsync(events, conversationId,
+                    "error", "context overflow", CancellationToken.None);
                 await SetStatusAsync(events, db, conv, "error",
                     ConversationExecutionStatus.Error, CancellationToken.None);
                 return;
@@ -516,6 +538,9 @@ public sealed class AgentRunner(
                     ToolName = "llm", ToolCallId = "",
                     Error = SecretRedactor.Redact(ex.Message),
                 }, CancellationToken.None);
+                await activity.SummaryAsync(events, conversationId,
+                    "error", SecretRedactor.Redact(ex.Message),
+                    CancellationToken.None);
                 await SetStatusAsync(events, db, conv, "error",
                     ConversationExecutionStatus.Error, CancellationToken.None);
                 return;
@@ -673,7 +698,9 @@ public sealed class AgentRunner(
                         TimeSpan.FromSeconds(opt.ToolTimeoutSeconds));
                     var ctx = new ToolCallContext(conversationId, sandbox,
                         executor, events, services,
-                        TimeSpan.FromSeconds(opt.ToolTimeoutSeconds));
+                        TimeSpan.FromSeconds(opt.ToolTimeoutSeconds),
+                        call.Id, actionEvent.Id);
+                    activity.NoteToolCall(call.Name, call.ArgumentsJson);
                     result = await tool.Handler(ctx,
                         TryParseJson(call.ArgumentsJson)
                             ?? JsonDocument.Parse("{}").RootElement.Clone(),
@@ -765,6 +792,8 @@ public sealed class AgentRunner(
                         }, ct);
                     }
 
+                    await activity.SummaryAsync(events, conversationId,
+                        "completed", finalText, CancellationToken.None);
                     await SetStatusAsync(events, db, conv, "finished",
                         ConversationExecutionStatus.Finished, ct);
                     if (hooks is not null)
@@ -799,6 +828,12 @@ public sealed class AgentRunner(
             ToolName = "loop", ToolCallId = "",
             Error = $"max_iterations ({opt.MaxIterations}) reached",
         }, CancellationToken.None);
+        await activity.DiagnosticAsync(events, conversationId, "warn",
+            "max_iterations",
+            $"max_iterations ({opt.MaxIterations}) reached",
+            CancellationToken.None);
+        await activity.SummaryAsync(events, conversationId, "stuck", null,
+            CancellationToken.None);
         await SetStatusAsync(events, db, conv, "stuck",
             ConversationExecutionStatus.Error, CancellationToken.None);
     }

@@ -57,7 +57,16 @@ public sealed class SandboxAgentClient(
     }
 
     /// <summary>Probe <c>GET /alive</c> — 2s, null quando sem agente.</summary>
-    public async Task<bool> ProbeAliveAsync(Uri baseUrl, CancellationToken ct)
+    public async Task<bool> ProbeAliveAsync(Uri baseUrl, CancellationToken ct) =>
+        (await ProbeAliveV2Async(baseUrl, ct)) is not null;
+
+    /// <summary>
+    /// Probe <c>GET /alive</c> retornando o payload (SPEC-24 RF-006):
+    /// <c>agent_version</c>, <c>state</c>, <c>uptime_s</c>, <c>sessions</c>.
+    /// Null quando inalcançável.
+    /// </summary>
+    public async Task<AgentAliveInfo?> ProbeAliveV2Async(
+        Uri baseUrl, CancellationToken ct)
     {
         try
         {
@@ -67,14 +76,37 @@ public sealed class SandboxAgentClient(
             var http = httpFactory.CreateClient("sandbox-agent");
             var res = await http.GetAsync(
                 new Uri(baseUrl, "/alive"), timeout.Token);
-            return res.StatusCode == HttpStatusCode.OK;
+            if (res.StatusCode != HttpStatusCode.OK)
+            {
+                return null;
+            }
+
+            var body = await res.Content.ReadFromJsonAsync<AliveBody>(ct);
+            return new AgentAliveInfo(
+                body?.AgentVersion ?? 1,
+                body?.State ?? "unknown",
+                body?.UptimeS ?? 0,
+                body?.Sessions ?? 0);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException
-            || !ct.IsCancellationRequested)
+        catch (Exception) when (!ct.IsCancellationRequested)
         {
-            return false;
+            return null;
         }
     }
+
+    /// <summary>Payload de <c>GET /alive</c> v2.</summary>
+    public sealed record AgentAliveInfo(
+        int AgentVersion, string State, long UptimeS, int Sessions);
+
+    private sealed record AliveBody(
+        [property: System.Text.Json.Serialization.JsonPropertyName("agent_version")]
+        int? AgentVersion,
+        [property: System.Text.Json.Serialization.JsonPropertyName("state")]
+        string? State,
+        [property: System.Text.Json.Serialization.JsonPropertyName("uptime_s")]
+        long? UptimeS,
+        [property: System.Text.Json.Serialization.JsonPropertyName("sessions")]
+        int? Sessions);
 
     /// <summary><c>POST /api/init</c> — ativação dormant→ready (bootstrap key).</summary>
     public async Task<bool> InitAsync(Uri baseUrl, string initKey,

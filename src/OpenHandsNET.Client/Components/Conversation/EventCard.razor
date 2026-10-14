@@ -88,6 +88,84 @@
         </div>
         break;
 
+    @* ---- SPEC-24: run-activity kinds (snake_case no contrato V1) ---- *@
+
+    case "command_output":
+        <div class="ev-card cmd">
+            <div class="ev-head">
+                <span class="tool">&#x25B6; @(Event.Str("channel") ?? "stdout")</span>
+                <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+            </div>
+            <pre class="cmd-out @(Event.Str("channel") == "stderr" ? "err" : "")">@Event.Str("text")</pre>
+        </div>
+        break;
+
+    case "tool_progress":
+        <div class="ev-card">
+            <div class="ev-head">
+                <span class="tool">&#x23F3; @(Event.Str("phase") ?? "…")</span>
+                <span>@(Event.Str("message") ?? "")</span>
+                @if (Event.Get("percent").ValueKind == JsonValueKind.Number)
+                {
+                    <span>@Event.Get("percent").GetInt32()%</span>
+                }
+                <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+            </div>
+        </div>
+        break;
+
+    case "files_changed":
+        <div class="ev-card">
+            <div class="ev-head">
+                <span class="tool">&#x1F4DD; files changed</span>
+                <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+            </div>
+            <div class="file-chips">
+                @foreach (var f in FileChanges())
+                {
+                    <span class="chip @f.op">@f.op · @f.path</span>
+                }
+            </div>
+        </div>
+        break;
+
+    case "run_progress":
+        <div class="ev-card condense">
+            — iteration @Event.Get("iteration").GetInt32()/@Event.Get("max_iterations").GetInt32()
+            · @Event.Str("phase")
+            · @(Event.Get("tools_used").ValueKind == JsonValueKind.Number
+                ? Event.Get("tools_used").GetInt32() : 0) tools
+            · @(Event.Get("files_touched").ValueKind == JsonValueKind.Number
+                ? Event.Get("files_touched").GetInt32() : 0) files —
+        </div>
+        break;
+
+    case "work_summary":
+        <div class="ev-card summary">
+            <div class="ev-head">
+                <span>&#x1F4CB; work summary</span>
+                <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+            </div>
+            <p>@Event.Str("summary")</p>
+            <div class="file-chips">
+                @foreach (var f in StringList("files_changed"))
+                {
+                    <span class="chip modify">@f</span>
+                }
+            </div>
+        </div>
+        break;
+
+    case "agent_diagnostic":
+        <div class="ev-card diag-@(Event.Str("severity") ?? "info")">
+            <div class="ev-head">
+                <span>&#x1F6A6; @Event.Str("code")</span>
+                <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+            </div>
+            <p>@Event.Str("message")</p>
+        </div>
+        break;
+
     case "decision_auto":
         <div class="ev-card">
             <div class="ev-head">
@@ -136,6 +214,37 @@
         var v = Event.Get("value");
         return v.ValueKind == JsonValueKind.String ? v.GetString() ?? "state update"
             : v.ValueKind == JsonValueKind.Object ? v.ToString() : "state update";
+    }
+
+    private IEnumerable<(string path, string op)> FileChanges()
+    {
+        if (Event.Get("paths").ValueKind != JsonValueKind.Array)
+        {
+            yield break;
+        }
+
+        foreach (var p in Event.Get("paths").EnumerateArray())
+        {
+            yield return (
+                p.TryGetProperty("path", out var pp) ? pp.GetString() ?? "" : "",
+                p.TryGetProperty("op", out var po) ? po.GetString() ?? "modify" : "modify");
+        }
+    }
+
+    private IEnumerable<string> StringList(string prop)
+    {
+        if (Event.Get(prop).ValueKind != JsonValueKind.Array)
+        {
+            yield break;
+        }
+
+        foreach (var v in Event.Get(prop).EnumerateArray())
+        {
+            if (v.ValueKind == JsonValueKind.String)
+            {
+                yield return v.GetString() ?? "";
+            }
+        }
     }
 
     private static string Pretty(JsonElement el) =>

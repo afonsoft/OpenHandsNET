@@ -35,13 +35,19 @@ public class EventSerializationTests
         ["ACPToolCallEvent"] = typeof(AcpToolCallEvent),
         ["HookExecutionEvent"] = typeof(HookExecutionEvent),
         ["LLMCompletionLogEvent"] = typeof(LlmCompletionLogEvent),
+        ["command_output"] = typeof(CommandOutputEvent),
+        ["tool_progress"] = typeof(ToolProgressEvent),
+        ["files_changed"] = typeof(FilesChangedEvent),
+        ["run_progress"] = typeof(RunProgressEvent),
+        ["work_summary"] = typeof(WorkSummaryEvent),
+        ["agent_diagnostic"] = typeof(AgentDiagnosticEvent),
     };
 
     [Fact]
-    public void Fixture_Covers_All_19_Kinds()
+    public void Fixture_Covers_All_25_Kinds()
     {
         var events = LoadFixture();
-        events.Count.ShouldBe(19);
+        events.Count.ShouldBe(25);
         events.Select(e => e["kind"]!.GetValue<string>())
             .ToHashSet(StringComparer.Ordinal)
             .SetEquals(Expected.Keys).ShouldBeTrue();
