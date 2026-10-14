@@ -8,7 +8,7 @@
 | Type | `Feature / Agent Core / Security` |
 | Stack | `.NET 10 · AgentRunner · ToolRegistry` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Done` |
 | Ticket | #62 |
 | Depends on | `09` (agent engine), `25` (tool surface); alimenta `28` (presets) |
 | Touches | `AgentLlmOptions`, `ToolRegistry`, `AgentRunner`, `AppConversationService`, `ConversationRecord` |
