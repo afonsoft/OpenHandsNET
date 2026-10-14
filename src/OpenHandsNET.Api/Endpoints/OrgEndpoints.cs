@@ -209,6 +209,19 @@ public static class OrgEndpoints
             Results.Ok(await usage.GetOrgUsageAsync(org_id, ct)))
             .RequireAuthorization("perm:view_billing");
 
+        // SPEC-20 RF-006: plano efetivo da org (subscrição ativa → org → free).
+        g.MapGet("/{org_id:guid}/plan", async (
+            Guid org_id, IPlanEnforcementService plans, CancellationToken ct) =>
+        {
+            var plan = await plans.GetEffectivePlanAsync(org_id, ct);
+            return Results.Ok(new
+            {
+                plan_id = plan.PlanId,
+                name = plan.Name,
+                limits = plan.Limits,
+            });
+        }).RequireAuthorization("perm:view_billing");
+
         // Invitations (batch + token)
         g.MapPost("/{org_id:guid}/members/invite", async (
             Guid org_id, [FromBody] InviteRequest req,

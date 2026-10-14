@@ -116,10 +116,38 @@ public static class AppConversationEndpoints
         CreateAppConversationRequest body,
         IAppConversationService svc, CancellationToken ct)
     {
-        var task = await svc.CreateAsync(Map(body), ct);
+        AppConversationStartTask task;
+        try
+        {
+            task = await svc.CreateAsync(Map(body), ct);
+        }
+        catch (OpenHandsNET.Application.Identity.PlanLimitExceededException ex)
+        {
+            return PlanLimitProblem(ex.Error);
+        }
+
         return Results.Created(
             $"/api/v1/app-conversations/start-tasks/{task.Id}", ToDto(task));
     }
+
+    /// <summary>
+    /// 403 problem+json com os campos extras do contrato de plano
+    /// (SPEC-20 RF-003): detail fixo + limit_key/limit/used.
+    /// </summary>
+    internal static IResult PlanLimitProblem(
+        OpenHandsNET.Application.Identity.PlanLimitError error) =>
+        Results.Problem(new Microsoft.AspNetCore.Mvc.ProblemDetails
+        {
+            Status = StatusCodes.Status403Forbidden,
+            Title = "Forbidden",
+            Detail = "plan_limit_exceeded",
+            Extensions =
+            {
+                ["limit_key"] = error.LimitKey,
+                ["limit"] = error.Limit,
+                ["used"] = error.Used,
+            },
+        });
 
     private static IResult StreamStartAsync(
         CreateAppConversationRequest body,

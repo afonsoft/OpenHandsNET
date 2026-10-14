@@ -19,17 +19,40 @@ public sealed class AppConversationService(
     OpenHandsNET.Application.Events.IEventService events,
     Sandbox.WorkspaceProvisioner provisioner,
     OpenHandsNET.Application.Agent.IAgentRunnerHost runnerHost,
-    OpenHandsNET.Application.Agent.IBrowserService? browser = null)
+    OpenHandsNET.Application.Agent.IBrowserService? browser = null,
+    OpenHandsNET.Application.Identity.IPlanEnforcementService? enforcement = null,
+    OpenHandsNET.Application.Identity.ICurrentUserAccessor? currentUser = null,
+    OpenHandsNET.Application.Identity.IEffectiveOrgResolver? orgResolver = null)
     : IAppConversationService
 {
     /// <inheritdoc />
     public async Task<AppConversationStartTask> CreateAsync(
         CreateConversationRequest request, CancellationToken ct)
     {
+        // SPEC-20: resolve org efetiva + dono da conversa (usados por quota,
+        // billing e /usage — antes OrgId nunca era populado).
+        var user = currentUser?.User;
+        Guid? orgId = null;
+        if (user is not null && orgResolver is not null)
+        {
+            orgId = (await orgResolver.ResolveAsync(user, null, ct))?.OrgId;
+        }
+
+        // SPEC-20 RF-003: enforcement de plano no create (403 → endpoint).
+        if (enforcement is not null
+            && await enforcement.CheckConversationCreateAsync(orgId, ct)
+                is { } limitError)
+        {
+            throw new OpenHandsNET.Application.Identity
+                .PlanLimitExceededException(limitError);
+        }
+
         var now = DateTimeOffset.UtcNow;
         var conv = new ConversationRecord
         {
             Id = Guid.NewGuid(),
+            OrgId = orgId,
+            CreatedByUserId = user?.UserId.ToString(),
             Title = Truncate(request.InitialMessage is null
                 ? null : Flatten(request.InitialMessage), 80),
             SelectedRepository = request.SelectedRepository,

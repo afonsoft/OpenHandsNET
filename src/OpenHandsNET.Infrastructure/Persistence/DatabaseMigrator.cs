@@ -24,6 +24,24 @@ public sealed class DatabaseMigrator(
         logger.LogInformation(
             "Applying {Count} pending migration(s)", pendingList.Count);
         await db.Database.MigrateAsync(cancellationToken);
+
+        // SPEC-20 RF-007: seed idempotente do plano "free" (sem migration —
+        // catálogo de planos já existe no schema desde SPEC-08).
+        if (!await db.Plans.AnyAsync(
+                p => p.Name == Identity.PlanEnforcementService.FreePlanName,
+                cancellationToken))
+        {
+            db.Plans.Add(new PlanRecord
+            {
+                Id = Guid.NewGuid(),
+                Name = Identity.PlanEnforcementService.FreePlanName,
+                // OSS default: sem limites — enforcement só morde quando
+                // o operador edita LimitsJson e liga Billing:EnforcementEnabled.
+                LimitsJson = "{}",
+            });
+            await db.SaveChangesAsync(cancellationToken);
+            logger.LogInformation("Seeded default 'free' plan");
+        }
     }
 
     /// <inheritdoc />
