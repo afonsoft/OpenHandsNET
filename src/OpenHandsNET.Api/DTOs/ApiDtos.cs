@@ -88,6 +88,13 @@ public sealed record SwitchAcpModelRequest
     public string? Model { get; init; }
 }
 
+/// <summary>POST .../context/compact body (SPEC-22 RF-004).</summary>
+public sealed record CompactContextRequest
+{
+    /// <summary>Optional instructions steering the summarizer.</summary>
+    public string? Instructions { get; init; }
+}
+
 /// <summary>POST /sandboxes body.</summary>
 public sealed record CreateSandboxRequest
 {

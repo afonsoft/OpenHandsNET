@@ -191,9 +191,18 @@ public static class DependencyInjection
         services.AddSingleton<
             OpenHandsNET.Application.Agent.IToolRegistry,
             OpenHandsNET.Infrastructure.Agent.ToolRegistry>();
-        services.AddSingleton<
+        // SPEC-22: context engine — meter/condenser/builder scoped por run.
+        services.AddScoped<
+            OpenHandsNET.Application.Agent.IContextMeter,
+            OpenHandsNET.Infrastructure.Agent.Context.HeuristicContextMeter>();
+        services.AddScoped<
             OpenHandsNET.Application.Agent.ICondenser,
-            OpenHandsNET.Infrastructure.Agent.NoOpCondenser>();
+            OpenHandsNET.Infrastructure.Agent.Context.LlmSummarizingCondenser>();
+        services.AddScoped<
+            OpenHandsNET.Infrastructure.Agent.Context.ConversationHistoryBuilder>();
+        services.AddScoped<
+            OpenHandsNET.Application.Agent.ICompactionService,
+            OpenHandsNET.Infrastructure.Agent.Context.CompactionService>();
         services.AddSingleton<OpenHandsNET.Infrastructure.Agent.AgentRunnerHost>();
         services.AddSingleton<OpenHandsNET.Application.Agent.IAgentRunnerHost>(
             sp => sp.GetRequiredService<

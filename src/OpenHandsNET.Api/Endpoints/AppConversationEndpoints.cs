@@ -91,6 +91,65 @@ public static class AppConversationEndpoints
             MapSwitch(
                 await svc.SwitchModelAsync(id, body.Model ?? "", ct), id, http));
 
+        // SPEC-22 RF-004/005: compaction manual + ledger de contexto.
+        // Runner ativo → o request evento entra na fila dele; idle →
+        // compactação inline sobre o histórico persistido.
+        group.MapPost("/{id:guid}/context/compact", async (
+            Guid id, CompactContextRequest? body,
+            IAppConversationService svc,
+            Application.Agent.ICompactionService compactor,
+            Application.Agent.IAgentRunnerHost host,
+            IEventService events, HttpContext http, CancellationToken ct) =>
+        {
+            if (await svc.GetAsync(id, ct) is null)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Conversation {id} not found");
+            }
+
+            if (host.IsRunning(id))
+            {
+                await events.AppendAsync(id, new CondensationRequest
+                {
+                    Source = EventSource.User,
+                    Trigger = "manual",
+                    Instructions = body?.Instructions,
+                }, ct);
+                return Results.Accepted(value: new { queued = true });
+            }
+
+            var compacted = await compactor.CompactStoredAsync(
+                id, Application.Agent.CompactionTrigger.Manual,
+                body?.Instructions, ct);
+            return Results.Accepted(value: new { queued = false, compacted });
+        });
+
+        group.MapGet("/{id:guid}/context", async (
+            Guid id, IAppConversationService svc, IEventService events,
+            HttpContext http, CancellationToken ct) =>
+        {
+            if (await svc.GetAsync(id, ct) is null)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Conversation {id} not found");
+            }
+
+            var page = await events.SearchAsync(id, new EventQuery(
+                KindEq: "ConversationStateUpdateEvent",
+                Sort: EventSortOrder.TimestampDesc, Limit: 50), ct);
+            var state = page.Items
+                .OfType<ConversationStateUpdateEvent>()
+                .FirstOrDefault(e => e.Key == "context_state");
+            return state?.Value is { } v
+                ? Results.Ok(v)
+                : Results.Ok(new
+                {
+                    tokens_estimate = 0, window = (int?)null,
+                    compactions = 0, boundary_event_id = (string?)null,
+                    model = (string?)null, updated_at = (string?)null,
+                });
+        });
+
         // Proxies git/files foram para GitEndpoints (SPEC-12).
         // skills/hooks reais em SkillEndpoints/HookEndpoints (SPEC-11).
 
