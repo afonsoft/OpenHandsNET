@@ -49,9 +49,15 @@ SPECs (Spec-Driven Development) do port do ecossistema **OpenHands** para
 | `25_tools_skills_discovery_spec.md` | Repo discovery (`AGENTS.md`, `.openhands/skills`…), repo skills federadas, tools `search`/`file_read` v2/`file_edit` modes/`web_fetch`, MCP schema fidelity | 07, 09, 11, 24 | ✅ #60 |
 | `26_ui_ux_modernization_spec.md` | Temas dark/light/system, icon set SVG, markdown+ToolCallCard, command palette, notificações, responsivo (ref: open-webui fork) | 05, 21, 24 | TBD |
 | `27_cli_opencode_comparative_spec.md` | Análise comparativa: nosso CLI vs opencode/claude-code/gemini/codex/aider + deltas do fork `alltomatos/opencode` → backlog RF-A..I (subagents, permissões, memória, CLI parity) | 06, 09, 22–25 | TBD |
+| `28_subagents_task_tool_spec.md` | Orquestração de subagentes: tool `task`, presets explore/scout/general/plan, depth/concurrency, sync+background | 09, 22–25, 29 | #61 |
+| `29_tool_permissions_spec.md` | Permissões `allow/deny/ask` por tool (glob `mcp__*`), override por conversa, plan mode read-only | 09, 25 | #62 |
+| `30_centralized_memory_spec.md` | Memória org (DB+audit) + project (`.openhands/memory/*.md`), tool `memory`, digest estável no prompt | 22, 25, 29 | #63 |
+| `31_cli_parity_spec.md` | CLI: `models`, `resume`, `stats`, `skills`, `mcp`, `export`, `attach`, `doctor --preflight`, `tui` keybindings | 06, 20, 23–25 | #64 |
 | `32_upstream_enterprise_gap_analysis.md` | Gap analysis vs `OpenHands/*` upstream: streaming deltas, `SecurityAnalyzer`, secrets by-ref, artifact store S3, runtime-api/k8s, resume validation | 27 | TBD |
+| `33_agent_hardening_spec.md` | `ISecurityAnalyzer` (pattern/LLM/policy), secrets by-ref no start-task, `resume_drift` diagnostic | 09, 22, 23, 29 | #65 |
+| `34_streaming_deltas_artifacts_spec.md` | `streaming_delta` efêmero (SignalR-only, durable supersedes) + `IArtifactStore` (workspace|S3) | 02, 24, 25 | #66 |
 
-Build order: `01 → (02 ∥ 03 ∥ 10 ∥ 13) → (04 ∥ 09 ∥ 11 ∥ 12) → (05 ∥ 06 ∥ 08) → 07 → 14 → 15 → 16 → 17 → (18 ∥ 19 ∥ 20) → 21 → (22 → 23 ∥ 24) → 25 → (26 ∥ 27)`.
+Build order: `01 → (02 ∥ 03 ∥ 10 ∥ 13) → (04 ∥ 09 ∥ 11 ∥ 12) → (05 ∥ 06 ∥ 08) → 07 → 14 → 15 → 16 → 17 → (18 ∥ 19 ∥ 20) → 21 → (22 → 23 ∥ 24) → 25 → (26 ∥ 27) → (29 → (28 ∥ 33) ∥ 30 ∥ 31 ∥ 34)`.
 
 ## Fluxo
 
