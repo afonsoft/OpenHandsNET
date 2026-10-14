@@ -46,7 +46,7 @@ SPECs (Spec-Driven Development) do port do ecossistema **OpenHands** para
 | `22_context_engine_compaction_spec.md` | Context engine: `IContextMeter`, `LlmSummarizingCondenser`, pruning, triggers (threshold/mid-turn/overflow/manual), ledger + promotion | 02, 09 | ✅ #57 |
 | `23_omniroute_model_catalog_routing_spec.md` | OmniRoute `/models` catalog, `IModelRouter` por role, retry/fallback/turn recovery, `llm_route` | 09, 22 | ✅ #58 |
 | `24_agent_activity_protocol_spec.md` | Sandbox-agent v2 (`/exec/stream`, `/proc`, `/activity`), kinds `command_output`/`tool_progress`/`files_changed`/`run_progress`/`work_summary`/`agent_diagnostic` | 03, 17, 02 | ✅ #59 |
-| `25_tools_skills_discovery_spec.md` | Repo discovery (`AGENTS.md`, `.openhands/skills`…), repo skills federadas, tools `search`/`file_read` v2/`file_edit` modes/`web_fetch`, MCP schema fidelity | 07, 09, 11, 24 | [#54](https://github.com/afonsoft/OpenHandsNET/issues/54) |
+| `25_tools_skills_discovery_spec.md` | Repo discovery (`AGENTS.md`, `.openhands/skills`…), repo skills federadas, tools `search`/`file_read` v2/`file_edit` modes/`web_fetch`, MCP schema fidelity | 07, 09, 11, 24 | ✅ #60 |
 | `26_ui_ux_modernization_spec.md` | Temas dark/light/system, icon set SVG, markdown+ToolCallCard, command palette, notificações, responsivo (ref: open-webui fork) | 05, 21, 24 | TBD |
 | `27_cli_opencode_comparative_spec.md` | Análise comparativa: nosso CLI vs opencode/claude-code/gemini/codex/aider + deltas do fork `alltomatos/opencode` → backlog RF-A..I (subagents, permissões, memória, CLI parity) | 06, 09, 22–25 | TBD |
 
