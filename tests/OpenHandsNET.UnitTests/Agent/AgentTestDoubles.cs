@@ -150,7 +150,8 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
     public AgentRunnerFixture(
         string? mockScript = null, AgentLlmOptions? options = null,
         bool confirmationMode = false, ICondenser? condenser = null,
-        IAgentLlmProvider? provider = null, IModelCatalog? catalog = null)
+        IAgentLlmProvider? provider = null, IModelCatalog? catalog = null,
+        Action<ConversationRecord>? configureConv = null)
     {
         ConversationId = Guid.NewGuid();
         Events = new FakeEventService();
@@ -188,12 +189,14 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
 
         var db = _scope.ServiceProvider.GetRequiredService<AppDbContext>();
         db.Database.EnsureCreated();
-        db.Conversations.Add(new ConversationRecord
+        var record = new ConversationRecord
         {
             Id = ConversationId, SandboxId = SandboxId,
             ExecutionStatus = "Running", ConfirmationMode = confirmationMode,
             CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow,
-        });
+        };
+        configureConv?.Invoke(record);
+        db.Conversations.Add(record);
         db.SaveChanges();
 
         Runner = new AgentRunner(ConversationId, _scope.ServiceProvider,

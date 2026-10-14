@@ -17,7 +17,7 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -119,6 +119,11 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("text")
                         .HasColumnName("mcp_config_json");
 
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("mode");
+
                     b.Property<Guid?>("OrgId")
                         .HasColumnType("uuid")
                         .HasColumnName("org_id");
@@ -126,6 +131,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                     b.Property<bool>("PendingKickoff")
                         .HasColumnType("boolean")
                         .HasColumnName("pending_kickoff");
+
+                    b.Property<string>("PermissionsJson")
+                        .HasColumnType("text")
+                        .HasColumnName("permissions_json");
 
                     b.Property<bool>("Pinned")
                         .HasColumnType("boolean")

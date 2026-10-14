@@ -156,7 +156,14 @@ public sealed class AgentRunner(
     {
         var builder = services.GetRequiredService<Context.ConversationHistoryBuilder>();
         var contextMeter = services.GetRequiredService<IContextMeter>();
-        var rebuilt = await builder.BuildAsync(conversationId, conv, tools, ct);
+        // SPEC-29 RF-002: permissões efetivas (org floor → plan overlay →
+        // conversa → org → instância); deny remove a tool do catálogo.
+        var permissions = await ConversationPermissionResolver.ResolveAsync(
+            db, conv, opt, ct);
+        var effectiveTools = ConversationPermissionResolver.Catalog(
+            tools, permissions);
+        var rebuilt = await builder.BuildAsync(
+            conversationId, conv, effectiveTools, ct);
         var history = rebuilt.Messages;
         var ids = rebuilt.EventIds;
         var lastEventId = rebuilt.LastEventId;
@@ -278,13 +285,16 @@ public sealed class AgentRunner(
             }
 
             var request = history;
-            var toolSchemas = tools.All.Select(t => t.Schema).ToList();
-            // SPEC-07: catálogo MCP dinâmico da conversa (falha → degradado).
+            var toolSchemas = effectiveTools.All.Select(t => t.Schema).ToList();
+            // SPEC-07: catálogo MCP dinâmico da conversa (falha → degradado);
+            // SPEC-29: mcp__* também respeita o evaluator (glob `mcp__*` deny).
             if (mcp is not null)
             {
                 toolSchemas.AddRange(
                     (await mcp.ListToolsAsync(conversationId, ct))
-                    .Select(Application.Mcp.McpToolCatalog.ToSchema));
+                    .Select(Application.Mcp.McpToolCatalog.ToSchema)
+                    .Where(s => permissions.Decide(s.Name)
+                        != Application.Agent.PermissionDecision.Deny));
             }
 
             var text = new System.Text.StringBuilder();
@@ -608,15 +618,36 @@ public sealed class AgentRunner(
                     conversationId, actionEvent, ct)).Id;
                 actionIds.Add(actionEvent.Id);
 
-                var tool = tools.Find(call.Name);
+                var tool = effectiveTools.Find(call.Name);
+                var decision = permissions.Decide(call.Name);
                 if (tool is null)
                 {
+                    // SPEC-29 RF-002: chamada a tool negada é observabilidade
+                    // (drift do modelo) — diagnostic + erro explícito.
+                    if (decision == Application.Agent.PermissionDecision.Deny)
+                    {
+                        lastEventId = (await events.AppendAsync(conversationId,
+                            new Domain.Events.AgentDiagnosticEvent
+                            {
+                                Severity = "warn",
+                                Code = "permission_deny",
+                                Message = $"tool '{call.Name}' denied by " +
+                                    "permission policy",
+                            }, ct)).Id;
+                    }
+
                     var obsId = await ObserveAsync(events, conversationId,
                         actionEvent,
-                        ToolResult.Error($"unknown tool '{call.Name}'"),
+                        ToolResult.Error(decision ==
+                            Application.Agent.PermissionDecision.Deny
+                                ? $"tool '{call.Name}' denied by permission policy"
+                                : $"unknown tool '{call.Name}'"),
                         sandbox, executor, ct);
                     history.Add(LlmMessage.ToolResult(
-                        call.Id, $"{{\"error\":\"unknown tool '{call.Name}'\"}}"));
+                        call.Id, decision ==
+                            Application.Agent.PermissionDecision.Deny
+                                ? "{\"error\":\"tool denied by permission policy\"}"
+                                : $"{{\"error\":\"unknown tool '{call.Name}'\"}}"));
                     ids.Add(obsId);
                     lastEventId = obsId;
                     continue;
@@ -646,12 +677,17 @@ public sealed class AgentRunner(
                     continue;
                 }
 
-                // SPEC-15 RF-003: always-allow auto-aprova ação rotineira
-                // (auditável via decision_auto); destrutiva sempre pergunta.
+                // SPEC-15 RF-003 + SPEC-29 RF-002: confirmação exigida por
+                // regra ask (qualquer tool), guardrail destrutivo (sempre),
+                // ou default Risky+confirmation-mode. Allow explícito pula
+                // confirmação — exceto destrutiva (alwaysAsk é piso).
                 var alwaysAsk = tool.Risky &&
                     AutonomyGuardrail.RequiresHumanApproval(
                         call.Name, actionEvent.Action);
-                if (tool.Risky && !confirmationMode && !alwaysAsk)
+                var needsConfirm = alwaysAsk
+                    || decision == Application.Agent.PermissionDecision.Ask
+                    || (decision is null && tool.Risky && confirmationMode);
+                if (tool.Risky && !needsConfirm)
                 {
                     lastEventId = (await events.AppendAsync(conversationId,
                         new DecisionAutoEvent
@@ -659,11 +695,13 @@ public sealed class AgentRunner(
                             ParentId = lastEventId,
                             AskedId = actionEvent.Id,
                             Chosen = "approve",
-                            Reason = "always_allow",
+                            Reason = decision ==
+                                Application.Agent.PermissionDecision.Allow
+                                    ? "permission_allow" : "always_allow",
                         }, ct)).Id;
                 }
 
-                if (tool.Risky && (confirmationMode || alwaysAsk))
+                if (needsConfirm)
                 {
                     await SetStatusAsync(events, db, conv,
                         "waiting_for_confirmation", null, ct,

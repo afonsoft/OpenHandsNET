@@ -15,7 +15,7 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.13");
 
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
                 {
@@ -110,6 +110,11 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("mcp_config_json");
 
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("mode");
+
                     b.Property<Guid?>("OrgId")
                         .HasColumnType("TEXT")
                         .HasColumnName("org_id");
@@ -117,6 +122,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                     b.Property<bool>("PendingKickoff")
                         .HasColumnType("INTEGER")
                         .HasColumnName("pending_kickoff");
+
+                    b.Property<string>("PermissionsJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("permissions_json");
 
                     b.Property<bool>("Pinned")
                         .HasColumnType("INTEGER")
