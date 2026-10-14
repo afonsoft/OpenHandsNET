@@ -9,7 +9,7 @@
 | Stack | `Blazor WASM · Monaco Editor · Tailwind CSS v4` |
 | Repository | `afonsoft/OpenHandsNET` |
 | Status | `Approved` (autopilot — gap list) |
-| Ticket | _(issue a criar)_ (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
+| Ticket | [#45](https://github.com/afonsoft/OpenHandsNET/issues/45) (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | `05_devin_ui_integration_spec`, `08_enterprise_security_rbac` (admin endpoints), `14_enterprise_operations_spec` (support-bundle), `20_plan_enforcement_billing_spec` (plans endpoints) |
 | Touches | `OpenHandsNET.Client` (Pages, Services, Layout, wwwroot), `OpenHandsNetApiClient` |
 

@@ -8,8 +8,8 @@
 | Type | `Feature / Agent+Api` |
 | Stack | `.NET 10 · Microsoft.Playwright · Minimal API` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` (autopilot — gap list SPEC-14→17 wrap-up) |
-| Ticket | _(issue a criar)_ (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
+| Status | `Done` (PR #46) |
+| Ticket | [#42](https://github.com/afonsoft/OpenHandsNET/issues/42) (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | `03_runtime_sandbox_spec` (RF-005), `04_rest_and_signalr_api_spec`, `09_agent_engine_spec`, `14_enterprise_operations_spec` (profiles) |
 | Touches | `BuiltinTools`, `ToolRegistry`, `AppConversationEndpoints`, `AppConversationService`, `ConversationRecord`, DI registrations |
 

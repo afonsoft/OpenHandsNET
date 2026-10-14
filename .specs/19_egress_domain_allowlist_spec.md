@@ -9,7 +9,7 @@
 | Stack | `.NET 10 · Docker.DotNet · Squid sidecar` |
 | Repository | `afonsoft/OpenHandsNET` |
 | Status | `Approved` (autopilot — gap list) |
-| Ticket | _(issue a criar)_ (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
+| Ticket | [#43](https://github.com/afonsoft/OpenHandsNET/issues/43) (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | `14_enterprise_operations_spec` (RF-002 egress modes) |
 | Touches | `DockerNetworkPolicy`, `DockerSandboxService`, `SandboxOptions`, `WarmPoolService` |
 

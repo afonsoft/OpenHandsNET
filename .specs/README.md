@@ -39,10 +39,10 @@ SPECs (Spec-Driven Development) do port do ecossistema **OpenHands** para
 | `15_ui_mobile_and_smart_autonomy_spec.md` | Mobile UX (drawer, repo sem owner), autonomia smart/always-allow, repasse de credencial GH ao sandbox | 03, 04, 09, 12 | [#33](https://github.com/afonsoft/OpenHandsNET/issues/33) |
 | `16_persistent_sandbox_lifecycle_spec.md` | Sleep/wake (pause·stop·resume), wake-on-message, lease por atividade, GC de workspace | 03, 10, 14 | [#36](https://github.com/afonsoft/OpenHandsNET/issues/36) |
 | `17_runtime_image_blueprint_spec.md` | Imagem Ubuntu própria, sandbox-agent PID 1 (HTTP, deferred-init), blueprint `openhandsnet.yaml` + `.openhands/setup.sh`, SDK auto-detect, warm pool por imagem | 03, 12, 14, 16 | [#37](https://github.com/afonsoft/OpenHandsNET/issues/37) |
-| `18_browser_tool_and_switching_spec.md` | Browser tool (Playwright no worker, screenshots→BrowserTab) + `switch_profile`/`switch_acp_model` reais | 03, 04, 09, 14 | _(a criar)_ |
-| `19_egress_domain_allowlist_spec.md` | Egress `allowlist` real por domínio via proxy sidecar Squid dual-homed | 14 | _(a criar)_ |
-| `20_plan_enforcement_billing_spec.md` | Enforcement de planos (conversas/dia, runs concorrentes, tokens/mês, sandbox-s/mês) + write-path de usage metering + plans CRUD admin | 08, 14 | _(a criar)_ |
-| `21_client_completion_spec.md` | Admin UI (users/admins/audit/flags/plans/usage/support-bundle), Monaco (files+diff), pipeline Tailwind v4 | 05, 08, 14, 20 | _(a criar)_ |
+| `18_browser_tool_and_switching_spec.md` | Browser tool (Playwright no worker, screenshots→BrowserTab) + `switch_profile`/`switch_acp_model` reais | 03, 04, 09, 14 | [#42](https://github.com/afonsoft/OpenHandsNET/issues/42) ✅ |
+| `19_egress_domain_allowlist_spec.md` | Egress `allowlist` real por domínio via proxy sidecar Squid dual-homed | 14 | [#43](https://github.com/afonsoft/OpenHandsNET/issues/43) |
+| `20_plan_enforcement_billing_spec.md` | Enforcement de planos (conversas/dia, runs concorrentes, tokens/mês, sandbox-s/mês) + write-path de usage metering + plans CRUD admin | 08, 14 | [#44](https://github.com/afonsoft/OpenHandsNET/issues/44) |
+| `21_client_completion_spec.md` | Admin UI (users/admins/audit/flags/plans/usage/support-bundle), Monaco (files+diff), pipeline Tailwind v4 | 05, 08, 14, 20 | [#45](https://github.com/afonsoft/OpenHandsNET/issues/45) |
 
 Build order: `01 → (02 ∥ 03 ∥ 10 ∥ 13) → (04 ∥ 09 ∥ 11 ∥ 12) → (05 ∥ 06 ∥ 08) → 07 → 14 → 15 → 16 → 17 → (18 ∥ 19 ∥ 20) → 21`.
 
