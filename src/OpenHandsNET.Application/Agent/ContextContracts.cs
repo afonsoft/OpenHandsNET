@@ -80,10 +80,13 @@ public interface IContextMeter
 /// window (SPEC-22 RF-004). Distinct from generic errors — triggers
 /// promote/compact + one retry instead of a fatal run error.
 /// </summary>
-public sealed class ContextOverflowException : Exception
+public sealed class ContextOverflowException : LlmCallException
 {
     /// <summary>Creates the exception with a redacted detail message.</summary>
-    public ContextOverflowException(string message) : base(message) { }
+    public ContextOverflowException(string message)
+        : base(LlmErrorKind.ContextOverflow, message, 400)
+    {
+    }
 }
 
 /// <summary>

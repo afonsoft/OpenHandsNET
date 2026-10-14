@@ -28,4 +28,12 @@ public sealed record TokenEvent : EventBase
     /// <summary>Estimated cost in USD when known.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public decimal? CostUsd { get; init; }
+
+    /// <summary>Model that produced this usage (SPEC-23 RF-004).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Model { get; init; }
+
+    /// <summary>Routing role — worker/summarizer/planner (SPEC-23 RF-004).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Role { get; init; }
 }

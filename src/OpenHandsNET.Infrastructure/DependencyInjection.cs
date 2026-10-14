@@ -191,6 +191,15 @@ public static class DependencyInjection
         services.AddSingleton<
             OpenHandsNET.Application.Agent.IToolRegistry,
             OpenHandsNET.Infrastructure.Agent.ToolRegistry>();
+        // SPEC-23: catálogo OmniRoute + router por role (singletons —
+        // cache compartilhado; seleção é stateless por chamada).
+        services.AddMemoryCache();
+        services.AddSingleton<
+            OpenHandsNET.Application.Agent.IModelCatalog,
+            OpenHandsNET.Infrastructure.Agent.Routing.OmniRouteModelCatalog>();
+        services.AddSingleton<
+            OpenHandsNET.Application.Agent.IModelRouter,
+            OpenHandsNET.Infrastructure.Agent.Routing.ModelRouter>();
         // SPEC-22: context engine — meter/condenser/builder scoped por run.
         services.AddScoped<
             OpenHandsNET.Application.Agent.IContextMeter,

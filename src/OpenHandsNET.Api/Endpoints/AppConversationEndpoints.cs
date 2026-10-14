@@ -87,9 +87,50 @@ public static class AppConversationEndpoints
                 await svc.SwitchProfileAsync(id, body.Profile, ct), id, http));
         group.MapPost("/{id:guid}/switch_acp_model", async (
             Guid id, SwitchAcpModelRequest body, IAppConversationService svc,
+            Application.Agent.IModelCatalog catalog,
             HttpContext http, CancellationToken ct) =>
-            MapSwitch(
-                await svc.SwitchModelAsync(id, body.Model ?? "", ct), id, http));
+        {
+            var requested = body.Model ?? "";
+            // SPEC-23 RF-005: valida contra o catálogo quando saudável;
+            // descoberta degradada (só "configured") é fail-open.
+            var models = await catalog.ListAsync(ct);
+            if (models.Any(m => m.Provider != "configured")
+                && models.All(m => !string.Equals(
+                    m.Id, requested, StringComparison.OrdinalIgnoreCase)))
+            {
+                return Results.UnprocessableEntity(new
+                {
+                    error = "unknown_model",
+                    available = models.Select(m => m.Id).ToArray(),
+                });
+            }
+
+            return MapSwitch(
+                await svc.SwitchModelAsync(id, requested, ct), id, http);
+        });
+        group.MapGet("/{id:guid}/model", async (
+            Guid id, IAppConversationService svc,
+            Application.Agent.IModelCatalog catalog,
+            Microsoft.Extensions.Options.IOptions<
+                Application.Agent.AgentLlmOptions> llmOpts,
+            HttpContext http, CancellationToken ct) =>
+        {
+            if (await svc.GetAsync(id, ct) is not { } conv)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Conversation {id} not found");
+            }
+
+            var model = conv.LlmModel ?? llmOpts.Value.Model;
+            var info = await catalog.GetAsync(model, ct);
+            return Results.Ok(new
+            {
+                model,
+                role_models = llmOpts.Value.RoleModels,
+                window = info?.ContextWindow,
+                provider = info?.Provider,
+            });
+        });
 
         // SPEC-22 RF-004/005: compaction manual + ledger de contexto.
         // Runner ativo → o request evento entra na fila dele; idle →
@@ -167,6 +208,31 @@ public static class AppConversationEndpoints
             await svc.GetAsync(id, ct) is { } t
                 ? Results.Ok(ToDto(t))
                 : OpenHandsNetProblemFactory.Create(http, 404, $"Start task {id} not found"));
+
+        // SPEC-23 RF-005: catálogo de modelos para o ModelSelector da UI.
+        app.MapGet("/api/v1/models", async (
+            Application.Agent.IModelCatalog catalog,
+            Microsoft.Extensions.Options.IOptions<
+                Application.Agent.AgentLlmOptions> llmOpts,
+            CancellationToken ct) =>
+        {
+            var models = await catalog.ListAsync(ct);
+            return Results.Ok(new
+            {
+                @default = llmOpts.Value.Model,
+                role_models = llmOpts.Value.RoleModels,
+                models = models.Select(m => new
+                {
+                    id = m.Id, provider = m.Provider,
+                    context_window = m.ContextWindow,
+                    pricing = m.Pricing is { } p ? new
+                    {
+                        input_per_million = p.InputPerMillion,
+                        output_per_million = p.OutputPerMillion,
+                    } : null,
+                }).ToArray(),
+            });
+        }).WithTags("Models");
 
         return app;
     }

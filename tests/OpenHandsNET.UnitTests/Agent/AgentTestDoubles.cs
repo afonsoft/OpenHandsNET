@@ -143,7 +143,8 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
 
     public AgentRunnerFixture(
         string? mockScript = null, AgentLlmOptions? options = null,
-        bool confirmationMode = false, ICondenser? condenser = null)
+        bool confirmationMode = false, ICondenser? condenser = null,
+        IAgentLlmProvider? provider = null, IModelCatalog? catalog = null)
     {
         ConversationId = Guid.NewGuid();
         Events = new FakeEventService();
@@ -167,8 +168,15 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
         sc.AddSingleton<OpenHandsNET.Infrastructure.Agent.Context
             .ConversationHistoryBuilder>();
         sc.AddSingleton(Options.Create(opt));
-        sc.AddSingleton<IAgentLlmProvider>(
+        sc.AddSingleton(provider ?? (IAgentLlmProvider)
             new MockLlmProvider(Parse(mockScript)));
+        if (catalog is not null)
+        {
+            sc.AddSingleton<IModelCatalog>(catalog);
+            sc.AddSingleton<IModelRouter>(
+                new OpenHandsNET.Infrastructure.Agent.Routing
+                    .ModelRouter(catalog, Options.Create(opt)));
+        }
         _provider = sc.BuildServiceProvider();
         _scope = _provider.CreateAsyncScope();
 
