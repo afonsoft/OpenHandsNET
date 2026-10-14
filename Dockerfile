@@ -20,17 +20,23 @@ RUN dotnet publish src/OpenHandsNET.Api/OpenHandsNET.Api.csproj \
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
-# Volume persistente: SQLite (data/) + workspace dos agentes
-RUN apt-get update && apt-get install -y --no-install-recommends curl && \
-    rm -rf /var/lib/apt/lists/* && \
-    mkdir -p /app/data /workspace && \
-    groupadd -r openhandsnet && useradd -r -g openhandsnet openhandsnet && \
-    chown -R openhandsnet:openhandsnet /app /workspace
-USER openhandsnet
+COPY --from=build /app/publish .
 
-ENV ASPNETCORE_URLS=http://+:8080 \
+# Volume persistente: SQLite (data/) + workspace dos agentes.
+# SPEC-18: Chromium headless do browser tool — o driver Node do Playwright
+# vai bundled no publish (.playwright/), --with-deps instala as libs do SO.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+    ASPNETCORE_URLS=http://+:8080 \
     ASPNETCORE_ENVIRONMENT=Production \
     OPENHANDSNET_Database__ConnectionString="Data Source=/app/data/openhandsnet.db"
+RUN apt-get update && apt-get install -y --no-install-recommends curl && \
+    /app/.playwright/node/*/node /app/.playwright/package/cli.js \
+      install --with-deps chromium && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /app/data /workspace && \
+    groupadd -r openhandsnet && useradd -r -g openhandsnet openhandsnet && \
+    chown -R openhandsnet:openhandsnet /app /workspace /ms-playwright
+USER openhandsnet
 
 EXPOSE 8080
 VOLUME ["/app/data", "/workspace"]
@@ -38,5 +44,4 @@ VOLUME ["/app/data", "/workspace"]
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD curl -fsS http://localhost:8080/api/v1/ready || exit 1
 
-COPY --from=build --chown=openhandsnet:openhandsnet /app/publish .
 ENTRYPOINT ["dotnet", "OpenHandsNET.Api.dll"]

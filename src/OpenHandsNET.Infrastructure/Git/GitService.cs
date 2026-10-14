@@ -32,6 +32,23 @@ public sealed class GitService(
         DomainSandbox sandbox, string repoUrl, string workBranch,
         string? ownerId, CancellationToken ct)
     {
+        // SPEC-18 RF-005: recriação de sandbox (switch_profile) monta o mesmo
+        // workspace do host — repo já clonado → só garante o work branch.
+        if (await HasRepositoryAsync(sandbox, ct))
+        {
+            var sw = await executor.ExecAsync(sandbox,
+                $"git -C '{Repo}' checkout '{Escape(workBranch)}' 2>/dev/null || " +
+                $"git -C '{Repo}' checkout -b '{Escape(workBranch)}'",
+                TimeSpan.FromSeconds(30), ct);
+            if (sw.ExitCode != 0)
+            {
+                throw new InvalidOperationException(
+                    $"work branch failed: {sw.StdErr.Trim()}");
+            }
+
+            return;
+        }
+
         var url = NormalizeUrl(repoUrl);
         // URL com credencial embutida nunca chega a logs — redação defensiva.
         var safeUrl = SecretRedactor.Redact(url);

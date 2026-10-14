@@ -214,6 +214,15 @@ public static class DependencyInjection
                 .CreateInstance<
                     OpenHandsNET.Infrastructure.Agent.OpenAiCompatLlmProvider>(sp);
         });
+
+        // SPEC-18 RF-001: browser headless no worker — singleton compartilhado,
+        // um browser context isolado por conversa.
+        services.Configure<
+            OpenHandsNET.Infrastructure.Agent.Browser.BrowserOptions>(
+            configuration.GetSection(
+                OpenHandsNET.Infrastructure.Agent.Browser.BrowserOptions.Section));
+        services.AddSingleton<OpenHandsNET.Application.Agent.IBrowserService,
+            OpenHandsNET.Infrastructure.Agent.Browser.PlaywrightBrowserService>();
         return services;
     }
 

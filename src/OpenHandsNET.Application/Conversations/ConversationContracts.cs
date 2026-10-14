@@ -59,6 +59,49 @@ public interface IAppConversationService
     /// Returns the upstream error key or <see langword="null"/> when OK.
     /// </summary>
     Task<SendMessageError?> ValidateSendMessageAsync(Guid id, CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-18 RF-005: changes the sandbox profile (<paramref name="profile"/>
+    /// null/empty clears). A running sandbox is deleted and a new start-task
+    /// recreates it with the new profile (host workspace survives).
+    /// </summary>
+    Task<SwitchResult> SwitchProfileAsync(
+        Guid id, string? profile, CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-18 RF-006: changes the LLM model used on the next run
+    /// (upstream <c>switch_acp_model</c> route kept for parity).
+    /// </summary>
+    Task<SwitchResult> SwitchModelAsync(Guid id, string model, CancellationToken ct);
+}
+
+/// <summary>Outcome of a conversation switch operation (SPEC-18).</summary>
+public sealed record SwitchResult(AppConversation? Conversation, SwitchError? Error)
+{
+    /// <summary>Successful switch.</summary>
+    public static SwitchResult Ok(AppConversation c) => new(c, null);
+
+    /// <summary>Failed switch.</summary>
+    public static SwitchResult Fail(SwitchError e) => new(null, e);
+}
+
+/// <summary>Switch rejection reasons mapped to HTTP by the API layer.</summary>
+public enum SwitchError
+{
+    /// <summary>404 — conversation missing or archived.</summary>
+    NotFound,
+
+    /// <summary>400 — unknown sandbox profile name.</summary>
+    InvalidProfile,
+
+    /// <summary>400 — model missing/blank.</summary>
+    InvalidModel,
+
+    /// <summary>409 — a run or sandbox (re)creation is in flight.</summary>
+    RunActive,
+
+    /// <summary>502 — sandbox teardown failed.</summary>
+    SandboxError,
 }
 
 /// <summary>Upstream-aligned send-message rejection reasons (SPEC-04 RF-001).</summary>

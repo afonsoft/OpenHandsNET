@@ -74,6 +74,20 @@ public sealed record PatchConversationRequest
     public bool? Pinned { get; init; }
 }
 
+/// <summary>POST .../switch_profile body (SPEC-18 RF-005).</summary>
+public sealed record SwitchProfileRequest
+{
+    /// <summary>Profile name (<c>small|medium|large</c>) or null to clear.</summary>
+    public string? Profile { get; init; }
+}
+
+/// <summary>POST .../switch_acp_model body (SPEC-18 RF-006).</summary>
+public sealed record SwitchAcpModelRequest
+{
+    /// <summary>Model name for the next run.</summary>
+    public string? Model { get; init; }
+}
+
 /// <summary>POST /sandboxes body.</summary>
 public sealed record CreateSandboxRequest
 {

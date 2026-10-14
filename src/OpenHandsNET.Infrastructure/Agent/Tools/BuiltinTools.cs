@@ -194,18 +194,60 @@ public static class BuiltinTools
                 : ToolResult.Error(result.Error ?? result.Output);
         });
 
-    /// <summary>Playwright browser — stub until SPEC-03 RF-005 lands.</summary>
+    /// <summary>
+    /// Headless Chromium via <see cref="IBrowserService"/> (SPEC-18 — worker-side
+    /// per SPEC-03 RF-005). Every successful action returns a
+    /// <c>screenshot_base64</c> that feeds the UI browser pane.
+    /// </summary>
     public static AgentTool Browser() => new(
         new ToolSchema("browser",
-            "Interact with a web browser (not available yet).",
+            "Control a headless web browser: navigate pages, click elements, " +
+            "fill inputs, scroll, go back/forward, take screenshots and " +
+            "extract page text.",
             Schema("""
                 {"type":"object","properties":{
-                  "action":{"type":"string"}},
+                  "action":{"type":"string",
+                    "enum":["goto","click","type","scroll","back","forward","screenshot","content"],
+                    "description":"Browser action to perform"},
+                  "url":{"type":"string","description":"URL for goto"},
+                  "selector":{"type":"string",
+                    "description":"CSS selector for click/type"},
+                  "text":{"type":"string","description":"Text for type"},
+                  "direction":{"type":"string","enum":["up","down"],
+                    "description":"Scroll direction"}},
                  "required":["action"]}
                 """)),
         Risky: true,
-        Handler: (ctx, args, ct) => Task.FromResult(
-            ToolResult.Error("browser tool is not implemented yet (SPEC-03 RF-005)")));
+        Handler: async (ctx, args, ct) =>
+        {
+            var browser = ctx.Services.GetService<IBrowserService>();
+            if (browser is null)
+            {
+                return ToolResult.Error("browser service unavailable");
+            }
+
+            var actionName = args.GetProperty("action").GetString()!;
+            if (!Enum.TryParse<BrowserActionKind>(
+                    actionName, ignoreCase: true, out var kind))
+            {
+                return ToolResult.Error($"unknown browser action '{actionName}'");
+            }
+
+            string? Opt(string name) => args.TryGetProperty(name, out var v)
+                && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+            var result = await browser.ActAsync(ctx.ConversationId,
+                new BrowserActRequest(
+                    kind, Opt("url"), Opt("selector"), Opt("text"),
+                    Opt("direction")), ct);
+            return result.Ok
+                ? ToolResult.Ok(new
+                {
+                    ok = true, url = result.Url, title = result.Title,
+                    screenshot_base64 = result.ScreenshotBase64,
+                    content = result.Content,
+                })
+                : ToolResult.Error(result.Error ?? "browser action failed");
+        });
 
     /// <summary>Skill invocation — injects skill content as context (SPEC-11 RF-003).</summary>
     public static AgentTool InvokeSkill() => new(
