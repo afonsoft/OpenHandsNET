@@ -17,7 +17,10 @@ public sealed class AppConversationService(
     IStartTaskService tasks,
     ISandboxService sandboxes,
     OpenHandsNET.Application.Events.IEventService events,
-    Sandbox.WorkspaceProvisioner provisioner) : IAppConversationService
+    Sandbox.WorkspaceProvisioner provisioner,
+    OpenHandsNET.Application.Agent.IAgentRunnerHost runnerHost,
+    OpenHandsNET.Application.Agent.IBrowserService? browser = null)
+    : IAppConversationService
 {
     /// <inheritdoc />
     public async Task<AppConversationStartTask> CreateAsync(
@@ -189,7 +192,118 @@ public sealed class AppConversationService(
 
         // SPEC-16 RF-006: workspace só sai do host junto com a conversa.
         provisioner.RemoveWorkspace(record.Id);
+        // SPEC-18 RF-003: fecha o contexto de browser da conversa.
+        if (browser is not null)
+        {
+            await browser.CloseAsync(record.Id, ct);
+        }
+
         return true;
+    }
+
+    /// <inheritdoc />
+    public async Task<SwitchResult> SwitchProfileAsync(
+        Guid id, string? profile, CancellationToken ct)
+    {
+        var record = await db.Conversations.FindAsync([id], ct);
+        if (record is null || record.ExecutionStatus
+                == nameof(ConversationExecutionStatus.Archived))
+        {
+            return SwitchResult.Fail(SwitchError.NotFound);
+        }
+
+        var normalized = string.IsNullOrWhiteSpace(profile) ? null : profile;
+        if (normalized is not null
+            && !Domain.Sandbox.SandboxProfiles.IsValid(normalized))
+        {
+            return SwitchResult.Fail(SwitchError.InvalidProfile);
+        }
+
+        // Run ativo ou pipeline de start em curso — trocar agora corromperia
+        // o estado (ExecutionStatus.Running também cobre idle pós-READY, por
+        // isso o sinal exato é o runner host + transição Starting).
+        if (runnerHost.IsRunning(id)
+            || record.ExecutionStatus == nameof(ConversationExecutionStatus.Starting))
+        {
+            return SwitchResult.Fail(SwitchError.RunActive);
+        }
+
+        record.SandboxProfile = normalized;
+        record.UpdatedAt = DateTimeOffset.UtcNow;
+
+        if (record.SandboxId is { } sandboxId)
+        {
+            // Sandbox vive com profile velho — remove e re-enfileira start
+            // (workspace no host sobrevive; clone é idempotente).
+            try
+            {
+                await sandboxes.DeleteAsync(sandboxId, ct);
+            }
+            catch (Exception)
+            {
+                return SwitchResult.Fail(SwitchError.SandboxError);
+            }
+
+            record.SandboxId = null;
+            record.ExecutionStatus =
+                ConversationExecutionStatus.Starting.ToString();
+            var task = new StartTaskRecord
+            {
+                Id = Guid.NewGuid(),
+                Status = StartTaskStatus.Working.ToString(),
+                AppConversationId = record.Id,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+            };
+            db.StartTasks.Add(task);
+            await db.SaveChangesAsync(ct);
+            await tasks.EnqueueAsync(task.Id, ct);
+        }
+        else
+        {
+            await db.SaveChangesAsync(ct);
+        }
+
+        await events.AppendAsync(record.Id, new ConversationStateUpdateEvent
+        {
+            Key = "sandbox_profile",
+            Value = System.Text.Json.JsonSerializer.SerializeToElement(
+                normalized),
+        }, ct);
+        return SwitchResult.Ok(record.ToDomain());
+    }
+
+    /// <inheritdoc />
+    public async Task<SwitchResult> SwitchModelAsync(
+        Guid id, string model, CancellationToken ct)
+    {
+        var record = await db.Conversations.FindAsync([id], ct);
+        if (record is null || record.ExecutionStatus
+                == nameof(ConversationExecutionStatus.Archived))
+        {
+            return SwitchResult.Fail(SwitchError.NotFound);
+        }
+
+        if (string.IsNullOrWhiteSpace(model))
+        {
+            return SwitchResult.Fail(SwitchError.InvalidModel);
+        }
+
+        if (runnerHost.IsRunning(id))
+        {
+            return SwitchResult.Fail(SwitchError.RunActive);
+        }
+
+        record.LlmModel = model.Trim();
+        record.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(ct);
+        await events.AppendAsync(record.Id, new ConversationStateUpdateEvent
+        {
+            Key = "llm_model",
+            Value = System.Text.Json.JsonSerializer.SerializeToElement(
+                record.LlmModel),
+        }, ct);
+        return SwitchResult.Ok(record.ToDomain());
     }
 
     /// <inheritdoc />

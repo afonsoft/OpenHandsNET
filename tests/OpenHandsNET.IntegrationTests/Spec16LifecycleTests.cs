@@ -316,7 +316,7 @@ public sealed class Spec16LifecycleTests : IAsyncLifetime
 
     private AppConversationService BuildConversationService() =>
         new(_db, new FakeStartTaskService(), _service, new FakeEventService(),
-            _provisioner);
+            _provisioner, new FakeAgentRunnerHost());
 
     private IServiceScopeFactory SingleScopeFactory()
     {
@@ -367,6 +367,26 @@ public sealed class Spec16LifecycleTests : IAsyncLifetime
 
         public ValueTask EnqueueAsync(Guid taskId, CancellationToken ct) =>
             ValueTask.CompletedTask;
+    }
+
+    /// <summary>Runner host stub — os caminhos sob teste nunca têm run ativo.</summary>
+    private sealed class FakeAgentRunnerHost
+        : OpenHandsNET.Application.Agent.IAgentRunnerHost
+    {
+        public bool IsRunning(Guid conversationId) => false;
+
+        public Task NotifyMessageAsync(Guid conversationId, CancellationToken ct) =>
+            Task.CompletedTask;
+
+        public Task ConfirmActionAsync(
+            Guid conversationId, string actionId, bool approved, string? reason,
+            CancellationToken ct) => Task.CompletedTask;
+
+        public Task InterruptAsync(Guid conversationId, CancellationToken ct) =>
+            Task.CompletedTask;
+
+        public Task PauseAsync(Guid conversationId, CancellationToken ct) =>
+            Task.CompletedTask;
     }
 
     private sealed class FakeEventService : IEventService

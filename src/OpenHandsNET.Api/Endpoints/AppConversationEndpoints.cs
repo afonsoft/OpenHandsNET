@@ -78,13 +78,18 @@ public static class AppConversationEndpoints
 
         group.MapPost("/{id:guid}/send-message", SendMessageAsync);
 
-        // Stubs upstream-parity: existem mas ainda não suportados.
-        group.MapPost("/{id:guid}/switch_profile", (Guid id, HttpContext http) =>
-            OpenHandsNetProblemFactory.Create(
-                http, 501, "switch_profile not supported yet"));
-        group.MapPost("/{id:guid}/switch_acp_model", (Guid id, HttpContext http) =>
-            OpenHandsNetProblemFactory.Create(
-                http, 501, "ACP model switching not supported yet"));
+        // SPEC-18 RF-005/006: switch_profile recria o sandbox com o novo
+        // profile (start-task); switch_acp_model vale a partir do próximo run.
+        group.MapPost("/{id:guid}/switch_profile", async (
+            Guid id, SwitchProfileRequest body, IAppConversationService svc,
+            HttpContext http, CancellationToken ct) =>
+            MapSwitch(
+                await svc.SwitchProfileAsync(id, body.Profile, ct), id, http));
+        group.MapPost("/{id:guid}/switch_acp_model", async (
+            Guid id, SwitchAcpModelRequest body, IAppConversationService svc,
+            HttpContext http, CancellationToken ct) =>
+            MapSwitch(
+                await svc.SwitchModelAsync(id, body.Model ?? "", ct), id, http));
 
         // Proxies git/files foram para GitEndpoints (SPEC-12).
         // skills/hooks reais em SkillEndpoints/HookEndpoints (SPEC-11).
@@ -197,6 +202,22 @@ public static class AppConversationEndpoints
         Results.Ok((await svc.SearchAsync(
                 ParseStatus(status), page_id, limit ?? 100, ct))
             .Select(ToDto));
+
+    private static IResult MapSwitch(
+        SwitchResult r, Guid id, HttpContext http) => r.Error switch
+    {
+        null => Results.Ok(ToDto(r.Conversation!)),
+        SwitchError.NotFound => OpenHandsNetProblemFactory.Create(
+            http, 404, $"Conversation {id} not found"),
+        SwitchError.InvalidProfile => OpenHandsNetProblemFactory.Create(
+            http, 400, "unknown sandbox profile (small|medium|large)"),
+        SwitchError.InvalidModel => OpenHandsNetProblemFactory.Create(
+            http, 400, "model must be a non-empty string"),
+        SwitchError.SandboxError => OpenHandsNetProblemFactory.Create(
+            http, 502, OpenHandsNetProblemFactory.SandboxError),
+        _ => OpenHandsNetProblemFactory.Create(
+            http, 409, OpenHandsNetProblemFactory.SandboxNotRunning),
+    };
 
     private static CreateConversationRequest Map(CreateAppConversationRequest b) =>
         new(b.InitialMessage is null ? null : new InitialMessage(
