@@ -1,5 +1,7 @@
 @using OpenHandsNET.Client.Services
+@implements IAsyncDisposable
 @inject OpenHandsNetApiClient Api
+@inject MonacoInterop Monaco
 
 <div class="file-layout">
     <div class="file-tree">
@@ -14,14 +16,22 @@
         }
     </div>
     <div class="file-view">
-        @if (_fileContent is null)
+        @if (_filePath is null)
         {
             <div class="empty-state">select a file</div>
         }
         else
         {
             <div class="diff-meta">@_filePath</div>
-            <pre>@_fileContent</pre>
+            @* SPEC-21 RF-004: Monaco readonly; fallback <pre> sem JS. *@
+            @if (_monacoFailed)
+            {
+                <pre>@_fileContent</pre>
+            }
+            else
+            {
+                <div id="file-monaco" class="monaco-host"></div>
+            }
         }
     </div>
 </div>
@@ -33,8 +43,33 @@
     private readonly HashSet<string> _expanded = [];
     private string? _filePath;
     private string? _fileContent;
+    private bool _monacoFailed;
+    private bool _monacoDirty;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_monacoDirty && _filePath is not null && !_monacoFailed)
+        {
+            _monacoDirty = false;
+            try
+            {
+                await Monaco.CreateEditorAsync("file-monaco",
+                    _fileContent ?? "", MonacoInterop.LanguageFor(_filePath));
+            }
+            catch (JSException)
+            {
+                _monacoFailed = true;
+                await InvokeAsync(StateHasChanged);
+            }
+            catch (InvalidOperationException)
+            {
+                _monacoFailed = true;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
 
     private static string Name(string path) =>
         path.TrimEnd('/').Split('/').Last();
@@ -75,7 +110,19 @@
         {
             _filePath = entry.Path;
             _fileContent = "loading…";
-            _fileContent = await Api.ReadFileAsync(State.Conversation!.Id, entry.Path);
+            _monacoDirty = true;
+            _fileContent = await Api.ReadFileAsync(
+                State.Conversation!.Id, entry.Path);
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await Monaco.DisposeAsync("file-monaco");
+        }
+        catch (JSException) { /* circuito fechado */ }
+        catch (JSDisconnectedException) { }
     }
 }

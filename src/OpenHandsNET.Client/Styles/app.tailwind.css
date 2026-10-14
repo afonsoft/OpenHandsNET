@@ -1,0 +1,8 @@
+/* SPEC-21 RF-005 — Tailwind v4 entry. Utilities layer sobre o app.css
+   hand-written; migração dos componentes é incremental. */
+@import "tailwindcss";
+
+/* fontes de classe: todo markup razor + js interop */
+@source "../**/*.razor";
+@source "../**/*.html";
+@source "../../src/**/*.razor";

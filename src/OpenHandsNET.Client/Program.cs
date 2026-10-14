@@ -9,6 +9,9 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 builder.Services.AddScoped<OpenHandsNetApiClient>();
+builder.Services.AddScoped<AdminApiClient>();
+builder.Services.AddScoped<AdminState>();
+builder.Services.AddScoped<MonacoInterop>();
 builder.Services.AddScoped(sp => new ConversationHubClient(
     new Uri(new Uri(builder.HostEnvironment.BaseAddress), "/hubs/conversations")));
 builder.Services.AddScoped<ConversationStateService>();

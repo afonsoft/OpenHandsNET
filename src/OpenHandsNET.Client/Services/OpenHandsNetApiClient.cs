@@ -161,6 +161,28 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
             ? await resp.Content.ReadAsStringAsync(ct) : "";
     }
 
+    /// <summary>
+    /// SPEC-21 RF-006: conteúdo do arquivo no <paramref name="gitRef"/>
+    /// (default HEAD) — lado "original" do Monaco diff editor. Null quando
+    /// o arquivo não existe naquela revisão.
+    /// </summary>
+    public async Task<string?> GetGitFileAtRefAsync(
+        string conversationId, string path, string gitRef = "HEAD",
+        CancellationToken ct = default)
+    {
+        var resp = await http.GetAsync(
+            $"/api/v1/app-conversations/{conversationId}/git/file"
+            + $"?path={Uri.EscapeDataString(path)}"
+            + $"&ref={Uri.EscapeDataString(gitRef)}", ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(Json, ct);
+        return doc.TryGetProperty("content", out var c) ? c.GetString() : null;
+    }
+
     public async Task<IReadOnlyList<JsonElement>> GetGitLogAsync(
         string conversationId, CancellationToken ct = default)
     {

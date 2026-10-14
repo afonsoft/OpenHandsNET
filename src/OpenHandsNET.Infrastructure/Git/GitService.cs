@@ -206,6 +206,27 @@ public sealed class GitService(
             r.StdOut, r.ExitCode == 0 ? null : r.StdErr);
     }
 
+    /// <inheritdoc />
+    public async Task<string?> GetFileAtRefAsync(
+        DomainSandbox sandbox, string path, string gitRef,
+        CancellationToken ct)
+    {
+        // path relativo ao repo (cliente envia /workspace/... — faz strip).
+        var rel = path.StartsWith(Repo, StringComparison.Ordinal)
+            ? path[Repo.Length..].TrimStart('/')
+            : path.TrimStart('/');
+        if (rel.Length == 0 || rel.Contains("..", StringComparison.Ordinal)
+            || gitRef.Contains('\'', StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var r = await executor.ExecAsync(sandbox,
+            $"git -C '{Repo}' show '{Escape(gitRef)}:{Escape(rel)}'",
+            TimeSpan.FromSeconds(30), ct);
+        return r.ExitCode == 0 ? r.StdOut : null;
+    }
+
     /// <summary><c>owner/repo</c> → provider HTTPS; file:// e URLs passam direto.</summary>
     private static string NormalizeUrl(string repoUrl)
     {

@@ -42,6 +42,15 @@ public interface IGitService
     Task<IReadOnlyList<GitLogEntry>> GetLogAsync(
         DomainSandbox sandbox, int limit, CancellationToken ct);
 
+    /// <summary>
+    /// SPEC-21 RF-006: conteúdo de <paramref name="path"/> na revisão
+    /// <paramref name="gitRef"/> (default HEAD) — para o diff editor do
+    /// client. Null quando o arquivo não existe naquela revisão.
+    /// </summary>
+    Task<string?> GetFileAtRefAsync(
+        DomainSandbox sandbox, string path, string gitRef,
+        CancellationToken ct);
+
     /// <summary>Stages <paramref name="files"/> (or all) and commits as the agent author.</summary>
     Task<GitCommitResult> CommitAsync(
         DomainSandbox sandbox, string message,

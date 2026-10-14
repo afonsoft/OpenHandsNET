@@ -1,5 +1,7 @@
 @using OpenHandsNET.Client.Services
+@implements IAsyncDisposable
 @inject OpenHandsNetApiClient Api
+@inject MonacoInterop Monaco
 
 <div style="display:flex;flex-direction:column;height:100%">
     <div class="diff-meta">
@@ -7,23 +9,38 @@
         <span style="color:var(--red)">−@_dels</span>
         <button style="float:right" @onclick="LoadAsync">↻</button>
     </div>
-    <div style="flex:1;overflow:auto">
-        @if (_diff is null)
+    @* SPEC-21 RF-004: chips de arquivos + diff editor HEAD × workspace. *@
+    @if (_files.Count > 0)
+    {
+        <div class="diff-tab-list">
+            @foreach (var f in _files)
+            {
+                <button class="@(f == _selected ? "sel" : "")"
+                        @onclick="() => SelectAsync(f)">@f</button>
+            }
+        </div>
+    }
+    <div style="flex:1;min-height:0;overflow:auto">
+        @if (_loading)
         {
             <div class="empty-state">loading…</div>
         }
-        else if (_files.Count == 0 && _diff.Length == 0)
+        else if (_files.Count == 0)
         {
             <div class="empty-state">no repository changes yet</div>
         }
-        else
+        else if (_monacoFailed)
         {
             <pre style="margin:0;padding:8px 0">
-                @foreach (var line in _diff.Split('\n'))
+                @foreach (var line in (_diff ?? "").Split('\n'))
                 {
                     <span class="diff-line @LineClass(line)">@line</span>
                 }
             </pre>
+        }
+        else
+        {
+            <div id="diff-monaco" class="monaco-host"></div>
         }
     </div>
 </div>
@@ -33,12 +50,44 @@
 
     private string? _diff;
     private readonly List<string> _files = [];
+    private string? _selected;
     private int _adds, _dels;
+    private bool _monacoFailed;
+    private bool _monacoDirty;
+    private bool _loading = true;
+    private string _orig = "";
+    private string _mod = "";
+
+    private const string RepoRoot = "/workspace/repo";
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_monacoDirty && !_monacoFailed && _selected is not null)
+        {
+            _monacoDirty = false;
+            try
+            {
+                await Monaco.CreateDiffEditorAsync("diff-monaco",
+                    _orig, _mod, MonacoInterop.LanguageFor(_selected));
+            }
+            catch (JSException)
+            {
+                _monacoFailed = true;
+                await InvokeAsync(StateHasChanged);
+            }
+            catch (InvalidOperationException)
+            {
+                _monacoFailed = true;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
     private async Task LoadAsync()
     {
+        _loading = true;
         try
         {
             var changes = await Api.GetGitChangesAsync(State.Conversation!.Id);
@@ -48,19 +97,45 @@
             {
                 foreach (var item in f.EnumerateArray())
                 {
-                    _files.Add(
-                        item.ValueKind == System.Text.Json.JsonValueKind.String
-                            ? item.GetString()!
-                            : item.TryGetProperty("path", out var p)
-                                ? p.GetString()! : item.ToString());
+                    var p = item.ValueKind == System.Text.Json.JsonValueKind.String
+                        ? item.GetString()!
+                        : item.TryGetProperty("path", out var pp)
+                            ? pp.GetString()! : item.ToString();
+                    _files.Add(p);
                 }
             }
 
             _diff = await Api.GetGitDiffAsync(State.Conversation.Id);
             _adds = _diff.Split('\n').Count(l => l.StartsWith('+') && !l.StartsWith("+++"));
             _dels = _diff.Split('\n').Count(l => l.StartsWith('-') && !l.StartsWith("---"));
+
+            _selected = _files.FirstOrDefault();
+            _loading = false;
+            if (_selected is not null)
+            {
+                await LoadPairAsync(_selected);
+            }
         }
-        catch { _diff ??= ""; }
+        catch
+        {
+            _diff ??= "";
+            _loading = false;
+        }
+    }
+
+    private async Task SelectAsync(string file)
+    {
+        _selected = file;
+        await LoadPairAsync(file);
+    }
+
+    private async Task LoadPairAsync(string rel)
+    {
+        _orig = await Api.GetGitFileAtRefAsync(
+            State.Conversation!.Id, rel, "HEAD") ?? "";
+        _mod = await Api.ReadFileAsync(
+            State.Conversation.Id, $"{RepoRoot}/{rel}");
+        _monacoDirty = true;
     }
 
     private static string LineClass(string line) =>
@@ -68,4 +143,14 @@
         : line.StartsWith('+') ? "add"
         : line.StartsWith('-') ? "del"
         : line.StartsWith("@@") ? "hunk" : "";
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await Monaco.DisposeAsync("diff-monaco");
+        }
+        catch (JSException) { }
+        catch (JSDisconnectedException) { }
+    }
 }

@@ -247,3 +247,26 @@ details.ev-details summary { cursor: pointer; color: var(--fg-dim); font-size: 1
 .loading-progress-text { position: absolute; top: 60%; width: 100%; text-align: center; color: var(--fg-dim); font-weight: 600; }
 .loading-progress-text::after { content: 'Loading OpenHandsNET'; }
 #blazor-error-ui { display: none; position: fixed; bottom: 0; left: 0; right: 0; padding: 12px 20px; background: #3d1215; color: #ffd7d5; z-index: 100; }
+
+/* ---------- admin (SPEC-21) ---------- */
+.admin-wrap { max-width: 900px; }
+.admin-wrap h1 .sub { font-size: 12px; color: var(--fg-dim); font-weight: 400; }
+.admin-nav { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 18px; }
+.admin-nav a { padding: 6px 10px; color: var(--fg-dim); font-size: 13px; border-bottom: 2px solid transparent; text-decoration: none; }
+.admin-nav a:hover { color: var(--fg); }
+.admin-nav a.active { color: var(--fg); border-bottom-color: var(--accent); }
+.admin-toolbar { display: flex; gap: 8px; align-items: center; }
+.admin-toolbar input { flex: 1; }
+.admin-toolbar label { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--fg-dim); }
+.admin-pager { display: flex; gap: 12px; align-items: center; justify-content: center; padding: 12px; color: var(--fg-dim); font-size: 12px; }
+.admin-error { color: var(--red); padding: 8px 0; }
+.admin-notice { color: var(--green); padding: 8px 0; }
+.admin-plan { border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; }
+.admin-limits { background: var(--bg-alt); border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 12px; overflow: auto; }
+
+/* ---------- monaco (SPEC-21 RF-004) ---------- */
+.monaco-host { height: 100%; min-height: 200px; }
+.file-view .monaco-host { margin: -12px; }
+.diff-tab-list { display: flex; gap: 4px; padding: 4px 8px; overflow-x: auto; border-bottom: 1px solid var(--border); flex: none; }
+.diff-tab-list button { font-family: var(--mono); font-size: 12px; padding: 3px 8px; border-radius: 4px; }
+.diff-tab-list button.sel { outline: 1px solid var(--accent); color: var(--fg); }

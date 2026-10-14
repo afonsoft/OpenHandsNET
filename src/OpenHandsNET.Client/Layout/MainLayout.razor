@@ -1,8 +1,15 @@
 @inherits LayoutComponentBase
+@using OpenHandsNET.Client.Services
+@inject AdminState Admin
 <div class="shell">
     <nav class="side-nav">
         <a href="/" title="Conversations" class="@(IsActive("/") ? "active" : "")">&#x1F4AC;</a>
         <a href="/settings" title="Settings" class="@(IsActive("/settings") ? "active" : "")">&#x2699;&#xFE0F;</a>
+        @* SPEC-21 RF-001: item Admin só aparece para super-admin. *@
+        @if (_isAdmin)
+        {
+            <a href="/admin" title="Admin" class="@(IsActive("/admin") ? "active" : "")">&#x1F6E0;&#xFE0F;</a>
+        }
         <div class="spacer"></div>
         <a href="https://github.com/afonsoft/OpenHandsNET" target="_blank" title="Repository">&lt;/&gt;</a>
     </nav>
@@ -13,6 +20,11 @@
 
 @code {
     [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private bool _isAdmin;
+
+    protected override async Task OnInitializedAsync() =>
+        _isAdmin = await Admin.EnsureLoadedAsync();
 
     private bool IsActive(string prefix) =>
         Nav.Uri.Equals(Nav.BaseUri, StringComparison.OrdinalIgnoreCase)

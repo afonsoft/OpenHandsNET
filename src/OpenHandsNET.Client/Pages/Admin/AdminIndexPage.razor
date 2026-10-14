@@ -1,0 +1,58 @@
+@page "/admin"
+@using OpenHandsNET.Client.Services
+@inherits AdminPageBase
+
+<PageTitle>admin · OpenHandsNET</PageTitle>
+
+@if (Checking || !Allowed)
+{
+    <div class="settings-wrap"><p class="empty-state">…</p></div>
+}
+else
+{
+    <div class="settings-wrap admin-wrap">
+        <h1>Admin</h1>
+        <AdminNav />
+        @if (Error is not null) { <p class="admin-error">@Error</p> }
+
+        <div class="usage-grid">
+            <div class="usage-card">
+                <div class="num">@(_userCount?.ToString() ?? "—")</div>
+                <div class="lbl">users</div>
+            </div>
+            <div class="usage-card">
+                <div class="num">@(_planCount?.ToString() ?? "—")</div>
+                <div class="lbl">plans</div>
+            </div>
+            <div class="usage-card">
+                <div class="num">@(_flagCount?.ToString() ?? "—")</div>
+                <div class="lbl">feature flags</div>
+            </div>
+            <div class="usage-card">
+                <div class="num">@(_auditTotal?.ToString() ?? "—")</div>
+                <div class="lbl">audit events</div>
+            </div>
+        </div>
+
+        <p style="margin-top:20px">
+            <a class="badge" href="@AdminApiClient.SupportBundleUrl" download>
+                ↓ support bundle (zip)
+            </a>
+        </p>
+    </div>
+}
+
+@code {
+    private int? _userCount;
+    private int? _planCount;
+    private int? _flagCount;
+    private int? _auditTotal;
+
+    protected override async Task LoadAsync()
+    {
+        _userCount = await Api.CountUsersAsync();
+        _planCount = (await Api.ListPlansAsync()).Count;
+        _flagCount = (await Api.ListFlagsAsync()).Count;
+        _auditTotal = (await Api.QueryAuditAsync(null, null, null, null, 1)).Total;
+    }
+}

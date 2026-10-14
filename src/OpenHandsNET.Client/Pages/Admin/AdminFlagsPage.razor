@@ -1,0 +1,83 @@
+@page "/admin/flags"
+@using OpenHandsNET.Client.Services
+@using System.Text.Json
+@inherits AdminPageBase
+
+<PageTitle>admin · feature flags</PageTitle>
+
+@if (Checking || !Allowed)
+{
+    <div class="settings-wrap"><p class="empty-state">…</p></div>
+}
+else
+{
+    <div class="settings-wrap admin-wrap">
+        <h1>Feature flags</h1>
+        <AdminNav />
+        @if (Error is not null) { <p class="admin-error">@Error</p> }
+        @if (_notice is not null) { <p class="admin-notice">@_notice</p> }
+
+        <div class="field admin-toolbar">
+            <input placeholder="new flag name…" @bind="_newName"
+                   @bind:event="oninput" />
+            <button class="primary" @onclick="CreateAsync"
+                    disabled="@(string.IsNullOrWhiteSpace(_newName))">
+                create
+            </button>
+        </div>
+
+        @foreach (var f in _flags)
+        {
+            var name = Str(f, "name") ?? "";
+            var enabled = f.TryGetProperty("enabled", out var en)
+                && en.GetBoolean();
+            <div class="secret-row">
+                <span class="name">@name</span>
+                <span>@Str(f, "description")</span>
+                <button @onclick="() => ToggleAsync(f, name, !enabled)">
+                    @(enabled ? "on" : "off")
+                </button>
+                <button class="danger" @onclick="() => DeleteAsync(name)">
+                    delete
+                </button>
+            </div>
+        }
+        @if (_flags.Count == 0)
+        {
+            <p class="empty-state">no feature flags</p>
+        }
+    </div>
+}
+
+@code {
+    private IReadOnlyList<JsonElement> _flags = [];
+    private string? _newName;
+    private string? _notice;
+
+    protected override async Task LoadAsync() =>
+        _flags = await Api.ListFlagsAsync();
+
+    private async Task CreateAsync()
+    {
+        await Api.SetFlagAsync(_newName!, false, null);
+        _newName = null;
+        await LoadAsync();
+    }
+
+    private async Task ToggleAsync(JsonElement f, string name, bool enabled)
+    {
+        await Api.SetFlagAsync(name, enabled, Str(f, "description"));
+        await LoadAsync();
+    }
+
+    private async Task DeleteAsync(string name)
+    {
+        await Api.DeleteFlagAsync(name);
+        _notice = $"deleted {name}";
+        await LoadAsync();
+    }
+
+    private static string? Str(JsonElement e, string prop) =>
+        e.TryGetProperty(prop, out var v) && v.ValueKind
+            is JsonValueKind.String ? v.GetString() : null;
+}

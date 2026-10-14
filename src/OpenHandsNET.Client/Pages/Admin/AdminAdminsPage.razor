@@ -1,0 +1,85 @@
+@page "/admin/admins"
+@using OpenHandsNET.Client.Services
+@using System.Text.Json
+@inherits AdminPageBase
+
+<PageTitle>admin · super admins</PageTitle>
+
+@if (Checking || !Allowed)
+{
+    <div class="settings-wrap"><p class="empty-state">…</p></div>
+}
+else
+{
+    <div class="settings-wrap admin-wrap">
+        <h1>Super admins</h1>
+        <AdminNav />
+        @if (Error is not null) { <p class="admin-error">@Error</p> }
+        @if (_notice is not null) { <p class="admin-notice">@_notice</p> }
+
+        <div class="field admin-toolbar">
+            <input placeholder="grant by email…" @bind="_email"
+                   @bind:event="oninput" />
+            <button class="primary" @onclick="GrantAsync"
+                    disabled="@(string.IsNullOrWhiteSpace(_email))">
+                grant
+            </button>
+        </div>
+
+        @foreach (var a in _admins)
+        {
+            var uid = Str(a, "user_id") ?? "";
+            <div class="secret-row">
+                <span class="name">@Str(a, "email")</span>
+                <button class="danger" @onclick="() => RevokeAsync(uid)">
+                    revoke
+                </button>
+            </div>
+        }
+        @if (_admins.Count == 0)
+        {
+            <p class="empty-state">no super admins</p>
+        }
+    </div>
+}
+
+@code {
+    private IReadOnlyList<JsonElement> _admins = [];
+    private string? _email;
+    private string? _notice;
+
+    protected override async Task LoadAsync() =>
+        _admins = await Api.ListSuperAdminsAsync();
+
+    private async Task GrantAsync()
+    {
+        _notice = null;
+        if (await Api.GrantSuperAdminAsync(_email!))
+        {
+            _notice = $"granted: {_email}";
+            _email = null;
+            Admin.Invalidate();
+            await LoadAsync();
+        }
+        else
+        {
+            _notice = "user not found";
+        }
+    }
+
+    private async Task RevokeAsync(string uid)
+    {
+        _notice = null;
+        var ok = await Api.RevokeSuperAdminAsync(uid, m => _notice = m);
+        if (ok)
+        {
+            _notice = "revoked";
+            Admin.Invalidate();
+            await LoadAsync();
+        }
+    }
+
+    private static string? Str(JsonElement e, string prop) =>
+        e.TryGetProperty(prop, out var v) && v.ValueKind
+            is JsonValueKind.String ? v.GetString() : null;
+}

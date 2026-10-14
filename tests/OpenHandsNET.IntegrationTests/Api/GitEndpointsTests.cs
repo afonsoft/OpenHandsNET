@@ -114,6 +114,39 @@ public sealed class GitEndpointsTests : IDisposable
         resp.StatusCode.ShouldBe(HttpStatusCode.Conflict);
     }
 
+    // SPEC-21 RF-006: git/file — validação de path antes do sandbox lookup.
+    [Fact]
+    public async Task Git_File_Rejects_Traversal_And_Missing_Path()
+    {
+        var resp = await _http.GetAsync(
+            $"/api/v1/app-conversations/{Guid.NewGuid()}/git/file" +
+            $"?path={Uri.EscapeDataString("../etc/passwd")}");
+        resp.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+
+        (await _http.GetAsync(
+            $"/api/v1/app-conversations/{Guid.NewGuid()}/git/file"))
+            .StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Git_File_409_Without_Running_Sandbox()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider
+            .GetRequiredService<OpenHandsNET.Infrastructure.Persistence.AppDbContext>();
+        var conv = new OpenHandsNET.Infrastructure.Conversations.ConversationRecord
+        {
+            Id = Guid.NewGuid(), ExecutionStatus = "Running",
+            CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow,
+        };
+        db.Conversations.Add(conv);
+        await db.SaveChangesAsync();
+
+        var resp = await _http.GetAsync(
+            $"/api/v1/app-conversations/{conv.Id}/git/file?path=src/a.cs");
+        resp.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+    }
+
     private async Task<string> CreateReadyConversationAsync()
     {
         var resp = await _http.PostAsJsonAsync("/api/v1/app-conversations", new
