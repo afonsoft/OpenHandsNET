@@ -49,6 +49,7 @@ SPECs (Spec-Driven Development) do port do ecossistema **OpenHands** para
 | `25_tools_skills_discovery_spec.md` | Repo discovery (`AGENTS.md`, `.openhands/skills`…), repo skills federadas, tools `search`/`file_read` v2/`file_edit` modes/`web_fetch`, MCP schema fidelity | 07, 09, 11, 24 | ✅ #60 |
 | `26_ui_ux_modernization_spec.md` | Temas dark/light/system, icon set SVG, markdown+ToolCallCard, command palette, notificações, responsivo (ref: open-webui fork) | 05, 21, 24 | TBD |
 | `27_cli_opencode_comparative_spec.md` | Análise comparativa: nosso CLI vs opencode/claude-code/gemini/codex/aider + deltas do fork `alltomatos/opencode` → backlog RF-A..I (subagents, permissões, memória, CLI parity) | 06, 09, 22–25 | TBD |
+| `32_upstream_enterprise_gap_analysis.md` | Gap analysis vs `OpenHands/*` upstream: streaming deltas, `SecurityAnalyzer`, secrets by-ref, artifact store S3, runtime-api/k8s, resume validation | 27 | TBD |
 
 Build order: `01 → (02 ∥ 03 ∥ 10 ∥ 13) → (04 ∥ 09 ∥ 11 ∥ 12) → (05 ∥ 06 ∥ 08) → 07 → 14 → 15 → 16 → 17 → (18 ∥ 19 ∥ 20) → 21 → (22 → 23 ∥ 24) → 25 → (26 ∥ 27)`.
 
