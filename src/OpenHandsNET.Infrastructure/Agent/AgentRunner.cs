@@ -29,6 +29,8 @@ public sealed class AgentRunner(
     private readonly Dictionary<string, TaskCompletionSource<bool>> _confirms = new();
     private volatile bool _pauseRequested;
     private volatile bool _interruptSeen;
+    private volatile bool _compactRequested;
+    private volatile string? _compactInstructions;
 
     /// <summary>Routes a live event into the loop (user msg/interrupt/pause).</summary>
     public void OnEvent(EventBase e)
@@ -44,6 +46,13 @@ public sealed class AgentRunner(
                 break;
             case MessageEvent { Source: EventSource.User } m:
                 _incoming.Writer.TryWrite(m);
+                break;
+            // SPEC-22 RF-004: compaction manual via API chega como request
+            // do usuário; requests emitidos pelo próprio runner são
+            // Source=Environment e não re-disparam.
+            case CondensationRequest { Source: EventSource.User } r:
+                _compactRequested = true;
+                _compactInstructions = r.Instructions;
                 break;
         }
     }
@@ -138,10 +147,22 @@ public sealed class AgentRunner(
         IAgentLlmProvider llm, ICondenser condenser,
         AgentLlmOptions opt, CancellationToken ct)
     {
-        var (history, lastEventId) = await BuildHistoryAsync(
-            events, tools, conv, ct);
+        var builder = services.GetRequiredService<Context.ConversationHistoryBuilder>();
+        var contextMeter = services.GetRequiredService<IContextMeter>();
+        var rebuilt = await builder.BuildAsync(conversationId, conv, tools, ct);
+        var history = rebuilt.Messages;
+        var ids = rebuilt.EventIds;
+        var lastEventId = rebuilt.LastEventId;
         var confirmationMode = conv.ConfirmationMode;
         var hooks = services.GetService<Application.Hooks.IHookService>();
+        var model = conv.LlmModel ?? opt.Model;
+        var overflowRetried = false;
+        var promoted = false;
+        var overflowPending = false;
+        var stopLengthPending = false;
+        var compactionCount = 0;
+        var sinceLedger = 0;
+        var lastEstimate = 0;
 
         for (var iteration = 0; iteration < opt.MaxIterations; iteration++)
         {
@@ -156,7 +177,8 @@ public sealed class AgentRunner(
             // pending_messages: usuário falou durante o run → entra no histórico.
             while (_incoming.Reader.TryRead(out var pending))
             {
-                history.Add(ToLlmMessage(pending));
+                history.Add(Context.ConversationHistoryBuilder.ToLlmMessage(pending));
+                ids.Add(pending.Id);
                 lastEventId = pending.Id;
                 if (hooks is not null)
                 {
@@ -171,7 +193,67 @@ public sealed class AgentRunner(
                 }
             }
 
-            var request = await condenser.CondenseAsync(history, ct);
+            // SPEC-22: compaction — forced (manual/overflow/stop_length) ou
+            // threshold avaliado pelo condenser. Modelo pode promover antes.
+            CompactionTrigger? forced = _compactRequested
+                ? CompactionTrigger.Manual
+                : overflowPending ? CompactionTrigger.Overflow
+                : stopLengthPending ? CompactionTrigger.StopLength : null;
+            var pendingInstructions = _compactInstructions;
+            _compactRequested = false;
+            _compactInstructions = null;
+            overflowPending = false;
+            stopLengthPending = false;
+            var start = forced is { } ft
+                ? new CompactionStart(ft,
+                    contextMeter.EstimateTokens(history, model),
+                    contextMeter.ContextWindow(model))
+                : await condenser.EvaluateAsync(history, model, ct);
+            if (start is { } s)
+            {
+                var condensed = await condenser.CondenseAsync(
+                    history, ids, s.Trigger, model,
+                    cs => Context.CompactionService.EmitRequestAsync(
+                        events, conversationId, cs, pendingInstructions),
+                    ct);
+                if (condensed.Compacted)
+                {
+                    var condensation = await Context.CompactionService
+                        .EmitCondensationAsync(events, conversationId,
+                            condensed, ct);
+                    // summary message passa a mapear para o evento Condensation.
+                    if (condensed.SummaryOffset is { } so
+                        && so < condensed.ResultEventIds.Count)
+                    {
+                        var resultIds = condensed.ResultEventIds.ToList();
+                        resultIds[so] = condensation.Id;
+                        condensed = condensed with { ResultEventIds = resultIds };
+                    }
+
+                    history = condensed.Messages.ToList();
+                    ids = condensed.ResultEventIds.ToList();
+                    compactionCount++;
+                }
+
+                lastEstimate = condensed.TokensAfter;
+            }
+            else
+            {
+                lastEstimate = contextMeter.EstimateTokens(history, model);
+            }
+
+            // SPEC-22 RF-005: ledger de contexto (state_update) — periódico
+            // e sempre que uma compaction aconteceu.
+            if (start is not null
+                || ++sinceLedger >= opt.Compaction.LedgerEveryIterations)
+            {
+                sinceLedger = 0;
+                await Context.CompactionService.EmitLedgerAsync(
+                    events, conversationId, lastEstimate,
+                    contextMeter.ContextWindow(model), model, ct, compactionCount);
+            }
+
+            var request = history;
             var toolSchemas = tools.All.Select(t => t.Schema).ToList();
             // SPEC-07: catálogo MCP dinâmico da conversa (falha → degradado).
             if (mcp is not null)
@@ -190,9 +272,9 @@ public sealed class AgentRunner(
             {
                 using var llmSpan = Telemetry.OpenNetTelemetry.StartSpan(
                     "llm_call", conversationId, sandbox.Id.ToString());
-                llmSpan?.SetTag("model", opt.Model);
+                llmSpan?.SetTag("model", model);
                 await foreach (var chunk in llm.ChatStreamAsync(
-                    request, toolSchemas, new LlmOptions(), ct))
+                    request, toolSchemas, new LlmOptions(Model: model), ct))
                 {
                     switch (chunk)
                     {
@@ -223,6 +305,15 @@ public sealed class AgentRunner(
                         case CompletionEnd end:
                             finishReason = end.FinishReason;
                             responseId = end.ResponseId;
+                            // SPEC-22 RF-001: calibração online do meter.
+                            contextMeter.ObserveUsage(end.Usage.PromptTokens,
+                                lastEstimate);
+                            if (end.FinishReason == "length"
+                                && opt.Compaction.Enabled)
+                            {
+                                stopLengthPending = true;
+                            }
+
                             await events.AppendAsync(conversationId, new TokenEvent
                             {
                                 Source = EventSource.Agent,
@@ -254,6 +345,56 @@ public sealed class AgentRunner(
             catch (OperationCanceledException)
             {
                 throw;
+            }
+            catch (ContextOverflowException cex)
+            {
+                // SPEC-22 RF-006: promover para janela maior antes de compactar.
+                if (!promoted && opt.PromotionTarget is { } target
+                    && target != model)
+                {
+                    promoted = true;
+                    var fromModel = model;
+                    logger.LogInformation(
+                        "Context overflow — promoting model {From} → {To}",
+                        fromModel, target);
+                    model = target;
+                    conv.LlmModel = target;
+                    await events.AppendAsync(conversationId,
+                        new ConversationStateUpdateEvent
+                        {
+                            Key = "model_change",
+                            Value = JsonSerializer.SerializeToElement(new
+                            {
+                                from = fromModel,
+                                to = target,
+                                reason = "context_promotion",
+                            }, EventJson.Options),
+                        }, CancellationToken.None);
+                    conv.UpdatedAt = DateTimeOffset.UtcNow;
+                    await db.SaveChangesAsync(CancellationToken.None);
+                    iteration--; // retenta a mesma iteração com janela maior
+                    continue;
+                }
+
+                if (!overflowRetried)
+                {
+                    overflowRetried = true;
+                    logger.LogWarning(cex,
+                        "Context overflow — forcing compaction and retry");
+                    overflowPending = true;
+                    iteration--;
+                    continue;
+                }
+
+                logger.LogError(cex, "LLM context overflow persists");
+                await events.AppendAsync(conversationId, new AgentErrorEvent
+                {
+                    ToolName = "llm", ToolCallId = "",
+                    Error = SecretRedactor.Redact(cex.Message),
+                }, CancellationToken.None);
+                await SetStatusAsync(events, db, conv, "error",
+                    ConversationExecutionStatus.Error, CancellationToken.None);
+                return;
             }
             catch (Exception ex)
             {
@@ -299,11 +440,17 @@ public sealed class AgentRunner(
                 lastEventId = (await events.AppendAsync(
                     conversationId, msg, ct)).Id;
                 history.Add(LlmMessage.Assistant(text.ToString()));
+                ids.Add(msg.Id);
                 continue;
             }
 
+            // SPEC-22: a mensagem assistant-toolcall cobre N ActionEvents —
+            // o eventId composto (join ',') garante forget consistente.
+            var tcMsgIdx = history.Count;
             history.Add(LlmMessage.AssistantToolCall(
                 text.Length > 0 ? text.ToString() : null, toolCalls));
+            ids.Add(null);
+            var actionIds = new List<string>();
 
             foreach (var call in toolCalls)
             {
@@ -322,6 +469,7 @@ public sealed class AgentRunner(
                 };
                 lastEventId = (await events.AppendAsync(
                     conversationId, actionEvent, ct)).Id;
+                actionIds.Add(actionEvent.Id);
 
                 var tool = tools.Find(call.Name);
                 if (tool is null)
@@ -331,6 +479,7 @@ public sealed class AgentRunner(
                         ToolResult.Error($"unknown tool '{call.Name}'"), ct);
                     history.Add(LlmMessage.ToolResult(
                         call.Id, $"{{\"error\":\"unknown tool '{call.Name}'\"}}"));
+                    ids.Add(obsId);
                     lastEventId = obsId;
                     continue;
                 }
@@ -353,6 +502,7 @@ public sealed class AgentRunner(
                         ToolResult.Error("blocked by hook"), ct);
                     history.Add(LlmMessage.ToolResult(
                         call.Id, "{\"error\":\"blocked by hook\"}"));
+                    ids.Add(vetoId);
                     lastEventId = vetoId;
                     continue;
                 }
@@ -390,6 +540,7 @@ public sealed class AgentRunner(
                     {
                         history.Add(LlmMessage.ToolResult(
                             call.Id, "User rejected this action."));
+                        ids.Add(null); // rejeição sem observation event
                         continue;
                     }
 
@@ -429,6 +580,42 @@ public sealed class AgentRunner(
                     events, conversationId, actionEvent, result, ct);
                 history.Add(LlmMessage.ToolResult(
                     call.Id, result.Observation.GetRawText()));
+                ids.Add(observationId);
+
+                // SPEC-22 RF-004: mid-turn — se o resultado estourou o
+                // threshold, compacta entre tool calls da mesma iteração.
+                if (opt.Compaction.MidTurnEnabled
+                    && await condenser.EvaluateAsync(history, model, ct)
+                        is { } mid)
+                {
+                    var midResult = await condenser.CondenseAsync(
+                        history, ids, CompactionTrigger.MidTurn, model,
+                        cs => Context.CompactionService.EmitRequestAsync(
+                            events, conversationId, cs, null), ct);
+                    if (midResult.Compacted)
+                    {
+                        var midCond = await Context.CompactionService
+                            .EmitCondensationAsync(events, conversationId,
+                                midResult, ct);
+                        if (midResult.SummaryOffset is { } so2
+                            && so2 < midResult.ResultEventIds.Count)
+                        {
+                            var midIds = midResult.ResultEventIds.ToList();
+                            midIds[so2] = midCond.Id;
+                            midResult = midResult with
+                            {
+                                ResultEventIds = midIds,
+                            };
+                        }
+
+                        history = midResult.Messages.ToList();
+                        ids = midResult.ResultEventIds.ToList();
+                        compactionCount++;
+                        // a msg assistant-toolcall pode ter sido esquecida.
+                        tcMsgIdx = history.FindLastIndex(
+                            m => m.ToolCalls is { Count: > 0 });
+                    }
+                }
 
                 // SPEC-11: on_tool_post — auditoria após a observação.
                 if (hooks is not null)
@@ -485,6 +672,13 @@ public sealed class AgentRunner(
                 }
 
                 lastEventId = observationId;
+            }
+
+            // SPEC-22: eventId composto da assistant-msg cobre todas as
+            // ActionEvents — forget da mensagem esquece as actions juntas.
+            if (tcMsgIdx >= 0 && tcMsgIdx < ids.Count)
+            {
+                ids[tcMsgIdx] = string.Join(',', actionIds);
             }
         }
 
@@ -583,124 +777,6 @@ public sealed class AgentRunner(
         }
     }
 
-    /// <summary>Reconstrói o histórico LLM a partir do stream (resume).</summary>
-    private async Task<(List<LlmMessage> history, string? lastEventId)>
-        BuildHistoryAsync(IEventService events, IToolRegistry tools,
-            ConversationRecord conv, CancellationToken ct)
-    {
-        var all = new List<EventBase>();
-        string? cursor = null;
-        do
-        {
-            var page = await events.SearchAsync(conversationId,
-                new EventQuery(PageId: cursor, Limit: 100), ct);
-            all.AddRange(page.Items);
-            cursor = page.NextPageId;
-        }
-        while (cursor is not null);
-
-        var forgotten = all.OfType<Condensation>()
-            .SelectMany(c => c.ForgottenEventIds).ToHashSet();
-        var history = new List<LlmMessage>();
-        string? lastId = null;
-        var hasSystem = false;
-        foreach (var e in all)
-        {
-            if (forgotten.Contains(e.Id))
-            {
-                continue;
-            }
-
-            lastId = e.Id;
-            switch (e)
-            {
-                case SystemPromptEvent sp:
-                    hasSystem = true;
-                    history.Add(new LlmMessage("system", Flatten(sp.SystemPrompt)));
-                    break;
-                case MessageEvent m:
-                    history.Add(ToLlmMessage(m));
-                    break;
-                case ActionEvent a:
-                    history.Add(LlmMessage.AssistantToolCall(
-                        Flatten(a.Thought),
-                        [new LlmToolCall(a.ToolCallId, a.ToolName,
-                            a.Action?.GetRawText() ?? "{}")]));
-                    break;
-                case ObservationEvent o:
-                    history.Add(LlmMessage.ToolResult(
-                        o.ToolCallId, o.Observation.GetRawText()));
-                    break;
-                case UserRejectObservation r:
-                    history.Add(LlmMessage.ToolResult(
-                        r.ToolCallId, $"User rejected: {r.RejectionReason}"));
-                    break;
-            }
-        }
-
-        if (!hasSystem)
-        {
-            // SPEC-11 RF-002: resolve skills por trigger (always/keyword/task)
-            // usando a última mensagem do usuário e as tags da conversa.
-            var lastUserText = all.OfType<MessageEvent>()
-                .Where(m => m.Source == EventSource.User)
-                .Select(m => ToLlmMessage(m).Content)
-                .LastOrDefault();
-            var skills = services.GetService<Application.Skills.ISkillService>()
-                is { } skillSvc
-                ? await skillSvc.ResolveForConversationAsync(
-                    conversationId, lastUserText, null,
-                    conv.CreatedByUserId, conv.OrgId?.ToString(), ct)
-                : [];
-            var prompt = SystemPromptBuilder.Build(
-                conv.SelectedRepository,
-                tools.All.Select(t => t.Schema).ToList(),
-                skills);
-            var sp = new SystemPromptEvent
-            {
-                ParentId = lastId,
-                SystemPrompt = JsonSerializer.SerializeToElement(
-                    new[] { new { type = "text", text = prompt } },
-                    EventJson.Options),
-                Tools = JsonSerializer.SerializeToElement(
-                    tools.All.Select(t => new
-                    {
-                        name = t.Schema.Name,
-                        description = t.Schema.Description,
-                        input_schema = t.Schema.InputSchema,
-                    }), EventJson.Options),
-            };
-            lastId = (await events.AppendAsync(conversationId, sp, ct)).Id;
-            history.Insert(0, new LlmMessage("system", prompt));
-        }
-
-        return (history, lastId);
-    }
-
-    private static LlmMessage ToLlmMessage(MessageEvent m)
-    {
-        try
-        {
-            var el = m.LlmMessage;
-            var role = el.TryGetProperty("role", out var r)
-                ? r.GetString() ?? "user" : "user";
-            var content = el.TryGetProperty("content", out var c)
-                ? c.ValueKind == JsonValueKind.String
-                    ? c.GetString()
-                    : c.ValueKind == JsonValueKind.Array
-                        ? string.Concat(c.EnumerateArray().Select(b =>
-                            b.TryGetProperty("text", out var t)
-                                ? t.GetString() : null))
-                        : c.GetRawText()
-                : null;
-            return new LlmMessage(role, content);
-        }
-        catch (JsonException)
-        {
-            return new LlmMessage("user", m.LlmMessage.GetRawText());
-        }
-    }
-
     private static async Task<string> ObserveAsync(
         IEventService events, Guid conversationId, ActionEvent action,
         ToolResult result, CancellationToken ct)
@@ -755,13 +831,4 @@ public sealed class AgentRunner(
         }
     }
 
-    private static string? Flatten(JsonElement? el) => el switch
-    {
-        null => null,
-        { ValueKind: JsonValueKind.String } s => s.GetString(),
-        { ValueKind: JsonValueKind.Array } arr => string.Concat(
-            arr.EnumerateArray().Select(b =>
-                b.TryGetProperty("text", out var t) ? t.GetString() : null)),
-        { } other => other.GetRawText(),
-    };
 }

@@ -45,4 +45,59 @@ public sealed class AgentLlmOptions
     /// <c>[{"text":"…"},{"tool":{"name":"bash","arguments":{"command":"ls"}}}]</c>.
     /// </summary>
     public string? MockScript { get; set; }
+
+    /// <summary>
+    /// Fallback context window (tokens) when the model/catalog does not
+    /// advertise one (SPEC-22). <c>null</c> = unlimited (meter never trips).
+    /// </summary>
+    public int? DefaultContextWindow { get; set; } = 128000;
+
+    /// <summary>
+    /// Per-model window overrides (<c>{"model-id":tokens}</c>) — always win
+    /// over discovery (SPEC-22/23).
+    /// </summary>
+    public Dictionary<string, int> ContextWindowOverrides { get; set; } = new();
+
+    /// <summary>
+    /// Model id promoted to on context overflow when its window is larger
+    /// (SPEC-22 RF-006). <c>null</c> = compaction instead.
+    /// </summary>
+    public string? PromotionTarget { get; set; }
+
+    /// <summary>Context compaction behaviour (SPEC-22).</summary>
+    public CompactionOptions Compaction { get; set; } = new();
+}
+
+/// <summary>Compaction tuning (<c>AgentLlm:Compaction:*</c>).</summary>
+public sealed class CompactionOptions
+{
+    /// <summary>Master switch (disabled ⇒ passthrough, MVP behaviour).</summary>
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>Trigger when tokens/window ≥ this fraction.</summary>
+    public double ThresholdPercent { get; set; } = 0.75;
+
+    /// <summary>Absolute token threshold — wins over percent when set.</summary>
+    public int? ThresholdTokens { get; set; }
+
+    /// <summary>Recent messages always kept verbatim in summarization.</summary>
+    public int KeepLastTurns { get; set; } = 6;
+
+    /// <summary>Newest tool results exempt from pruning.</summary>
+    public int KeepRecentToolResults { get; set; } = 8;
+
+    /// <summary>Tool results longer than this are pruned (chars).</summary>
+    public int PruneMaxChars { get; set; } = 4000;
+
+    /// <summary>Check the threshold inside the tool loop, not just at run start.</summary>
+    public bool MidTurnEnabled { get; set; } = true;
+
+    /// <summary>Emit the <c>context_state</c> ledger every N iterations.</summary>
+    public int LedgerEveryIterations { get; set; } = 10;
+
+    /// <summary>Model used for summaries (null = conversation model).</summary>
+    public string? SummaryModel { get; set; }
+
+    /// <summary>Max output tokens for the summarizer completion.</summary>
+    public int SummaryMaxTokens { get; set; } = 1024;
 }

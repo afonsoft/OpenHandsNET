@@ -143,7 +143,7 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
 
     public AgentRunnerFixture(
         string? mockScript = null, AgentLlmOptions? options = null,
-        bool confirmationMode = false)
+        bool confirmationMode = false, ICondenser? condenser = null)
     {
         ConversationId = Guid.NewGuid();
         Events = new FakeEventService();
@@ -160,7 +160,12 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
         sc.AddSingleton<ISandboxService>(new FakeSandboxService(SandboxId));
         sc.AddSingleton<ITaskTrackerService, InMemoryTaskTrackerService>();
         sc.AddSingleton<IToolRegistry, ToolRegistry>();
-        sc.AddSingleton<ICondenser, NoOpCondenser>();
+        sc.AddSingleton(condenser ?? (ICondenser)new NoOpCondenser());
+        sc.AddSingleton<IContextMeter>(
+            new OpenHandsNET.Infrastructure.Agent.Context
+                .HeuristicContextMeter(Options.Create(opt)));
+        sc.AddSingleton<OpenHandsNET.Infrastructure.Agent.Context
+            .ConversationHistoryBuilder>();
         sc.AddSingleton(Options.Create(opt));
         sc.AddSingleton<IAgentLlmProvider>(
             new MockLlmProvider(Parse(mockScript)));

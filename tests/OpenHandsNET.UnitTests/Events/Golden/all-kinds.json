@@ -117,6 +117,7 @@
     "source": "environment",
     "parent_id": null,
     "forgotten_event_ids": ["evt1", "evt2"],
+    "pruned_event_ids": ["obs9"],
     "summary": "resumo do contexto",
     "summary_offset": 4,
     "llm_response_id": "resp_c1"
@@ -126,7 +127,10 @@
     "id": "01J5Y0H3AEXAMPLECONDREQ1",
     "timestamp": "2026-01-01T10:00:11+00:00",
     "source": "environment",
-    "parent_id": null
+    "parent_id": null,
+    "trigger": "manual",
+    "instructions": "compact agora",
+    "tokens_before": 12345
   },
   {
     "kind": "CondensationSummaryEvent",
