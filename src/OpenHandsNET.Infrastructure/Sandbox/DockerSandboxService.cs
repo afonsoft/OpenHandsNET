@@ -25,7 +25,8 @@ public sealed class DockerSandboxService(
     ILogger<DockerSandboxService> logger,
     Git.GitCredentialProvider? gitCredentials = null,
     Microsoft.AspNetCore.DataProtection.IDataProtectionProvider? dp = null,
-    SandboxAgentClient? agentClient = null) : ISandboxService
+    SandboxAgentClient? agentClient = null,
+    EgressProxyService? egressProxy = null) : ISandboxService
 {
     /// <summary>Protector da session key do agente in-container (SPEC-17).</summary>
     private Microsoft.AspNetCore.DataProtection.IDataProtector? SessionProtector =>
@@ -72,8 +73,11 @@ public sealed class DockerSandboxService(
         {
             // Warm-pool claim: só para spec default (specId vazio) — specs
             // customizadas têm imagem/recursos próprios e não cabem no pool.
+            // SPEC-19 RF-005: warm containers nascem sem proxy env — em modo
+            // allowlist o claim é impossível (env é imutável) → cold start.
             var warmId = specId == Guid.Empty && spec.MountWorkspace
                 && conversationId is not null
+                && !egress.IsAllowlist
                 ? await TryClaimWarmAsync(
                     record.Id, conversationId.Value, spec.Image, ct)
                 : null;
@@ -120,6 +124,24 @@ public sealed class DockerSandboxService(
 
             var env = spec.Env?.Select(kv => $"{kv.Key}={kv.Value}").ToList() ?? [];
             env.AddRange(egress.EgressEnv());
+            // SPEC-19 RF-003/004: allowlist → o sandbox fica na rede internal e
+            // recebe o proxy compartilhado por env. Falha aqui aborta o start
+            // (fail-closed — nunca sobe sandbox restrito sem enforcement).
+            if (egress.IsAllowlist)
+            {
+                var net = await egress.EnsureNetworkAsync(ct)
+                    ?? throw new InvalidOperationException(
+                        "egress internal network unavailable");
+                if (egressProxy is null)
+                {
+                    throw new InvalidOperationException(
+                        "egress proxy service unavailable — allowlist mode " +
+                        "cannot start sandboxes without enforcement");
+                }
+
+                await egressProxy.EnsureProxyAsync(net, ct);
+                env.AddRange(EgressProxyService.ProxyEnv());
+            }
             env.AddRange(await ResolveCredentialEnvAsync(conversationId, ct));
 
             // SPEC-17: imagem-agente não leva Cmd (entrypoint é o agente);

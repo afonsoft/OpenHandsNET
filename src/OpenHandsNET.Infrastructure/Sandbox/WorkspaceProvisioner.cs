@@ -41,6 +41,19 @@ public sealed class SandboxOptions
     /// <summary>Allowlist hosts/CIDRs, <c>;</c>-separated (egress=allowlist).</summary>
     public string? EgressAllow { get; set; }
 
+    /// <summary>
+    /// Imagem do proxy de egress compartilhado (SPEC-19 RF-001) — pinada;
+    /// troque também o digest documentado em docs/deployment/egress-allowlist.md.
+    /// </summary>
+    public string EgressProxyImage { get; set; } = "ubuntu/squid:6.6-24.04_beta";
+
+    /// <summary>
+    /// Diretório host onde o <see cref="SquidConfigWriter"/> materializa
+    /// <c>squid.conf</c>/<c>allowlist.txt</c>. Default:
+    /// <c>{WorkspaceRoot}/../egress</c>.
+    /// </summary>
+    public string? EgressConfigDir { get; set; }
+
     /// <summary>Warm pool size (SPEC-14 RF-005) — 0 disables.</summary>
     public int WarmPoolSize { get; set; }
 

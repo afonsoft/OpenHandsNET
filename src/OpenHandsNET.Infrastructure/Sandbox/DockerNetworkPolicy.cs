@@ -25,6 +25,13 @@ public sealed class DockerNetworkPolicy(
         !options.Value.EgressMode.Equals("unrestricted", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
+    /// True when sandboxes sit on the internal network and reach the internet
+    /// only through the shared Squid proxy (SPEC-19).
+    /// </summary>
+    public bool IsAllowlist =>
+        options.Value.EgressMode.Equals("allowlist", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
     /// Ensures the internal network exists (internal:true → no outbound).
     /// Returns the network name to attach, or null for default bridge.
     /// </summary>
