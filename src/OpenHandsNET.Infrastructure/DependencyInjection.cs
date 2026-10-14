@@ -140,6 +140,17 @@ public static class DependencyInjection
             OpenHandsNET.Infrastructure.Identity.FeatureFlagService>();
         services.AddScoped<OpenHandsNET.Application.Identity.IUsageService,
             OpenHandsNET.Infrastructure.Identity.UsageService>();
+
+        // SPEC-20: billing — enforcement, metering write-path e catálogo.
+        services.Configure<OpenHandsNET.Infrastructure.Identity.BillingOptions>(
+            configuration.GetSection(
+                OpenHandsNET.Infrastructure.Identity.BillingOptions.Section));
+        services.AddScoped<OpenHandsNET.Application.Identity.IPlanEnforcementService,
+            OpenHandsNET.Infrastructure.Identity.PlanEnforcementService>();
+        services.AddScoped<OpenHandsNET.Application.Identity.IUsageMeter,
+            OpenHandsNET.Infrastructure.Identity.UsageMeter>();
+        services.AddScoped<OpenHandsNET.Application.Identity.IPlanAdminService,
+            OpenHandsNET.Infrastructure.Identity.PlanAdminService>();
         services.AddScoped<
             OpenHandsNET.Infrastructure.Observability.SupportBundleService>();
         services.AddSingleton<OpenHandsNET.Application.Identity.IAnalyticsService,

@@ -59,6 +59,19 @@ public sealed class ConversationStartWorker(
             return;
         }
 
+        // SPEC-20 RF-003: enforcement de plano antes de criar o sandbox —
+        // concurrent runs, tokens/mês e sandbox-seconds/mês.
+        var planError = await scope.ServiceProvider
+            .GetRequiredService<Application.Identity.IPlanEnforcementService>()
+            .CheckRunStartAsync(conv.OrgId, ct);
+        if (planError is not null)
+        {
+            await FailAsync(taskId,
+                $"plan_limit_exceeded:{planError.LimitKey}"
+                + $" ({planError.Used}/{planError.Limit})", ct);
+            return;
+        }
+
         await AdvanceAsync(db, task, StartTaskStatus.WaitingForSandbox, ct);
 
         var sandbox = await sandboxService.StartAsync(

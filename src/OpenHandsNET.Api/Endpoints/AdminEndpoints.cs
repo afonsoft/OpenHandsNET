@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenHandsNET.Application.Identity;
+using OpenHandsNET.Domain.Identity;
 using OpenHandsNET.Infrastructure.Identity;
 
 namespace OpenHandsNET.Api.Endpoints;
@@ -142,6 +143,48 @@ public static class AdminEndpoints
                 ? Results.NoContent() : Results.NotFound())
             .RequireAuthorization("perm:manage_feature_flags");
 
+        // SPEC-20 RF-005: catálogo de planos (limits em snake_case via
+        // naming policy global). Delete 409 enquanto houver referência ativa.
+        g.MapGet("/plans", async (
+            IPlanAdminService plans, CancellationToken ct) =>
+            Results.Ok(await plans.ListAsync(ct)))
+            .RequireAuthorization("perm:manage_super_admins");
+
+        g.MapPost("/plans", async (
+            [FromBody] PlanCreateRequest req, IPlanAdminService plans,
+            CancellationToken ct) =>
+            await plans.CreateAsync(
+                req.Name, req.Limits ?? new(), req.MonthlyPriceUsd, ct)
+                is { } p ? Results.Created($"/api/v1/admin/plans/{p.Id}", p)
+                : Results.Conflict(new { detail = "plan name already exists" }))
+            .RequireAuthorization("perm:manage_super_admins");
+
+        g.MapPatch("/plans/{id:guid}", async (
+            Guid id, [FromBody] PlanPatchRequest req,
+            IPlanAdminService plans, CancellationToken ct) =>
+            await plans.UpdateAsync(
+                id, req.Name, req.Limits, req.MonthlyPriceUsd, ct)
+                is { } p ? Results.Ok(p) : Results.NotFound())
+            .RequireAuthorization("perm:manage_super_admins");
+
+        g.MapDelete("/plans/{id:guid}", async (
+            Guid id, IPlanAdminService plans, CancellationToken ct) =>
+            await plans.DeleteAsync(id, ct) switch
+            {
+                null => Results.NoContent(),
+                PlanDeleteError.NotFound => Results.NotFound(),
+                _ => Results.Conflict(
+                    new { detail = "plan has active references" }),
+            }).RequireAuthorization("perm:manage_super_admins");
+
+        // Atribuição de plano à org: encerra a subscrição ativa e abre outra.
+        g.MapPut("/organizations/{org_id:guid}/plan", async (
+            Guid org_id, [FromBody] AssignPlanRequest req,
+            IPlanAdminService plans, CancellationToken ct) =>
+            await plans.AssignOrgPlanAsync(org_id, req.PlanId, ct)
+                ? Results.NoContent() : Results.NotFound())
+            .RequireAuthorization("perm:manage_super_admins");
+
         // SPEC-14 RF-004: diagnostics ZIP — readiness, redacted logs, counts,
         // versions and effective config (secrets masked by construction).
         app.MapGet("/api/v1/support-bundle", async (
@@ -162,4 +205,15 @@ public static class AdminEndpoints
 
     /// <summary>Feature flag set body.</summary>
     public sealed record FlagRequest(bool Enabled, string? Description);
+
+    /// <summary>Plan create body (limits serializam snake_case).</summary>
+    public sealed record PlanCreateRequest(
+        string Name, PlanLimits? Limits, decimal? MonthlyPriceUsd);
+
+    /// <summary>Plan patch body — campos nulos preservam o valor atual.</summary>
+    public sealed record PlanPatchRequest(
+        string? Name, PlanLimits? Limits, decimal? MonthlyPriceUsd);
+
+    /// <summary>Org plan assignment body.</summary>
+    public sealed record AssignPlanRequest(Guid PlanId);
 }

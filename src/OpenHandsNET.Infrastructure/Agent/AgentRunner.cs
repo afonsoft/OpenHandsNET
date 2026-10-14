@@ -235,6 +235,18 @@ public sealed class AgentRunner(
                                 .WithLabels("prompt").Inc(end.Usage.PromptTokens);
                             Telemetry.OpenNetTelemetry.LlmTokens
                                 .WithLabels("completion").Inc(end.Usage.CompletionTokens);
+                            // SPEC-20 RF-004: metering por org/período — o
+                            // run atual completa; a quota bloqueia o próximo.
+                            if (conv.OrgId is { } meterOrg
+                                && services.GetService<Application.Identity.IUsageMeter>()
+                                    is { } meter)
+                            {
+                                await meter.RecordTokensAsync(meterOrg,
+                                    end.Usage.PromptTokens
+                                        + end.Usage.CompletionTokens,
+                                    end.Usage.CostUsd, ct);
+                            }
+
                             break;
                     }
                 }
