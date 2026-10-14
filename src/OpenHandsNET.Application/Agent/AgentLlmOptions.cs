@@ -93,6 +93,13 @@ public sealed class AgentLlmOptions
     /// </summary>
     public Dictionary<string, int> ToolOutputCaps { get; set; } = new();
 
+    /// <summary>
+    /// Instance-level <c>allow</c>/<c>deny</c>/<c>ask</c> rules (SPEC-29
+    /// RF-001), e.g. <c>[{"pattern":"mcp__*","decision":"deny"}]</c>. Org and
+    /// conversation rules layer on top (org <c>deny</c> is a floor).
+    /// </summary>
+    public List<AgentPermissionRule> Permissions { get; set; } = [];
+
     /// <summary>Context compaction behaviour (SPEC-22).</summary>
     public CompactionOptions Compaction { get; set; } = new();
 }

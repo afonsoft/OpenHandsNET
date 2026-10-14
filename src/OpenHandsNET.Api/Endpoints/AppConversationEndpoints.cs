@@ -109,6 +109,45 @@ public static class AppConversationEndpoints
             return MapSwitch(
                 await svc.SwitchModelAsync(id, requested, ct), id, http);
         });
+
+        // SPEC-29 RF-002: override de permissões por conversa (dono).
+        group.MapPatch("/{id:guid}/permissions", async (
+            Guid id, SetPermissionsRequest body,
+            IAppConversationService svc,
+            HttpContext http, CancellationToken ct) =>
+        {
+            var rules = body.Permissions?.Select(p =>
+                new Application.Agent.AgentPermissionRule(
+                    p.Pattern, ParseDecision(p.Decision))).ToList();
+            if (await svc.SetPermissionsAsync(id, rules, ct) is not { } conv)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Conversation {id} not found");
+            }
+
+            return Results.Ok(ToDto(conv));
+        });
+
+        // SPEC-29 RF-003: plan mode — overlay read-only (deny mutations).
+        group.MapPost("/{id:guid}/mode", async (
+            Guid id, SetModeRequest body,
+            IAppConversationService svc,
+            HttpContext http, CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(body.Mode))
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 400, "mode must be 'plan' or 'build'");
+            }
+
+            if (await svc.SetModeAsync(id, body.Mode, ct) is not { } conv)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Conversation {id} not found");
+            }
+
+            return Results.Ok(ToDto(conv));
+        });
         group.MapGet("/{id:guid}/model", async (
             Guid id, IAppConversationService svc,
             Application.Agent.IModelCatalog catalog,
@@ -134,18 +173,28 @@ public static class AppConversationEndpoints
         });
 
         // SPEC-25 RF-006: superfície de tools — builtin + MCP + repo skills.
+        // SPEC-29 RF-002: catálogo EFETIVO (deny da conversa/org removidas).
         group.MapGet("/{id:guid}/tools", async (
             Guid id, IAppConversationService svc,
             Application.Agent.IToolRegistry registry,
+            Infrastructure.Persistence.AppDbContext db,
+            Microsoft.Extensions.Options.IOptions<
+                Application.Agent.AgentLlmOptions> llmOpts,
             HttpContext http, CancellationToken ct) =>
         {
-            if (await svc.GetAsync(id, ct) is null)
+            var record = await db.Conversations.FindAsync([id], ct);
+            if (record is null)
             {
                 return OpenHandsNetProblemFactory.Create(
                     http, 404, $"Conversation {id} not found");
             }
 
-            var tools = registry.All.Select(t => new
+            var evaluator = await Infrastructure.Agent
+                .ConversationPermissionResolver.ResolveAsync(
+                    db, record, llmOpts.Value, ct);
+            var effective = Infrastructure.Agent.ConversationPermissionResolver
+                .Catalog(registry, evaluator);
+            var tools = effective.All.Select(t => new
             {
                 name = t.Schema.Name,
                 description = t.Schema.Description,
@@ -446,10 +495,18 @@ public static class AppConversationEndpoints
                 b.InitialMessage.Content.Cast<object>().ToList(),
                 b.InitialMessage.Run),
             b.SelectedRepository, b.AgentType, b.LlmModel, b.SandboxSpecId,
-            b.ConfirmationMode, b.SandboxProfile);
+            b.ConfirmationMode, b.SandboxProfile,
+            b.Permissions?.Select(p => new Application.Agent.AgentPermissionRule(
+                p.Pattern, ParseDecision(p.Decision))).ToList(),
+            b.Mode);
 
     private static StartTaskStatus? ParseStatus(string? s) =>
         Enum.TryParse<StartTaskStatus>(s, ignoreCase: true, out var v) ? v : null;
+
+    private static Application.Agent.PermissionDecision ParseDecision(string s) =>
+        Enum.TryParse<Application.Agent.PermissionDecision>(
+            s, ignoreCase: true, out var d)
+            ? d : Application.Agent.PermissionDecision.Ask;
 
     private static StartTaskDto ToDto(AppConversationStartTask t) => new()
     {

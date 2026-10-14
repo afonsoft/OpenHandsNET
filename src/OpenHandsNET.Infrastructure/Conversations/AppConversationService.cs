@@ -62,6 +62,11 @@ public sealed class AppConversationService(
                 .IsValid(request.SandboxProfile)
                     ? request.SandboxProfile : null,
             ConfirmationMode = request.ConfirmationMode,
+            // SPEC-29: regras de permissão por conversa + modo (plan|build).
+            PermissionsJson = request.Permissions is { Count: > 0 } rules
+                ? Application.Agent.PermissionRules.ToJson(rules) : null,
+            Mode = string.Equals(request.Mode, "plan",
+                StringComparison.OrdinalIgnoreCase) ? "plan" : "build",
             // Sinaliza ao worker que o agente deve iniciar ao chegar em READY.
             PendingKickoff = request.InitialMessage?.Run == true,
             ExecutionStatus = ConversationExecutionStatus.Starting.ToString(),
@@ -327,6 +332,60 @@ public sealed class AppConversationService(
                 record.LlmModel),
         }, ct);
         return SwitchResult.Ok(record.ToDomain());
+    }
+
+    /// <inheritdoc />
+    public async Task<AppConversation?> SetPermissionsAsync(Guid id,
+        IReadOnlyList<Application.Agent.AgentPermissionRule>? rules,
+        CancellationToken ct)
+    {
+        var record = await db.Conversations.FindAsync([id], ct);
+        if (record is null || record.ExecutionStatus
+                == nameof(ConversationExecutionStatus.Archived))
+        {
+            return null;
+        }
+
+        record.PermissionsJson = rules is { Count: > 0 }
+            ? Application.Agent.PermissionRules.ToJson(rules) : null;
+        record.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(ct);
+        await events.AppendAsync(record.Id, new ConversationStateUpdateEvent
+        {
+            Key = "permissions",
+            Value = System.Text.Json.JsonSerializer.SerializeToElement(
+                rules ?? [], EventJson.Options),
+        }, ct);
+        return record.ToDomain();
+    }
+
+    /// <inheritdoc />
+    public async Task<AppConversation?> SetModeAsync(
+        Guid id, string mode, CancellationToken ct)
+    {
+        var record = await db.Conversations.FindAsync([id], ct);
+        if (record is null || record.ExecutionStatus
+                == nameof(ConversationExecutionStatus.Archived))
+        {
+            return null;
+        }
+
+        var normalized = string.Equals(mode, "plan",
+            StringComparison.OrdinalIgnoreCase) ? "plan" : "build";
+        if (!string.Equals(record.Mode, normalized, StringComparison.Ordinal))
+        {
+            record.Mode = normalized;
+            record.UpdatedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync(ct);
+            await events.AppendAsync(record.Id, new ConversationStateUpdateEvent
+            {
+                Key = "conversation_mode",
+                Value = System.Text.Json.JsonSerializer.SerializeToElement(
+                    normalized, EventJson.Options),
+            }, ct);
+        }
+
+        return record.ToDomain();
     }
 
     /// <inheritdoc />

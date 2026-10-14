@@ -10,7 +10,9 @@ public sealed record CreateConversationRequest(
     string? LlmModel,
     Guid? SandboxSpecId,
     bool ConfirmationMode = false,
-    string? SandboxProfile = null);
+    string? SandboxProfile = null,
+    IReadOnlyList<Agent.AgentPermissionRule>? Permissions = null,
+    string? Mode = null);
 
 /// <summary>
 /// User/agent message seed for a new conversation. <paramref name="Run"/>
@@ -73,6 +75,20 @@ public interface IAppConversationService
     /// (upstream <c>switch_acp_model</c> route kept for parity).
     /// </summary>
     Task<SwitchResult> SwitchModelAsync(Guid id, string model, CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-29 RF-002: replaces the conversation tool-permission rules
+    /// (<paramref name="rules"/> null/empty clears the override).
+    /// </summary>
+    Task<AppConversation?> SetPermissionsAsync(Guid id,
+        IReadOnlyList<Agent.AgentPermissionRule>? rules, CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-29 RF-003: sets the execution mode (<c>plan</c>|<c>build</c>);
+    /// <c>plan</c> denies mutation tools and asks on bash/browser.
+    /// </summary>
+    Task<AppConversation?> SetModeAsync(
+        Guid id, string mode, CancellationToken ct);
 }
 
 /// <summary>Outcome of a conversation switch operation (SPEC-18).</summary>

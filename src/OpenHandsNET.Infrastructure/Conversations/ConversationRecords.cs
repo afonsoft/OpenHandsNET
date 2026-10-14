@@ -28,6 +28,15 @@ public sealed class ConversationRecord : IOrgScoped
 
     /// <summary>Perfil de sizing do sandbox (SPEC-14 RF-001): small|medium|large.</summary>
     public string? SandboxProfile { get; set; }
+
+    /// <summary>
+    /// Regras de permissão por tool da conversa (SPEC-29 RF-001) — JSON de
+    /// <c>AgentPermissionRule[]</c>; null = herda org/instância.
+    /// </summary>
+    public string? PermissionsJson { get; set; }
+
+    /// <summary>Modo de execução (SPEC-29 RF-003): <c>build</c> | <c>plan</c>.</summary>
+    public string Mode { get; set; } = "build";
     public string? CreatedByUserId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }

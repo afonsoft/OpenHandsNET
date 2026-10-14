@@ -16,8 +16,20 @@ public sealed record CreateAppConversationRequest
     public Guid? SandboxId { get; init; }
     public string? SandboxProfile { get; init; }
     public bool ConfirmationMode { get; init; }
+    /// <summary>SPEC-29: regras allow/deny/ask por tool da conversa.</summary>
+    public IReadOnlyList<PermissionRuleDto>? Permissions { get; init; }
+    /// <summary>SPEC-29: <c>plan</c> | <c>build</c> (default).</summary>
+    public string? Mode { get; init; }
     public JsonElement? LlmConfig { get; init; }
     public JsonElement? ObservabilityConfig { get; init; }
+}
+
+/// <summary>Uma regra de permissão de tool (SPEC-29): pattern+decision.</summary>
+public sealed record PermissionRuleDto
+{
+    public required string Pattern { get; init; }
+    /// <summary><c>allow</c> | <c>deny</c> | <c>ask</c>.</summary>
+    public required string Decision { get; init; }
 }
 
 /// <summary>initial_message.content[] item.</summary>
@@ -93,6 +105,20 @@ public sealed record CompactContextRequest
 {
     /// <summary>Optional instructions steering the summarizer.</summary>
     public string? Instructions { get; init; }
+}
+
+/// <summary>PATCH .../permissions body (SPEC-29 RF-002).</summary>
+public sealed record SetPermissionsRequest
+{
+    /// <summary>Rule set — null/empty clears the conversation override.</summary>
+    public IReadOnlyList<PermissionRuleDto>? Permissions { get; init; }
+}
+
+/// <summary>POST .../mode body (SPEC-29 RF-003).</summary>
+public sealed record SetModeRequest
+{
+    /// <summary><c>plan</c> | <c>build</c>.</summary>
+    public string? Mode { get; init; }
 }
 
 /// <summary>POST /sandboxes body.</summary>
