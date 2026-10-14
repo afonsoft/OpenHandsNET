@@ -100,6 +100,18 @@ public sealed class AgentLlmOptions
     /// </summary>
     public List<AgentPermissionRule> Permissions { get; set; } = [];
 
+    /// <summary>
+    /// Security analyzer backend (SPEC-33 RF-001): <c>pattern</c> (default,
+    /// local) | <c>llm</c> (role Summarizer classification, cached).
+    /// </summary>
+    public string SecurityAnalyzer { get; set; } = "pattern";
+
+    /// <summary>
+    /// SPEC-33 RF-004: resume with a reduced toolset fails hard instead of
+    /// emitting a <c>resume_drift</c> diagnostic (default fail-open).
+    /// </summary>
+    public bool StrictResume { get; set; }
+
     /// <summary>Context compaction behaviour (SPEC-22).</summary>
     public CompactionOptions Compaction { get; set; } = new();
 }

@@ -12,7 +12,8 @@ public sealed record CreateConversationRequest(
     bool ConfirmationMode = false,
     string? SandboxProfile = null,
     IReadOnlyList<Agent.AgentPermissionRule>? Permissions = null,
-    string? Mode = null);
+    string? Mode = null,
+    IReadOnlyList<string>? Secrets = null);
 
 /// <summary>
 /// User/agent message seed for a new conversation. <paramref name="Run"/>

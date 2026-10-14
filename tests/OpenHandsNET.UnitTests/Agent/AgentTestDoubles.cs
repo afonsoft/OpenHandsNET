@@ -151,6 +151,7 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
         string? mockScript = null, AgentLlmOptions? options = null,
         bool confirmationMode = false, ICondenser? condenser = null,
         IAgentLlmProvider? provider = null, IModelCatalog? catalog = null,
+        ISecurityAnalyzer? security = null,
         Action<ConversationRecord>? configureConv = null)
     {
         ConversationId = Guid.NewGuid();
@@ -184,6 +185,10 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
                 new OpenHandsNET.Infrastructure.Agent.Routing
                     .ModelRouter(catalog, Options.Create(opt)));
         }
+        if (security is not null)
+        {
+            sc.AddSingleton(security);
+        }
         _provider = sc.BuildServiceProvider();
         _scope = _provider.CreateAsyncScope();
 
@@ -208,6 +213,7 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
     public FakeEventService Events { get; }
     public FakeSandboxExecutor Executor { get; }
     public AgentRunner Runner { get; }
+    public IServiceProvider ScopeServices => _scope.ServiceProvider;
 
     public async Task<string?> RecordStatusAsync()
     {
