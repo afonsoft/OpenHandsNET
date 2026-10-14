@@ -100,10 +100,22 @@ public sealed class ConversationHistoryBuilder(IServiceProvider services)
                     conversationId, lastUserText, null,
                     conv.CreatedByUserId, conv.OrgId?.ToString(), ct)
                 : [];
+
+            // SPEC-25 RF-001/002: repo context + repo skills federadas.
+            string? repoContext = null;
+            if (services.GetService<Discovery.RepoContextLoader>()
+                is { } repoLoader)
+            {
+                var loaded = await repoLoader.LoadAsync(conv, all, ct);
+                repoContext = loaded.RenderedMarkdown;
+                skills = MergeRepoSkills(
+                    skills, loaded.RepoSkills, lastUserText);
+            }
+
             var prompt = SystemPromptBuilder.Build(
                 conv.SelectedRepository,
                 tools.All.Select(t => t.Schema).ToList(),
-                skills);
+                skills, repoContext);
             var sp = new SystemPromptEvent
             {
                 ParentId = lastId,
@@ -136,6 +148,45 @@ public sealed class ConversationHistoryBuilder(IServiceProvider services)
         }
 
         return new RebuiltHistory(history, ids, lastId);
+
+        // SPEC-25 RF-002: db ∪ repo, dedupe por nome (db ganha), cap 20.
+        // Repo skills entram via trigger Keyword(nome) — lastUserText
+        // contém o nome → injetada; o catálogo completo sempre aparece
+        // na seção Repository context.
+        static IReadOnlyList<Domain.Skills.Skill> MergeRepoSkills(
+            IReadOnlyList<Domain.Skills.Skill> db,
+            IReadOnlyList<Domain.Skills.Skill> repo, string? message)
+        {
+            if (repo.Count == 0)
+            {
+                return db;
+            }
+
+            var names = db.Select(s => s.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var merged = db.ToList();
+            foreach (var s in repo)
+            {
+                if (names.Contains(s.Name))
+                {
+                    continue;
+                }
+
+                if (message?.Contains(s.Name,
+                        StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    merged.Add(s);
+                    names.Add(s.Name);
+                }
+
+                if (merged.Count >= 20)
+                {
+                    break;
+                }
+            }
+
+            return merged;
+        }
 
         void Add(LlmMessage m, string? id)
         {

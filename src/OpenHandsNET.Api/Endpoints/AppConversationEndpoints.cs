@@ -7,6 +7,7 @@ using OpenHandsNET.Application.Events;
 using OpenHandsNET.Application.Sandbox;
 using OpenHandsNET.Domain.Conversations;
 using OpenHandsNET.Domain.Events;
+using OpenHandsNET.Domain.Sandbox;
 
 namespace OpenHandsNET.Api.Endpoints;
 
@@ -130,6 +131,73 @@ public static class AppConversationEndpoints
                 window = info?.ContextWindow,
                 provider = info?.Provider,
             });
+        });
+
+        // SPEC-25 RF-006: superfície de tools — builtin + MCP + repo skills.
+        group.MapGet("/{id:guid}/tools", async (
+            Guid id, IAppConversationService svc,
+            Application.Agent.IToolRegistry registry,
+            HttpContext http, CancellationToken ct) =>
+        {
+            if (await svc.GetAsync(id, ct) is null)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Conversation {id} not found");
+            }
+
+            var tools = registry.All.Select(t => new
+            {
+                name = t.Schema.Name,
+                description = t.Schema.Description,
+            });
+            return Results.Ok(new { tools });
+        });
+
+        // SPEC-25 RF-006: rescan on-demand — repete a descoberta do worker,
+        // atualiza o evento repo_context e invalida o cache de skills.
+        group.MapPost("/{id:guid}/context/rescan", async (
+            Guid id, IAppConversationService svc,
+            ISandboxService sandboxes,
+            ISandboxExecutor executor,
+            Application.Discovery.IRepoDiscoveryService discovery,
+            IEventService events,
+            IServiceProvider sp,
+            HttpContext http, CancellationToken ct) =>
+        {
+            if (await svc.GetAsync(id, ct) is null)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Conversation {id} not found");
+            }
+
+            var sandbox = (await sandboxes.SearchAsync(
+                    null, id, ct))
+                .FirstOrDefault(s => s.Status == SandboxStatus.Running);
+            if (sandbox is null)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 409, "Sandbox is not running");
+            }
+
+            var manifest = await discovery.DiscoverAsync(executor, sandbox, ct);
+            await events.AppendAsync(id, new ConversationStateUpdateEvent
+            {
+                Key = "repo_context",
+                Value = JsonSerializer.SerializeToElement(new
+                {
+                    instructions_files = manifest.InstructionFiles,
+                    skills = manifest.Skills.Select(s => new
+                    {
+                        name = s.Name, path = s.Path,
+                        description = s.Description,
+                    }),
+                    config = manifest.HasRepoConfig,
+                    readme = manifest.ReadmePath,
+                }, EventJson.Options),
+            }, ct);
+            sp.GetService<Infrastructure.Skills.RepoSkillProvider>()
+                ?.Invalidate(sandbox.Id);
+            return Results.Ok(manifest);
         });
 
         // SPEC-22 RF-004/005: compaction manual + ledger de contexto.

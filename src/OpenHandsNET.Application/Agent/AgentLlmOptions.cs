@@ -86,6 +86,13 @@ public sealed class AgentLlmOptions
     /// </summary>
     public int MaxRouteWaitSeconds { get; set; } = 300;
 
+    /// <summary>
+    /// SPEC-25 RF-005: per-tool observation cap in chars
+    /// (e.g. <c>{"bash":61440,"search":102400,"mcp__*":81920}</c>);
+    /// tools sem entrada usam o default 60KB.
+    /// </summary>
+    public Dictionary<string, int> ToolOutputCaps { get; set; } = new();
+
     /// <summary>Context compaction behaviour (SPEC-22).</summary>
     public CompactionOptions Compaction { get; set; } = new();
 }

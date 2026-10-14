@@ -143,6 +143,13 @@ public sealed class ConversationStartWorker(
                 sbForBlueprint, conv.Id, spec, executor, ct);
         }
 
+        // SPEC-25 RF-001: descoberta de contexto do repo — AGENTS.md,
+        // skills versionadas, config — persistida como repo_context.
+        if (sbForBlueprint is not null)
+        {
+            await RunDiscoveryAsync(scope, conv, sbForBlueprint, ct);
+        }
+
         await AdvanceAsync(db, task, StartTaskStatus.SettingUpSkills, ct);
         // SPEC-11 RF-005: resolve + persiste skills da conversa antes de READY.
         {
@@ -190,6 +197,56 @@ public sealed class ConversationStartWorker(
             var host = scope.ServiceProvider
                 .GetRequiredService<OpenHandsNET.Application.Agent.IAgentRunnerHost>();
             await host.NotifyMessageAsync(conv.Id, ct);
+        }
+    }
+
+    /// <summary>
+    /// SPEC-25 RF-001: roda a descoberta no sandbox e persiste o manifesto
+    /// como <c>ConversationStateUpdateEvent(key="repo_context")</c> —
+    /// falha nunca bloqueia o start-task.
+    /// </summary>
+    internal static async Task RunDiscoveryAsync(
+        IServiceScope scope, ConversationRecord conv,
+        Domain.Sandbox.Sandbox sandbox, CancellationToken ct)
+    {
+        try
+        {
+            var discovery = scope.ServiceProvider
+                .GetRequiredService<Application.Discovery.IRepoDiscoveryService>();
+            var executor = scope.ServiceProvider
+                .GetRequiredService<ISandboxExecutor>();
+            var eventSvc = scope.ServiceProvider
+                .GetRequiredService<Application.Events.IEventService>();
+            var manifest = await discovery.DiscoverAsync(
+                executor, sandbox, ct);
+            await eventSvc.AppendAsync(conv.Id,
+                new Domain.Events.ConversationStateUpdateEvent
+                {
+                    Key = "repo_context",
+                    Value = System.Text.Json.JsonSerializer
+                        .SerializeToElement(new
+                        {
+                            instructions_files = manifest.InstructionFiles,
+                            skills = manifest.Skills.Select(s => new
+                            {
+                                name = s.Name, path = s.Path,
+                                description = s.Description,
+                            }),
+                            config = manifest.HasRepoConfig,
+                            readme = manifest.ReadmePath,
+                        }, Domain.Events.EventJson.Options),
+                }, ct);
+            // o cache de repo-skills do sandbox pode estar stale — descarta.
+            scope.ServiceProvider.GetService<Skills.RepoSkillProvider>()
+                ?.Invalidate(sandbox.Id);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // descoberta é best-effort — READY não depende dela.
+            var logger = scope.ServiceProvider
+                .GetService<ILogger<ConversationStartWorker>>();
+            logger?.LogWarning(ex,
+                "repo discovery falhou na conversa {Id}", conv.Id);
         }
     }
 

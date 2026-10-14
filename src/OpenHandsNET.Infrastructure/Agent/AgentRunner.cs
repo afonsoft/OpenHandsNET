@@ -613,7 +613,8 @@ public sealed class AgentRunner(
                 {
                     var obsId = await ObserveAsync(events, conversationId,
                         actionEvent,
-                        ToolResult.Error($"unknown tool '{call.Name}'"), ct);
+                        ToolResult.Error($"unknown tool '{call.Name}'"),
+                        sandbox, executor, ct);
                     history.Add(LlmMessage.ToolResult(
                         call.Id, $"{{\"error\":\"unknown tool '{call.Name}'\"}}"));
                     ids.Add(obsId);
@@ -636,7 +637,8 @@ public sealed class AgentRunner(
                 {
                     var vetoId = await ObserveAsync(events, conversationId,
                         actionEvent,
-                        ToolResult.Error("blocked by hook"), ct);
+                        ToolResult.Error("blocked by hook"),
+                        sandbox, executor, ct);
                     history.Add(LlmMessage.ToolResult(
                         call.Id, "{\"error\":\"blocked by hook\"}"));
                     ids.Add(vetoId);
@@ -716,7 +718,8 @@ public sealed class AgentRunner(
                 }
 
                 var observationId = await ObserveAsync(
-                    events, conversationId, actionEvent, result, ct);
+                    events, conversationId, actionEvent, result,
+                    sandbox, executor, ct);
                 history.Add(LlmMessage.ToolResult(
                     call.Id, result.Observation.GetRawText()));
                 ids.Add(observationId);
@@ -924,17 +927,27 @@ public sealed class AgentRunner(
         }
     }
 
-    private static async Task<string> ObserveAsync(
+    /// <summary>
+    /// SPEC-25 RF-005: aplica o OutputPolicy (cap por tool + truncamento
+    /// head+tail + artifact_ref) antes de persistir o observation.
+    /// </summary>
+    private async Task<string> ObserveAsync(
         IEventService events, Guid conversationId, ActionEvent action,
-        ToolResult result, CancellationToken ct)
+        ToolResult result, Domain.Sandbox.Sandbox? sandbox,
+        ISandboxExecutor? executor, CancellationToken ct)
     {
+        var policy = services.GetService<Tools.OutputPolicy>();
+        var payload = policy is null
+            ? result.Observation
+            : await policy.ApplyAsync(action.ToolName ?? "", action.Id,
+                result.Observation, sandbox, executor, ct);
         var obs = new ObservationEvent
         {
             ParentId = action.Id,
             ActionId = action.Id,
-            ToolName = action.ToolName,
+            ToolName = action.ToolName!,
             ToolCallId = action.ToolCallId,
-            Observation = result.Observation,
+            Observation = payload,
         };
         return (await events.AppendAsync(conversationId, obs, ct)).Id;
     }

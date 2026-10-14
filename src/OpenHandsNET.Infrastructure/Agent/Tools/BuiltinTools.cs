@@ -78,12 +78,19 @@ public static class BuiltinTools
         });
 
     /// <summary>Reads a workspace file (UTF-8).</summary>
+    /// <summary>
+    /// SPEC-25 RF-003: <c>offset</c>/<c>limit</c> em linhas (1-based);
+    /// resposta traz <c>total_lines</c>/<c>truncated</c>.
+    /// </summary>
     public static AgentTool FileRead() => new(
         new ToolSchema("file_read",
-            "Read a UTF-8 file from the workspace.",
+            "Read a UTF-8 file from the workspace. Without offset/limit "
+            + "returns up to 2000 lines; use offset+limit to page large files.",
             Schema("""
                 {"type":"object","properties":{
-                  "path":{"type":"string","description":"Absolute path inside the container"}},
+                  "path":{"type":"string","description":"Absolute path inside the container"},
+                  "offset":{"type":"integer","description":"1-based first line to return (default 1)"},
+                  "limit":{"type":"integer","description":"Max lines to return (default 2000)"}},
                  "required":["path"]}
                 """)),
         Risky: false,
@@ -93,7 +100,22 @@ public static class BuiltinTools
             {
                 var content = await ctx.Executor.ReadFileAsync(
                     ctx.Sandbox, args.GetProperty("path").GetString()!, ct);
-                return ToolResult.Ok(new { content });
+                var lines = content.Split('\n');
+                var offset = args.TryGetProperty("offset", out var o)
+                    ? Math.Max(1, o.GetInt32()) : 1;
+                var limit = args.TryGetProperty("limit", out var l)
+                    ? Math.Clamp(l.GetInt32(), 1, 2000) : 2000;
+                var slice = lines
+                    .Skip(Math.Min(offset - 1, lines.Length))
+                    .Take(limit)
+                    .ToList();
+                return ToolResult.Ok(new
+                {
+                    content = string.Join('\n', slice),
+                    total_lines = lines.Length,
+                    offset,
+                    truncated = offset - 1 + slice.Count < lines.Length,
+                });
             }
             catch (Exception ex)
             {
@@ -139,16 +161,33 @@ public static class BuiltinTools
             }
         });
 
-    /// <summary>String-replace edit of a workspace file.</summary>
+    /// <summary>
+    /// String-replace edit (SPEC-25 RF-003 — modes): <c>exact</c> (default,
+    /// single occurrence of old_string), <c>anchor</c> (replace the line
+    /// carrying a unique <c>anchor: &lt;text&gt;</c> marker), <c>hashline</c>
+    /// (replace the line addressed by <c>lineno:sha1-prefix</c> — tolerates
+    /// drift in surrounding content). Failures return a nearby-content hint.
+    /// </summary>
     public static AgentTool FileEdit() => new(
         new ToolSchema("file_edit",
-            "Replace old_string with new_string in a workspace file (exact match, single occurrence).",
+            "Edit a workspace file. mode=exact (default): replace the single "
+            + "occurrence of old_string with new_string. mode=anchor: replace "
+            + "the whole line containing the unique marker 'anchor: <anchor>'. "
+            + "mode=hashline: replace the line addressed by 'lineno:hash8' "
+            + "(hash8 = first 8 hex chars of sha1(line) — verifies the "
+            + "expected content; omit ':hash8' to target the bare line number).",
             Schema("""
                 {"type":"object","properties":{
                   "path":{"type":"string"},
+                  "mode":{"type":"string","enum":["exact","anchor","hashline"],
+                    "description":"Edit mode (default exact)"},
                   "old_string":{"type":"string"},
-                  "new_string":{"type":"string"}},
-                 "required":["path","old_string","new_string"]}
+                  "new_string":{"type":"string"},
+                  "anchor":{"type":"string",
+                    "description":"anchor mode: marker text after 'anchor:'"},
+                  "line":{"type":"string",
+                    "description":"hashline mode: 'lineno' or 'lineno:hash8'"}},
+                 "required":["path"]}
                 """)),
         Risky: true,
         Handler: async (ctx, args, ct) =>
@@ -156,18 +195,26 @@ public static class BuiltinTools
             try
             {
                 var path = args.GetProperty("path").GetString()!;
-                var oldStr = args.GetProperty("old_string").GetString()!;
-                var newStr = args.GetProperty("new_string").GetString()!;
-                var content = await ctx.Executor.ReadFileAsync(ctx.Sandbox, path, ct);
-                var idx = content.IndexOf(oldStr, StringComparison.Ordinal);
-                if (idx < 0)
+                var mode = args.TryGetProperty("mode", out var m)
+                    ? m.GetString() ?? "exact" : "exact";
+                var content = await ctx.Executor.ReadFileAsync(
+                    ctx.Sandbox, path, ct);
+                var edited = mode switch
                 {
-                    return ToolResult.Error("old_string not found in file");
+                    "exact" => EditExact(args, content),
+                    "anchor" => EditAnchor(args, content),
+                    "hashline" => EditHashline(args, content),
+                    _ => $"__ERR__unknown mode '{mode}'",
+                };
+                if (edited.StartsWith("__ERR__", StringComparison.Ordinal))
+                {
+                    return ToolResult.Error(edited["__ERR__".Length..]
+                        + Hint(content));
                 }
 
                 await ctx.Executor.WriteFileAsync(
-                    ctx.Sandbox, path,
-                    content[..idx] + newStr + content[(idx + oldStr.Length)..], ct);
+                    ctx.Sandbox, path, edited, ct);
+                // SPEC-24 RF-004 + SPEC-25: files_changed também nos modes.
                 await EmitPathsAsync(ctx, "file_edit",
                     [(path, "modify")], ct);
                 return ToolResult.Ok(new { ok = true });
@@ -345,6 +392,30 @@ public static class BuiltinTools
 
             var name = args.GetProperty("name").GetString()!;
             var skill = await skills.FindByNameAsync(name, null, null, ct);
+            // SPEC-25 RF-002: db miss → tenta skill versionada no repo.
+            if (skill is null
+                && ctx.Services.GetService<Skills.RepoSkillProvider>()
+                    is { } repo)
+            {
+                var rs = (await repo.LoadAsync(ctx.Sandbox, ctx.Executor, ct))
+                    .FirstOrDefault(s => s.Name.Equals(name,
+                        StringComparison.OrdinalIgnoreCase));
+                if (rs is not null)
+                {
+                    var dir = System.IO.Path.GetDirectoryName(
+                        rs.RepoPath!)!.Replace('\\', '/');
+                    var listing = await ctx.Executor.ListFilesAsync(
+                        ctx.Sandbox, dir, ct);
+                    return ToolResult.Ok(new
+                    {
+                        name = rs.Name,
+                        content = rs.ContentMd,
+                        source = "repo",
+                        files = listing.Select(f => f.Path).ToList(),
+                    });
+                }
+            }
+
             return skill is null
                 ? ToolResult.Error($"skill '{name}' not found")
                 : ToolResult.Ok(new
@@ -352,6 +423,113 @@ public static class BuiltinTools
                     name = skill.Name,
                     content = skill.ContentMd,
                 });
+        });
+
+    /// <summary>
+    /// Workspace code search (SPEC-25 RF-003): ripgrep no sandbox
+    /// (<c>rg</c> na imagem runtime), fallback <c>grep -R</c>/<c>find</c>.
+    /// Saída capped (head+tail 100KB) pelo OutputPolicy do runner.
+    /// </summary>
+    public static AgentTool Search(TimeSpan timeout) => new(
+        new ToolSchema("search",
+            "Search the workspace with ripgrep. mode=content (default) shows "
+            + "matching lines with numbers; mode=files lists matching paths. "
+            + "Confined to the workspace — never follows symlinks outside.",
+            Schema("""
+                {"type":"object","properties":{
+                  "query":{"type":"string",
+                    "description":"ripgrep pattern (regex) or glob for mode=files"},
+                  "mode":{"type":"string","enum":["content","files"],
+                    "description":"content = matching lines; files = paths only"},
+                  "glob":{"type":"string",
+                    "description":"Optional glob filter, e.g. '*.cs'"},
+                  "path":{"type":"string",
+                    "description":"Workspace-relative subdir (default repo root)"},
+                  "max_results":{"type":"integer","description":"Cap hits (default 50)"},
+                  "context_lines":{"type":"integer",
+                    "description":"Context lines around each hit (mode=content)"}},
+                 "required":["query"]}
+                """)),
+        Risky: false,
+        Handler: async (ctx, args, ct) =>
+        {
+            var query = args.GetProperty("query").GetString()!;
+            var mode = args.TryGetProperty("mode", out var m)
+                ? m.GetString() ?? "content" : "content";
+            var glob = args.TryGetProperty("glob", out var g)
+                ? g.GetString() : null;
+            var path = args.TryGetProperty("path", out var p)
+                ? p.GetString() : null;
+            var max = args.TryGetProperty("max_results", out var mr)
+                ? Math.Clamp(mr.GetInt32(), 1, 500) : 50;
+            var contextLines = args.TryGetProperty("context_lines", out var cl)
+                ? Math.Clamp(cl.GetInt32(), 0, 10) : 0;
+            var dir = string.IsNullOrEmpty(path)
+                ? "/workspace/repo" : $"/workspace/repo/{path}";
+
+            // rg confinado ao dir; fallback grep/find quando a imagem
+            // não tem ripgrep (blueprints mínimas).
+            var shell = ShellQuote(query);
+            var globArg = glob is null ? "" : $" -g {ShellQuote(glob)}";
+            var ctxArg = mode == "content" && contextLines > 0
+                ? $" -C{contextLines}" : "";
+            var command = mode == "files"
+                ? $"cd {ShellQuote(dir)} 2>/dev/null && "
+                    + $"(rg --files{globArg} 2>/dev/null | head -{max}"
+                    + $" || find . -type f{GlobToFind(glob)} | head -{max})"
+                : $"cd {ShellQuote(dir)} 2>/dev/null && "
+                    + $"(rg --line-number --max-count {max}{ctxArg}{globArg}"
+                    + $" -- {shell} 2>/dev/null || grep -Rn"
+                    + $"{(glob is null ? "" : $" --include={ShellQuote(glob)}")}"
+                    + $" -- {shell} . 2>/dev/null | head -{max * 8})";
+            var res = await ctx.Executor.ExecAsync(
+                ctx.Sandbox, command, timeout, ct);
+            return res.ExitCode is 0 or 1 // rg: 1 = no matches
+                ? ToolResult.Ok(new
+                {
+                    mode, query,
+                    output = res.StdOut.Trim(),
+                    matches = res.StdOut.Split('\n',
+                        StringSplitOptions.RemoveEmptyEntries).Length,
+                })
+                : ToolResult.Error($"search failed: {res.StdErr.Trim()}");
+        });
+
+    /// <summary>
+    /// Backend-side fetch (SPEC-25 RF-003): http(s) only, SSRF guard,
+    /// egress allowlist aware, markdown-lite strip, redacted.
+    /// </summary>
+    public static AgentTool WebFetch() => new(
+        new ToolSchema("web_fetch",
+            "Fetch a web page through the backend (NOT the sandbox egress) "
+            + "and return a markdown-lite text extract.",
+            Schema("""
+                {"type":"object","properties":{
+                  "url":{"type":"string","description":"http(s) URL"},
+                  "max_chars":{"type":"integer",
+                    "description":"Response cap (default 16000)"}},
+                 "required":["url"]}
+                """)),
+        Risky: false,
+        Handler: async (ctx, args, ct) =>
+        {
+            var url = args.GetProperty("url").GetString()!;
+            var maxChars = args.TryGetProperty("max_chars", out var mc)
+                ? Math.Clamp(mc.GetInt32(), 256, 64 * 1024) : 16_000;
+            var fetch = ctx.Services.GetService<Application.Web.IWebFetchService>();
+            if (fetch is null)
+            {
+                return ToolResult.Error("web_fetch service unavailable");
+            }
+
+            var res = await fetch.FetchAsync(url, maxChars, ct);
+            return res.Ok
+                ? ToolResult.Ok(new
+                {
+                    url = res.FinalUrl, status = res.StatusCode,
+                    content = res.Text,
+                })
+                : ToolResult.Error(res.Error ?? "fetch failed");
         });
 
     /// <summary>Ends the run — handled by the loop (marker observation).</summary>
@@ -446,6 +624,99 @@ public static class BuiltinTools
         {
             // best-effort — nunca falha o tool call por telemetria.
         }
+    }
+
+    // ---- SPEC-25 RF-003: file_edit modes --------------------------------
+
+    private static string EditExact(JsonElement args, string content)
+    {
+        var oldStr = args.GetProperty("old_string").GetString()!;
+        var newStr = args.GetProperty("new_string").GetString()!;
+        var idx = content.IndexOf(oldStr, StringComparison.Ordinal);
+        if (idx < 0)
+        {
+            return "__ERR__old_string not found in file";
+        }
+
+        return content[..idx] + newStr + content[(idx + oldStr.Length)..];
+    }
+
+    private static string EditAnchor(JsonElement args, string content)
+    {
+        var anchor = args.GetProperty("anchor").GetString()!;
+        var newStr = args.GetProperty("new_string").GetString()!;
+        var lines = content.Split('\n').ToList();
+        var hits = lines.Select((l, i) => (l, i))
+            .Where(t => t.l.Contains($"anchor: {anchor}",
+                StringComparison.Ordinal)
+                || t.l.Contains($"anchor:{anchor}", StringComparison.Ordinal))
+            .ToList();
+        return hits.Count switch
+        {
+            0 => $"__ERR__anchor '{anchor}' not found",
+            > 1 => $"__ERR__anchor '{anchor}' matches {hits.Count} lines "
+                + "(must be unique)",
+            _ => string.Join('\n', lines.Take(hits[0].i)
+                .Append(newStr).Concat(lines.Skip(hits[0].i + 1))),
+        };
+    }
+
+    private static string EditHashline(JsonElement args, string content)
+    {
+        var spec = args.GetProperty("line").GetString()!;
+        var newStr = args.GetProperty("new_string").GetString()!;
+        var parts = spec.Split(':', 2);
+        if (!int.TryParse(parts[0], out var lineno))
+        {
+            return $"__ERR__invalid line spec '{spec}' (want lineno[:hash8])";
+        }
+
+        var lines = content.Split('\n').ToList();
+        if (lineno < 1 || lineno > lines.Count)
+        {
+            return $"__ERR__line {lineno} out of range (file has "
+                + $"{lines.Count} lines)";
+        }
+
+        if (parts.Length == 2)
+        {
+            var expect = parts[1].Trim();
+            var actual = LineHash(lines[lineno - 1]);
+            if (!actual.StartsWith(expect, StringComparison.OrdinalIgnoreCase))
+            {
+                return $"__ERR__line {lineno} hash mismatch "
+                    + $"(want {expect}, got {actual[..8]}): "
+                    + $"'{lines[lineno - 1].Trim()}'";
+            }
+        }
+
+        lines[lineno - 1] = newStr;
+        return string.Join('\n', lines);
+    }
+
+    /// <summary>sha1(line)[..8] hex — endereçável e tolerante a drift.</summary>
+    internal static string LineHash(string line)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(line);
+        return Convert.ToHexString(
+            System.Security.Cryptography.SHA1.HashData(bytes))
+            .ToLowerInvariant();
+    }
+
+    /// <summary>Single-quote escape for shell args.</summary>
+    private static string ShellQuote(string s) =>
+        "'" + s.Replace("'", "'\\''") + "'";
+
+    /// <summary>Maps a glob like <c>*.cs</c> to <c>-name '*.cs'</c>.</summary>
+    private static string GlobToFind(string? glob) =>
+        glob is null ? "" : $" -name {ShellQuote(glob)}";
+
+    /// <summary>Dica de correção: primeiras linhas do arquivo (≤5).</summary>
+    private static string Hint(string content)
+    {
+        var head = string.Join('\n',
+            content.Split('\n').Take(5).Select((l, i) => $"{i + 1}: {l}"));
+        return $"\nfile starts with:\n{head}";
     }
 
     private static JsonElement Schema(string json) =>

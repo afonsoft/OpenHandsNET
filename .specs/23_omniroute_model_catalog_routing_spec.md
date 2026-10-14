@@ -8,7 +8,7 @@
 | Type | `Feature / Agent Core` |
 | Stack | `.NET 10 · OpenAI-compat HTTP · EF Core` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` (autopilot — improvement wave) |
+| Status | `Done` — PR #58 merged |
 | Ticket | `TBD` |
 | Depends on | `09_agent_engine_spec`, `22_context_engine_compaction_spec` (usa `IModelCatalog` para janelas) |
 | Touches | `IAgentLlmProvider`, `OpenAiCompatLlmProvider`, `AgentLlmOptions`, `AgentRunner`, `LlmCompletionLogEvent`, `TokenEvent` |
