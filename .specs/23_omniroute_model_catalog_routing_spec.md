@@ -9,7 +9,7 @@
 | Stack | `.NET 10 · OpenAI-compat HTTP · EF Core` |
 | Repository | `afonsoft/OpenHandsNET` |
 | Status | `Approved` (autopilot — improvement wave) |
-| Ticket | `TBD` |
+| Ticket | [#52](https://github.com/afonsoft/OpenHandsNET/issues/52) |
 | Depends on | `09_agent_engine_spec`, `22_context_engine_compaction_spec` (usa `IModelCatalog` para janelas) |
 | Touches | `IAgentLlmProvider`, `OpenAiCompatLlmProvider`, `AgentLlmOptions`, `AgentRunner`, `LlmCompletionLogEvent`, `TokenEvent` |
 

@@ -43,11 +43,11 @@ SPECs (Spec-Driven Development) do port do ecossistema **OpenHands** para
 | `19_egress_domain_allowlist_spec.md` | Egress `allowlist` real por domínio via proxy sidecar Squid dual-homed | 14 | [#43](https://github.com/afonsoft/OpenHandsNET/issues/43) |
 | `20_plan_enforcement_billing_spec.md` | Enforcement de planos (conversas/dia, runs concorrentes, tokens/mês, sandbox-s/mês) + write-path de usage metering + plans CRUD admin | 08, 14 | [#44](https://github.com/afonsoft/OpenHandsNET/issues/44) |
 | `21_client_completion_spec.md` | Admin UI (users/admins/audit/flags/plans/usage/support-bundle), Monaco (files+diff), pipeline Tailwind v4 | 05, 08, 14, 20 | [#45](https://github.com/afonsoft/OpenHandsNET/issues/45) ✅ |
-| `22_context_engine_compaction_spec.md` | Context engine: `IContextMeter`, `LlmSummarizingCondenser`, pruning, triggers (threshold/mid-turn/overflow/manual), ledger + promotion | 02, 09 | TBD |
-| `23_omniroute_model_catalog_routing_spec.md` | OmniRoute `/models` catalog, `IModelRouter` por role, retry/fallback/turn recovery, `llm_route` | 09, 22 | TBD |
-| `24_agent_activity_protocol_spec.md` | Sandbox-agent v2 (`/exec/stream`, `/proc`, `/activity`), kinds `command_output`/`tool_progress`/`files_changed`/`run_progress`/`work_summary`/`agent_diagnostic` | 03, 17, 02 | TBD |
-| `25_tools_skills_discovery_spec.md` | Repo discovery (`AGENTS.md`, `.openhands/skills`…), repo skills federadas, tools `search`/`file_read` v2/`file_edit` modes/`web_fetch`, MCP schema fidelity | 07, 09, 11, 24 | TBD |
-| `26_ui_ux_modernization_spec.md` | Temas dark/light/system, icon set SVG, markdown+ToolCallCard, command palette, notificações, responsivo (ref: open-webui fork) | 05, 21, 24 | TBD |
+| `22_context_engine_compaction_spec.md` | Context engine: `IContextMeter`, `LlmSummarizingCondenser`, pruning, triggers (threshold/mid-turn/overflow/manual), ledger + promotion | 02, 09 | [#51](https://github.com/afonsoft/OpenHandsNET/issues/51) |
+| `23_omniroute_model_catalog_routing_spec.md` | OmniRoute `/models` catalog, `IModelRouter` por role, retry/fallback/turn recovery, `llm_route` | 09, 22 | [#52](https://github.com/afonsoft/OpenHandsNET/issues/52) |
+| `24_agent_activity_protocol_spec.md` | Sandbox-agent v2 (`/exec/stream`, `/proc`, `/activity`), kinds `command_output`/`tool_progress`/`files_changed`/`run_progress`/`work_summary`/`agent_diagnostic` | 03, 17, 02 | [#53](https://github.com/afonsoft/OpenHandsNET/issues/53) |
+| `25_tools_skills_discovery_spec.md` | Repo discovery (`AGENTS.md`, `.openhands/skills`…), repo skills federadas, tools `search`/`file_read` v2/`file_edit` modes/`web_fetch`, MCP schema fidelity | 07, 09, 11, 24 | [#54](https://github.com/afonsoft/OpenHandsNET/issues/54) |
+| `26_ui_ux_modernization_spec.md` | Temas dark/light/system, icon set SVG, markdown+ToolCallCard, command palette, notificações, responsivo (ref: open-webui fork) | 05, 21, 24 | [#55](https://github.com/afonsoft/OpenHandsNET/issues/55) |
 
 Build order: `01 → (02 ∥ 03 ∥ 10 ∥ 13) → (04 ∥ 09 ∥ 11 ∥ 12) → (05 ∥ 06 ∥ 08) → 07 → 14 → 15 → 16 → 17 → (18 ∥ 19 ∥ 20) → 21 → (22 → 23 ∥ 24) → 25 → 26`.
 
