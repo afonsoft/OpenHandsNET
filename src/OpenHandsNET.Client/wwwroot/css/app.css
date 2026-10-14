@@ -161,6 +161,30 @@ pre, code { font-family: var(--mono); font-size: 12.5px; }
 .ev-card.condense { text-align: center; color: var(--fg-dim); font-style: italic; border-style: dashed; }
 details.ev-details summary { cursor: pointer; color: var(--fg-dim); font-size: 11.5px; }
 
+/* ---------- SPEC-24: run-activity cards ---------- */
+.ev-card.cmd pre.cmd-out {
+    font-family: var(--mono); font-size: 11.5px; white-space: pre-wrap;
+    word-break: break-all; max-height: 320px;
+}
+.ev-card.cmd pre.cmd-out.err { color: var(--yellow); }
+.file-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.chip {
+    padding: 1px 8px; border-radius: 999px; font-size: 11px;
+    border: 1px solid var(--border); color: var(--fg-dim);
+    font-family: var(--mono);
+}
+.chip.create { color: var(--green); border-color: var(--green); }
+.chip.modify { color: var(--accent); border-color: var(--accent); }
+.chip.delete { color: var(--red); border-color: var(--red); }
+.ev-card.summary { border-color: var(--green); }
+.ev-card.summary p { margin: 4px 0; }
+.ev-card.diag-info .ev-head { color: var(--accent); }
+.ev-card.diag-warn { border-color: var(--yellow); }
+.ev-card.diag-warn .ev-head { color: var(--yellow); }
+.ev-card.diag-error { border-color: var(--red); }
+.ev-card.diag-error .ev-head { color: var(--red); }
+.ev-card.diag-info p, .ev-card.diag-warn p, .ev-card.diag-error p { margin: 4px 0; }
+
 .chat-input { flex: none; display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); background: var(--bg-alt); }
 .chat-input input { flex: 1; }
 

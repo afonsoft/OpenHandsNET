@@ -65,6 +65,30 @@ public static class SandboxEndpoints
             return Results.NoContent();
         });
 
+        // SPEC-24 RF-007: probe /alive v2 do agent in-container
+        // (agent_version nulo = v1/sem agent → sem streaming).
+        sandboxes.MapGet("/{id:guid}/agent", async (
+            Guid id, ISandboxService svc, ISandboxExecutor executor,
+            HttpContext http, CancellationToken ct) =>
+        {
+            var s = await svc.GetAsync(id, ct);
+            if (s is null)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Sandbox {id} not found");
+            }
+
+            var info = await executor.AgentInfoAsync(s, ct);
+            return Results.Ok(new
+            {
+                agent_version = info?.AgentVersion,
+                state = info?.State,
+                uptime_s = info?.UptimeS,
+                sessions = info?.Sessions,
+                streaming = info is { AgentVersion: >= 2 },
+            });
+        });
+
         // SPEC-17 §5: cauda do log de provisionamento (blueprint).
         sandboxes.MapGet("/{id:guid}/blueprint-log", async (
             Guid id, ISandboxService svc, HttpContext http, CancellationToken ct) =>

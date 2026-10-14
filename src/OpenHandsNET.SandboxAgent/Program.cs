@@ -17,6 +17,11 @@ builder.Services.ConfigureHttpJsonOptions(o =>
 var runtime = LoadState(builder.Configuration);
 var app = builder.Build();
 
+var ExecStreamJson = new JsonSerializerOptions
+{
+    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+};
+
 AgentState LoadState(IConfiguration cfg)
 {
     var deferred = string.Equals(
@@ -36,10 +41,16 @@ AgentState LoadState(IConfiguration cfg)
     return s;
 }
 
+// SPEC-24 RF-006: heartbeat v2 — agent_version sinaliza /exec/stream etc.
 app.MapGet("/alive", () => Results.Ok(new
 {
     status = "ok",
     state = runtime.Status,
+    agent_version = runtime.AgentVersion,
+    uptime_s = (long)(DateTimeOffset.UtcNow - runtime.StartedAt)
+        .TotalSeconds,
+    workspace = runtime.WorkspaceRoot,
+    sessions = runtime.Sessions.Count,
 }));
 
 // ---- deferred-init (paridade upstream /api/init) ----
@@ -117,11 +128,13 @@ app.MapPost("/exec", async (HttpContext http, ExecRequest req, CancellationToken
 
     var timeout = TimeSpan.FromSeconds(
         Math.Clamp(req.TimeoutSeconds ?? 120, 1, 3600));
+    runtime.Record("exec_start", Trunc(req.Command));
     CommandResult result;
     if (req.SessionId is { Length: > 0 } sid)
     {
         var session = runtime.Sessions.GetOrAdd(
             sid, _ => new BashSession(runtime.WorkspaceRoot, runtime.SessionEnv));
+        session.LastCommand = Trunc(req.Command);
         result = await session.RunAsync(req.Command, timeout, ct);
     }
     else
@@ -131,8 +144,177 @@ app.MapPost("/exec", async (HttpContext http, ExecRequest req, CancellationToken
             timeout, ct);
     }
 
+    runtime.Record("exec_end",
+        $"exit={result.ExitCode} timeout={result.TimedOut}");
     return Results.Ok(result);
 });
+
+// SPEC-24 RF-001: exec com stream SSE — chunks stdout/stderr contínuos +
+// evento terminal "exit". /exec (agregado) continua para compat.
+app.MapPost("/exec/stream", async (HttpContext http, ExecRequest req,
+    CancellationToken ct) =>
+{
+    if (runtime.Status != "ready")
+    {
+        return Results.Json(new { error = "dormant" }, statusCode: 503);
+    }
+
+    if (!Authorized(http))
+    {
+        return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+    }
+
+    http.Response.ContentType = "text/event-stream";
+    http.Response.Headers.CacheControl = "no-cache";
+    var timeout = TimeSpan.FromSeconds(
+        Math.Clamp(req.TimeoutSeconds ?? 120, 1, 3600));
+    runtime.Record("exec_start", Trunc(req.Command));
+    var sw = Stopwatch.StartNew();
+
+    CommandResult result;
+    var truncated = false;
+    void OnChunk(string channel, string text)
+    {
+        runtime.Record("output", $"{channel}:{Trunc(text, 120)}");
+        try
+        {
+            // Callback síncrono vindo da pump — se o cliente desconectar,
+            // a escrita falha e o chunk é simplesmente descartado.
+            http.Response.WriteAsync("data: " + JsonSerializer.Serialize(
+                new { channel, text }, ExecStreamJson) + "\n\n", ct)
+                .GetAwaiter().GetResult();
+            http.Response.Body.FlushAsync(ct).GetAwaiter().GetResult();
+        }
+        catch
+        {
+            // Cliente SSE desconectou — o processo continua; o /activity
+            // ring ainda registra a saída para replay.
+        }
+    }
+
+    if (req.SessionId is { Length: > 0 } sid)
+    {
+        var session = runtime.Sessions.GetOrAdd(
+            sid, _ => new BashSession(runtime.WorkspaceRoot, runtime.SessionEnv));
+        session.LastCommand = Trunc(req.Command);
+        result = await session.RunAsync(req.Command, timeout, ct, OnChunk);
+    }
+    else
+    {
+        var streamed = await ExecOnce.RunStreamingAsync(req.Command,
+            req.Workdir ?? runtime.WorkspaceRoot, runtime.SessionEnv,
+            timeout, ct, OnChunk);
+        result = streamed.Result;
+        truncated = streamed.Truncated;
+    }
+
+    runtime.Record("exec_end",
+        $"exit={result.ExitCode} timeout={result.TimedOut}");
+    await http.Response.WriteAsync("data: " + JsonSerializer.Serialize(
+        new
+        {
+            type = "exit",
+            exit_code = result.ExitCode,
+            duration_ms = (long)sw.ElapsedMilliseconds,
+            timed_out = result.TimedOut,
+            truncated,
+            std_out = result.StdOut,
+            std_err = result.StdErr,
+        }, ExecStreamJson) + "\n\n", ct);
+    await http.Response.Body.FlushAsync(ct);
+    return Results.Empty;
+});
+
+// SPEC-24 RF-001: sessões bash vivas + processos + ring de atividade.
+app.MapGet("/exec/sessions", (HttpContext http) =>
+{
+    if (!Authorized(http))
+    {
+        return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+    }
+
+    return Results.Ok(runtime.Sessions.Select(kv => new
+    {
+        id = kv.Key,
+        started_at = kv.Value.StartedAt,
+        last_command = kv.Value.LastCommand,
+    }));
+});
+
+app.MapGet("/proc", (HttpContext http) =>
+{
+    if (!Authorized(http))
+    {
+        return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+    }
+
+    return Results.Ok(ProbeProc());
+});
+
+app.MapGet("/activity", (HttpContext http) =>
+{
+    if (!Authorized(http))
+    {
+        return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+    }
+
+    // Last-Event-ID → replay só do que o cliente ainda não viu.
+    var after = long.TryParse(http.Request.Headers["Last-Event-ID"],
+        out var seq) ? seq : 0;
+    return Results.Ok(runtime.Activity
+        .Where(a => a.Seq > after).ToList());
+});
+
+static List<object> ProbeProc()
+{
+    var list = new List<object>();
+    foreach (var dir in Directory.EnumerateDirectories("/proc"))
+    {
+        var name = Path.GetFileName(dir);
+        if (!int.TryParse(name, out var pid))
+        {
+            continue;
+        }
+
+        try
+        {
+            var cmd = File.ReadAllText(Path.Combine(dir, "cmdline"))
+                .Replace('\0', ' ').Trim();
+            if (cmd.Length == 0)
+            {
+                continue; // kernel thread
+            }
+
+            long rssKb = 0;
+            foreach (var line in File.ReadLines(
+                Path.Combine(dir, "status")))
+            {
+                if (line.StartsWith("VmRSS:", StringComparison.Ordinal))
+                {
+                    var parts = line.Split(' ',
+                        StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length >= 2)
+                    {
+                        long.TryParse(parts[1], out rssKb);
+                    }
+
+                    break;
+                }
+            }
+
+            list.Add(new { pid, cmd = Trunc(cmd, 200), rss_kb = rssKb });
+        }
+        catch
+        {
+            // Processo sumiu entre o enumerate e o read — best-effort.
+        }
+    }
+
+    return list;
+}
+
+static string Trunc(string s, int max = 200) =>
+    s.Length <= max ? s : s[..max] + "…";
 
 app.MapDelete("/exec/sessions/{id}", (string id, HttpContext http) =>
 {
@@ -187,6 +369,7 @@ app.MapPut("/files/{**path}", async (string path, HttpContext http) =>
     Directory.CreateDirectory(Path.GetDirectoryName(full)!);
     using var reader = new StreamReader(http.Request.Body);
     await File.WriteAllTextAsync(full, await reader.ReadToEndAsync());
+    runtime.Record("file_write", path);
     return Results.NoContent();
 });
 
@@ -198,9 +381,15 @@ IResult Unauthorized(HttpContext _) =>
 
 app.Run();
 
+/// <summary>Uma entrada do ring <c>/activity</c> (SPEC-24 RF-001).</summary>
+public sealed record ActivityItem(long Seq, string Ts, string Type, string Detail);
+
 /// <summary>Deferred-init state + session key + workspace confinement.</summary>
 public sealed class AgentState
 {
+    private const int ActivityCap = 200;
+    private long _seq;
+
     public AgentState(string WorkspaceRoot, string? InitKey, bool Deferred)
     {
         this.WorkspaceRoot = WorkspaceRoot;
@@ -209,6 +398,9 @@ public sealed class AgentState
         Status = Deferred ? "dormant" : "initializing";
     }
 
+    /// <summary>Protocol version — &gt;=2 exposes /exec/stream + /proc + /activity.</summary>
+    public int AgentVersion => 2;
+    public DateTimeOffset StartedAt { get; } = DateTimeOffset.UtcNow;
     public string Status { get; set; }
     public string WorkspaceRoot { get; set; }
     public string? InitKey { get; }
@@ -218,6 +410,19 @@ public sealed class AgentState
     public IReadOnlyDictionary<string, string> SessionEnv { get; set; } =
         new Dictionary<string, string>();
     public ConcurrentDictionary<string, BashSession> Sessions { get; } = new();
+    public ConcurrentQueue<ActivityItem> Activity { get; } = new();
+
+    /// <summary>Appends to the activity ring (bounded at 200 entries).</summary>
+    public void Record(string type, string detail)
+    {
+        Activity.Enqueue(new ActivityItem(
+            Interlocked.Increment(ref _seq),
+            DateTimeOffset.UtcNow.ToString("O"), type, detail));
+        while (Activity.Count > ActivityCap)
+        {
+            Activity.TryDequeue(out _);
+        }
+    }
 
     /// <summary>Resolve path confinado ao workspace (null = escape attempt).</summary>
     public string? Resolve(string rel)
@@ -283,7 +488,21 @@ public static class ExecOnce
     public static async Task<CommandResult> RunAsync(
         string command, string workdir,
         IReadOnlyDictionary<string, string> env,
-        TimeSpan timeout, CancellationToken ct)
+        TimeSpan timeout, CancellationToken ct) =>
+        (await RunStreamingAsync(command, workdir, env, timeout, ct, null))
+            .Result;
+
+    /// <summary>
+    /// Executa emitindo chunks por canal via <paramref name="onChunk"/>
+    /// (SPEC-24 RF-001). <c>Truncated</c> indica que algum canal estourou o
+    /// cap de 2MB — chunks além do cap não são emitidos.
+    /// </summary>
+    public static async Task<(CommandResult Result, bool Truncated)>
+        RunStreamingAsync(
+            string command, string workdir,
+            IReadOnlyDictionary<string, string> env,
+            TimeSpan timeout, CancellationToken ct,
+            Action<string, string>? onChunk)
     {
         var psi = NewBash(workdir, env);
         psi.ArgumentList.Add("-c");
@@ -291,8 +510,11 @@ public static class ExecOnce
         using var proc = Process.Start(psi)!;
         var stdout = new StringBuilder();
         var stderr = new StringBuilder();
-        var outTask = PumpAsync(proc.StandardOutput, stdout);
-        var errTask = PumpAsync(proc.StandardError, stderr);
+        var hitCap = false;
+        var outTask = PumpAsync(proc.StandardOutput, stdout, "stdout",
+            onChunk, () => hitCap = true);
+        var errTask = PumpAsync(proc.StandardError, stderr, "stderr",
+            onChunk, () => hitCap = true);
         var timedOut = false;
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
         try
@@ -307,9 +529,9 @@ public static class ExecOnce
         }
 
         await Task.WhenAll(outTask, errTask);
-        return new CommandResult(
+        return (new CommandResult(
             timedOut ? -1 : proc.ExitCode,
-            stdout.ToString(), stderr.ToString(), timedOut);
+            stdout.ToString(), stderr.ToString(), timedOut), hitCap);
     }
 
     internal static ProcessStartInfo NewBash(
@@ -330,18 +552,35 @@ public static class ExecOnce
         return psi;
     }
 
-    internal static async Task PumpAsync(StreamReader reader, StringBuilder sb)
+    internal static Task PumpAsync(StreamReader reader, StringBuilder sb) =>
+        PumpAsync(reader, sb, "stdout", null, null);
+
+    internal static async Task PumpAsync(
+        StreamReader reader, StringBuilder sb, string channel,
+        Action<string, string>? onChunk, Action? onCap)
     {
         var buf = new char[8192];
         int n;
+        var capped = false;
         while ((n = await reader.ReadAsync(buf)) > 0)
         {
+            var text = new string(buf, 0, n);
             lock (sb)
             {
                 if (sb.Length < OutputCap)
                 {
                     sb.Append(buf, 0, n);
                 }
+                else if (!capped)
+                {
+                    capped = true;
+                    onCap?.Invoke();
+                }
+            }
+
+            if (!capped)
+            {
+                onChunk?.Invoke(channel, text);
             }
         }
     }
@@ -355,83 +594,110 @@ public sealed class BashSession : IDisposable
     private readonly StringBuilder _out = new();
     private readonly StringBuilder _err = new();
     private readonly object _gate = new();
+    private volatile Action<string, string>? _onChunk;
+    // Hold-back por canal: o marker de exit (~25 chars) nunca é emitido no
+    // stream — os últimos bytes ficam retidos até o próximo chunk ou até o
+    // fim do comando, quando são descartados junto com o marker.
+    private const int Holdback = 48;
+    private string _tailOut = "";
+    private string _tailErr = "";
     private TaskCompletionSource _data = new(
         TaskCreationOptions.RunContinuationsAsynchronously);
 
     public BashSession(string workdir, IReadOnlyDictionary<string, string> env)
     {
+        StartedAt = DateTimeOffset.UtcNow;
         _proc = Process.Start(ExecOnce.NewBash(workdir, env))!;
-        _ = Task.Run(() => Pump(_proc.StandardOutput, _out));
-        _ = Task.Run(() => Pump(_proc.StandardError, _err));
+        _ = Task.Run(() => Pump(_proc.StandardOutput, _out, "stdout"));
+        _ = Task.Run(() => Pump(_proc.StandardError, _err, "stderr"));
     }
 
+    /// <summary>SPEC-24: metadados exibidos por GET /exec/sessions.</summary>
+    public DateTimeOffset StartedAt { get; }
+    public string? LastCommand { get; set; }
+
+    public Task<CommandResult> RunAsync(
+        string command, TimeSpan timeout, CancellationToken ct) =>
+        RunAsync(command, timeout, ct, null);
+
     public async Task<CommandResult> RunAsync(
-        string command, TimeSpan timeout, CancellationToken ct)
+        string command, TimeSpan timeout, CancellationToken ct,
+        Action<string, string>? onChunk)
     {
-        var marker = Marker + Guid.NewGuid().ToString("N")[..8];
-        lock (_gate)
+        _onChunk = onChunk;
+        _tailOut = "";
+        _tailErr = "";
+        try
         {
-            _out.Clear();
-            _err.Clear();
-        }
-
-        await _proc.StandardInput.WriteAsync(
-            $"{command}\nprintf '\\n{marker}%d\\n' $?\n");
-        await _proc.StandardInput.FlushAsync();
-
-        var deadline = DateTime.UtcNow + timeout;
-        var timedOut = false;
-        while (true)
-        {
-            TaskCompletionSource tcs;
-            string s;
+            var marker = Marker + Guid.NewGuid().ToString("N")[..8];
             lock (_gate)
             {
-                s = _out.ToString();
-                tcs = _data;
+                _out.Clear();
+                _err.Clear();
             }
 
-            var idx = s.LastIndexOf(marker, StringComparison.Ordinal);
-            if (idx >= 0)
-            {
-                var code = s[(idx + marker.Length)..];
-                var nl = code.IndexOf('\n');
-                if (nl >= 0)
-                {
-                    int.TryParse(code[..nl], out var exitCode);
-                    lock (_gate)
-                    {
-                        _out.Remove(idx, _out.Length - idx);
-                    }
+            await _proc.StandardInput.WriteAsync(
+                $"{command}\nprintf '\\n{marker}%d\\n' $?\n");
+            await _proc.StandardInput.FlushAsync();
 
-                    return new CommandResult(exitCode, s[..idx],
-                        LockedErr(), false);
+            var deadline = DateTime.UtcNow + timeout;
+            var timedOut = false;
+            while (true)
+            {
+                TaskCompletionSource tcs;
+                string s;
+                lock (_gate)
+                {
+                    s = _out.ToString();
+                    tcs = _data;
+                }
+
+                var idx = s.LastIndexOf(marker, StringComparison.Ordinal);
+                if (idx >= 0)
+                {
+                    var code = s[(idx + marker.Length)..];
+                    var nl = code.IndexOf('\n');
+                    if (nl >= 0)
+                    {
+                        int.TryParse(code[..nl], out var exitCode);
+                        lock (_gate)
+                        {
+                            _out.Remove(idx, _out.Length - idx);
+                        }
+
+                        return new CommandResult(exitCode, s[..idx],
+                            LockedErr(), false);
+                    }
+                }
+
+                var remaining = deadline - DateTime.UtcNow;
+                if (remaining <= TimeSpan.Zero)
+                {
+                    timedOut = true;
+                    break;
+                }
+
+                try
+                {
+                    await tcs.Task.WaitAsync(remaining, ct);
+                }
+                catch (TimeoutException)
+                {
+                    timedOut = true;
+                    break;
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
                 }
             }
 
-            var remaining = deadline - DateTime.UtcNow;
-            if (remaining <= TimeSpan.Zero)
-            {
-                timedOut = true;
-                break;
-            }
-
-            try
-            {
-                await tcs.Task.WaitAsync(remaining, ct);
-            }
-            catch (TimeoutException)
-            {
-                timedOut = true;
-                break;
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
+            return new CommandResult(-1, "", LockedErr(), timedOut);
         }
-
-        return new CommandResult(-1, "", LockedErr(), timedOut);
+        finally
+        {
+            _onChunk = null;
+        }
     }
 
     private string LockedErr()
@@ -442,12 +708,14 @@ public sealed class BashSession : IDisposable
         }
     }
 
-    private async Task Pump(StreamReader reader, StringBuilder sb)
+    private async Task Pump(
+        StreamReader reader, StringBuilder sb, string channel)
     {
         var buf = new char[8192];
         int n;
         while ((n = await reader.ReadAsync(buf)) > 0)
         {
+            var text = new string(buf, 0, n);
             lock (_gate)
             {
                 sb.Append(buf, 0, n);
@@ -455,6 +723,33 @@ public sealed class BashSession : IDisposable
                 _data = new TaskCompletionSource(
                     TaskCreationOptions.RunContinuationsAsynchronously);
                 t.TrySetResult();
+            }
+
+            // SPEC-24: tap de streaming — chunks saem ao vivo durante o
+            // comando; o marker só determina o fim da execução.
+            var tap = _onChunk;
+            if (tap is not null)
+            {
+                var combined = (channel == "stdout" ? _tailOut : _tailErr) + text;
+                var emit = combined.Length > Holdback
+                    ? combined[..^Holdback]
+                    : null;
+                var tail = combined.Length > Holdback
+                    ? combined[^Holdback..]
+                    : combined;
+                if (channel == "stdout")
+                {
+                    _tailOut = tail;
+                }
+                else
+                {
+                    _tailErr = tail;
+                }
+
+                if (emit is { Length: > 0 })
+                {
+                    tap.Invoke(channel, emit);
+                }
             }
         }
     }

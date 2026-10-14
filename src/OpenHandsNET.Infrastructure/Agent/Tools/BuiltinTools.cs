@@ -29,7 +29,45 @@ public static class BuiltinTools
             var t = args.TryGetProperty("timeout_seconds", out var ts)
                 ? TimeSpan.FromSeconds(Math.Clamp(ts.GetInt32(), 1, 900))
                 : timeout;
-            var result = await ctx.Executor.ExecAsync(ctx.Sandbox, command, t, ct);
+
+            // SPEC-24 RF-004: stream por chunk → command_output debounced.
+            var debouncer = new OutputDebouncer(async (channel, text) =>
+                await ctx.EmitAsync(new Domain.Events.CommandOutputEvent
+                {
+                    ToolCallId = ctx.ToolCallId ?? "",
+                    ActionId = ctx.ActionId,
+                    Channel = channel,
+                    Text = SecretRedactor.Redact(text),
+                }, CancellationToken.None));
+            var result = new Application.Sandbox.CommandResult(0, "", "", false);
+            var truncated = false;
+            await foreach (var chunk in ctx.Executor.ExecStreamingAsync(
+                ctx.Sandbox, command, t, ct))
+            {
+                switch (chunk)
+                {
+                    case Application.Sandbox.OutputChunk o:
+                        await debouncer.AddAsync(o.Channel, o.Text);
+                        break;
+                    case Application.Sandbox.ExecCompleted done:
+                        result = done.Result;
+                        truncated = done.Truncated;
+                        break;
+                }
+            }
+
+            await debouncer.FlushAsync();
+            if (truncated)
+            {
+                await ctx.EmitAsync(new Domain.Events.AgentDiagnosticEvent
+                {
+                    Severity = "warn", Code = "output_truncated",
+                    Message = "command output exceeded the 2MB channel cap",
+                }, CancellationToken.None);
+            }
+
+            // files_changed via git status — só quando o cwd é um repo.
+            await EmitFilesChangedAsync(ctx, ct);
             return ToolResult.Ok(new
             {
                 exit_code = result.ExitCode,
@@ -78,9 +116,21 @@ public static class BuiltinTools
         {
             try
             {
-                await ctx.Executor.WriteFileAsync(ctx.Sandbox,
-                    args.GetProperty("path").GetString()!,
+                var path = args.GetProperty("path").GetString()!;
+                var existed = true;
+                try
+                {
+                    await ctx.Executor.ReadFileAsync(ctx.Sandbox, path, ct);
+                }
+                catch
+                {
+                    existed = false;
+                }
+
+                await ctx.Executor.WriteFileAsync(ctx.Sandbox, path,
                     args.GetProperty("content").GetString()!, ct);
+                await EmitPathsAsync(ctx, "file_write",
+                    [(path, existed ? "modify" : "create")], ct);
                 return ToolResult.Ok(new { ok = true });
             }
             catch (Exception ex)
@@ -118,6 +168,8 @@ public static class BuiltinTools
                 await ctx.Executor.WriteFileAsync(
                     ctx.Sandbox, path,
                     content[..idx] + newStr + content[(idx + oldStr.Length)..], ct);
+                await EmitPathsAsync(ctx, "file_edit",
+                    [(path, "modify")], ct);
                 return ToolResult.Ok(new { ok = true });
             }
             catch (Exception ex)
@@ -235,10 +287,33 @@ public static class BuiltinTools
 
             string? Opt(string name) => args.TryGetProperty(name, out var v)
                 && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+            // SPEC-24 RF-003: tool_progress nas fases da ação.
+            if (ctx.ToolCallId is not null)
+            {
+                await ctx.EmitAsync(new Domain.Events.ToolProgressEvent
+                {
+                    ToolCallId = ctx.ToolCallId, ActionId = ctx.ActionId,
+                    Phase = "start",
+                    Message = $"browser {actionName}",
+                }, CancellationToken.None);
+            }
+
             var result = await browser.ActAsync(ctx.ConversationId,
                 new BrowserActRequest(
                     kind, Opt("url"), Opt("selector"), Opt("text"),
                     Opt("direction")), ct);
+            if (ctx.ToolCallId is not null)
+            {
+                await ctx.EmitAsync(new Domain.Events.ToolProgressEvent
+                {
+                    ToolCallId = ctx.ToolCallId, ActionId = ctx.ActionId,
+                    Phase = result.Ok ? "done" : "error",
+                    Message = result.Ok
+                        ? result.Title ?? result.Url ?? "ok"
+                        : result.Error ?? "failed",
+                }, CancellationToken.None);
+            }
+
             return result.Ok
                 ? ToolResult.Ok(new
                 {
@@ -295,6 +370,83 @@ public static class BuiltinTools
             final_message = args.TryGetProperty("final_message", out var m)
                 ? m.GetString() : null,
         })));
+
+    /// <summary>
+    /// SPEC-24 RF-004: files_changed determinístico para file_write/file_edit.
+    /// </summary>
+    private static async Task EmitPathsAsync(ToolCallContext ctx,
+        string sourceTool, IReadOnlyList<(string Path, string Op)> paths,
+        CancellationToken ct)
+    {
+        if (paths.Count == 0 || ctx.ToolCallId is null)
+        {
+            return;
+        }
+
+        await ctx.EmitAsync(new Domain.Events.FilesChangedEvent
+        {
+            ToolCallId = ctx.ToolCallId,
+            ActionId = ctx.ActionId,
+            SourceTool = sourceTool,
+            Paths = paths.Select(p =>
+                new Domain.Events.FileChange(p.Path, p.Op)).ToList(),
+        }, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// SPEC-24 RF-004: após bash, emite files_changed do estado dirty do
+    /// repo (<c>git status --porcelain</c>, best-effort — ignora quando o
+    /// workspace não é git ou a chamada falha).
+    /// </summary>
+    private static async Task EmitFilesChangedAsync(ToolCallContext ctx,
+        CancellationToken ct)
+    {
+        if (ctx.ToolCallId is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var probe = await ctx.Executor.ExecAsync(ctx.Sandbox,
+                "cd /workspace/repo 2>/dev/null && git status --porcelain=v1"
+                    + " --untracked-files=normal 2>/dev/null | head -200",
+                TimeSpan.FromSeconds(15), ct);
+            if (probe.ExitCode != 0 || string.IsNullOrWhiteSpace(probe.StdOut))
+            {
+                return;
+            }
+
+            var paths = new List<(string Path, string Op)>();
+            foreach (var line in probe.StdOut.Split('\n',
+                StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (line.Length < 4)
+                {
+                    continue;
+                }
+
+                var xy = line[..2];
+                var path = line[3..].Trim();
+                var arrow = path.IndexOf(" -> ", StringComparison.Ordinal);
+                if (arrow >= 0)
+                {
+                    path = path[(arrow + 4)..];
+                }
+
+                var op = xy.Contains('D') ? "delete"
+                    : xy == "??" || xy.Contains('A') ? "create"
+                    : "modify";
+                paths.Add((path, op));
+            }
+
+            await EmitPathsAsync(ctx, "bash", paths, ct);
+        }
+        catch
+        {
+            // best-effort — nunca falha o tool call por telemetria.
+        }
+    }
 
     private static JsonElement Schema(string json) =>
         JsonDocument.Parse(json).RootElement.Clone();
