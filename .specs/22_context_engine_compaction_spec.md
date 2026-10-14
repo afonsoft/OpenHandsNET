@@ -8,7 +8,7 @@
 | Type | `Feature / Agent Core` |
 | Stack | `.NET 10 · EF Core · Minimal API` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` (autopilot — improvement wave) |
+| Status | `Done` — PR #57 merged |
 | Ticket | `TBD` |
 | Depends on | `09_agent_engine_spec` (loop/eventos), `02_event_stream_spec` (V1 kinds) |
 | Feeds | `23_omniroute_model_catalog_routing_spec` (janela por modelo) |

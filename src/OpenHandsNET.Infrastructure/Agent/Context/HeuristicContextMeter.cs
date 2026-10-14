@@ -9,7 +9,8 @@ namespace OpenHandsNET.Infrastructure.Agent.Context;
 /// completion. Windows come from <c>AgentLlm:ContextWindowOverrides</c> then
 /// <c>AgentLlm:DefaultContextWindow</c> (SPEC-23 plugs catalog discovery in).
 /// </summary>
-public sealed class HeuristicContextMeter(IOptions<AgentLlmOptions> options)
+public sealed class HeuristicContextMeter(
+    IOptions<AgentLlmOptions> options, IModelCatalog? catalog = null)
     : IContextMeter
 {
     private const int PerMessageOverhead = 4;
@@ -51,10 +52,18 @@ public sealed class HeuristicContextMeter(IOptions<AgentLlmOptions> options)
     public int? ContextWindow(string? model)
     {
         var o = options.Value;
-        if (model is not null
-            && o.ContextWindowOverrides.TryGetValue(model, out var win))
+        if (model is not null)
         {
-            return win;
+            if (o.ContextWindowOverrides.TryGetValue(model, out var win))
+            {
+                return win;
+            }
+
+            // SPEC-23 RF-001: janela descoberta pelo catálogo OmniRoute.
+            if (catalog?.TryGetCached(model)?.ContextWindow is { } cw)
+            {
+                return cw;
+            }
         }
 
         return o.DefaultContextWindow;

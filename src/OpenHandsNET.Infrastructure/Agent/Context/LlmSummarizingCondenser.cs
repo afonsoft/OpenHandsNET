@@ -17,7 +17,8 @@ public sealed class LlmSummarizingCondenser(
     IContextMeter meter,
     IAgentLlmProvider llm,
     IOptions<AgentLlmOptions> options,
-    ILogger<LlmSummarizingCondenser> logger) : ICondenser
+    ILogger<LlmSummarizingCondenser> logger,
+    IModelRouter? router = null) : ICondenser
 {
     /// <summary>Prompt given to the summarizer role.</summary>
     internal const string SummarizePrompt = """
@@ -202,6 +203,13 @@ public sealed class LlmSummarizingCondenser(
 
         var text = new StringBuilder();
         var responseId = "";
+        // SPEC-23 RF-002: o role Summarizer resolve via router —
+        // RoleModels["summarizer"] vence sobre o modelo da conversa.
+        var summaryModel = o.Compaction.SummaryModel
+            ?? (router is not null
+                ? (await router.SelectAsync(Guid.Empty, ModelRole.Summarizer,
+                    model, ct)).Model
+                : model);
         await foreach (var chunk in llm.ChatStreamAsync(
             [
                 new LlmMessage("system", SummarizePrompt),
@@ -209,7 +217,7 @@ public sealed class LlmSummarizingCondenser(
             ],
             [],
             new LlmOptions(
-                Model: o.Compaction.SummaryModel ?? model,
+                Model: summaryModel,
                 MaxTokens: o.Compaction.SummaryMaxTokens),
             ct))
         {

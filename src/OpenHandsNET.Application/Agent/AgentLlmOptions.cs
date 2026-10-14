@@ -64,6 +64,28 @@ public sealed class AgentLlmOptions
     /// </summary>
     public string? PromotionTarget { get; set; }
 
+    /// <summary>
+    /// Per-role model ids (SPEC-23 RF-002), e.g.
+    /// <c>{"summarizer":"gpt-5-mini","planner":"claude-opus"}</c>. Roles without
+    /// an entry fall back to <see cref="Model"/>.
+    /// </summary>
+    public Dictionary<string, string> RoleModels { get; set; } = new();
+
+    /// <summary>
+    /// Ordered fallback chain applied to any role when its primary model
+    /// fails (SPEC-23 RF-002/RF-003). Empty = no fallback (error is fatal).
+    /// </summary>
+    public List<string> FallbackModels { get; set; } = [];
+
+    /// <summary>Catalog discovery cache TTL seconds (SPEC-23 RF-001).</summary>
+    public int CatalogCacheSeconds { get; set; } = 300;
+
+    /// <summary>
+    /// Upper bound on total retry+fallback waiting inside one iteration
+    /// (SPEC-23 NFR) — prevents a run hanging on endless failover.
+    /// </summary>
+    public int MaxRouteWaitSeconds { get; set; } = 300;
+
     /// <summary>Context compaction behaviour (SPEC-22).</summary>
     public CompactionOptions Compaction { get; set; } = new();
 }

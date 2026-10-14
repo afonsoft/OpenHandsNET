@@ -156,6 +156,19 @@ public sealed class AgentRunner(
         var confirmationMode = conv.ConfirmationMode;
         var hooks = services.GetService<Application.Hooks.IHookService>();
         var model = conv.LlmModel ?? opt.Model;
+        // SPEC-23 RF-002: seleção por role + fallback chain. `selection`
+        // acompanha o modelo efetivo (catalogo → janela/provider).
+        var router = services.GetService<IModelRouter>();
+        var selection = router is not null
+            ? await router.SelectAsync(conversationId, ModelRole.Worker,
+                conv.LlmModel, ct)
+            : null;
+        if (selection is not null)
+        {
+            model = selection.Model;
+        }
+
+        var routeWait = System.Diagnostics.Stopwatch.StartNew();
         var overflowRetried = false;
         var promoted = false;
         var overflowPending = false;
@@ -204,10 +217,12 @@ public sealed class AgentRunner(
             _compactInstructions = null;
             overflowPending = false;
             stopLengthPending = false;
+            var effectiveWindow = selection?.ContextWindow
+                ?? contextMeter.ContextWindow(model);
             var start = forced is { } ft
                 ? new CompactionStart(ft,
                     contextMeter.EstimateTokens(history, model),
-                    contextMeter.ContextWindow(model))
+                    effectiveWindow)
                 : await condenser.EvaluateAsync(history, model, ct);
             if (start is { } s)
             {
@@ -250,7 +265,7 @@ public sealed class AgentRunner(
                 sinceLedger = 0;
                 await Context.CompactionService.EmitLedgerAsync(
                     events, conversationId, lastEstimate,
-                    contextMeter.ContextWindow(model), model, ct, compactionCount);
+                    effectiveWindow, model, ct, compactionCount);
             }
 
             var request = history;
@@ -268,6 +283,25 @@ public sealed class AgentRunner(
                 System.Text.StringBuilder args)>();
             string? finishReason = null;
             var responseId = "";
+            // SPEC-23 RF-003: cada tentativa de modelo emite llm_route —
+            // a UI mostra "tentando X (fallback de Y)" em tempo real.
+            if (selection is not null)
+            {
+                await events.AppendAsync(conversationId,
+                    new ConversationStateUpdateEvent
+                    {
+                        Key = "llm_route",
+                        Value = JsonSerializer.SerializeToElement(new
+                        {
+                            model = selection.Model,
+                            role = "worker",
+                            attempt = selection.Attempt,
+                            fallback_from = selection.FallbackFrom,
+                        }, EventJson.Options),
+                    }, CancellationToken.None);
+            }
+
+            var llmTimer = System.Diagnostics.Stopwatch.StartNew();
             try
             {
                 using var llmSpan = Telemetry.OpenNetTelemetry.StartSpan(
@@ -321,6 +355,8 @@ public sealed class AgentRunner(
                                 PromptTokens = end.Usage.PromptTokens,
                                 CompletionTokens = end.Usage.CompletionTokens,
                                 CostUsd = end.Usage.CostUsd,
+                                Model = model,
+                                Role = "worker",
                             }, ct);
                             Telemetry.OpenNetTelemetry.LlmTokens
                                 .WithLabels("prompt").Inc(end.Usage.PromptTokens);
@@ -395,6 +431,82 @@ public sealed class AgentRunner(
                 await SetStatusAsync(events, db, conv, "error",
                     ConversationExecutionStatus.Error, CancellationToken.None);
                 return;
+            }
+            catch (LlmCallException lce) when (router is not null
+                && selection is not null)
+            {
+                // SPEC-23 RF-003: turn recovery — classificação → ação.
+                llmTimer.Stop();
+                await events.AppendAsync(conversationId,
+                    new ConversationStateUpdateEvent
+                    {
+                        Key = "llm_route",
+                        Value = JsonSerializer.SerializeToElement(new
+                        {
+                            model = selection.Model,
+                            role = "worker",
+                            attempt = selection.Attempt,
+                            kind = lce.Kind.ToString().ToLowerInvariant(),
+                            latency_ms = (int)llmTimer.ElapsedMilliseconds,
+                        }, EventJson.Options),
+                    }, CancellationToken.None);
+
+                if (lce.Kind == LlmErrorKind.Auth)
+                {
+                    logger.LogError("LLM auth failure — aborting run");
+                    await events.AppendAsync(conversationId, new AgentErrorEvent
+                    {
+                        ToolName = "llm", ToolCallId = "",
+                        Error = SecretRedactor.Redact(lce.Message),
+                    }, CancellationToken.None);
+                    await SetStatusAsync(events, db, conv, "error",
+                        ConversationExecutionStatus.Error,
+                        CancellationToken.None);
+                    return;
+                }
+
+                if (routeWait.Elapsed
+                    > TimeSpan.FromSeconds(opt.MaxRouteWaitSeconds))
+                {
+                    logger.LogError("Route wait budget exhausted");
+                    await events.AppendAsync(conversationId, new AgentErrorEvent
+                    {
+                        ToolName = "llm", ToolCallId = "",
+                        Error = SecretRedactor.Redact(
+                            $"route budget exceeded: {lce.Message}"),
+                    }, CancellationToken.None);
+                    await SetStatusAsync(events, db, conv, "error",
+                        ConversationExecutionStatus.Error,
+                        CancellationToken.None);
+                    return;
+                }
+
+                var next = await router.NextFallbackAsync(
+                    selection, lce.Kind, CancellationToken.None);
+                if (next is null)
+                {
+                    logger.LogError(lce, "LLM call failed — no fallback left");
+                    await events.AppendAsync(conversationId, new AgentErrorEvent
+                    {
+                        ToolName = "llm", ToolCallId = "",
+                        Error = SecretRedactor.Redact(lce.Message),
+                    }, CancellationToken.None);
+                    await SetStatusAsync(events, db, conv, "error",
+                        ConversationExecutionStatus.Error,
+                        CancellationToken.None);
+                    return;
+                }
+
+                logger.LogWarning(
+                    "LLM {Kind} em {From} — fallback para {To}",
+                    lce.Kind, selection.Model, next.Model);
+                model = next.Model;
+                selection = next;
+                conv.LlmModel = next.Model;
+                conv.UpdatedAt = DateTimeOffset.UtcNow;
+                await db.SaveChangesAsync(CancellationToken.None);
+                iteration--; // retenta a iteração com o modelo seguinte
+                continue;
             }
             catch (Exception ex)
             {
