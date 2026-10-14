@@ -20,6 +20,8 @@
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
     <PackageReference Include="prometheus-net.AspNetCore" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+    <!-- Pin explícito: levanta System.Security.Cryptography.Pkcs transitivo (via EF.Design → MSBuild) p/ versão sem CVE -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../OpenHandsNET.Infrastructure/OpenHandsNET.Infrastructure.csproj" />

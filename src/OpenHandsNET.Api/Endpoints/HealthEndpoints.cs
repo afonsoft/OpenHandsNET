@@ -19,6 +19,7 @@ public static class HealthEndpoints
             HealthCheckService health,
             IDockerClient docker,
             IOptions<AgentLlmOptions> llm,
+            IOptions<OpenHandsNET.Infrastructure.Sandbox.SandboxOptions> sandbox,
             CancellationToken ct) =>
         {
             var report = await health.CheckHealthAsync(
@@ -51,6 +52,33 @@ public static class HealthEndpoints
             };
             var healthy = report.Status == HealthStatus.Healthy &&
                           dockerStatus == "healthy";
+
+            // SPEC-19: egress allowlist → o proxy compartilhado precisa estar
+            // running (ausente do payload quando o modo não é allowlist).
+            if (sandbox.Value.EgressMode.Equals(
+                    "allowlist", StringComparison.OrdinalIgnoreCase))
+            {
+                string proxyStatus;
+                try
+                {
+                    var p = await docker.Containers.InspectContainerAsync(
+                        OpenHandsNET.Infrastructure.Sandbox.EgressProxyService
+                            .ProxyName, ct);
+                    proxyStatus = p.State is { Running: true }
+                        ? "healthy" : p.State?.Status ?? "unknown";
+                }
+                catch (Docker.DotNet.DockerContainerNotFoundException)
+                {
+                    proxyStatus = "missing";
+                }
+                catch (Exception ex)
+                {
+                    proxyStatus = $"error: {ex.GetType().Name}";
+                }
+
+                checks["egress_proxy"] = proxyStatus;
+                healthy &= proxyStatus == "healthy";
+            }
             return Results.Json(new
             {
                 status = healthy ? "ready" : "degraded",

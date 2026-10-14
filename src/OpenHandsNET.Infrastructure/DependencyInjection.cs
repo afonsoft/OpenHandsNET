@@ -65,6 +65,9 @@ public static class DependencyInjection
         services.AddSingleton<OpenHandsNET.Infrastructure.Sandbox.WorkspaceProvisioner>();
         services.AddScoped<OpenHandsNET.Infrastructure.Sandbox.DockerNetworkPolicy>();
         services.AddSingleton<OpenHandsNET.Infrastructure.Sandbox.WarmPoolService>();
+        // SPEC-19: proxy Squid compartilhado do egress allowlist.
+        services.AddSingleton<OpenHandsNET.Infrastructure.Sandbox.SquidConfigWriter>();
+        services.AddSingleton<OpenHandsNET.Infrastructure.Sandbox.EgressProxyService>();
         services.AddHostedService(p => p.GetRequiredService<
             OpenHandsNET.Infrastructure.Sandbox.WarmPoolService>());
         services.AddScoped<OpenHandsNET.Application.Sandbox.ISandboxService,
