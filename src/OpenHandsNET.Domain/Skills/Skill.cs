@@ -11,6 +11,13 @@ public enum SkillSource
 
     /// <summary>Owned by a single user.</summary>
     User = 2,
+
+    /// <summary>
+    /// SPEC-25 RF-002: versioned in the repository (`.openhands/skills/`,
+    /// `.devin/skills/`, `.agents/skills/`, `.claude/skills/`), loaded from
+    /// the workspace per run — never persisted.
+    /// </summary>
+    Repo = 3,
 }
 
 /// <summary>Trigger kinds (SPEC-11 RF-002).</summary>
@@ -44,6 +51,13 @@ public sealed record Skill
     public required string ContentMd { get; init; }
     public IReadOnlyList<SkillTrigger> Triggers { get; init; } = [];
     public SkillSource Source { get; init; } = SkillSource.User;
+
+    /// <summary>
+    /// SPEC-25: workspace-relative path of the <c>SKILL.md</c> — only set
+    /// when <see cref="Source"/> is <see cref="SkillSource.Repo"/>.
+    /// </summary>
+    public string? RepoPath { get; init; }
+
     public bool Enabled { get; init; } = true;
     public DateTimeOffset CreatedAt { get; init; }
 }

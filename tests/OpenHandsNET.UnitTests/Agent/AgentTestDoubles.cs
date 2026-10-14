@@ -74,6 +74,7 @@ internal sealed class FakeSandboxExecutor : ISandboxExecutor
     private readonly Dictionary<string, string> _files = new();
     public List<string> Commands { get; } = [];
     public Func<string, CommandResult>? ExecHandler { get; set; }
+    public Func<string, IReadOnlyList<FileEntry>>? ListHandler { get; set; }
 
     public Task<IBashSession> OpenBashSessionAsync(Sandbox sandbox, CancellationToken ct) =>
         throw new NotSupportedException();
@@ -99,8 +100,13 @@ internal sealed class FakeSandboxExecutor : ISandboxExecutor
 
     public Task<IReadOnlyList<FileEntry>> ListFilesAsync(
         Sandbox sandbox, string path, CancellationToken ct) =>
-        Task.FromResult<IReadOnlyList<FileEntry>>(
-            _files.Select(kv => new FileEntry(kv.Key, false, kv.Value.Length)).ToList());
+        Task.FromResult(ListHandler?.Invoke(path)
+            ?? (IReadOnlyList<FileEntry>)_files
+                .Select(kv => new FileEntry(kv.Key, false, kv.Value.Length))
+                .ToList());
+
+    /// <summary>Seeds the in-memory file map (test helper).</summary>
+    public void SeedFile(string path, string content) => _files[path] = content;
 
     public Task<GitDiff> GetGitDiffAsync(Sandbox sandbox, CancellationToken ct) =>
         Task.FromResult(new GitDiff([], "", 0, 0));

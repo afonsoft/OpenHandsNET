@@ -33,6 +33,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         git git-lfs openssh-client \
         python3 python3-pip python3-venv \
         tini sudo locales procps file less vim-tiny \
+        ripgrep \
         build-essential pkg-config libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 

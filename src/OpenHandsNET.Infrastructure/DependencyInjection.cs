@@ -105,6 +105,25 @@ public static class DependencyInjection
         // Skills & hooks (SPEC-11): skill store + builtin seeder + hook runner.
         services.AddScoped<OpenHandsNET.Application.Skills.ISkillService,
             OpenHandsNET.Infrastructure.Skills.SkillService>();
+        // SPEC-25: repo discovery + repo skills federadas + output policy
+        // + web_fetch (egress do worker, SSRF guard).
+        services.AddSingleton<
+            OpenHandsNET.Application.Discovery.IRepoDiscoveryService,
+            OpenHandsNET.Infrastructure.Discovery.RepoDiscoveryService>();
+        services.AddSingleton<
+            OpenHandsNET.Infrastructure.Skills.RepoSkillProvider>();
+        services.AddScoped<
+            OpenHandsNET.Infrastructure.Discovery.RepoContextLoader>();
+        services.AddSingleton<
+            OpenHandsNET.Infrastructure.Agent.Tools.OutputPolicy>();
+        services.AddScoped<OpenHandsNET.Application.Web.IWebFetchService,
+            OpenHandsNET.Infrastructure.Web.WebFetchService>();
+        services.AddHttpClient("web-fetch", c =>
+        {
+            c.Timeout = TimeSpan.FromSeconds(30);
+            c.DefaultRequestHeaders.UserAgent.ParseAdd(
+                "OpenHandsNET/1.0 web_fetch");
+        });
         services.AddScoped<OpenHandsNET.Application.Hooks.IHookService,
             OpenHandsNET.Infrastructure.Hooks.HookService>();
         services.AddHostedService<

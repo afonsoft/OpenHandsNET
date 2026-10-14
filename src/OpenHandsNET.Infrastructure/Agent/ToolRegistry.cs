@@ -28,6 +28,9 @@ public sealed class ToolRegistry : IToolRegistry
             BuiltinTools.TaskTracker(tracker),
             BuiltinTools.GitCommit(bashTimeout),
             BuiltinTools.Browser(),
+            // SPEC-25 RF-003: search/web_fetch + file_read/file_edit v2.
+            BuiltinTools.Search(bashTimeout),
+            BuiltinTools.WebFetch(),
             BuiltinTools.InvokeSkill(),
             BuiltinTools.Finish(),
         ];
