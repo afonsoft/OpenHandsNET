@@ -22,6 +22,7 @@ public static class GitEndpoints
 
         conv.MapGet("/{id:guid}/git/changes", GitChangesAsync);
         conv.MapGet("/{id:guid}/git/diff", GitDiffAsync);
+        conv.MapGet("/{id:guid}/git/file", GitFileAtRefAsync);
         conv.MapGet("/{id:guid}/git/log", GitLogAsync);
         conv.MapGet("/{id:guid}/files", ListFilesAsync);
         conv.MapGet("/{id:guid}/file", ReadFileAsync);
@@ -95,6 +96,42 @@ public static class GitEndpoints
 
         var report = await git.GetDiffAsync(sb, path, ct);
         return Results.Ok(report);
+    }
+
+    /// <summary>
+    /// SPEC-21 RF-006: conteúdo do arquivo na revisão (default HEAD) — o
+    /// client usa como lado "original" do Monaco diff editor. O path pode ser
+    /// absoluto (<c>/workspace/…</c>) ou relativo ao repo; <c>..</c> → 400.
+    /// </summary>
+    private static async Task<IResult> GitFileAtRefAsync(
+        Guid id, string? path, string? @ref,
+        IAppConversationService svc, IGitService git,
+        HttpContext http, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(path)
+            || path.Contains("..", StringComparison.Ordinal))
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 400, "path required and must not contain '..'");
+        }
+
+        var sb = await SandboxOfAsync(id, svc, http, ct);
+        if (sb is null)
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 409, OpenHandsNetProblemFactory.SandboxNotRunning);
+        }
+
+        if (!await git.HasRepositoryAsync(sb, ct))
+        {
+            return OpenHandsNetProblemFactory.Create(http, 404, "no_repository");
+        }
+
+        var content = await git.GetFileAtRefAsync(sb, path, @ref ?? "HEAD", ct);
+        return content is null
+            ? OpenHandsNetProblemFactory.Create(
+                http, 404, $"file not found at ref: {path}")
+            : Results.Ok(new { encoding = "utf-8", content });
     }
 
     private static async Task<IResult> GitLogAsync(

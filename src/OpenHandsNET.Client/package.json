@@ -1,0 +1,14 @@
+{
+  "name": "openhandsnet-client",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Tailwind CSS v4 pipeline for the Blazor WASM client (SPEC-21).",
+  "scripts": {
+    "css": "tailwindcss -i Styles/app.tailwind.css -o wwwroot/tailwind.css --minify",
+    "css:watch": "tailwindcss -i Styles/app.tailwind.css -o wwwroot/tailwind.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^4.1.0",
+    "@tailwindcss/cli": "^4.1.0"
+  }
+}

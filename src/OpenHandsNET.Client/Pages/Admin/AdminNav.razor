@@ -1,0 +1,26 @@
+@* SPEC-21: sub-navegação da área admin — visível só para super-admin (gate
+@using OpenHandsNET.Client.Services
+   feito por cada página via AdminPageBase). *@
+<nav class="admin-nav">
+    <a href="/admin" class="@Active("/admin", exact: true)">overview</a>
+    <a href="/admin/users" class="@Active("/admin/users")">users</a>
+    <a href="/admin/admins" class="@Active("/admin/admins")">super admins</a>
+    <a href="/admin/audit" class="@Active("/admin/audit")">audit</a>
+    <a href="/admin/flags" class="@Active("/admin/flags")">feature flags</a>
+    <a href="/admin/plans" class="@Active("/admin/plans")">plans</a>
+    <a href="/admin/usage" class="@Active("/admin/usage")">usage</a>
+</nav>
+
+@code {
+    [Inject] private NavigationManager NavMan { get; set; } = default!;
+
+    private string Active(string path, bool exact = false)
+    {
+        var rel = NavMan.ToBaseRelativePath(NavMan.Uri).TrimEnd('/');
+        var p = path.TrimStart('/');
+        var on = exact
+            ? string.Equals(rel, p, StringComparison.OrdinalIgnoreCase)
+            : rel.StartsWith(p, StringComparison.OrdinalIgnoreCase);
+        return on ? "active" : "";
+    }
+}

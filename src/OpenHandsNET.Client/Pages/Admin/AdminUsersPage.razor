@@ -1,0 +1,96 @@
+@page "/admin/users"
+@using OpenHandsNET.Client.Services
+@using System.Text.Json
+@inherits AdminPageBase
+
+<PageTitle>admin · users</PageTitle>
+
+@if (Checking || !Allowed)
+{
+    <div class="settings-wrap"><p class="empty-state">…</p></div>
+}
+else
+{
+    <div class="settings-wrap admin-wrap">
+        <h1>Users <span class="sub">(@_total total)</span></h1>
+        <AdminNav />
+        @if (Error is not null) { <p class="admin-error">@Error</p> }
+        @if (_notice is not null) { <p class="admin-notice">@_notice</p> }
+
+        <div class="field admin-toolbar">
+            <input placeholder="search email/name…" @bind="_q"
+                   @bind:event="oninput" @onkeydown="OnSearchKey" />
+            <button @onclick="() => LoadPageAsync(1)">Search</button>
+        </div>
+
+        @foreach (var u in _users)
+        {
+            var uid = Str(u, "user_id") ?? Str(u, "id") ?? "";
+            <div class="secret-row">
+                <span class="name">@Str(u, "email")</span>
+                <span>@Str(u, "display_name")</span>
+                <button class="danger" @onclick="() => DeleteAsync(uid)">
+                    delete
+                </button>
+            </div>
+        }
+        @if (_users.Count == 0)
+        {
+            <p class="empty-state">no users</p>
+        }
+
+        <div class="admin-pager">
+            <button disabled="@(_page <= 1)"
+                    @onclick="() => LoadPageAsync(_page - 1)">‹ prev</button>
+            <span>page @_page</span>
+            <button disabled="@(_users.Count < PageSize)"
+                    @onclick="() => LoadPageAsync(_page + 1)">next ›</button>
+        </div>
+    </div>
+}
+
+@code {
+    private const int PageSize = 50;
+    private IReadOnlyList<JsonElement> _users = [];
+    private string? _q;
+    private string? _notice;
+    private int _page = 1;
+    private int _total;
+
+    protected override async Task LoadAsync()
+    {
+        _total = await Api.CountUsersAsync();
+        await LoadPageAsync(1);
+    }
+
+    private async Task LoadPageAsync(int page)
+    {
+        _page = page;
+        _users = await Api.ListUsersAsync(_q, page);
+    }
+
+    private async Task OnSearchKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await LoadPageAsync(1);
+        }
+    }
+
+    private async Task DeleteAsync(string uid)
+    {
+        _notice = null;
+        var ok = await Api.DeleteUserAsync(
+            uid, m => _notice = m);
+        if (ok)
+        {
+            _notice = "user deleted";
+            await LoadPageAsync(_page);
+            _total = await Api.CountUsersAsync();
+        }
+    }
+
+    private static string? Str(JsonElement e, string prop) =>
+        e.TryGetProperty(prop, out var v) && v.ValueKind
+            is JsonValueKind.String ? v.GetString() : null;
+}

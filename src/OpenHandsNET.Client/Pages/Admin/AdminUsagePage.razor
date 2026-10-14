@@ -1,0 +1,98 @@
+@page "/admin/usage"
+@using OpenHandsNET.Client.Services
+@using System.Text.Json
+@inherits AdminPageBase
+
+<PageTitle>admin · usage</PageTitle>
+
+@if (Checking || !Allowed)
+{
+    <div class="settings-wrap"><p class="empty-state">…</p></div>
+}
+else
+{
+    <div class="settings-wrap admin-wrap">
+        <h1>Usage</h1>
+        <AdminNav />
+        @if (Error is not null) { <p class="admin-error">@Error</p> }
+
+        <div class="field admin-toolbar">
+            <select @bind="_orgId" @bind:after="LoadUsageAsync">
+                <option value="">select org…</option>
+                @foreach (var o in _orgs)
+                {
+                    <option value="@Str(o, "id")">@Str(o, "name")</option>
+                }
+            </select>
+        </div>
+
+        @if (_usage is { } u)
+        {
+            <div class="usage-grid">
+                <div class="usage-card">
+                    <div class="num">@Num(u, "tokens_used")</div>
+                    <div class="lbl">tokens (@Str(u, "period"))</div>
+                </div>
+                <div class="usage-card">
+                    <div class="num">$@Num(u, "cost_usd")</div>
+                    <div class="lbl">cost</div>
+                </div>
+                <div class="usage-card">
+                    <div class="num">@Num(u, "runs")</div>
+                    <div class="lbl">runs</div>
+                </div>
+                <div class="usage-card">
+                    <div class="num">@Num(u, "sandbox_seconds")</div>
+                    <div class="lbl">sandbox seconds</div>
+                </div>
+                <div class="usage-card">
+                    <div class="num">@Num(u, "sandboxes_active")</div>
+                    <div class="lbl">active sandboxes</div>
+                </div>
+            </div>
+        }
+
+        @if (_plan is { } pl)
+        {
+            <h3>Effective plan</h3>
+            <div class="secret-row">
+                <span class="name">@Str(pl, "name")</span>
+                <span>@Str(pl, "plan_id")</span>
+            </div>
+            <pre class="admin-limits">@(
+                pl.TryGetProperty("limits", out var l) ? l.GetRawText() : "{}")</pre>
+        }
+    </div>
+}
+
+@code {
+    private IReadOnlyList<JsonElement> _orgs = [];
+    private string? _orgId;
+    private JsonElement? _usage;
+    private JsonElement? _plan;
+
+    protected override async Task LoadAsync() =>
+        _orgs = await Api.ListOrgsAsync();
+
+    private async Task LoadUsageAsync()
+    {
+        if (string.IsNullOrEmpty(_orgId))
+        {
+            return;
+        }
+
+        Error = null;
+        _usage = await Api.GetOrgUsageAsync(_orgId);
+        _plan = await Api.GetOrgPlanAsync(_orgId);
+    }
+
+    private static string? Str(JsonElement e, string prop) =>
+        e.TryGetProperty(prop, out var v) && v.ValueKind
+            is JsonValueKind.String ? v.GetString() : null;
+
+    private static string Num(JsonElement e, string prop) =>
+        e.TryGetProperty(prop, out var v)
+            ? v.ValueKind is JsonValueKind.Number
+                ? v.GetRawText() : v.GetString() ?? "0"
+            : "0";
+}

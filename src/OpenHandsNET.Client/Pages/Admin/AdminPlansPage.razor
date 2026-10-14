@@ -1,0 +1,152 @@
+@page "/admin/plans"
+@using OpenHandsNET.Client.Services
+@using System.Text.Json
+@inherits AdminPageBase
+
+<PageTitle>admin · plans</PageTitle>
+
+@if (Checking || !Allowed)
+{
+    <div class="settings-wrap"><p class="empty-state">…</p></div>
+}
+else
+{
+    <div class="settings-wrap admin-wrap">
+        <h1>Plans</h1>
+        <AdminNav />
+        @if (Error is not null) { <p class="admin-error">@Error</p> }
+        @if (_notice is not null) { <p class="admin-notice">@_notice</p> }
+
+        <div class="field admin-toolbar">
+            <input placeholder="new plan name…" @bind="_newName"
+                   @bind:event="oninput" />
+            <input type="number" step="0.01" placeholder="price usd/mo"
+                   @bind="_newPrice" style="max-width:140px" />
+            <button class="primary" @onclick="CreateAsync"
+                    disabled="@(string.IsNullOrWhiteSpace(_newName))">
+                create
+            </button>
+        </div>
+
+        @foreach (var p in _plans)
+        {
+            var id = Str(p, "id") ?? "";
+            <div class="admin-plan">
+                <div class="secret-row">
+                    <span class="name">@Str(p, "name")</span>
+                    <span>$@Str(p, "monthly_price_usd")/mo</span>
+                    @if (p.TryGetProperty("has_active_subscriptions", out var hs)
+                        && hs.GetBoolean())
+                    {
+                        <span class="badge running">in use</span>
+                    }
+                    <button class="danger" @onclick="() => DeleteAsync(id)">
+                        delete
+                    </button>
+                </div>
+                <div class="field admin-toolbar">
+                    <input placeholder='limits json (ex.: {"max_concurrent_runs":3})'
+                           @bind="_limitsDraft[id]"
+                           @bind:event="oninput" />
+                    <button @onclick="() => SaveLimitsAsync(id)">save limits</button>
+                </div>
+                <div class="field admin-toolbar">
+                    <select @bind="_assignOrg[id]">
+                        <option value="">assign to org…</option>
+                        @foreach (var o in _orgs)
+                        {
+                            <option value="@Str(o, "id")">@Str(o, "name")</option>
+                        }
+                    </select>
+                    <button @onclick="() => AssignAsync(id)"
+                            disabled="@(string.IsNullOrEmpty(_assignOrg.GetValueOrDefault(id)))">
+                        assign
+                    </button>
+                </div>
+            </div>
+        }
+        @if (_plans.Count == 0)
+        {
+            <p class="empty-state">no plans</p>
+        }
+    </div>
+}
+
+@code {
+    private IReadOnlyList<JsonElement> _plans = [];
+    private IReadOnlyList<JsonElement> _orgs = [];
+    private readonly Dictionary<string, string?> _limitsDraft = new();
+    private readonly Dictionary<string, string?> _assignOrg = new();
+    private string? _newName;
+    private decimal? _newPrice;
+    private string? _notice;
+
+    protected override async Task LoadAsync()
+    {
+        _plans = await Api.ListPlansAsync();
+        _orgs = await Api.ListOrgsAsync();
+        foreach (var p in _plans)
+        {
+            var id = Str(p, "id")!;
+            if (!_limitsDraft.ContainsKey(id))
+            {
+                _limitsDraft[id] = p.TryGetProperty("limits", out var l)
+                    ? l.GetRawText() : "{}";
+            }
+        }
+    }
+
+    private async Task CreateAsync()
+    {
+        _notice = null;
+        await Api.CreatePlanAsync(_newName!, null, _newPrice);
+        _newName = null;
+        _newPrice = null;
+        await LoadAsync();
+    }
+
+    private async Task SaveLimitsAsync(string id)
+    {
+        _notice = null;
+        try
+        {
+            var limits = JsonDocument.Parse(
+                _limitsDraft.GetValueOrDefault(id) ?? "{}").RootElement;
+            await Api.PatchPlanAsync(id, null, limits, null);
+            _notice = "limits saved";
+        }
+        catch (JsonException)
+        {
+            _notice = "limits json inválido";
+        }
+    }
+
+    private async Task DeleteAsync(string id)
+    {
+        _notice = null;
+        var ok = await Api.DeletePlanAsync(id, m => _notice = m);
+        if (ok)
+        {
+            _notice = "plan deleted";
+            await LoadAsync();
+        }
+    }
+
+    private async Task AssignAsync(string planId)
+    {
+        _notice = null;
+        var orgId = _assignOrg.GetValueOrDefault(planId);
+        if (string.IsNullOrEmpty(orgId))
+        {
+            return;
+        }
+
+        _notice = await Api.AssignOrgPlanAsync(orgId, planId)
+            ? "plan assigned" : "org/plan not found";
+    }
+
+    private static string? Str(JsonElement e, string prop) =>
+        e.TryGetProperty(prop, out var v) && v.ValueKind
+            is JsonValueKind.String ? v.GetString()
+            : v.ValueKind is JsonValueKind.Number ? v.GetRawText() : null;
+}
