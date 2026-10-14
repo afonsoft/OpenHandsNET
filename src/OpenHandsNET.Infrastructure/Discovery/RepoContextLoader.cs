@@ -25,7 +25,8 @@ public sealed class RepoContextLoader(
     RepoSkillProvider repoSkills,
     Application.Sandbox.ISandboxService sandboxes,
     ISandboxExecutor executor,
-    ILogger<RepoContextLoader> logger)
+    ILogger<RepoContextLoader> logger,
+    Application.Memory.IMemoryService? memory = null)
 {
     private const int InstructionCapBytes = 64 * 1024;
     private const int ReadmeCapBytes = 8 * 1024;
@@ -108,6 +109,10 @@ public sealed class RepoContextLoader(
                 + " already ran at sandbox provisioning (blueprint).");
         }
 
+        // SPEC-30 RF-003: digest de memória (project INDEX + org digest) —
+        // untrusted, citado; estável entre turns (não é podado pela SPEC-22).
+        await AppendMemoryAsync(sb, conv, sandbox, ct);
+
         var rendered = sb.Length > 0 ? sb.ToString() : null;
         return new LoadedContext(rendered, skills);
     }
@@ -149,6 +154,62 @@ public sealed class RepoContextLoader(
         {
             logger.LogDebug(ex, "repo_context manifest inválido");
             return null;
+        }
+    }
+
+    /// <summary>
+    /// SPEC-30 RF-003: renders the <c>## Memory</c> section — project
+    /// <c>.openhands/memory/INDEX.md</c> + newest org entries (cap 4KB total).
+    /// </summary>
+    private async Task AppendMemoryAsync(
+        StringBuilder sb, ConversationRecord conv,
+        RuntimeSandbox sandbox, CancellationToken ct)
+    {
+        var block = new StringBuilder();
+        try
+        {
+            var index = await ReadCappedAsync(sandbox,
+                "/workspace/repo/.openhands/memory/INDEX.md", 2048, ct);
+            if (index is not null)
+            {
+                block.AppendLine("<memory scope=\"project\">")
+                    .AppendLine(index).AppendLine("</memory>");
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+        }
+
+        if (memory is not null && conv.OrgId is { } orgId)
+        {
+            try
+            {
+                var entries = await memory.DigestAsync(orgId, 10, ct);
+                if (entries.Count > 0)
+                {
+                    block.AppendLine("<memory scope=\"org\">");
+                    foreach (var e in entries)
+                    {
+                        var first = e.Text.Split('\n')
+                            .FirstOrDefault()?.Trim() ?? "";
+                        block.AppendLine($"- {e.Key} — {first}");
+                    }
+
+                    block.AppendLine("</memory>");
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogDebug(ex, "memory digest indisponível");
+            }
+        }
+
+        if (block.Length > 0)
+        {
+            var s = block.ToString();
+            sb.AppendLine("## Memory")
+                .AppendLine(s.Length <= 4096
+                    ? s : s[..4096] + "\n[…truncated…]");
         }
     }
 

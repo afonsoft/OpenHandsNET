@@ -589,6 +589,56 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                     b.ToTable("mcp_servers", (string)null);
                 });
 
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.MemoryRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("key");
+
+                    b.Property<Guid>("OrgId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("text");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_memory_records");
+
+                    b.HasIndex("UpdatedAt")
+                        .HasDatabaseName("ix_memory_records_updated_at");
+
+                    b.HasIndex("OrgId", "Key")
+                        .HasDatabaseName("ix_memory_records_org_id_key");
+
+                    b.ToTable("memory_records", (string)null);
+                });
+
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.OrgInvitationRecord", b =>
                 {
                     b.Property<Guid>("Id")

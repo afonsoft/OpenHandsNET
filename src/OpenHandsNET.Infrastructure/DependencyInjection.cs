@@ -126,6 +126,9 @@ public static class DependencyInjection
         });
         services.AddScoped<OpenHandsNET.Application.Hooks.IHookService,
             OpenHandsNET.Infrastructure.Hooks.HookService>();
+        // SPEC-30 RF-001: memória org-scoped (DB + audit trail).
+        services.AddScoped<OpenHandsNET.Application.Memory.IMemoryService,
+            OpenHandsNET.Infrastructure.Memory.MemoryService>();
         services.AddHostedService<
             OpenHandsNET.Infrastructure.Skills.BuiltinSkillSeedService>();
 

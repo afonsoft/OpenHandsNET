@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.EntityFrameworkCore;
 using OpenHandsNET.Api.DTOs;
 using OpenHandsNET.Api.ProblemDetails;
 using OpenHandsNET.Application.Conversations;
@@ -200,6 +201,52 @@ public static class AppConversationEndpoints
                 description = t.Schema.Description,
             });
             return Results.Ok(new { tools });
+        });
+
+        // SPEC-30 RF-004: merged memory view — org entries + project INDEX.
+        group.MapGet("/{id:guid}/memory", async (
+            Guid id, IAppConversationService svc,
+            Infrastructure.Persistence.AppDbContext db,
+            ISandboxService sandboxes, ISandboxExecutor executor,
+            HttpContext http, CancellationToken ct) =>
+        {
+            if (await svc.GetAsync(id, ct) is null)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Conversation {id} not found");
+            }
+
+            var record = await db.Conversations.FindAsync([id], ct);
+            var org = record?.OrgId is { } orgId
+                ? (await db.MemoryRecords.AsNoTracking()
+                    .Where(m => m.OrgId == orgId && m.DeletedAt == null)
+                    .ToListAsync(ct))
+                    .OrderByDescending(m => m.UpdatedAt)
+                    .Select(m => new
+                    {
+                        key = m.Key, scope = "org",
+                        updated_at = m.UpdatedAt,
+                    }).ToList()
+                : [];
+
+            IReadOnlyList<string> projectFiles = [];
+            if (record?.SandboxId is { } sandboxId)
+            {
+                var sandbox = await sandboxes.GetAsync(sandboxId, ct);
+                if (sandbox?.Status == Domain.Sandbox.SandboxStatus.Running)
+                {
+                    try
+                    {
+                        var files = await executor.ListFilesAsync(sandbox,
+                            "/workspace/repo/.openhands/memory", ct);
+                        projectFiles = files.Where(f => !f.IsDirectory)
+                            .Select(f => f.Path).ToList();
+                    }
+                    catch (Exception) { /* memória ainda não existe */ }
+                }
+            }
+
+            return Results.Ok(new { org, project_files = projectFiles });
         });
 
         // SPEC-25 RF-006: rescan on-demand — repete a descoberta do worker,

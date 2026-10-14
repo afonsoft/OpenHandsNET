@@ -165,6 +165,20 @@ public sealed class AuditEventConfiguration : IEntityTypeConfiguration<AuditEven
 }
 
 /// <inheritdoc />
+public sealed class MemoryConfiguration : IEntityTypeConfiguration<MemoryRecord>
+{
+    /// <inheritdoc />
+    public void Configure(EntityTypeBuilder<MemoryRecord> b)
+    {
+        b.ToTable("memory_records");
+        b.HasKey(e => e.Id);
+        b.Property(e => e.Key).HasMaxLength(200);
+        b.HasIndex(e => new { e.OrgId, e.Key });
+        b.HasIndex(e => e.UpdatedAt);
+    }
+}
+
+/// <inheritdoc />
 public sealed class DeviceCodeConfiguration : IEntityTypeConfiguration<DeviceCodeRecord>
 {
     /// <inheritdoc />

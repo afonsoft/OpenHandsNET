@@ -166,6 +166,22 @@ public sealed class OrgInvitationRecord
     public DateTimeOffset CreatedAt { get; set; }
 }
 
+/// <summary>
+/// Org-scoped memory entry (SPEC-30 RF-001) — soft-deleted via
+/// <see cref="DeletedAt"/>; writes are audit-logged by the service.
+/// </summary>
+public sealed class MemoryRecord
+{
+    public required Guid Id { get; set; }
+    public required Guid OrgId { get; set; }
+    public required string Key { get; set; }
+    public required string Text { get; set; }
+    public string? CreatedByUserId { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
+}
+
 /// <summary>Append-only security audit trail (SPEC-08).</summary>
 public sealed class AuditEventRecord
 {

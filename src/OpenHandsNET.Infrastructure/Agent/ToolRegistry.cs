@@ -31,6 +31,8 @@ public sealed class ToolRegistry : IToolRegistry
             // SPEC-25 RF-003: search/web_fetch + file_read/file_edit v2.
             BuiltinTools.Search(bashTimeout),
             BuiltinTools.WebFetch(),
+            // SPEC-30 RF-002: memória persistente (project + org).
+            BuiltinTools.Memory(),
             BuiltinTools.InvokeSkill(),
             BuiltinTools.Finish(),
         ];
