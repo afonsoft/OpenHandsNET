@@ -26,7 +26,8 @@ public sealed class DockerSandboxService(
     Git.GitCredentialProvider? gitCredentials = null,
     Microsoft.AspNetCore.DataProtection.IDataProtectionProvider? dp = null,
     SandboxAgentClient? agentClient = null,
-    EgressProxyService? egressProxy = null) : ISandboxService
+    EgressProxyService? egressProxy = null,
+    Application.Contracts.ISecretStore? secretStore = null) : ISandboxService
 {
     /// <summary>Protector da session key do agente in-container (SPEC-17).</summary>
     private Microsoft.AspNetCore.DataProtection.IDataProtector? SessionProtector =>
@@ -802,14 +803,18 @@ public sealed class DockerSandboxService(
     private async Task<List<string>> ResolveCredentialEnvAsync(
         Guid? conversationId, CancellationToken ct)
     {
-        if (conversationId is null || gitCredentials is null)
+        if (conversationId is null
+            || (gitCredentials is null && secretStore is null))
         {
             return [];
         }
 
         var conv = await db.Conversations.AsNoTracking()
             .Where(c => c.Id == conversationId.Value)
-            .Select(c => new { c.CreatedByUserId, c.SelectedRepository })
+            .Select(c => new
+            {
+                c.CreatedByUserId, c.SelectedRepository, c.SecretNamesJson,
+            })
             .FirstOrDefaultAsync(ct);
         if (conv is null)
         {
@@ -817,6 +822,40 @@ public sealed class DockerSandboxService(
         }
 
         var env = new List<string>();
+
+        // SPEC-33 RF-003: secrets por referência — conv.secret_names_json
+        // guarda NOMES; o valor só existe aqui (env do container).
+        if (secretStore is not null
+            && !string.IsNullOrEmpty(conv.SecretNamesJson)
+            && !string.IsNullOrEmpty(conv.CreatedByUserId))
+        {
+            try
+            {
+                var names = System.Text.Json.JsonSerializer
+                    .Deserialize<List<string>>(conv.SecretNamesJson) ?? [];
+                foreach (var name in names)
+                {
+                    var value = await secretStore.ResolveAsync(
+                        "user", conv.CreatedByUserId, name, ct);
+                    if (value is not null)
+                    {
+                        env.Add($"{name}={value}");
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(ex,
+                    "Secret env resolution failed for conversation {Id}",
+                    conversationId);
+            }
+        }
+
+        if (gitCredentials is null)
+        {
+            return env;
+        }
+
         var ghToken = await gitCredentials.ResolveTokenAsync(
             "github.com", conv.CreatedByUserId, ct);
         if (ghToken is not null)

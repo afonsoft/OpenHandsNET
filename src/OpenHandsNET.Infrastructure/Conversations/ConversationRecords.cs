@@ -37,6 +37,13 @@ public sealed class ConversationRecord : IOrgScoped
 
     /// <summary>Modo de execução (SPEC-29 RF-003): <c>build</c> | <c>plan</c>.</summary>
     public string Mode { get; set; } = "build";
+
+    /// <summary>
+    /// Nomes de secrets do usuário a injetar no sandbox (SPEC-33 RF-003) —
+    /// JSON array; os VALORES são resolvidos na borda (ISecretStore) e nunca
+    /// serializados.
+    /// </summary>
+    public string? SecretNamesJson { get; set; }
     public string? CreatedByUserId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }

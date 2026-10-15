@@ -20,6 +20,11 @@ public sealed record CreateAppConversationRequest
     public IReadOnlyList<PermissionRuleDto>? Permissions { get; init; }
     /// <summary>SPEC-29: <c>plan</c> | <c>build</c> (default).</summary>
     public string? Mode { get; init; }
+    /// <summary>
+    /// SPEC-33 RF-003: NOMES de secrets do usuário a injetar no sandbox —
+    /// valores nunca trafegam neste payload.
+    /// </summary>
+    public IReadOnlyList<string>? Secrets { get; init; }
     public JsonElement? LlmConfig { get; init; }
     public JsonElement? ObservabilityConfig { get; init; }
 }

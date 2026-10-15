@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
@@ -162,6 +164,10 @@ public sealed class AgentRunner(
             db, conv, opt, ct);
         var effectiveTools = ConversationPermissionResolver.Catalog(
             tools, permissions);
+        // SPEC-33 RF-004: fingerprint do toolset — detecta drift no resume
+        // (tools removidas silenciosamente entre runs).
+        await EmitAgentContractAsync(
+            events, conv, effectiveTools.All, opt, ct);
         var rebuilt = await builder.BuildAsync(
             conversationId, conv, effectiveTools, ct);
         var history = rebuilt.Messages;
@@ -169,6 +175,9 @@ public sealed class AgentRunner(
         var lastEventId = rebuilt.LastEventId;
         var confirmationMode = conv.ConfirmationMode;
         var hooks = services.GetService<Application.Hooks.IHookService>();
+        // SPEC-33 RF-001: analyzer por ação — High força confirmação
+        // (mesmo com permission allow), diagnostic security_risk redacted.
+        var security = services.GetService<ISecurityAnalyzer>();
         var model = conv.LlmModel ?? opt.Model;
         // SPEC-23 RF-002: seleção por role + fallback chain. `selection`
         // acompanha o modelo efetivo (catalogo → janela/provider).
@@ -677,13 +686,33 @@ public sealed class AgentRunner(
                     continue;
                 }
 
-                // SPEC-15 RF-003 + SPEC-29 RF-002: confirmação exigida por
-                // regra ask (qualquer tool), guardrail destrutivo (sempre),
+                // SPEC-33 RF-001: security analyzer — High força confirmação
+                // humana (piso igual ao guardrail destrutivo).
+                var risk = security is null || actionEvent.Action is not { } act
+                    ? SecurityRisk.Low
+                    : await security.AnalyzeAsync(call.Name, act, ct);
+                if (risk >= SecurityRisk.Medium)
+                {
+                    await events.AppendAsync(conversationId,
+                        new AgentDiagnosticEvent
+                        {
+                            Severity = risk == SecurityRisk.High
+                                ? "warning" : "info",
+                            Code = "security_risk",
+                            Message = $"tool {call.Name} scored {risk
+                                .ToString().ToLowerInvariant()} risk",
+                            ParentId = actionEvent.Id,
+                        }, ct);
+                }
+
+                // SPEC-15 RF-003 + SPEC-29 RF-002 + SPEC-33: confirmação
+                // exigida por regra ask, guardrail destrutivo, analyzer High,
                 // ou default Risky+confirmation-mode. Allow explícito pula
-                // confirmação — exceto destrutiva (alwaysAsk é piso).
-                var alwaysAsk = tool.Risky &&
+                // confirmação — exceto destrutiva/High (pisos).
+                var alwaysAsk = (tool.Risky &&
                     AutonomyGuardrail.RequiresHumanApproval(
-                        call.Name, actionEvent.Action);
+                        call.Name, actionEvent.Action))
+                    || risk == SecurityRisk.High;
                 var needsConfirm = alwaysAsk
                     || decision == Application.Agent.PermissionDecision.Ask
                     || (decision is null && tool.Risky && confirmationMode);
@@ -1029,4 +1058,74 @@ public sealed class AgentRunner(
         }
     }
 
+    /// <summary>
+    /// SPEC-33 RF-004: grava o <c>agent_contract</c> (agent_type + fingerprint
+    /// do toolset efetivo) e compara com o contrato anterior do stream —
+    /// tools removidas entre runs emitem <c>resume_drift</c>; em
+    /// <c>AgentLlm:StrictResume</c> falham o run.
+    /// </summary>
+    private async Task EmitAgentContractAsync(
+        IEventService events, ConversationRecord conv,
+        IReadOnlyList<AgentTool> effectiveTools, AgentLlmOptions opt,
+        CancellationToken ct)
+    {
+        var names = effectiveTools.Select(t => t.Schema.Name)
+            .OrderBy(n => n, StringComparer.Ordinal).ToList();
+        var fingerprint = Convert.ToHexString(SHA256.HashData(
+            Encoding.UTF8.GetBytes(
+                string.Join(',', names) + "|" + conv.AgentType)))[..16];
+
+        // Contrato anterior = último state update agent_contract no stream.
+        var prior = await events.SearchAsync(conversationId, new EventQuery(
+            KindEq: "ConversationStateUpdateEvent", Limit: 100), ct);
+        var removed = new List<string>();
+        string? priorAgent = null;
+        foreach (var e in prior.Items.Reverse())
+        {
+            if (e is not ConversationStateUpdateEvent { Key: "agent_contract",
+                Value: { } v })
+            {
+                continue;
+            }
+
+            priorAgent = v.TryGetProperty("agent_type", out var at)
+                ? at.GetString() : null;
+            var prevTools = v.TryGetProperty("tools", out var pt)
+                ? pt.EnumerateArray().Select(t => t.GetString() ?? "")
+                    .ToHashSet(StringComparer.Ordinal) : [];
+            removed = prevTools.Except(names).ToList();
+            break;
+        }
+
+        if (removed.Count > 0 || (priorAgent is not null
+            && priorAgent != conv.AgentType))
+        {
+            var msg = $"resume drift: removed tools [{string.Join(
+                ", ", removed)}]"
+                + (priorAgent != conv.AgentType
+                    ? $", agent_type {priorAgent} -> {conv.AgentType}" : "");
+            if (opt.StrictResume)
+            {
+                throw new InvalidOperationException(
+                    $"StrictResume: {msg}");
+            }
+
+            await events.AppendAsync(conversationId,
+                new AgentDiagnosticEvent
+                {
+                    Severity = "warning", Code = "resume_drift",
+                    Message = msg,
+                }, ct);
+        }
+
+        await events.AppendAsync(conversationId,
+            new ConversationStateUpdateEvent
+            {
+                Key = "agent_contract",
+                Value = JsonSerializer.SerializeToElement(new
+                {
+                    agent_type = conv.AgentType, tools = names, fingerprint,
+                }, EventJson.Options),
+            }, ct);
+    }
 }

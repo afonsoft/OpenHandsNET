@@ -139,6 +139,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("sandbox_profile");
 
+                    b.Property<string>("SecretNamesJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("secret_names_json");
+
                     b.Property<string>("SelectedRepository")
                         .HasColumnType("TEXT")
                         .HasColumnName("selected_repository");

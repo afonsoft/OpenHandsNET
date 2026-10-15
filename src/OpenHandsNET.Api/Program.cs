@@ -231,6 +231,7 @@ app.UseAuthorization();
 app.MapSystemEndpoints();
 app.MapAuthEndpoints();
 app.MapKeysEndpoints();
+app.MapSecretsEndpoints();
 app.MapOrgEndpoints();
 app.MapAdminEndpoints();
 app.MapAppConversationEndpoints();

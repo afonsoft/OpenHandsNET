@@ -235,6 +235,30 @@ public static class DependencyInjection
         services.AddSingleton<OpenHandsNET.Application.Agent.IAgentRunnerHost>(
             sp => sp.GetRequiredService<
                 OpenHandsNET.Infrastructure.Agent.AgentRunnerHost>());
+        // SPEC-33 RF-001: security analyzer — pattern (default, local) ou
+        // llm (opt-in, classifica via completion + LRU cache).
+        services.AddSingleton<
+            OpenHandsNET.Application.Agent.ISecurityAnalyzer>(sp =>
+        {
+            var o = sp.GetRequiredService<Microsoft.Extensions.Options
+                .IOptions<OpenHandsNET.Application.Agent.AgentLlmOptions>>()
+                .Value;
+            return o.SecurityAnalyzer.Equals("llm",
+                StringComparison.OrdinalIgnoreCase)
+                ? new OpenHandsNET.Infrastructure.Agent.Security
+                    .LlmSecurityAnalyzer(
+                        sp.GetRequiredService<OpenHandsNET.Application.Agent
+                            .IAgentLlmProvider>(),
+                        sp.GetRequiredService<Microsoft.Extensions.Caching
+                            .Memory.IMemoryCache>())
+                    : (OpenHandsNET.Application.Agent.ISecurityAnalyzer)
+                        new OpenHandsNET.Infrastructure.Agent.Security
+                            .PatternSecurityAnalyzer();
+        });
+        // SPEC-33 RF-003: secret store criptografado (DataProtection) —
+        // valores resolvem só na borda do sandbox.
+        services.AddScoped<OpenHandsNET.Application.Contracts.ISecretStore,
+            OpenHandsNET.Infrastructure.Identity.SecretStore>();
         services.AddSingleton<OpenHandsNET.Application.Agent.IAgentLlmProvider>(sp =>
         {
             var opts = sp.GetRequiredService<Microsoft.Extensions.Options

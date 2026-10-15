@@ -148,6 +148,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("text")
                         .HasColumnName("sandbox_profile");
 
+                    b.Property<string>("SecretNamesJson")
+                        .HasColumnType("text")
+                        .HasColumnName("secret_names_json");
+
                     b.Property<string>("SelectedRepository")
                         .HasColumnType("text")
                         .HasColumnName("selected_repository");

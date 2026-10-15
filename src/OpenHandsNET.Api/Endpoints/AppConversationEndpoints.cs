@@ -498,7 +498,7 @@ public static class AppConversationEndpoints
             b.ConfirmationMode, b.SandboxProfile,
             b.Permissions?.Select(p => new Application.Agent.AgentPermissionRule(
                 p.Pattern, ParseDecision(p.Decision))).ToList(),
-            b.Mode);
+            b.Mode, b.Secrets);
 
     private static StartTaskStatus? ParseStatus(string? s) =>
         Enum.TryParse<StartTaskStatus>(s, ignoreCase: true, out var v) ? v : null;

@@ -67,6 +67,12 @@ public sealed class AppConversationService(
                 ? Application.Agent.PermissionRules.ToJson(rules) : null,
             Mode = string.Equals(request.Mode, "plan",
                 StringComparison.OrdinalIgnoreCase) ? "plan" : "build",
+            // SPEC-33 RF-003: só NOMES são persistidos — valores resolvem
+            // na borda via ISecretStore.
+            SecretNamesJson = request.Secrets is { Count: > 0 } names
+                ? System.Text.Json.JsonSerializer.Serialize(
+                    names.Select(n => n.Trim()).Where(
+                        n => n.Length > 0).ToList()) : null,
             // Sinaliza ao worker que o agente deve iniciar ao chegar em READY.
             PendingKickoff = request.InitialMessage?.Run == true,
             ExecutionStatus = ConversationExecutionStatus.Starting.ToString(),
@@ -80,6 +86,20 @@ public sealed class AppConversationService(
         db.Conversations.Add(conv);
         db.StartTasks.Add(task);
         await db.SaveChangesAsync(ct);
+
+        // SPEC-33 RF-003: evento sandbox_env publica apenas NOMES de env
+        // injetados — valores nunca entram no event stream.
+        if (conv.SecretNamesJson is not null)
+        {
+            var envNames = System.Text.Json.JsonSerializer
+                .Deserialize<List<string>>(conv.SecretNamesJson) ?? [];
+            await events.AppendAsync(conv.Id, new ConversationStateUpdateEvent
+            {
+                Key = "sandbox_env",
+                Value = System.Text.Json.JsonSerializer.SerializeToElement(
+                    new { names = envNames }, EventJson.Options),
+            }, ct);
+        }
 
         // A mensagem inicial entra no stream imediatamente (upstream parity).
         if (request.InitialMessage is { } initial)
