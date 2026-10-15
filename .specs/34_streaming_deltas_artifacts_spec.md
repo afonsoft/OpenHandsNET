@@ -8,7 +8,7 @@
 | Type | `Feature / Scale` |
 | Stack | `.NET 10 · SignalR · S3-compatible` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Done` (PR #71) |
 | Ticket | #66 |
 | Depends on | `02` (events), `24` (activity stream), `25` (artifact_ref) |
 | Touches | `AgentRunner` (token emit), `ConversationsHub`, `OutputPolicy`, `ApiClient`/Client |
