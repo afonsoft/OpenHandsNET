@@ -8,7 +8,7 @@
 | Type | `Feature / Client` |
 | Stack | `Blazor WASM · Tailwind v4 · Monaco · SignalR` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` (autopilot — improvement wave) |
+| Status | `Done` (PR #73) |
 | Ticket | `TBD` |
 | Depends on | `05_devin_ui_integration_spec`, `21_client_completion_spec` (Tailwind pipeline + Monaco), `24_agent_activity_protocol_spec` (eventos novos) |
 | Reference | `afonsoft/open-webui` ("Open-WebUI+Code" — fork .NET do usuário) |
