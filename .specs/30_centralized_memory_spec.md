@@ -8,7 +8,7 @@
 | Type | `Feature / Agent Core` |
 | Stack | `.NET 10 · EF Core · workspace files` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Done` |
 | Ticket | #63 |
 | Depends on | `22` (context — digest sobrevive compaction), `25` (skills pipeline), `29` (permissão `ask` p/ promote) |
 | Touches | `DbContext`, `BuiltinTools`, `RepoContextLoader`, `ToolRegistry` |
