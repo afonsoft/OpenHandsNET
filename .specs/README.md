@@ -61,7 +61,7 @@ SPECs (Spec-Driven Development) do port do ecossistema **OpenHands** para
 | `37_kubernetes_runtime_spec.md` | `KubernetesSandboxEngine` (pods+Sysbox+PVC); Helm chart e doctor probe pendentes | 03, 14, 16, 17, 35 | #76 ◐ #79 |
 | `38_sandbox_host_routing_spec.md` | Routing `path\|host` (`{id}-{port}.{domain}`) p/ surfaces do sandbox | 03, 04, 14, 35/37 | #77 ✅ #79 |
 | `39_eval_harness_spec.md` | `openhandsnet eval` — runner headless + fixtures + scoring (parcial) | 06/31, 09, 22, 24, 28 | #78 ◐ #79 |
-| `40_sandbox_agent_server_surfaces_spec.md` | Surfaces do agent-server: gateway `/v1/chat/completions`, terminal/VSCode web, preview tokens, ACP mínimo | 03, 04, 08, 17, 24, 34, 38 | `TBD` |
+| `40_sandbox_agent_server_surfaces_spec.md` | Surfaces do agent-server: gateway `/v1/chat/completions`, terminal/VSCode web, preview tokens, ACP mínimo | 03, 04, 08, 17, 24, 34, 38 | #81 |
 
 
 Build order: `01 → (02 ∥ 03 ∥ 10 ∥ 13) → (04 ∥ 09 ∥ 11 ∥ 12) → (05 ∥ 06 ∥ 08) → 07 → 14 → 15 → 16 → 17 → (18 ∥ 19 ∥ 20) → 21 → (22 → 23 ∥ 24) → 25 → (26 ∥ 27) → (29 → (28 ∥ 33) ∥ 30 ∥ 31 ∥ 34)`.

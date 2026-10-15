@@ -9,7 +9,7 @@
 | Stack | `.NET 10 · Api (Minimal API) · SandboxAgent · runtime image · Client WASM` |
 | Repository | `afonsoft/OpenHandsNET` |
 | Status | `Approved` (enterprise wave; refresh do gap-analysis SPEC-32 c/ baseline upstream V1 ~2026-10-15) |
-| Ticket | TBD |
+| Ticket | `#81` |
 | Depends on | `03` (sandbox), `17` (runtime image), `24` (activity protocol), `38` (host routing), `34` (deltas), `04` (API), `08` (auth/RBAC) |
 | Touches | `src/OpenHandsNET.Api` (gateway + acp endpoints), `src/OpenHandsNET.SandboxAgent`, `runtime/` (imagem), `src/OpenHandsNET.Client`, `src/OpenHandsNET.Api/Routing/` |
 
