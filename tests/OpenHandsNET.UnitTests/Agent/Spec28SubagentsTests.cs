@@ -132,10 +132,13 @@ public sealed class Spec28SubagentsTests
     {
         const string script = """
             [{"tool":{"name":"task","arguments":{"prompt":"scan","background":true}}},
-             {"tool":{"name":"finish","arguments":{"final_message":"bg result"}}},
              {"tool":{"name":"finish","arguments":{"final_message":"parent done"}}}]
             """;
-        await using var fx = new AgentRunnerFixture(script);
+        // O provider compartilha a fila entre pai e filho — usar um mock
+        // que dá ao subagent uma resposta determinística ("bg result")
+        // independente da ordem de dequeue.
+        await using var fx = new AgentRunnerFixture(script,
+            provider: new SubagentAwareMockProvider(script, "bg result"));
         var run = fx.Runner.RunAsync(CancellationToken.None);
 
         // espera o task ser observado para capturar o task_id
@@ -165,6 +168,50 @@ public sealed class Spec28SubagentsTests
         host.Get(fx.ConversationId, taskId)!.Info.Result!
             .ShouldContain("bg result");
         (await fx.RecordStatusAsync()).ShouldBe("Finished");
+    }
+
+    /// <summary>
+    /// Mock que brancha pelo system prompt: chamadas cujo system prompt é o
+    /// do subagent ("subagent inside OpenHandsNET") recebem um finish fixo;
+    /// o resto consome o script do pai em ordem.
+    /// </summary>
+    private sealed class SubagentAwareMockProvider : IAgentLlmProvider
+    {
+        private readonly MockLlmProvider _parent;
+        private readonly MockLlmProvider _child;
+
+        public SubagentAwareMockProvider(string parentScript, string childResult)
+        {
+            _parent = new MockLlmProvider(
+                System.Text.Json.Nodes.JsonNode.Parse(parentScript)!
+                    .AsArray().Select(n => n!).ToList());
+            _child = new MockLlmProvider([
+                new System.Text.Json.Nodes.JsonObject
+                {
+                    ["tool"] = new System.Text.Json.Nodes.JsonObject
+                    {
+                        ["name"] = "finish",
+                        ["arguments"] = new System.Text.Json.Nodes.JsonObject
+                        {
+                            ["final_message"] = childResult,
+                        },
+                    },
+                }]);
+        }
+
+        public string ModelId => _parent.ModelId;
+
+        public Task<ModelInfo> GetModelInfoAsync(CancellationToken ct) =>
+            _parent.GetModelInfoAsync(ct);
+
+        public IAsyncEnumerable<LlmStreamChunk> ChatStreamAsync(
+            IReadOnlyList<LlmMessage> messages, IReadOnlyList<ToolSchema> tools,
+            LlmOptions options, CancellationToken ct) =>
+            messages.Count > 0 && messages[0].Role == "system"
+                && messages[0].Content?.Contains(
+                    "subagent inside OpenHandsNET") == true
+                ? _child.ChatStreamAsync(messages, tools, options, ct)
+                : _parent.ChatStreamAsync(messages, tools, options, ct);
     }
 
     [Fact]
