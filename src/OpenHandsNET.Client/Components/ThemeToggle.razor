@@ -1,0 +1,32 @@
+@* SPEC-26 RF-001: cicla dark → light → system. Ícone reflete o tema ATUAL. *@
+@using OpenHandsNET.Client.Services
+@inject ThemeService Theme
+@implements IDisposable
+
+<button class="icon-btn" @onclick="CycleAsync"
+        title="Theme: @Theme.Theme" aria-label="Toggle theme">
+    <Icon Name="@IconFor()" Size="16" />
+</button>
+
+@code {
+    protected override void OnInitialized() =>
+        Theme.Changed += OnChanged;
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private string IconFor() => Theme.Theme switch
+    {
+        ThemeService.Light => "sun",
+        ThemeService.System => "monitor",
+        _ => "moon",
+    };
+
+    private Task CycleAsync() => Theme.SetAsync(Theme.Theme switch
+    {
+        ThemeService.Dark => ThemeService.Light,
+        ThemeService.Light => ThemeService.System,
+        _ => ThemeService.Dark,
+    });
+
+    public void Dispose() => Theme.Changed -= OnChanged;
+}

@@ -1,4 +1,5 @@
 @using OpenHandsNET.Client.Services
+@using OpenHandsNET.Client.Components
 @inject IJSRuntime JS
 
 <div class="chat-scroll" id="chat-scroll" @ref="_scroll">
@@ -11,7 +12,7 @@
         <EventCard Event="e" />
     }
     @* SPEC-34: slots de delta efêmeros — removidos quando o evento durável
-       com o mesmo item_id chega (supersedes). *@
+       com o mesmo item_id chega (supersedes). Cursor ▍ via CSS .delta::after. *@
     @foreach (var delta in State.LiveDeltas)
     {
         <div class="ev-card msg delta" data-item-id="@delta.Key">
@@ -23,7 +24,7 @@
 @if (State.ErrorMessage is { } err)
 {
     <div class="ev-card error" style="margin:0 16px 8px">
-        <div class="ev-head"><span>error</span></div>
+        <div class="ev-head"><Icon Name="alert" Size="14" /><span>error</span></div>
         <pre>@err</pre>
     </div>
 }
@@ -34,12 +35,19 @@
 <div class="chat-input">
     <input placeholder="Envie uma mensagem ao agente…"
            @bind="_draft" @bind:event="oninput"
-           @onkeydown="OnKey" disabled="@_sending" />
+           @onkeydown="OnKey" disabled="@_sending"
+           aria-label="Message the agent" />
     <button class="primary" @onclick="SendAsync"
-            disabled="@(_sending || string.IsNullOrWhiteSpace(_draft))">Send</button>
+            disabled="@(_sending || string.IsNullOrWhiteSpace(_draft))"
+            aria-label="Send message">
+        <Icon Name="send" Size="14" /> Send
+    </button>
     @if (State.ExecutionStatus is "RUNNING")
     {
-        <button title="Interrupt run" @onclick="() => State.InterruptAsync()">&#x23F9;</button>
+        <button title="Interrupt run" aria-label="Interrupt run"
+                @onclick="() => State.InterruptAsync()">
+            <Icon Name="stop" Size="14" />
+        </button>
     }
 </div>
 
@@ -53,15 +61,19 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (State.Events.Count != _lastCount)
+        if (firstRender)
+        {
+            // SPEC-26 RF-003: auto-scroll só quando o usuário está no fim.
+            // JS é best-effort — bUnit strict lança exceção própria.
+            try { await JS.InvokeVoidAsync("ohnChat.pin", _scroll); }
+            catch (Exception) { }
+        }
+
+        if (State.Events.Count != _lastCount || State.LiveDeltas.Count > 0)
         {
             _lastCount = State.Events.Count;
-            try
-            {
-                await JS.InvokeVoidAsync("eval",
-                    "document.getElementById('chat-scroll')?.scrollTo({top:1e9})");
-            }
-            catch { }
+            try { await JS.InvokeVoidAsync("ohnChat.scrollIfPinned", _scroll); }
+            catch (Exception) { }
         }
     }
 

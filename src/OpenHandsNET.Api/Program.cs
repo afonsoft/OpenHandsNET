@@ -239,6 +239,7 @@ app.MapEventEndpoints();
 app.MapSandboxEndpoints();
 app.MapSettingsEndpoints();
 app.MapMiscEndpoints();
+app.MapUserEndpoints();
 app.MapWebhookEndpoints();
 app.MapGitEndpoints();
 app.MapSkillEndpoints();

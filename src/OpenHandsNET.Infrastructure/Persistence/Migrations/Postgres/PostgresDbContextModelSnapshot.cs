@@ -1059,6 +1059,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("boolean")
                         .HasColumnName("onboarding_done");
 
+                    b.Property<string>("PreferencesJson")
+                        .HasColumnType("text")
+                        .HasColumnName("preferences_json");
+
                     b.Property<string>("RolesJson")
                         .HasColumnType("text")
                         .HasColumnName("roles_json");

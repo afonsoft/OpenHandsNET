@@ -2,11 +2,25 @@
 @using OpenHandsNET.Client.Services
 @using System.Text.Json
 @inject OpenHandsNetApiClient Api
+@inject ThemeService Theme
+@inject ToastService Toasts
 
 <PageTitle>settings · OpenHandsNET</PageTitle>
 
 <div class="settings-wrap">
     <h1>Settings</h1>
+
+    @* SPEC-26 RF-001: aparência — tema persiste local + /users/me/preferences. *@
+    <h3>Appearance</h3>
+    <div class="field">
+        <label>theme</label>
+        <select value="@Theme.Theme" @onchange="OnThemeChange"
+                aria-label="Theme">
+            <option value="dark">dark</option>
+            <option value="light">light</option>
+            <option value="system">system (prefers-color-scheme)</option>
+        </select>
+    </div>
 
     <h3>Agent / LLM</h3>
     <div class="field">
@@ -30,11 +44,11 @@
     </button>
     @if (_saved)
     {
-        <span style="color:var(--green);margin-left:10px">saved ✓</span>
+        <span style="color:var(--ohn-green);margin-left:10px">saved ✓</span>
     }
 
     <h3 style="margin-top:32px">Secrets</h3>
-    <p class="sub" style="color:var(--fg-dim)">
+    <p class="sub" style="color:var(--ohn-fg-dim)">
         Valores são cifrados no servidor (DataProtection) — só o nome volta.
     </p>
     <div class="row" style="display:flex;gap:8px;margin-bottom:12px">
@@ -56,7 +70,7 @@
     }
 
     <h3 style="margin-top:32px">
-        <a href="/settings/skills" style="color:var(--fg)">Skills →</a>
+        <a href="/settings/skills" style="color:var(--ohn-fg)">Skills →</a>
     </h3>
 </div>
 
@@ -119,5 +133,12 @@
     {
         await Api.DeleteSecretAsync(name);
         _secrets.Remove(name);
+    }
+
+    /// <summary>SPEC-26: troca de tema — persiste local + remoto, toast.</summary>
+    private async Task OnThemeChange(ChangeEventArgs e)
+    {
+        await Theme.SetAsync(e.Value?.ToString() ?? ThemeService.Dark);
+        Toasts.Success($"tema: {Theme.Theme}");
     }
 }

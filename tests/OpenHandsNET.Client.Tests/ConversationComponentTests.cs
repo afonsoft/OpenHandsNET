@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Bunit;
+using Microsoft.Extensions.DependencyInjection;
 using OpenHandsNET.Client.Components.Conversation;
 using OpenHandsNET.Client.Services;
 
@@ -8,6 +9,12 @@ namespace OpenHandsNET.Client.Tests;
 /// <summary>SPEC-05 — EventCard/ConfirmationBanner/Planner/State.</summary>
 public class ConversationComponentTests : TestContext
 {
+    public ConversationComponentTests()
+    {
+        // SPEC-26: EventCard/ChatPane injetam MarkdownService.
+        Services.AddSingleton(new MarkdownService());
+    }
+
     private static ClientEvent Ev(string json) => new()
     {
         Raw = JsonDocument.Parse(json).RootElement.Clone(),

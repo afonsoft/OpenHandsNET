@@ -110,6 +110,8 @@ public sealed class UserRecord
     public bool EmailVerified { get; set; }
     public DateTimeOffset? TosAcceptedAt { get; set; }
     public bool OnboardingDone { get; set; }
+    /// <summary>Preferências de UI (SPEC-26): JSON solto — {"theme":…}.</summary>
+    public string? PreferencesJson { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }
 

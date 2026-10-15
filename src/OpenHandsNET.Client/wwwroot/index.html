@@ -6,7 +6,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OpenHandsNET</title>
     <base href="/" />
+    <meta name="color-scheme" content="dark" />
     <link rel="preload" id="webassembly" />
+    <!-- SPEC-26: aplica data-theme ANTES do CSS — zero flash de tema errado. -->
+    <script>
+        (function () {
+            var t = 'dark';
+            try { t = localStorage.getItem('ohn.theme') || 'dark'; } catch (e) { }
+            if (t === 'system') {
+                t = window.matchMedia('(prefers-color-scheme: light)').matches
+                    ? 'light' : 'dark';
+            }
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
     <link rel="stylesheet" href="lib/xterm/xterm.css" />
     <link rel="stylesheet" href="css/app.css" />
     <!-- SPEC-21: utilidades Tailwind v4 depois do CSS custom (zero regressão) -->
@@ -28,10 +41,11 @@
     <div id="blazor-error-ui">
         An unhandled error has occurred.
         <a href="." class="reload">Reload</a>
-        <span class="dismiss">🗙</span>
+        <span class="dismiss" style="cursor:pointer">✕</span>
     </div>
     <script src="lib/xterm/xterm.js"></script>
     <script src="lib/xterm/addon-fit.js"></script>
+    <script src="js/theme.js"></script>
     <script src="js/xtermInterop.js"></script>
     <script src="js/splitPane.js"></script>
     <script src="js/monacoInterop.js"></script>

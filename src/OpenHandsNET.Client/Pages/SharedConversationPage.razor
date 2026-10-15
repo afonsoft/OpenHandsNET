@@ -1,13 +1,14 @@
 @page "/shared/{Id}"
 @using OpenHandsNET.Client.Services
 @using OpenHandsNET.Client.Components.Conversation
+@using OpenHandsNET.Client.Components
 @inject OpenHandsNetApiClient Api
 
 <PageTitle>shared conversation · OpenHandsNET</PageTitle>
 
 <div class="conv-page">
     <div class="shared-banner">
-        &#x1F517; Shared conversation — view only.
+        <Icon Name="external" Size="13" /> Shared conversation — view only.
     </div>
     <div class="chat-scroll" style="padding:16px">
         @if (_events is null)
