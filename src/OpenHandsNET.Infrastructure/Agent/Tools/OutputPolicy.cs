@@ -51,12 +51,19 @@ public sealed class OutputPolicy(IOptions<AgentLlmOptions> options)
 
     /// <summary>
     /// Post-processes a tool observation: truncates oversized string fields
-    /// (top-level) and, when anything was cut, persists the full payload via
-    /// the executor and adds <c>artifact_ref</c>/<c>truncated</c> fields.
+    /// (top-level) and, when anything was cut, persists the full payload —
+    /// SPEC-34 RF-002: via
+    /// <see cref="Application.Artifacts.IArtifactStore"/> (ref opaco
+    /// <c>ws:</c>/<c>art:</c> no campo <c>artifact_ref</c>, servido pelo
+    /// endpoint de artifacts) e também no workspace do sandbox
+    /// (<c>artifact_path</c>, recuperável via <c>file_read</c>). Segredos
+    /// são redigidos antes de qualquer persistência.
     /// </summary>
     public async Task<JsonElement> ApplyAsync(
         string toolName, string actionId, JsonElement observation,
         Domain.Sandbox.Sandbox? sandbox, ISandboxExecutor? executor,
+        Guid conversationId,
+        Application.Artifacts.IArtifactStore? artifacts,
         CancellationToken ct)
     {
         if (observation.ValueKind != JsonValueKind.Object)
@@ -88,16 +95,36 @@ public sealed class OutputPolicy(IOptions<AgentLlmOptions> options)
             return observation;
         }
 
-        // artifact_ref — payload completo no workspace (best-effort).
+        // Segredos nunca entram no payload persistido (SPEC-33/34).
+        var full = SecretRedactor.Redact(observation.GetRawText());
+        var bytes = System.Text.Encoding.UTF8.GetBytes(full);
+
+        // artifact_ref — ref opaco via store (endpoint o resolve).
+        if (artifacts is not null)
+        {
+            try
+            {
+                var artifactRef = await artifacts.PutAsync(conversationId,
+                    $"{actionId}.txt", bytes, ct);
+                mutated["artifact_ref"] =
+                    JsonSerializer.SerializeToElement(artifactRef);
+            }
+            catch (Exception)
+            {
+                // store indisponível — segue só com o truncamento.
+            }
+        }
+
+        // artifact_path — payload completo no workspace do sandbox
+        // (agente recupera via file_read; best-effort).
         if (sandbox is not null && executor is not null)
         {
             try
             {
                 var artifact = $"/tmp/ohn-artifacts/{actionId}.txt";
-                var full = observation.GetRawText();
                 await executor.WriteFileAsync(
                     sandbox, artifact, full, ct);
-                mutated["artifact_ref"] =
+                mutated["artifact_path"] =
                     JsonSerializer.SerializeToElement(artifact);
             }
             catch (Exception)

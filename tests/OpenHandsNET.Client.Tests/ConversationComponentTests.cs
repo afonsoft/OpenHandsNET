@@ -123,4 +123,52 @@ public class ConversationComponentTests : TestContext
         cut.Markup.ShouldContain("write fix");
         cut.FindAll(".planner li.done").Count.ShouldBe(1);
     }
+
+    // ---------- SPEC-34: streaming deltas ----------
+
+    [Fact]
+    public void Delta_Slot_Accumulates_Frames_And_Renders()
+    {
+        var state = NewState();
+        state.ApplyDelta(new ConversationHubClient.DeltaItem("item-1", 0, "hel"));
+        state.ApplyDelta(new ConversationHubClient.DeltaItem("item-1", 1, "lo "));
+        state.ApplyDelta(new ConversationHubClient.DeltaItem("item-1", 2, "world"));
+        state.LiveDeltas["item-1"].ShouldBe("hello world");
+
+        var cut = RenderComponent<ChatPane>(p => p.Add(x => x.State, state));
+        cut.Find(".ev-card.delta pre").TextContent
+            .ShouldContain("hello world");
+    }
+
+    [Fact]
+    public void Durable_Event_With_ItemId_Supersedes_Delta_Slot()
+    {
+        var state = NewState();
+        state.ApplyDelta(new ConversationHubClient.DeltaItem("item-7", 0, "partial"));
+        state.LiveDeltas.ShouldContainKey("item-7");
+
+        // Evento durável carrega o mesmo item_id → slot some.
+        state.Apply(Ev("""
+            {"id":"m1","kind":"MessageEvent","source":"agent",
+             "timestamp":"2026-01-01T00:00:00Z","item_id":"item-7",
+             "llm_message":{"role":"assistant",
+               "content":[{"type":"text","text":"partial full"}]}}
+            """));
+        state.LiveDeltas.ShouldBeEmpty();
+        state.Events.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Durable_Event_Without_ItemId_Keeps_Delta_Slot()
+    {
+        var state = NewState();
+        state.ApplyDelta(new ConversationHubClient.DeltaItem("item-9", 0, "streaming"));
+        state.Apply(Ev("""
+            {"id":"m2","kind":"MessageEvent","source":"user",
+             "timestamp":"2026-01-01T00:00:00Z",
+             "llm_message":{"role":"user",
+               "content":[{"type":"text","text":"hi"}]}}
+            """));
+        state.LiveDeltas.ShouldContainKey("item-9");
+    }
 }

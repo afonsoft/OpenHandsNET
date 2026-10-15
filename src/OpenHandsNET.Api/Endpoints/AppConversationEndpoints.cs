@@ -355,6 +355,41 @@ public static class AppConversationEndpoints
                 });
         });
 
+        // SPEC-34 RF-002: artifacts — ref opaco (ws:/art:) resolvido pelo
+        // store ativo; Range habilitado p/ previews do client.
+        group.MapGet("/{id:guid}/artifacts/{*ref}", async (
+            Guid id, string @ref, IAppConversationService svc,
+            Application.Artifacts.IArtifactStore store, HttpContext http,
+            CancellationToken ct) =>
+        {
+            if (await svc.GetAsync(id, ct) is null)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Conversation {id} not found");
+            }
+
+            var stream = await store.OpenAsync(id, @ref, ct);
+            if (stream is null)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Artifact {@ref} not found");
+            }
+
+            // Range exige stream seekable — S3 response vem em rede;
+            // bufferiza (payloads são de escala de tool output).
+            if (!stream.CanSeek)
+            {
+                var buf = new MemoryStream();
+                await stream.CopyToAsync(buf, ct);
+                await stream.DisposeAsync();
+                buf.Position = 0;
+                stream = buf;
+            }
+
+            return Results.File(stream, "application/octet-stream",
+                enableRangeProcessing: true);
+        });
+
         // Proxies git/files foram para GitEndpoints (SPEC-12).
         // skills/hooks reais em SkillEndpoints/HookEndpoints (SPEC-11).
 

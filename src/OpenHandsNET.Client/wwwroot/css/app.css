@@ -159,6 +159,10 @@ pre, code { font-family: var(--mono); font-size: 12.5px; }
 .ev-card.error .ev-head { color: var(--red); }
 .ev-card .ev-time { margin-left: auto; }
 .ev-card.condense { text-align: center; color: var(--fg-dim); font-style: italic; border-style: dashed; }
+/* SPEC-34: delta efêmero — borda pontilhada + cursor de streaming. */
+.ev-card.delta { border-style: dashed; opacity: .85; }
+.ev-card.delta .ev-head em { color: var(--accent); font-style: normal; margin-left: auto; }
+.ev-card.delta pre { white-space: pre-wrap; }
 details.ev-details summary { cursor: pointer; color: var(--fg-dim); font-size: 11.5px; }
 
 /* ---------- SPEC-24: run-activity cards ---------- */
