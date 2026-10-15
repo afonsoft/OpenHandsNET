@@ -8,7 +8,7 @@
 | Type | `Infra / Scale` |
 | Stack | `.NET 10 · StackExchange.Redis · IDistributedCache · SignalR` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` (enterprise wave; origem SPEC-32) |
+| Status | `In implementation` (PR #79 — plumbing Redis/backplane ok; consumidores `ICoordinationBus`/`IDistributedCounter` pendentes: warm pool, rate-limit, activity bus) |
 | Ticket | #75 |
 | Depends on | `04` (SignalR/API), `13` (observability), `14` (ops), `34` (deltas bus) |
 | Touches | `DependencyInjection`, `ConversationHub`, `IAgentActivityBus`, `WarmPoolService`, rate limiting, plan/usage counters |

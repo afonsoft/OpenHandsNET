@@ -53,7 +53,7 @@ public enum SecurityRisk { Low, Medium, High }
 
 `AgentRunner` antes de executar tool `Risky=true` **ou** `ask`:
 `analyzer.AnalyzeAsync` → `High` ⇒ `ConfirmationRequired` forçado
-(mesmo com `allow`), e `agent_diagnostic code="security_flag"`
+(mesmo com `allow`), e `agent_diagnostic code="security_risk"`
 `{tool, rule|model, preview}`; `Medium` ⇒ marca no observation.
 Nunca bloqueia silenciosamente — `High` vira `ask`.
 
@@ -79,7 +79,7 @@ Nunca bloqueia silenciosamente — `High` vira `ask`.
 ## 3. API Contract
 
 Nenhum endpoint novo. Events: `agent_diagnostic` codes
-`security_flag`, `resume_drift`; state `agent_contract`, `sandbox_env`
+`security_risk`, `resume_drift`; state `agent_contract`, `sandbox_env`
 (names only).
 
 ## 4. Data model
