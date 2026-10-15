@@ -41,7 +41,7 @@
 |---|---|---|---|
 | Orquestração do loop | `AgentBase.step()` stateless + AgentServer REST | `AgentRunner` + `IAgentRunnerHost` in-process | ✅ paridade funcional; worker-based já |
 | Modelo de eventos | `kind`+ULID+`parent_id` + **delta events** | V1 completo; **sem delta/streaming coalescing** | SPEC-32 RF-01 (deltas) |
-| Sandbox runtime | Docker (OSS) / **k8s+Sysbox** (cloud/ent) | Docker.DotNet single-host + warm pool + sleep/wake | ✅ OSS parity; RF-02 runtime-api split (deferred) |
+| Sandbox runtime | Docker (OSS) / **k8s+Sysbox** (cloud/ent) | Docker.DotNet single-host + warm pool + sleep/wake | ✅ OSS parity; RF-02 runtime-api split (deferred → SPEC-35) |
 | Sandbox agent | agent-server REST in-container | sandbox-agent v2 `/exec/stream`+`/activity`+`/proc` | ✅ à frente (activity ring) |
 | Roteamento LLM | LiteLLM proxy | OmniRoute catalog + roles (SPEC-23) | ✅ paridade |
 | Contexto | `condense()` + `LLMSummarizingCondenser` + `agent_context` | SPEC-22 meter+condenser+ledger+triggers | ✅ paridade (+ledger extra) |
@@ -52,12 +52,12 @@
 | Subagentes | task tool + presets (fork alltomatos) | — | alinhado com SPEC-28 |
 | Permissões | `allow/deny/ask` por tool/agent | confirmation on/off | alinhado com SPEC-29 |
 | Artefatos | filestore S3/GCS/MinIO | workspace `/tmp/ohn-artifacts` (morre c/ sandbox) | **RF-05 artifact store externo** |
-| Cache/pubsub distribuído | Valkey/Redis | IMemoryCache in-process | RF-06 (multi-replica, deferred) |
-| Deploy enterprise | k0s+Replicated KOTS+Helm | docker compose + doctor/support-bundle | RF-07 k8s path (deferred) |
-| Sandbox URL routing | subdomain \| path-based por config | path interno fixo | RF-08 routing mode config |
+| Cache/pubsub distribuído | Valkey/Redis | IMemoryCache in-process | RF-06 (multi-replica, deferred → SPEC-36) |
+| Deploy enterprise | k0s+Replicated KOTS+Helm | docker compose + doctor/support-bundle | RF-07 k8s path (deferred → SPEC-37) |
+| Sandbox URL routing | subdomain \| path-based por config | path interno fixo | RF-08 routing mode config (deferred → SPEC-38) |
 | Preflight | script DNS+egress+ports | `doctor` parcial | **RF-09 doctor extendido** |
 | Resume | agent type igual + tools só aditivos | replay livre | **RF-10 resume validation** |
-| Bench/eval | WebArena/OSWorld (open-operator) | — | RF-11 eval harness (deferred) |
+| Bench/eval | WebArena/OSWorld (open-operator) | — | RF-11 eval harness (deferred → SPEC-39) |
 
 ## 4. RFs propostos (novos — os já mapeados p/ 28–31 ficam de fora)
 
@@ -75,7 +75,7 @@ persiste cada chunk — custo de storage e replay.
 - Ganho: event store para de guardar milhares de tokens/turno; UI ganha
   streaming suave já no SPEC-26.
 
-### RF-02 — `runtime-api` split (deferred — enterprise)
+### RF-02 — `runtime-api` split (deferred — enterprise) → **SPEC-35**
 
 Extrair `DockerSandboxService` p/ serviço `openhandsnet-runtime-api`
 (REST interno) quando multi-host for requisito; manter in-process como
@@ -128,20 +128,20 @@ o **valor nunca trafega no request do start-task**.
 - Config `Artifacts:Provider`, `Artifacts:Bucket`, TTL por lifecycle
   da conversa (delete junto).
 
-### RF-06 — Distributed cache/pubsub (deferred)
+### RF-06 — Distributed cache/pubsub (deferred) → **SPEC-36**
 
 Valkey/Redis via `IDistributedCache` + `StackExchange.Redis` para:
 warm-pool state, rate-limits multi-replica, event fan-out SignalR
 backplane. Só quando `Deployment:Replicas > 1` — doc flag.
 
-### RF-07 — Kubernetes runtime (deferred — enterprise)
+### RF-07 — Kubernetes runtime (deferred — enterprise) → **SPEC-37**
 
 Paridade enterprise real exige k8s runtime provider
 (`KubernetesSandboxService` com pods + Sysbox p/ DinD + PVC workspace).
 Escopo grande; documentar como roadmap — Helm chart `charts/openhandsnet/`
 seria entregável próprio.
 
-### RF-08 — Sandbox URL routing mode (deferred)
+### RF-08 — Sandbox URL routing mode (deferred) → **SPEC-38**
 
 `Sandbox:RoutingMode = path|host` — hoje o agente é acessado internamente
 (port mapping); path já basta. Só importa se sandbox-agent v2 virar
@@ -168,7 +168,7 @@ no início do run; resume com fingerprint divergente que **removeu** tools
 → warning event `agent_diagnostic code="resume_drift"` + modo
 fail-open (log) por ora, fail-closed depois.
 
-### RF-11 — Eval harness (deferred)
+### RF-11 — Eval harness (deferred) → **SPEC-39**
 
 `openhandsnet eval` — runner headless de tasks com fixtures
 (estilo WebArena) para regression de prompts/tools. Alinha com CI

@@ -39,4 +39,10 @@ public interface ISandboxService
 
     /// <summary>Gets a spec by id (or the built-in default).</summary>
     Task<SandboxSpec?> GetSpecAsync(Guid specId, CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-35: removes managed engine containers whose records are
+    /// gone/stale (boot sweep). Works for both providers.
+    /// </summary>
+    Task SweepOrphansAsync(CancellationToken ct);
 }

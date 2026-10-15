@@ -3,7 +3,7 @@ using Docker.DotNet.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace OpenHandsNET.Infrastructure.Sandbox;
+namespace OpenHandsNET.Sandboxing;
 
 /// <summary>
 /// Egress policy wiring (SPEC-14 RF-002): <c>deny</c> and <c>allowlist</c>
@@ -67,8 +67,8 @@ public sealed class DockerNetworkPolicy(
                 Internal = true,
                 Labels = new Dictionary<string, string>
                 {
-                    [$"{DockerSandboxService.LabelPrefix}managed"] = "true",
-                    [$"{DockerSandboxService.LabelPrefix}owner"] =
+                    [$"{EngineLabels.Prefix}managed"] = "true",
+                    [$"{EngineLabels.Prefix}owner"] =
                         options.Value.InstanceOwner,
                 },
             }, ct);

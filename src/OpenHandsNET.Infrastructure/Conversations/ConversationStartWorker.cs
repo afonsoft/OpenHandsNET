@@ -45,7 +45,7 @@ public sealed class ConversationStartWorker(
         await using var scope = scopes.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var sandboxService = scope.ServiceProvider.GetRequiredService<ISandboxService>();
-        var workspaces = scope.ServiceProvider.GetRequiredService<WorkspaceProvisioner>();
+        var workspaces = scope.ServiceProvider.GetRequiredService<OpenHandsNET.Sandboxing.WorkspaceProvisioner>();
 
         var task = await db.StartTasks.FindAsync([taskId], ct);
         if (task?.AppConversationId is null)

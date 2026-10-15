@@ -3,6 +3,7 @@ using Docker.DotNet.Models;
 using Microsoft.EntityFrameworkCore;
 using OpenHandsNET.Infrastructure.Persistence;
 using OpenHandsNET.Infrastructure.Sandbox;
+using OpenHandsNET.Sandboxing;
 using Shouldly;
 
 namespace OpenHandsNET.IntegrationTests.Persistence;

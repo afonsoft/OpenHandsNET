@@ -1,0 +1,37 @@
+# OpenHandsNET runtime-api — SPEC-35 split deployment.
+# Internal REST front of the sandbox engine (Docker.DotNet + warm pool).
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+COPY Directory.Build.props Directory.Packages.props global.json nuget.config ./
+COPY src/OpenHandsNET.Domain/OpenHandsNET.Domain.csproj src/OpenHandsNET.Domain/
+COPY src/OpenHandsNET.Application/OpenHandsNET.Application.csproj src/OpenHandsNET.Application/
+COPY src/OpenHandsNET.Sandboxing/OpenHandsNET.Sandboxing.csproj src/OpenHandsNET.Sandboxing/
+COPY src/OpenHandsNET.RuntimeApi/OpenHandsNET.RuntimeApi.csproj src/OpenHandsNET.RuntimeApi/
+RUN dotnet restore src/OpenHandsNET.RuntimeApi/OpenHandsNET.RuntimeApi.csproj
+
+COPY src/ src/
+RUN dotnet publish src/OpenHandsNET.RuntimeApi/OpenHandsNET.RuntimeApi.csproj \
+      -c Release -o /app/publish --no-restore
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+COPY --from=build /app/publish .
+
+# Precisa apenas do socket docker (montado em runtime) + curl p/ healthcheck.
+ENV ASPNETCORE_URLS=http://+:8081 \
+    ASPNETCORE_ENVIRONMENT=Production
+RUN apt-get update && apt-get install -y --no-install-recommends curl && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /data/workspaces && \
+    groupadd -r openhandsnet && useradd -r -g openhandsnet openhandsnet && \
+    chown -R openhandsnet:openhandsnet /app
+
+# NOTA: USER openhandsnet omitido — o socket docker exige acesso ao grupo
+# docker do host; deployments reais devem ajustar via group_add no compose.
+EXPOSE 8081
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD curl -fsS http://localhost:8081/healthz || exit 1
+
+ENTRYPOINT ["dotnet", "OpenHandsNET.RuntimeApi.dll"]

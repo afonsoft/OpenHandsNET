@@ -3,7 +3,7 @@ using Docker.DotNet.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace OpenHandsNET.Infrastructure.Sandbox;
+namespace OpenHandsNET.Sandboxing;
 
 /// <summary>
 /// SPEC-19 RF-001/003/004: shared Squid forward-proxy attached to the
@@ -28,7 +28,7 @@ public sealed class EgressProxyService(
     public const int ProxyPort = 3128;
 
     private static string ConfigHashLabel =>
-        $"{DockerSandboxService.LabelPrefix}config_hash";
+        $"{EngineLabels.Prefix}config_hash";
 
     /// <summary>Proxy URL for sandbox env (container name resolves on the net).</summary>
     public static string ProxyUrl => $"http://{ProxyName}:{ProxyPort}";
@@ -85,10 +85,10 @@ public sealed class EgressProxyService(
                 Name = ProxyName,
                 Labels = new Dictionary<string, string>
                 {
-                    [$"{DockerSandboxService.LabelPrefix}managed"] = "true",
-                    [$"{DockerSandboxService.LabelPrefix}owner"] =
+                    [$"{EngineLabels.Prefix}managed"] = "true",
+                    [$"{EngineLabels.Prefix}owner"] =
                         options.Value.InstanceOwner,
-                    [$"{DockerSandboxService.LabelPrefix}role"] = "egress-proxy",
+                    [$"{EngineLabels.Prefix}role"] = "egress-proxy",
                     [ConfigHashLabel] = hash,
                 },
                 HostConfig = new HostConfig
@@ -130,7 +130,7 @@ public sealed class EgressProxyService(
                     },
                     ["label"] = new Dictionary<string, bool>
                     {
-                        [$"{DockerSandboxService.LabelPrefix}managed"] = true,
+                        [$"{EngineLabels.Prefix}managed"] = true,
                     },
                 },
             }, ct);

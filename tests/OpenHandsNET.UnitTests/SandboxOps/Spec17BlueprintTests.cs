@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using OpenHandsNET.Infrastructure.Sandbox;
+using OpenHandsNET.Sandboxing;
 
 namespace OpenHandsNET.UnitTests.SandboxOps;
 
@@ -110,8 +111,7 @@ public sealed class Spec17BlueprintTests : IDisposable
             WarmPoolImages = "img/a:3;img/b:1",
         });
         var pool = new WarmPoolService(null!, o,
-            new WorkspaceProvisioner(o, NullLogger<WorkspaceProvisioner>.Instance),
-            null!, NullLogger<WarmPoolService>.Instance);
+            NullLogger<WarmPoolService>.Instance);
         var targets = pool.PoolTargets();
         targets.ShouldBe(new Dictionary<string, int>
         {
@@ -124,8 +124,7 @@ public sealed class Spec17BlueprintTests : IDisposable
     {
         var o = Options.Create(new SandboxOptions { WarmPoolImages = "img/a:2" });
         var pool = new WarmPoolService(null!, o,
-            new WorkspaceProvisioner(o, NullLogger<WorkspaceProvisioner>.Instance),
-            null!, NullLogger<WarmPoolService>.Instance);
+            NullLogger<WarmPoolService>.Instance);
         pool.PoolTargets().ShouldBe(
             new Dictionary<string, int> { ["img/a"] = 2 });
     }

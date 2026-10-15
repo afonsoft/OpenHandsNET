@@ -25,6 +25,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../OpenHandsNET.Application/OpenHandsNET.Application.csproj" />
+    <ProjectReference Include="../OpenHandsNET.Sandboxing/OpenHandsNET.Sandboxing.csproj" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Skills/Embedded/*.md" />

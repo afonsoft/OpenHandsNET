@@ -1,12 +1,14 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using OpenHandsNET.Application.Sandbox;
 
 namespace OpenHandsNET.Infrastructure.Sandbox;
 
 /// <summary>
-/// Boot-time sweep: removes managed containers whose sandbox records are gone
-/// (crash recovery), labeled <c>openhandsnet.managed=true</c>.
+/// Boot-time sweep: removes managed engine containers whose sandbox records
+/// are gone (crash recovery), labeled <c>openhandsnet.managed=true</c>.
+/// SPEC-35: provider-agnostic — vai pelo <see cref="ISandboxService"/>.
 /// </summary>
 public sealed class OrphanSweepService(
     IServiceScopeFactory scopes, ILogger<OrphanSweepService> logger) : BackgroundService
@@ -18,15 +20,14 @@ public sealed class OrphanSweepService(
         try
         {
             await using var scope = scopes.CreateAsyncScope();
-            var svc = (DockerSandboxService)
-                scope.ServiceProvider.GetRequiredService(
-                    typeof(OpenHandsNET.Application.Sandbox.ISandboxService));
+            var svc = scope.ServiceProvider
+                .GetRequiredService<ISandboxService>();
             await svc.SweepOrphansAsync(stoppingToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            // Docker indisponível (ex.: dev sem daemon) não deve derrubar o boot.
-            logger.LogWarning(ex, "Orphan sweep skipped (Docker unavailable?)");
+            // Engine indisponível (ex.: dev sem daemon) não deve derrubar o boot.
+            logger.LogWarning(ex, "Orphan sweep skipped (engine unavailable?)");
         }
     }
 }
