@@ -19,6 +19,10 @@ public static class SandboxingRegistration
         this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<SandboxOptions>(configuration.GetSection("Sandbox"));
+        // SPEC-37: provider kubernetes (pods + Sysbox + PVC).
+        services.Configure<KubernetesOptions>(
+            configuration.GetSection("Sandbox:Kubernetes"));
+        services.AddSingleton<KubernetesSandboxEngine>();
         services.AddSingleton(_ => DockerClientFactory.Create());
         services.AddSingleton<WorkspaceProvisioner>();
         services.AddSingleton<DockerNetworkPolicy>();
@@ -44,10 +48,13 @@ public static class SandboxingRegistration
         {
             var o = sp.GetRequiredService<
                 Microsoft.Extensions.Options.IOptions<SandboxOptions>>().Value;
-            return (o.Provider ?? "local").Equals(
-                    "remote", StringComparison.OrdinalIgnoreCase)
-                ? sp.GetRequiredService<HttpSandboxEngine>()
-                : (ISandboxEngine)sp.GetRequiredService<DockerSandboxEngine>();
+            return (o.Provider ?? "local").ToLowerInvariant() switch
+            {
+                "remote" => sp.GetRequiredService<HttpSandboxEngine>(),
+                "kubernetes" => (ISandboxEngine)sp
+                    .GetRequiredService<KubernetesSandboxEngine>(),
+                _ => sp.GetRequiredService<DockerSandboxEngine>(),
+            };
         });
         return services;
     }

@@ -38,6 +38,16 @@ public sealed class SandboxOptions
     /// </summary>
     public string? AgentHost { get; set; }
 
+    /// <summary>
+    /// SPEC-38: <c>internal</c> (default — comportamento atual) |
+    /// <c>path</c> (proxy /sandbox/{id}/…) | <c>host</c>
+    /// ({id}-{port}.{PublicBaseDomain}, wildcard DNS/TLS).
+    /// </summary>
+    public string RoutingMode { get; set; } = "internal";
+
+    /// <summary>SPEC-38: domínio público wildcard p/ RoutingMode=host.</summary>
+    public string? PublicBaseDomain { get; set; }
+
     /// <summary>Host root for per-conversation workspaces (bind-mounted).</summary>
     public string WorkspaceRoot { get; set; } = "data/workspaces";
 

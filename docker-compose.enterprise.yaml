@@ -48,6 +48,20 @@ services:
       - openhandsnet-keycloak:/opt/keycloak/data
     restart: unless-stopped
 
+  valkey:
+    # SPEC-36: cache/backplane compartilhado (Cache__Provider=redis).
+    image: valkey/valkey:8-alpine
+    container_name: openhandsnet-valkey
+    command: ["valkey-server", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - openhandsnet-valkey:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+    restart: unless-stopped
+
   litellm:
     image: ghcr.io/berriai/litellm:main-v1.55.8
     container_name: openhandsnet-litellm
@@ -61,5 +75,6 @@ services:
     restart: unless-stopped
 
 volumes:
+  openhandsnet-valkey:
   openhandsnet-pgdata:
   openhandsnet-keycloak:

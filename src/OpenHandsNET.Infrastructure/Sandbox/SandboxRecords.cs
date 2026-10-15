@@ -79,12 +79,18 @@ public sealed class SandboxSpecRecord
     public int PidsLimit { get; set; }
     public string? Profile { get; set; }
 
+    /// <summary>SPEC-38: opt-in public ports (JSON array), null = nenhuma.</summary>
+    public string? PublicPortsJson { get; set; }
+
     public SandboxSpec ToDomain() => new(
         Id, Name, Image, MemoryMb, CpuLimit, TimeoutMinutes,
         EnvJson is null ? null
             : System.Text.Json.JsonSerializer
                 .Deserialize<Dictionary<string, string>>(EnvJson),
-        MountWorkspace, PidsLimit, Profile);
+        MountWorkspace, PidsLimit, Profile,
+        PublicPortsJson is null ? null
+            : System.Text.Json.JsonSerializer
+                .Deserialize<List<int>>(PublicPortsJson));
 
     public static SandboxSpecRecord From(SandboxSpec s) => new()
     {
@@ -95,6 +101,8 @@ public sealed class SandboxSpecRecord
         MountWorkspace = s.MountWorkspace,
         PidsLimit = s.PidsLimit,
         Profile = s.Profile,
+        PublicPortsJson = s.PublicPorts is null ? null
+            : System.Text.Json.JsonSerializer.Serialize(s.PublicPorts),
     };
 }
 

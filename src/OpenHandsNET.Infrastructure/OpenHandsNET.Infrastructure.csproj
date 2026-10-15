@@ -20,6 +20,9 @@
     <PackageReference Include="prometheus-net.AspNetCore" />
     <PackageReference Include="ModelContextProtocol" />
     <PackageReference Include="Microsoft.Playwright" />
+    <!-- SPEC-36: Redis/Valkey backplane (gated por Cache:Provider=redis) -->
+    <PackageReference Include="StackExchange.Redis" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
     <!-- Pin explícito: levanta SQLitePCLRaw.lib.e_sqlite3 transitivo para versão sem CVE -->
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />
   </ItemGroup>

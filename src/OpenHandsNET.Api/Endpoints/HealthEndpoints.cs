@@ -20,6 +20,7 @@ public static class HealthEndpoints
             IDockerClient docker,
             IOptions<AgentLlmOptions> llm,
             IOptions<OpenHandsNET.Sandboxing.SandboxOptions> sandbox,
+            System.IServiceProvider sp,
             CancellationToken ct) =>
         {
             var report = await health.CheckHealthAsync(
@@ -79,6 +80,12 @@ public static class HealthEndpoints
                 ["docker"] = dockerStatus,
                 ["llm"] = llmStatus,
             };
+
+            // SPEC-36: provider redis → reporta conectividade (fail-open:
+            // degraded, nunca derruba o endpoint).
+            var mux = sp.GetService<StackExchange.Redis.IConnectionMultiplexer>();
+            checks["cache"] = mux is null ? "memory"
+                : mux.IsConnected ? "ok" : "degraded";
             var healthy = report.Status == HealthStatus.Healthy &&
                           dockerStatus == "healthy";
 

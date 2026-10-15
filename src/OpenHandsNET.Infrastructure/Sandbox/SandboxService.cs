@@ -319,7 +319,13 @@ public sealed class SandboxService(
             }
 
             await ReconcileAsync(record, ct);
-            return record.ToDomain();
+            return record.ToDomain() with
+            {
+                // SPEC-38: service_urls emitidas conforme RoutingMode.
+                ServiceUrls = SandboxUrlBuilder.Build(
+                    record.ToDomain(), await GetSpecAsync(record.SpecId, ct),
+                    options.Value),
+            };
         }
         finally
         {
@@ -348,12 +354,19 @@ public sealed class SandboxService(
         {
             var rows = await q.OrderByDescending(r => r.CreatedAtTicks)
                 .ToListAsync(ct);
+            var result = new List<DomainSandbox>(rows.Count);
             foreach (var row in rows)
             {
                 await ReconcileAsync(row, ct);
+                result.Add(row.ToDomain() with
+                {
+                    ServiceUrls = SandboxUrlBuilder.Build(
+                        row.ToDomain(), await GetSpecAsync(row.SpecId, ct),
+                        options.Value),
+                });
             }
 
-            return rows.Select(r => r.ToDomain()).ToList();
+            return result;
         }
         finally
         {

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OpenHandsNET.Application.Events;
+using OpenHandsNET.Infrastructure.Cache;
 using OpenHandsNET.Infrastructure.Eventing;
 using OpenHandsNET.Infrastructure.Persistence;
 using OpenHandsNET.Sandboxing;
@@ -58,6 +59,10 @@ public static class DependencyInjection
         services.AddHostedService<EventDispatcher>();
         services.AddHttpClient("webhooks");
 
+        // SPEC-36: coordination cache/bus — memory (default) ou redis
+        // (exigido quando Deployment:Replicas > 1).
+        services.AddCoordinationCache(configuration);
+
         // Sandbox (SPEC-03/35): engine layer (docker local | runtime-api
         // remote) via ISandboxEngine; records/specs ficam no Api.
         services.AddSandboxing(configuration);
@@ -69,6 +74,8 @@ public static class DependencyInjection
         // SPEC-17: executor dual-mode — HTTP agent in-container quando a
         // imagem traz o sandbox-agent; docker exec como fallback legado.
         services.AddHttpClient("sandbox-agent");
+        // SPEC-38: sandbox host/path router upstream calls.
+        services.AddHttpClient("sandbox-router");
         services.AddSingleton<
             OpenHandsNET.Infrastructure.Sandbox.SandboxAgentClient>();
         services.AddScoped<OpenHandsNET.Application.Sandbox.ISandboxExecutor,
