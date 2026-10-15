@@ -8,7 +8,7 @@
 | Type | `Infra / Scale` |
 | Stack | `.NET 10 · StackExchange.Redis · IDistributedCache · SignalR` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `In implementation` (PR #79 — plumbing Redis/backplane ok; consumidores `ICoordinationBus`/`IDistributedCounter` pendentes: warm pool, rate-limit, activity bus) |
+| Status | `In implementation` (consumidores entregues: `DistributedEventBus`/`DistributedAgentActivityBus` fan-out, warm-pool leader lock, orphan-sweep lock, `ApiRateLimitMiddleware` global, `IUsageBuffer`+flush; falta verificação e2e 2-réplicas + Redis-down) |
 | Ticket | #75 |
 | Depends on | `04` (SignalR/API), `13` (observability), `14` (ops), `34` (deltas bus) |
 | Touches | `DependencyInjection`, `ConversationHub`, `IAgentActivityBus`, `WarmPoolService`, rate limiting, plan/usage counters |
@@ -51,9 +51,9 @@ Cache:
 | `IAgentActivityBus` (SPEC-34) | `Channel` in-memory | Redis pub/sub `ohn:bus:{conversationId}` + streams p/ activity ring |
 | SignalR | default in-proc | `AddStackExchangeRedis` backplane (oficial) |
 | Warm pool registry | `IMemoryCache` | `IDistributedCache` hash `ohn:warmpool:{image}` |
-| Rate limiting (SPEC-20) | in-proc counters | sliding window Redis (`INCR`+`PEXPIRE` ou Lua) |
-| Usage metering write-path (SPEC-20) | EF write | buffer em Redis → flush EF (reduz write churn) |
-| Distributed locks | — | `SET NX PX` p/ orphan sweep / GC singleton |
+| Rate limiting (SPEC-20) | in-proc counters | sliding window Redis (`INCR`+`PEXPIRE`) via `ApiRateLimitMiddleware` (`RateLimit:RequestsPerMinute`, off por default) |
+| Usage metering write-path (SPEC-20) | EF write | buffer em Redis (`IUsageBuffer`) → `UsageFlushWorker` flush EF 30s (reduz write churn) |
+| Distributed locks | — | `SET NX PX` p/ orphan sweep / warm-pool leader / usage flush |
 
 ### RF-003 — Abstrações
 

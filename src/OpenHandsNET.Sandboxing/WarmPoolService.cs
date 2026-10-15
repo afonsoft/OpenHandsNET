@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenHandsNET.Application.Coordination;
 using OpenHandsNET.Application.Sandbox;
 
 namespace OpenHandsNET.Sandboxing;
@@ -22,12 +23,21 @@ namespace OpenHandsNET.Sandboxing;
 /// <c>Provider=local</c>; runtime-api sempre — cada runtime mantém o pool
 /// do próprio daemon).
 /// </para>
+/// <para>
+/// SPEC-36 RF-002: multi-réplica compartilhando o mesmo daemon → leader
+/// election via <see cref="IDistributedLock"/> (<c>warmpool-leader</c>);
+/// só o leader preenche/pruna, standby só observa e assume se o lease
+/// cair. Single-replica usa <see cref="NullDistributedLock"/>.
+/// </para>
 /// </summary>
 public sealed class WarmPoolService(
     ISandboxEngine engine,
     IOptions<SandboxOptions> options,
+    IDistributedLock distributedLock,
     ILogger<WarmPoolService> logger) : BackgroundService
 {
+    private IDistributedLockHandle? _leader;
+
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -37,6 +47,41 @@ public sealed class WarmPoolService(
             return;
         }
 
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            // SPEC-36: leader único enche/poda o pool compartilhado.
+            _leader = await distributedLock.TryAcquireAsync(
+                "warmpool-leader", TimeSpan.FromMinutes(1), stoppingToken);
+            if (_leader is null)
+            {
+                // standby — retenta até o lease do líder expirar.
+                await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken);
+                continue;
+            }
+
+            try
+            {
+                await RunLeaderLoopAsync(stoppingToken);
+            }
+            catch (OperationCanceledException)
+                when (stoppingToken.IsCancellationRequested)
+            {
+                // shutdown — StopAsync prunes free pool containers
+            }
+            finally
+            {
+                var l = _leader;
+                _leader = null;
+                if (l is not null)
+                {
+                    await l.DisposeAsync();
+                }
+            }
+        }
+    }
+
+    private async Task RunLeaderLoopAsync(CancellationToken stoppingToken)
+    {
         // Restart semantics: pool containers are pruned, never resumed —
         // anything warm from a previous run is orphaned by definition.
         await PrunePoolContainersAsync(stoppingToken);
@@ -51,23 +96,17 @@ public sealed class WarmPoolService(
         }
 
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(15));
-        try
+        while (_leader?.IsHeld == true &&
+               await timer.WaitForNextTickAsync(stoppingToken))
         {
-            while (await timer.WaitForNextTickAsync(stoppingToken))
+            try
             {
-                try
-                {
-                    await EnsurePoolSizeAsync(stoppingToken);
-                }
-                catch (Exception e) when (e is not OperationCanceledException)
-                {
-                    logger.LogWarning(e, "warm pool replenish failed");
-                }
+                await EnsurePoolSizeAsync(stoppingToken);
             }
-        }
-        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-        {
-            // shutdown — StopAsync prunes free pool containers
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                logger.LogWarning(e, "warm pool replenish failed");
+            }
         }
     }
 
@@ -75,10 +114,13 @@ public sealed class WarmPoolService(
     /// Shutdown cleanup: unclaimed pool containers are always pruned so a
     /// restart never leaves silent orphans (SPEC-14 RF-005); claimed ones
     /// (renamed <c>ohn-sandbox-*</c>) keep serving their sandboxes.
+    /// SPEC-36: só o nó que detém o lease poda — um standby que morre não
+    /// destrói o pool do líder no daemon compartilhado.
     /// </summary>
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        if (PoolTargets().Count > 0 && !engine.IsRemote)
+        if (PoolTargets().Count > 0 && !engine.IsRemote
+            && _leader?.IsHeld == true)
         {
             try
             {

@@ -66,7 +66,7 @@ public sealed class Spec14SandboxTests : IAsyncLifetime
         var engine = new DockerSandboxEngine(_docker, provisioner, egress,
             opts, NullLogger<DockerSandboxEngine>.Instance);
         pool ??= new WarmPoolService(engine, opts,
-            NullLogger<WarmPoolService>.Instance);
+            new OpenHandsNET.Application.Coordination.NullDistributedLock(), NullLogger<WarmPoolService>.Instance);
         return new SandboxService(_db, engine, opts,
             NullLogger<SandboxService>.Instance);
     }
@@ -209,7 +209,7 @@ public sealed class Spec14SandboxTests : IAsyncLifetime
                 NullLogger<DockerNetworkPolicy>.Instance),
             optWrap, NullLogger<DockerSandboxEngine>.Instance);
         var pool = new WarmPoolService(engine2, optWrap,
-            NullLogger<WarmPoolService>.Instance);
+            new OpenHandsNET.Application.Coordination.NullDistributedLock(), NullLogger<WarmPoolService>.Instance);
 
         // Drive the pool manually — ExecuteAsync's initial fill, minus the loop.
         await pool.StartAsync(CancellationToken.None);

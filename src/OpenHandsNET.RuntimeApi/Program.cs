@@ -27,6 +27,11 @@ public sealed class RuntimeApiProgram
         builder.Services.AddSingleton<DockerSandboxEngine>();
         builder.Services.AddSingleton<ISandboxEngine>(
             sp => sp.GetRequiredService<DockerSandboxEngine>());
+        // SPEC-36: runtime-api é single-instance por daemon — lock no-op
+        // (coordenação multi-réplica fica no Api via Cache:Provider=redis).
+        builder.Services.AddSingleton<OpenHandsNET.Application.Coordination
+            .IDistributedLock, OpenHandsNET.Application.Coordination
+            .NullDistributedLock>();
         // Warm pool mora aqui em modo split — engine local (IsRemote=false).
         builder.Services.AddSingleton<WarmPoolService>();
         builder.Services.AddHostedService(

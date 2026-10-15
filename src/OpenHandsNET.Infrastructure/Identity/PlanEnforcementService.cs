@@ -17,6 +17,7 @@ namespace OpenHandsNET.Infrastructure.Identity;
 public sealed class PlanEnforcementService(
     AppDbContext db,
     IOptions<BillingOptions> options,
+    IUsageBuffer usageBuffer,
     ILogger<PlanEnforcementService> logger) : IPlanEnforcementService
 {
     /// <summary>Fallback plan name when no subscription/PlanId applies.</summary>
@@ -134,6 +135,14 @@ public sealed class PlanEnforcementService(
             var tokens = await db.UsageRecords.AsNoTracking()
                 .Where(u => u.OrgId == orgId && u.Period == period)
                 .SumAsync(u => (long?)u.TokensUsed, ct) ?? 0;
+            // SPEC-36: soma o buffer não-flushado — com write-path
+            // bufferado o EF atrasa até 30s e o limite furaria.
+            if (orgId is { } o)
+            {
+                tokens += (await usageBuffer.GetPendingAsync(
+                    o, period, ct)).Tokens;
+            }
+
             if (tokens >= maxTokens)
             {
                 return new PlanLimitError(

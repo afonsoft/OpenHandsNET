@@ -95,7 +95,7 @@ public sealed class Spec17RuntimeTests : IAsyncLifetime
         var engine = new DockerSandboxEngine(_docker, provisioner, egress,
             opts, NullLogger<DockerSandboxEngine>.Instance);
         pool ??= new WarmPoolService(engine, opts,
-            NullLogger<WarmPoolService>.Instance);
+            new OpenHandsNET.Application.Coordination.NullDistributedLock(), NullLogger<WarmPoolService>.Instance);
         return new SandboxService(_db, engine, opts,
             NullLogger<SandboxService>.Instance,
             dp: _dp, agentClient: agent);
@@ -196,7 +196,7 @@ public sealed class Spec17RuntimeTests : IAsyncLifetime
                 NullLogger<DockerNetworkPolicy>.Instance),
             optWrap, NullLogger<DockerSandboxEngine>.Instance);
         var pool = new WarmPoolService(engine, optWrap,
-            NullLogger<WarmPoolService>.Instance);
+            new OpenHandsNET.Application.Coordination.NullDistributedLock(), NullLogger<WarmPoolService>.Instance);
 
         await pool.StartAsync(CancellationToken.None);
         string? claimedId = null;

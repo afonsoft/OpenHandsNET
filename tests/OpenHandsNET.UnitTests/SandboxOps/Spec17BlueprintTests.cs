@@ -111,7 +111,7 @@ public sealed class Spec17BlueprintTests : IDisposable
             WarmPoolImages = "img/a:3;img/b:1",
         });
         var pool = new WarmPoolService(null!, o,
-            NullLogger<WarmPoolService>.Instance);
+            new OpenHandsNET.Application.Coordination.NullDistributedLock(), NullLogger<WarmPoolService>.Instance);
         var targets = pool.PoolTargets();
         targets.ShouldBe(new Dictionary<string, int>
         {
@@ -124,7 +124,7 @@ public sealed class Spec17BlueprintTests : IDisposable
     {
         var o = Options.Create(new SandboxOptions { WarmPoolImages = "img/a:2" });
         var pool = new WarmPoolService(null!, o,
-            NullLogger<WarmPoolService>.Instance);
+            new OpenHandsNET.Application.Coordination.NullDistributedLock(), NullLogger<WarmPoolService>.Instance);
         pool.PoolTargets().ShouldBe(
             new Dictionary<string, int> { ["img/a"] = 2 });
     }

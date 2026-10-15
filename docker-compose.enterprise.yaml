@@ -11,11 +11,17 @@ services:
       - OPENHANDSNET_Auth__Provider=oidc
       - OPENHANDSNET_Auth__Authority=http://keycloak:8080/realms/openhandsnet
       - OPENHANDSNET_AgentLlm__BaseUrl=http://litellm:4000
+      # SPEC-36: backplane/coordenação via Valkey (multi-réplica pronto).
+      - OPENHANDSNET_Cache__Provider=redis
+      - OPENHANDSNET_Cache__Redis__ConnectionString=valkey:6379
+      - OPENHANDSNET_Deployment__Replicas=${DEPLOYMENT_REPLICAS:-1}
     depends_on:
       postgres:
         condition: service_healthy
       keycloak:
         condition: service_started
+      valkey:
+        condition: service_healthy
 
   postgres:
     image: postgres:17-alpine
