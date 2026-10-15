@@ -115,6 +115,91 @@ public sealed class CloudApiClient
         await EnsureAsync(await _http.DeleteAsync(
             $"{BaseUrl}/api/v1/app-conversations/{id}", ct), ct);
 
+    /// <summary>SPEC-31: catálogo OmniRoute (SPEC-23 RF-005).</summary>
+    public async Task<JsonElement> GetModelsAsync(CancellationToken ct = default) =>
+        await _http.GetFromJsonAsync<JsonElement>(
+            $"{BaseUrl}/api/v1/models", ct);
+
+    /// <summary>SPEC-31: catálogo efetivo de tools da conversa (SPEC-25/29).</summary>
+    public async Task<JsonElement> GetToolsAsync(
+        string conversationId, CancellationToken ct = default) =>
+        await _http.GetFromJsonAsync<JsonElement>(
+            $"{BaseUrl}/api/v1/app-conversations/{conversationId}/tools", ct);
+
+    /// <summary>SPEC-31: contagem de conversas (número puro).</summary>
+    public async Task<long> CountConversationsAsync(
+        CancellationToken ct = default) =>
+        await _http.GetFromJsonAsync<long>(
+            $"{BaseUrl}/api/v1/app-conversations/count", ct);
+
+    /// <summary>SPEC-31: MCP servers configurados (SPEC-07).</summary>
+    public async Task<JsonElement> GetMcpServersAsync(CancellationToken ct = default) =>
+        await _http.GetFromJsonAsync<JsonElement>(
+            $"{BaseUrl}/api/v1/mcp/servers", ct);
+
+    /// <summary>SPEC-31: probe de um MCP server (SPEC-07 /mcp/test).</summary>
+    public async Task<JsonElement> ProbeMcpAsync(
+        JsonElement serverConfig, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsJsonAsync(
+            $"{BaseUrl}/api/v1/mcp/test", new { server = serverConfig }, ct);
+        await EnsureAsync(resp, ct);
+        return await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
+    }
+
+    /// <summary>SPEC-31 RF-002: readiness para doctor --preflight.</summary>
+    public async Task<JsonElement> GetReadinessAsync(CancellationToken ct = default) =>
+        await _http.GetFromJsonAsync<JsonElement>(
+            $"{BaseUrl}/api/v1/readiness", ct);
+
+    /// <summary>SPEC-31: usage agregado da org (SPEC-20; requer billing perm).</summary>
+    public async Task<JsonElement?> GetOrgUsageAsync(
+        Guid orgId, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync(
+            $"{BaseUrl}/api/v1/organizations/{orgId}/usage", ct);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<JsonElement>(ct) : null;
+    }
+
+    /// <summary>SPEC-31: orgs do usuário (para resolver a org do stats).</summary>
+    public async Task<JsonElement> ListOrgsAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync(
+            $"{BaseUrl}/api/v1/organizations", ct);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<JsonElement>(ct)
+            : default;
+    }
+
+    /// <summary>
+    /// SPEC-31: stream paginado de eventos duráveis para <c>export</c>
+    /// (nunca inclui streaming_delta — pseudo-kind efêmero).
+    /// </summary>
+    public async IAsyncEnumerable<JsonElement> ExportEventsAsync(
+        string conversationId,
+        [System.Runtime.CompilerServices.EnumeratorCancellation]
+        CancellationToken ct = default)
+    {
+        string? cursor = null;
+        do
+        {
+            var page = await GetEventsAsync(conversationId, cursor, ct);
+            if (page.TryGetProperty("items", out var items))
+            {
+                foreach (var e in items.EnumerateArray())
+                {
+                    yield return e;
+                }
+            }
+
+            cursor = page.TryGetProperty("next_page_id", out var n)
+                && n.ValueKind == JsonValueKind.String
+                ? n.GetString() : null;
+        }
+        while (cursor is not null);
+    }
+
     private static async Task EnsureAsync(
         HttpResponseMessage resp, CancellationToken ct)
     {

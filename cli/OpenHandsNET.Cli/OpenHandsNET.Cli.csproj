@@ -11,4 +11,7 @@
     <PackageReference Include="Spectre.Console.Cli" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="OpenHandsNET.UnitTests" />
+  </ItemGroup>
 </Project>
