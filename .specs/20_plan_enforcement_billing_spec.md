@@ -8,7 +8,7 @@
 | Type | `Feature / Enterprise` |
 | Stack | `.NET 10 · EF Core · Minimal API` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` (autopilot — gap list) |
+| Status | `Done` (PR #48) |
 | Ticket | [#44](https://github.com/afonsoft/OpenHandsNET/issues/44) (Epic [#1](https://github.com/afonsoft/OpenHandsNET/issues/1)) |
 | Depends on | `08_enterprise_security_rbac` (plans/subscriptions schema), `14_enterprise_operations_spec` (usage aggregation) |
 | Touches | `PlanRecord`, `SubscriptionRecord`, `UsageRecord`, `UsageService`, `AppConversationService`, `ConversationStartWorker`, `AgentRunner`, `AdminEndpoints`, `OrgEndpoints` |

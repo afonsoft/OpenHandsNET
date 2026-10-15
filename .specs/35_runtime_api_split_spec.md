@@ -8,7 +8,7 @@
 | Type | `Infra / Architecture` |
 | Stack | `.NET 10 · ASP.NET Core · Docker.DotNet → REST` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` (enterprise wave; origem SPEC-32) |
+| Status | `Done` (PR #79; sleep/orphan-sweep permaneceram no Api — desvio documentado) |
 | Ticket | #74 |
 | Depends on | `03` (sandbox), `14` (ops/warm pool), `16` (lifecycle), `17` (image blueprint) |
 | Touches | `ISandboxService`, `DockerSandboxService`, `WarmPoolService`, `SandboxSleepService`, `OrphanSweepService`, hosting/compose |

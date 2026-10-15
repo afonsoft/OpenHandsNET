@@ -8,7 +8,7 @@
 | Type | `Infra / Networking` |
 | Stack | `.NET 10 · YARP/reverse proxy · DNS wildcard` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` (enterprise wave; origem SPEC-32) |
+| Status | `Done` (PR #79; preview-token deferido → SPEC-40 RF-004) |
 | Ticket | #77 |
 | Depends on | `03` (sandbox), `04` (API), `14` (ops), `35`/`37` quando remotos |
 | Touches | `SandboxAgentClient` (URL resolution), proxy layer, `doctor`, config |
