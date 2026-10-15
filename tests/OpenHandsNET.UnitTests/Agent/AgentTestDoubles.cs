@@ -83,6 +83,18 @@ internal sealed class FakeSandboxExecutor : ISandboxExecutor
         Sandbox sandbox, string command, TimeSpan timeout, CancellationToken ct)
     {
         Commands.Add(command);
+        // Simula o mínimo do shell no mapa de arquivos (SPEC-30 memory forget).
+        var trimmed = command.Trim();
+        if (trimmed.StartsWith("rm ", StringComparison.Ordinal)
+            || trimmed.StartsWith("rm -", StringComparison.Ordinal))
+        {
+            foreach (var part in trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Skip(1).Where(p => !p.StartsWith('-')))
+            {
+                _files.Remove(part);
+            }
+        }
+
         return Task.FromResult(ExecHandler?.Invoke(command)
             ?? new CommandResult(0, "ok\n", "", false));
     }

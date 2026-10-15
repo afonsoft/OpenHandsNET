@@ -294,6 +294,210 @@ public static class BuiltinTools
         });
 
     /// <summary>
+    /// SPEC-30 RF-002: persistent memory — <c>project</c> scope writes
+    /// <c>.openhands/memory/{slug}.md</c> + INDEX.md inside the workspace;
+    /// <c>org</c> scope uses <see cref="Application.Memory.IMemoryService"/>
+    /// (DB + audit). Ops: <c>remember|recall|forget|promote</c>.
+    /// </summary>
+    public static AgentTool Memory() => new(
+        new ToolSchema("memory",
+            "Persist or recall memories. scope=project writes " +
+            ".openhands/memory/ in the repo (versionable); scope=org writes " +
+            "the organization store (audited). promote copies project→org.",
+            Schema("""
+                {"type":"object","properties":{
+                  "op":{"type":"string","enum":["remember","recall","forget","promote"]},
+                  "scope":{"type":"string","enum":["project","org"]},
+                  "key":{"type":"string","description":"Stable slug (e.g. coding-style)"},
+                  "text":{"type":"string","description":"remember/promote payload"}},
+                 "required":["op","key"]}
+                """)),
+        Risky: true,
+        Handler: async (ctx, args, ct) =>
+        {
+            var op = args.GetProperty("op").GetString()!;
+            var scope = args.TryGetProperty("scope", out var sc)
+                ? sc.GetString() ?? "project" : "project";
+            var key = Slugify(args.GetProperty("key").GetString()!);
+            var text = args.TryGetProperty("text", out var t)
+                ? t.GetString() : null;
+
+            // scope=org resolve a OrgId da conversa (SPEC-30 RF-001).
+            Guid? orgId = null;
+            if (scope == "org" || op == "promote")
+            {
+                var db = ctx.Services.GetService<
+                    Infrastructure.Persistence.AppDbContext>();
+                if (db is not null)
+                {
+                    orgId = (await db.Conversations
+                        .FindAsync([ctx.ConversationId], ct))?.OrgId;
+                }
+            }
+
+            var memory = ctx.Services.GetService<
+                Application.Memory.IMemoryService>();
+            return op switch
+            {
+                "remember" when scope == "org" =>
+                    await RememberOrgAsync(memory, orgId, key, text, ct),
+                "remember" => await RememberProjectAsync(ctx, key, text, ct),
+                "recall" when scope == "org" =>
+                    await RecallOrgAsync(memory, orgId, key, ct),
+                "recall" => await RecallProjectAsync(ctx, key, ct),
+                "forget" when scope == "org" =>
+                    orgId is null || memory is null
+                        ? ToolResult.Error("org memory unavailable")
+                        : ToolResult.Ok(new
+                        {
+                            ok = await memory.ForgetOrgAsync(
+                                orgId.Value, key, "agent", ct),
+                        }),
+                "forget" => await ForgetProjectAsync(ctx, key, ct),
+                "promote" => await PromoteAsync(ctx, memory, orgId, key, ct),
+                _ => ToolResult.Error($"unknown memory op '{op}'"),
+            };
+        });
+
+    private static async Task<ToolResult> RememberOrgAsync(
+        Application.Memory.IMemoryService? memory, Guid? orgId,
+        string key, string? text, CancellationToken ct)
+    {
+        if (orgId is null || memory is null)
+        {
+            return ToolResult.Error("org memory unavailable (no org)");
+        }
+
+        var entry = await memory.RememberOrgAsync(
+            orgId.Value, key, text ?? "", "agent", ct);
+        return ToolResult.Ok(new { ok = true, key = entry.Key, scope = "org" });
+    }
+
+    private static async Task<ToolResult> RememberProjectAsync(
+        ToolCallContext ctx, string key, string? text, CancellationToken ct)
+    {
+        var dir = "/workspace/repo/.openhands/memory";
+        await ctx.Executor.ExecAsync(ctx.Sandbox,
+            $"mkdir -p {dir}", TimeSpan.FromSeconds(10), ct);
+        var path = $"{dir}/{key}.md";
+        await ctx.Executor.WriteFileAsync(ctx.Sandbox, path,
+            $"# {key}\n\n{text ?? ""}\n", ct);
+
+        // INDEX.md: uma linha por key (ordenável, digest-friendly).
+        var index = $"{dir}/INDEX.md";
+        string existing = "";
+        try
+        {
+            existing = await ctx.Executor.ReadFileAsync(
+                ctx.Sandbox, index, ct);
+        }
+        catch (Exception) { /* primeiro write */ }
+
+        var firstLine = (text ?? "").Split('\n')
+            .FirstOrDefault()?.Trim() ?? "";
+        var line = $"- {key} — {firstLine}";
+        var lines = existing.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Where(l => !l.StartsWith($"- {key} ", StringComparison.Ordinal)
+                && !l.Equals($"- {key}", StringComparison.Ordinal))
+            .ToList();
+        lines.Add(line);
+        await ctx.Executor.WriteFileAsync(ctx.Sandbox, index,
+            string.Join('\n', lines) + "\n", ct);
+        return ToolResult.Ok(new { ok = true, key, scope = "project", path });
+    }
+
+    private static async Task<ToolResult> RecallOrgAsync(
+        Application.Memory.IMemoryService? memory, Guid? orgId,
+        string key, CancellationToken ct)
+    {
+        if (orgId is null || memory is null)
+        {
+            return ToolResult.Error("org memory unavailable (no org)");
+        }
+
+        var entries = await memory.ListOrgAsync(orgId.Value, key, ct);
+        return ToolResult.Ok(new
+        {
+            entries = entries.Select(e => new
+            {
+                key = e.Key, text = e.Text, scope = e.Scope,
+            }).ToList(),
+        });
+    }
+
+    private static async Task<ToolResult> RecallProjectAsync(
+        ToolCallContext ctx, string key, CancellationToken ct)
+    {
+        try
+        {
+            var path = $"/workspace/repo/.openhands/memory/{key}.md";
+            var content = await ctx.Executor.ReadFileAsync(
+                ctx.Sandbox, path, ct);
+            return ToolResult.Ok(new
+            {
+                entries = new[]
+                {
+                    new { key, text = content, scope = "project" },
+                },
+            });
+        }
+        catch (Exception)
+        {
+            return ToolResult.Error($"project memory '{key}' not found");
+        }
+    }
+
+    private static async Task<ToolResult> ForgetProjectAsync(
+        ToolCallContext ctx, string key, CancellationToken ct)
+    {
+        var dir = "/workspace/repo/.openhands/memory";
+        await ctx.Executor.ExecAsync(ctx.Sandbox,
+            $"rm -f {dir}/{key}.md", TimeSpan.FromSeconds(10), ct);
+        try
+        {
+            var index = $"{dir}/INDEX.md";
+            var existing = await ctx.Executor.ReadFileAsync(
+                ctx.Sandbox, index, ct);
+            var lines = existing.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Where(l => !l.StartsWith($"- {key} ", StringComparison.Ordinal)
+                    && !l.Equals($"- {key}", StringComparison.Ordinal))
+                .ToList();
+            await ctx.Executor.WriteFileAsync(ctx.Sandbox, index,
+                string.Join('\n', lines) + "\n", ct);
+        }
+        catch (Exception) { /* sem INDEX */ }
+
+        return ToolResult.Ok(new { ok = true, key, scope = "project" });
+    }
+
+    private static async Task<ToolResult> PromoteAsync(
+        ToolCallContext ctx, Application.Memory.IMemoryService? memory,
+        Guid? orgId, string key, CancellationToken ct)
+    {
+        var recalled = await RecallProjectAsync(ctx, key, ct);
+        if (recalled.IsError)
+        {
+            return recalled;
+        }
+
+        var text = recalled.Observation
+            .GetProperty("entries")[0].GetProperty("text").GetString() ?? "";
+        return await RememberOrgAsync(memory, orgId, key, text, ct);
+    }
+
+    private static string Slugify(string key)
+    {
+        var s = string.Concat(key.Trim().ToLowerInvariant().Select(
+            c => char.IsLetterOrDigit(c) ? c : '-'));
+        while (s.Contains("--", StringComparison.Ordinal))
+        {
+            s = s.Replace("--", "-", StringComparison.Ordinal);
+        }
+
+        return s.Trim('-')[..Math.Min(s.Trim('-').Length, 80)];
+    }
+
+    /// <summary>
     /// Headless Chromium via <see cref="IBrowserService"/> (SPEC-18 — worker-side
     /// per SPEC-03 RF-005). Every successful action returns a
     /// <c>screenshot_base64</c> that feeds the UI browser pane.

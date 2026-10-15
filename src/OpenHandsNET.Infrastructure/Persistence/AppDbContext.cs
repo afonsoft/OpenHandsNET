@@ -90,6 +90,9 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// <summary>API keys (hash at rest).</summary>
     public DbSet<ApiKeyRecord> ApiKeys => Set<ApiKeyRecord>();
 
+    /// <summary>Org-scoped memory entries (SPEC-30).</summary>
+    public DbSet<MemoryRecord> MemoryRecords => Set<MemoryRecord>();
+
     /// <summary>Organizations.</summary>
     public DbSet<OrganizationRecord> Organizations => Set<OrganizationRecord>();
 
