@@ -112,6 +112,9 @@ public sealed class AgentLlmOptions
     /// </summary>
     public bool StrictResume { get; set; }
 
+    /// <summary>Subagent orchestration limits (SPEC-28).</summary>
+    public SubagentOptions Subagents { get; set; } = new();
+
     /// <summary>Context compaction behaviour (SPEC-22).</summary>
     public CompactionOptions Compaction { get; set; } = new();
 }
@@ -148,4 +151,17 @@ public sealed class CompactionOptions
 
     /// <summary>Max output tokens for the summarizer completion.</summary>
     public int SummaryMaxTokens { get; set; } = 1024;
+}
+
+/// <summary>Subagent orchestration limits (<c>AgentLlm:Subagents:*</c>, SPEC-28).</summary>
+public sealed class SubagentOptions
+{
+    /// <summary>Nesting depth — 0 disables the <c>task</c> tool entirely.</summary>
+    public int MaxDepth { get; set; } = 1;
+
+    /// <summary>Concurrent children per conversation.</summary>
+    public int MaxConcurrent { get; set; } = 3;
+
+    /// <summary>Max LLM iterations inside one child run.</summary>
+    public int MaxIterations { get; set; } = 40;
 }

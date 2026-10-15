@@ -15,6 +15,9 @@ public enum ModelRole
 
     /// <summary>Planning passes (reserved).</summary>
     Planner,
+
+    /// <summary>Subagent loops (SPEC-28) — may route to a cheaper model.</summary>
+    Subagent,
 }
 
 /// <summary>

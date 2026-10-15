@@ -262,6 +262,10 @@ public static class DependencyInjection
         // valores resolvem só na borda do sandbox.
         services.AddScoped<OpenHandsNET.Application.Contracts.ISecretStore,
             OpenHandsNET.Infrastructure.Identity.SecretStore>();
+        // SPEC-28: registry in-memory de runs de subagentes (singleton —
+        // compartilhado entre tools do mesmo escopo de processo).
+        services.AddSingleton<OpenHandsNET.Application.Agent.ISubagentHost,
+            OpenHandsNET.Infrastructure.Agent.Subagents.SubagentHost>();
         services.AddSingleton<OpenHandsNET.Application.Agent.IAgentLlmProvider>(sp =>
         {
             var opts = sp.GetRequiredService<Microsoft.Extensions.Options

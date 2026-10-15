@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using OpenHandsNET.Application.Agent;
+using OpenHandsNET.Infrastructure.Agent.Subagents;
 
 namespace OpenHandsNET.Infrastructure.Agent.Tools;
 
@@ -734,6 +735,211 @@ public static class BuiltinTools
                     content = res.Text,
                 })
                 : ToolResult.Error(res.Error ?? "fetch failed");
+        });
+
+    /// <summary>
+    /// SPEC-28 RF-001/RF-003: <c>task</c> — spawns a subagent in the same
+    /// sandbox. Sync by default; <c>background:true</c> queues and returns
+    /// <c>task_id</c> for <c>task_status</c>/<c>task_result</c>.
+    /// </summary>
+    public static AgentTool SpawnTask() => new(
+        new ToolSchema("task",
+            "Spawn a subagent to explore, research or work on a scoped task "
+            + "in this same sandbox. Use subagent_type to restrict its "
+            + "tools: explore (search/file_read/bash), scout (web_fetch/"
+            + "search/file_read), plan (read-only), general (all except "
+            + "task). The parent only receives the final summary.",
+            Schema("""
+                {"type":"object","properties":{
+                  "description":{"type":"string",
+                    "description":"short label for the run"},
+                  "prompt":{"type":"string",
+                    "description":"complete instructions for the subagent"},
+                  "subagent_type":{"type":"string",
+                    "enum":["explore","scout","plan","general"],
+                    "default":"explore"},
+                  "background":{"type":"boolean","default":false,
+                    "description":"true = run async, poll task_status"}},
+                 "required":["prompt"]}
+                """)),
+        Risky: false,
+        Handler: async (ctx, args, ct) =>
+        {
+            var host = ctx.Services.GetService<ISubagentHost>();
+            var llm = ctx.Services.GetService<IAgentLlmProvider>();
+            var opt = ctx.Services.GetService<
+                Microsoft.Extensions.Options.IOptions<AgentLlmOptions>>()?.Value
+                ?? new AgentLlmOptions();
+            if (host is null || llm is null)
+            {
+                return ToolResult.Error("subagents unavailable");
+            }
+
+            var prompt = args.TryGetProperty("prompt", out var p)
+                ? p.GetString() : null;
+            if (string.IsNullOrWhiteSpace(prompt))
+            {
+                return ToolResult.Error("task requires a prompt");
+            }
+
+            var type = args.TryGetProperty("subagent_type", out var st)
+                ? st.GetString() ?? "explore" : "explore";
+            if (!SubagentPresets.IsKnown(type))
+            {
+                return ToolResult.Error(
+                    $"unknown subagent_type '{type}' "
+                    + "(explore|scout|plan|general)");
+            }
+
+            var description = args.TryGetProperty("description", out var d)
+                ? d.GetString() ?? type : type;
+            var background = args.TryGetProperty("background", out var bg)
+                && bg.ValueKind == JsonValueKind.True;
+            var taskId = Ulid.NewUlid().ToString();
+            var run = new SubagentRun
+            {
+                Info = new SubagentRunInfo(
+                    taskId, type, description, SubagentStatus.Running,
+                    DateTimeOffset.UtcNow),
+            };
+            if (!host.TryStart(ctx.ConversationId, run,
+                    Math.Max(1, opt.Subagents.MaxConcurrent)))
+            {
+                return ToolResult.Error(
+                    "subagent concurrency limit reached");
+            }
+
+            var runner = new Subagents.SubagentRunner(llm,
+                Microsoft.Extensions.Options.Options.Create(opt));
+            async Task<string> ExecuteAsync(CancellationToken runCt)
+            {
+                try
+                {
+                    var result = await runner.RunAsync(
+                        ctx.ConversationId, ctx.Sandbox, ctx.Executor,
+                        ctx.Events, ctx.Services,
+                        ctx.ActionId ?? ctx.ToolCallId ?? taskId,
+                        type, description, prompt, taskId, runCt);
+                    host.Finish(ctx.ConversationId, taskId,
+                        SubagentStatus.Completed, result);
+                    return result;
+                }
+                catch (OperationCanceledException)
+                {
+                    host.Finish(ctx.ConversationId, taskId,
+                        SubagentStatus.Aborted, error: "cancelled");
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    host.Finish(ctx.ConversationId, taskId,
+                        SubagentStatus.Failed,
+                        error: SecretRedactor.Redact(ex.Message));
+                    throw;
+                }
+            }
+
+            if (background)
+            {
+                run.Cts = new CancellationTokenSource();
+                run.Completion = Task.Run(
+                    () => ExecuteAsync(run.Cts.Token));
+                return ToolResult.Ok(new
+                {
+                    queued = true, task_id = taskId,
+                    subagent_type = type,
+                });
+            }
+
+            try
+            {
+                var result = await ExecuteAsync(ct);
+                return ToolResult.Ok(new
+                {
+                    task_id = taskId, status = "completed", result,
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                return ToolResult.Error("subagent aborted");
+            }
+            catch (Exception ex)
+            {
+                return ToolResult.Error(
+                    $"subagent failed: {SecretRedactor.Redact(ex.Message)}");
+            }
+        });
+
+    /// <summary>SPEC-28 RF-003: <c>task_status</c> — poll a background run.</summary>
+    public static AgentTool TaskStatusTool() => new(
+        new ToolSchema("task_status",
+            "Check the status of a background subagent run by task_id.",
+            Schema("""
+                {"type":"object","properties":{
+                  "task_id":{"type":"string"}},
+                 "required":["task_id"]}
+                """)),
+        Risky: false,
+        Handler: (ctx, args, ct) =>
+        {
+            var host = ctx.Services.GetService<ISubagentHost>();
+            var id = args.TryGetProperty("task_id", out var t)
+                ? t.GetString() : null;
+            var run = host is not null && id is not null
+                ? host.Get(ctx.ConversationId, id) : null;
+            return Task.FromResult(run is null
+                ? ToolResult.Error($"unknown task_id '{id}'")
+                : ToolResult.Ok(new
+                {
+                    task_id = id,
+                    status = run.Info.Status.ToString().ToLowerInvariant(),
+                    subagent_type = run.Info.SubagentType,
+                    description = run.Info.Description,
+                    started_at = run.Info.StartedAt,
+                    ended_at = run.Info.EndedAt,
+                    error = run.Info.Error,
+                }));
+        });
+
+    /// <summary>SPEC-28 RF-003: <c>task_result</c> — collect a finished run.</summary>
+    public static AgentTool TaskResultTool() => new(
+        new ToolSchema("task_result",
+            "Get the result summary of a completed subagent run by task_id.",
+            Schema("""
+                {"type":"object","properties":{
+                  "task_id":{"type":"string"}},
+                 "required":["task_id"]}
+                """)),
+        Risky: false,
+        Handler: (ctx, args, ct) =>
+        {
+            var host = ctx.Services.GetService<ISubagentHost>();
+            var id = args.TryGetProperty("task_id", out var t)
+                ? t.GetString() : null;
+            var run = host is not null && id is not null
+                ? host.Get(ctx.ConversationId, id) : null;
+            if (run is null)
+            {
+                return Task.FromResult(
+                    ToolResult.Error($"unknown task_id '{id}'"));
+            }
+
+            return Task.FromResult(run.Info.Status switch
+            {
+                SubagentStatus.Completed => ToolResult.Ok(new
+                {
+                    task_id = id, status = "completed",
+                    result = run.Info.Result,
+                }),
+                SubagentStatus.Running => ToolResult.Ok(new
+                {
+                    task_id = id, status = "running",
+                }),
+                _ => ToolResult.Error(
+                    $"subagent {run.Info.Status.ToString().ToLowerInvariant()}"
+                    + (run.Info.Error is not null
+                        ? $": {run.Info.Error}" : "")),
+            });
         });
 
     /// <summary>Ends the run — handled by the loop (marker observation).</summary>
