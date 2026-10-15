@@ -5,7 +5,7 @@
 
 <div class="file-layout">
     <div class="file-tree">
-        <div class="dir" @onclick="() => LoadAsync()">&#x1F4C2; /workspace</div>
+        <div class="dir" @onclick="() => LoadAsync()"><Icon Name="folder" Size="13" /> /workspace</div>
         @foreach (var (entry, depth) in _flat)
         {
             <div class="@(entry.IsDirectory ? "dir" : "file")"

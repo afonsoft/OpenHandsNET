@@ -162,6 +162,41 @@ public static class OrgEndpoints
                 ? Results.NoContent() : Results.NotFound();
         }).RequireAuthorization("perm:edit_org_settings");
 
+        // SPEC-30 RF-004: org memory — leitura p/ membros, delete p/ admins.
+        g.MapGet("/{org_id:guid}/memory", async (
+            Guid org_id, string? query,
+            ICurrentUserAccessor current, IEffectiveOrgResolver resolver,
+            Application.Memory.IMemoryService memory, CancellationToken ct) =>
+        {
+            var user = current.User;
+            if (user is null)
+                return Results.Unauthorized();
+            if (!user.IsSuperAdmin
+                && !await resolver.IsMemberAsync(user.UserId, org_id, ct))
+            {
+                return Results.Forbid();
+            }
+            return Results.Ok(await memory.ListOrgAsync(org_id, query, ct));
+        }).RequireAuthorization();
+
+        g.MapDelete("/{org_id:guid}/memory/{key}", async (
+            Guid org_id, string key,
+            ICurrentUserAccessor current, IEffectiveOrgResolver resolver,
+            Application.Memory.IMemoryService memory, CancellationToken ct) =>
+        {
+            var user = current.User;
+            if (user is null)
+                return Results.Unauthorized();
+            if (!user.IsSuperAdmin
+                && !await resolver.IsMemberAsync(user.UserId, org_id, ct))
+            {
+                return Results.Forbid();
+            }
+            return await memory.ForgetOrgAsync(
+                org_id, key, user.UserId.ToString(), ct)
+                ? Results.NoContent() : Results.NotFound();
+        }).RequireAuthorization("perm:edit_org_settings");
+
         // Quota — manage_org_quota is instance-level (super-role only).
         g.MapGet("/{org_id:guid}/quota", async (
             Guid org_id, ICurrentUserAccessor current, IQuotaService quotas,

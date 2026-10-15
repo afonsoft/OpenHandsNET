@@ -1,0 +1,16 @@
+@* SPEC-26 RF-002: <Icon Name="git" Size=16 /> — SVG inline vendored,
+   stroke currentColor (herda a cor do tema). *@
+
+<svg class="ohn-icon" width="@Size" height="@Size" viewBox="0 0 24 24"
+     fill="none" stroke="currentColor" stroke-width="2"
+     stroke-linecap="round" stroke-linejoin="round"
+     role="img" aria-hidden="true">
+    @((MarkupString)Icons.Get(Name))
+</svg>
+
+@code {
+    /// <summary>Nome do ícone em <see cref="Icons.Paths"/>.</summary>
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+    /// <summary>Tamanho em px (default 16).</summary>
+    [Parameter] public int Size { get; set; } = 16;
+}

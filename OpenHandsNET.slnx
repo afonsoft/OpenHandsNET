@@ -9,6 +9,8 @@
     <Project Path="src/OpenHandsNET.Domain/OpenHandsNET.Domain.csproj" />
     <Project Path="src/OpenHandsNET.Infrastructure/OpenHandsNET.Infrastructure.csproj" />
     <Project Path="src/OpenHandsNET.SandboxAgent/OpenHandsNET.SandboxAgent.csproj" />
+    <Project Path="src/OpenHandsNET.RuntimeApi/OpenHandsNET.RuntimeApi.csproj" />
+    <Project Path="src/OpenHandsNET.Sandboxing/OpenHandsNET.Sandboxing.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/OpenHandsNET.Client.Tests/OpenHandsNET.Client.Tests.csproj" />

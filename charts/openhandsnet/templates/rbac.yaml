@@ -1,0 +1,29 @@
+# SPEC-37 RBAC mínimo: pods/pvc no namespace de sandboxes apenas.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openhandsnet-runtime
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: openhandsnet-sandbox-manager
+  namespace: {{ .Values.sandbox.namespace }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/status", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "delete", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openhandsnet-sandbox-manager
+  namespace: {{ .Values.sandbox.namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: openhandsnet-runtime
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: Role
+  name: openhandsnet-sandbox-manager
+  apiGroup: rbac.authorization.k8s.io

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.EntityFrameworkCore;
 using OpenHandsNET.Api.DTOs;
 using OpenHandsNET.Api.ProblemDetails;
 using OpenHandsNET.Application.Conversations;
@@ -7,6 +8,7 @@ using OpenHandsNET.Application.Events;
 using OpenHandsNET.Application.Sandbox;
 using OpenHandsNET.Domain.Conversations;
 using OpenHandsNET.Domain.Events;
+using OpenHandsNET.Domain.Sandbox;
 
 namespace OpenHandsNET.Api.Endpoints;
 
@@ -87,9 +89,306 @@ public static class AppConversationEndpoints
                 await svc.SwitchProfileAsync(id, body.Profile, ct), id, http));
         group.MapPost("/{id:guid}/switch_acp_model", async (
             Guid id, SwitchAcpModelRequest body, IAppConversationService svc,
+            Application.Agent.IModelCatalog catalog,
             HttpContext http, CancellationToken ct) =>
-            MapSwitch(
-                await svc.SwitchModelAsync(id, body.Model ?? "", ct), id, http));
+        {
+            var requested = body.Model ?? "";
+            // SPEC-23 RF-005: valida contra o catálogo quando saudável;
+            // descoberta degradada (só "configured") é fail-open.
+            var models = await catalog.ListAsync(ct);
+            if (models.Any(m => m.Provider != "configured")
+                && models.All(m => !string.Equals(
+                    m.Id, requested, StringComparison.OrdinalIgnoreCase)))
+            {
+                return Results.UnprocessableEntity(new
+                {
+                    error = "unknown_model",
+                    available = models.Select(m => m.Id).ToArray(),
+                });
+            }
+
+            return MapSwitch(
+                await svc.SwitchModelAsync(id, requested, ct), id, http);
+        });
+
+        // SPEC-29 RF-002: override de permissões por conversa (dono).
+        group.MapPatch("/{id:guid}/permissions", async (
+            Guid id, SetPermissionsRequest body,
+            IAppConversationService svc,
+            HttpContext http, CancellationToken ct) =>
+        {
+            var rules = body.Permissions?.Select(p =>
+                new Application.Agent.AgentPermissionRule(
+                    p.Pattern, ParseDecision(p.Decision))).ToList();
+            if (await svc.SetPermissionsAsync(id, rules, ct) is not { } conv)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Conversation {id} not found");
+            }
+
+            return Results.Ok(ToDto(conv));
+        });
+
+        // SPEC-29 RF-003: plan mode — overlay read-only (deny mutations).
+        group.MapPost("/{id:guid}/mode", async (
+            Guid id, SetModeRequest body,
+            IAppConversationService svc,
+            HttpContext http, CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(body.Mode))
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 400, "mode must be 'plan' or 'build'");
+            }
+
+            if (await svc.SetModeAsync(id, body.Mode, ct) is not { } conv)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Conversation {id} not found");
+            }
+
+            return Results.Ok(ToDto(conv));
+        });
+        group.MapGet("/{id:guid}/model", async (
+            Guid id, IAppConversationService svc,
+            Application.Agent.IModelCatalog catalog,
+            Microsoft.Extensions.Options.IOptions<
+                Application.Agent.AgentLlmOptions> llmOpts,
+            HttpContext http, CancellationToken ct) =>
+        {
+            if (await svc.GetAsync(id, ct) is not { } conv)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Conversation {id} not found");
+            }
+
+            var model = conv.LlmModel ?? llmOpts.Value.Model;
+            var info = await catalog.GetAsync(model, ct);
+            return Results.Ok(new
+            {
+                model,
+                role_models = llmOpts.Value.RoleModels,
+                window = info?.ContextWindow,
+                provider = info?.Provider,
+            });
+        });
+
+        // SPEC-25 RF-006: superfície de tools — builtin + MCP + repo skills.
+        // SPEC-29 RF-002: catálogo EFETIVO (deny da conversa/org removidas).
+        group.MapGet("/{id:guid}/tools", async (
+            Guid id, IAppConversationService svc,
+            Application.Agent.IToolRegistry registry,
+            Infrastructure.Persistence.AppDbContext db,
+            Microsoft.Extensions.Options.IOptions<
+                Application.Agent.AgentLlmOptions> llmOpts,
+            HttpContext http, CancellationToken ct) =>
+        {
+            var record = await db.Conversations.FindAsync([id], ct);
+            if (record is null)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Conversation {id} not found");
+            }
+
+            var evaluator = await Infrastructure.Agent
+                .ConversationPermissionResolver.ResolveAsync(
+                    db, record, llmOpts.Value, ct);
+            var effective = Infrastructure.Agent.ConversationPermissionResolver
+                .Catalog(registry, evaluator);
+            var tools = effective.All.Select(t => new
+            {
+                name = t.Schema.Name,
+                description = t.Schema.Description,
+            });
+            return Results.Ok(new { tools });
+        });
+
+        // SPEC-30 RF-004: merged memory view — org entries + project INDEX.
+        group.MapGet("/{id:guid}/memory", async (
+            Guid id, IAppConversationService svc,
+            Infrastructure.Persistence.AppDbContext db,
+            ISandboxService sandboxes, ISandboxExecutor executor,
+            HttpContext http, CancellationToken ct) =>
+        {
+            if (await svc.GetAsync(id, ct) is null)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Conversation {id} not found");
+            }
+
+            var record = await db.Conversations.FindAsync([id], ct);
+            var org = record?.OrgId is { } orgId
+                ? (await db.MemoryRecords.AsNoTracking()
+                    .Where(m => m.OrgId == orgId && m.DeletedAt == null)
+                    .ToListAsync(ct))
+                    .OrderByDescending(m => m.UpdatedAt)
+                    .Select(m => new
+                    {
+                        key = m.Key, scope = "org",
+                        updated_at = m.UpdatedAt,
+                    }).ToList()
+                : [];
+
+            IReadOnlyList<string> projectFiles = [];
+            if (record?.SandboxId is { } sandboxId)
+            {
+                var sandbox = await sandboxes.GetAsync(sandboxId, ct);
+                if (sandbox?.Status == Domain.Sandbox.SandboxStatus.Running)
+                {
+                    try
+                    {
+                        var files = await executor.ListFilesAsync(sandbox,
+                            "/workspace/repo/.openhands/memory", ct);
+                        projectFiles = files.Where(f => !f.IsDirectory)
+                            .Select(f => f.Path).ToList();
+                    }
+                    catch (Exception) { /* memória ainda não existe */ }
+                }
+            }
+
+            return Results.Ok(new { org, project_files = projectFiles });
+        });
+
+        // SPEC-25 RF-006: rescan on-demand — repete a descoberta do worker,
+        // atualiza o evento repo_context e invalida o cache de skills.
+        group.MapPost("/{id:guid}/context/rescan", async (
+            Guid id, IAppConversationService svc,
+            ISandboxService sandboxes,
+            ISandboxExecutor executor,
+            Application.Discovery.IRepoDiscoveryService discovery,
+            IEventService events,
+            IServiceProvider sp,
+            HttpContext http, CancellationToken ct) =>
+        {
+            if (await svc.GetAsync(id, ct) is null)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Conversation {id} not found");
+            }
+
+            var sandbox = (await sandboxes.SearchAsync(
+                    null, id, ct))
+                .FirstOrDefault(s => s.Status == SandboxStatus.Running);
+            if (sandbox is null)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 409, "Sandbox is not running");
+            }
+
+            var manifest = await discovery.DiscoverAsync(executor, sandbox, ct);
+            await events.AppendAsync(id, new ConversationStateUpdateEvent
+            {
+                Key = "repo_context",
+                Value = JsonSerializer.SerializeToElement(new
+                {
+                    instructions_files = manifest.InstructionFiles,
+                    skills = manifest.Skills.Select(s => new
+                    {
+                        name = s.Name, path = s.Path,
+                        description = s.Description,
+                    }),
+                    config = manifest.HasRepoConfig,
+                    readme = manifest.ReadmePath,
+                }, EventJson.Options),
+            }, ct);
+            sp.GetService<Infrastructure.Skills.RepoSkillProvider>()
+                ?.Invalidate(sandbox.Id);
+            return Results.Ok(manifest);
+        });
+
+        // SPEC-22 RF-004/005: compaction manual + ledger de contexto.
+        // Runner ativo → o request evento entra na fila dele; idle →
+        // compactação inline sobre o histórico persistido.
+        group.MapPost("/{id:guid}/context/compact", async (
+            Guid id, CompactContextRequest? body,
+            IAppConversationService svc,
+            Application.Agent.ICompactionService compactor,
+            Application.Agent.IAgentRunnerHost host,
+            IEventService events, HttpContext http, CancellationToken ct) =>
+        {
+            if (await svc.GetAsync(id, ct) is null)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Conversation {id} not found");
+            }
+
+            if (host.IsRunning(id))
+            {
+                await events.AppendAsync(id, new CondensationRequest
+                {
+                    Source = EventSource.User,
+                    Trigger = "manual",
+                    Instructions = body?.Instructions,
+                }, ct);
+                return Results.Accepted(value: new { queued = true });
+            }
+
+            var compacted = await compactor.CompactStoredAsync(
+                id, Application.Agent.CompactionTrigger.Manual,
+                body?.Instructions, ct);
+            return Results.Accepted(value: new { queued = false, compacted });
+        });
+
+        group.MapGet("/{id:guid}/context", async (
+            Guid id, IAppConversationService svc, IEventService events,
+            HttpContext http, CancellationToken ct) =>
+        {
+            if (await svc.GetAsync(id, ct) is null)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Conversation {id} not found");
+            }
+
+            var page = await events.SearchAsync(id, new EventQuery(
+                KindEq: "ConversationStateUpdateEvent",
+                Sort: EventSortOrder.TimestampDesc, Limit: 50), ct);
+            var state = page.Items
+                .OfType<ConversationStateUpdateEvent>()
+                .FirstOrDefault(e => e.Key == "context_state");
+            return state?.Value is { } v
+                ? Results.Ok(v)
+                : Results.Ok(new
+                {
+                    tokens_estimate = 0, window = (int?)null,
+                    compactions = 0, boundary_event_id = (string?)null,
+                    model = (string?)null, updated_at = (string?)null,
+                });
+        });
+
+        // SPEC-34 RF-002: artifacts — ref opaco (ws:/art:) resolvido pelo
+        // store ativo; Range habilitado p/ previews do client.
+        group.MapGet("/{id:guid}/artifacts/{*ref}", async (
+            Guid id, string @ref, IAppConversationService svc,
+            Application.Artifacts.IArtifactStore store, HttpContext http,
+            CancellationToken ct) =>
+        {
+            if (await svc.GetAsync(id, ct) is null)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Conversation {id} not found");
+            }
+
+            var stream = await store.OpenAsync(id, @ref, ct);
+            if (stream is null)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Artifact {@ref} not found");
+            }
+
+            // Range exige stream seekable — S3 response vem em rede;
+            // bufferiza (payloads são de escala de tool output).
+            if (!stream.CanSeek)
+            {
+                var buf = new MemoryStream();
+                await stream.CopyToAsync(buf, ct);
+                await stream.DisposeAsync();
+                buf.Position = 0;
+                stream = buf;
+            }
+
+            return Results.File(stream, "application/octet-stream",
+                enableRangeProcessing: true);
+        });
 
         // Proxies git/files foram para GitEndpoints (SPEC-12).
         // skills/hooks reais em SkillEndpoints/HookEndpoints (SPEC-11).
@@ -108,6 +407,31 @@ public static class AppConversationEndpoints
             await svc.GetAsync(id, ct) is { } t
                 ? Results.Ok(ToDto(t))
                 : OpenHandsNetProblemFactory.Create(http, 404, $"Start task {id} not found"));
+
+        // SPEC-23 RF-005: catálogo de modelos para o ModelSelector da UI.
+        app.MapGet("/api/v1/models", async (
+            Application.Agent.IModelCatalog catalog,
+            Microsoft.Extensions.Options.IOptions<
+                Application.Agent.AgentLlmOptions> llmOpts,
+            CancellationToken ct) =>
+        {
+            var models = await catalog.ListAsync(ct);
+            return Results.Ok(new
+            {
+                @default = llmOpts.Value.Model,
+                role_models = llmOpts.Value.RoleModels,
+                models = models.Select(m => new
+                {
+                    id = m.Id, provider = m.Provider,
+                    context_window = m.ContextWindow,
+                    pricing = m.Pricing is { } p ? new
+                    {
+                        input_per_million = p.InputPerMillion,
+                        output_per_million = p.OutputPerMillion,
+                    } : null,
+                }).ToArray(),
+            });
+        }).WithTags("Models");
 
         return app;
     }
@@ -253,10 +577,18 @@ public static class AppConversationEndpoints
                 b.InitialMessage.Content.Cast<object>().ToList(),
                 b.InitialMessage.Run),
             b.SelectedRepository, b.AgentType, b.LlmModel, b.SandboxSpecId,
-            b.ConfirmationMode, b.SandboxProfile);
+            b.ConfirmationMode, b.SandboxProfile,
+            b.Permissions?.Select(p => new Application.Agent.AgentPermissionRule(
+                p.Pattern, ParseDecision(p.Decision))).ToList(),
+            b.Mode, b.Secrets);
 
     private static StartTaskStatus? ParseStatus(string? s) =>
         Enum.TryParse<StartTaskStatus>(s, ignoreCase: true, out var v) ? v : null;
+
+    private static Application.Agent.PermissionDecision ParseDecision(string s) =>
+        Enum.TryParse<Application.Agent.PermissionDecision>(
+            s, ignoreCase: true, out var d)
+            ? d : Application.Agent.PermissionDecision.Ask;
 
     private static StartTaskDto ToDto(AppConversationStartTask t) => new()
     {

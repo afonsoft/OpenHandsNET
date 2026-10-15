@@ -45,4 +45,123 @@ public sealed class AgentLlmOptions
     /// <c>[{"text":"…"},{"tool":{"name":"bash","arguments":{"command":"ls"}}}]</c>.
     /// </summary>
     public string? MockScript { get; set; }
+
+    /// <summary>
+    /// Fallback context window (tokens) when the model/catalog does not
+    /// advertise one (SPEC-22). <c>null</c> = unlimited (meter never trips).
+    /// </summary>
+    public int? DefaultContextWindow { get; set; } = 128000;
+
+    /// <summary>
+    /// Per-model window overrides (<c>{"model-id":tokens}</c>) — always win
+    /// over discovery (SPEC-22/23).
+    /// </summary>
+    public Dictionary<string, int> ContextWindowOverrides { get; set; } = new();
+
+    /// <summary>
+    /// Model id promoted to on context overflow when its window is larger
+    /// (SPEC-22 RF-006). <c>null</c> = compaction instead.
+    /// </summary>
+    public string? PromotionTarget { get; set; }
+
+    /// <summary>
+    /// Per-role model ids (SPEC-23 RF-002), e.g.
+    /// <c>{"summarizer":"gpt-5-mini","planner":"claude-opus"}</c>. Roles without
+    /// an entry fall back to <see cref="Model"/>.
+    /// </summary>
+    public Dictionary<string, string> RoleModels { get; set; } = new();
+
+    /// <summary>
+    /// Ordered fallback chain applied to any role when its primary model
+    /// fails (SPEC-23 RF-002/RF-003). Empty = no fallback (error is fatal).
+    /// </summary>
+    public List<string> FallbackModels { get; set; } = [];
+
+    /// <summary>Catalog discovery cache TTL seconds (SPEC-23 RF-001).</summary>
+    public int CatalogCacheSeconds { get; set; } = 300;
+
+    /// <summary>
+    /// Upper bound on total retry+fallback waiting inside one iteration
+    /// (SPEC-23 NFR) — prevents a run hanging on endless failover.
+    /// </summary>
+    public int MaxRouteWaitSeconds { get; set; } = 300;
+
+    /// <summary>
+    /// SPEC-25 RF-005: per-tool observation cap in chars
+    /// (e.g. <c>{"bash":61440,"search":102400,"mcp__*":81920}</c>);
+    /// tools sem entrada usam o default 60KB.
+    /// </summary>
+    public Dictionary<string, int> ToolOutputCaps { get; set; } = new();
+
+    /// <summary>
+    /// Instance-level <c>allow</c>/<c>deny</c>/<c>ask</c> rules (SPEC-29
+    /// RF-001), e.g. <c>[{"pattern":"mcp__*","decision":"deny"}]</c>. Org and
+    /// conversation rules layer on top (org <c>deny</c> is a floor).
+    /// </summary>
+    public List<AgentPermissionRule> Permissions { get; set; } = [];
+
+    /// <summary>
+    /// Security analyzer backend (SPEC-33 RF-001): <c>pattern</c> (default,
+    /// local) | <c>llm</c> (role Summarizer classification, cached).
+    /// </summary>
+    public string SecurityAnalyzer { get; set; } = "pattern";
+
+    /// <summary>
+    /// SPEC-33 RF-004: resume with a reduced toolset fails hard instead of
+    /// emitting a <c>resume_drift</c> diagnostic (default fail-open).
+    /// </summary>
+    public bool StrictResume { get; set; }
+
+    /// <summary>Subagent orchestration limits (SPEC-28).</summary>
+    public SubagentOptions Subagents { get; set; } = new();
+
+    /// <summary>Context compaction behaviour (SPEC-22).</summary>
+    public CompactionOptions Compaction { get; set; } = new();
+}
+
+/// <summary>Compaction tuning (<c>AgentLlm:Compaction:*</c>).</summary>
+public sealed class CompactionOptions
+{
+    /// <summary>Master switch (disabled ⇒ passthrough, MVP behaviour).</summary>
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>Trigger when tokens/window ≥ this fraction.</summary>
+    public double ThresholdPercent { get; set; } = 0.75;
+
+    /// <summary>Absolute token threshold — wins over percent when set.</summary>
+    public int? ThresholdTokens { get; set; }
+
+    /// <summary>Recent messages always kept verbatim in summarization.</summary>
+    public int KeepLastTurns { get; set; } = 6;
+
+    /// <summary>Newest tool results exempt from pruning.</summary>
+    public int KeepRecentToolResults { get; set; } = 8;
+
+    /// <summary>Tool results longer than this are pruned (chars).</summary>
+    public int PruneMaxChars { get; set; } = 4000;
+
+    /// <summary>Check the threshold inside the tool loop, not just at run start.</summary>
+    public bool MidTurnEnabled { get; set; } = true;
+
+    /// <summary>Emit the <c>context_state</c> ledger every N iterations.</summary>
+    public int LedgerEveryIterations { get; set; } = 10;
+
+    /// <summary>Model used for summaries (null = conversation model).</summary>
+    public string? SummaryModel { get; set; }
+
+    /// <summary>Max output tokens for the summarizer completion.</summary>
+    public int SummaryMaxTokens { get; set; } = 1024;
+}
+
+/// <summary>Subagent orchestration limits (<c>AgentLlm:Subagents:*</c>, SPEC-28).</summary>
+public sealed class SubagentOptions
+{
+    /// <summary>Nesting depth — 0 disables the <c>task</c> tool entirely.</summary>
+    public int MaxDepth { get; set; } = 1;
+
+    /// <summary>Concurrent children per conversation.</summary>
+    public int MaxConcurrent { get; set; } = 3;
+
+    /// <summary>Max LLM iterations inside one child run.</summary>
+    public int MaxIterations { get; set; } = 40;
 }

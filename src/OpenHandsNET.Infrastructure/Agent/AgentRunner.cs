@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,6 +31,8 @@ public sealed class AgentRunner(
     private readonly Dictionary<string, TaskCompletionSource<bool>> _confirms = new();
     private volatile bool _pauseRequested;
     private volatile bool _interruptSeen;
+    private volatile bool _compactRequested;
+    private volatile string? _compactInstructions;
 
     /// <summary>Routes a live event into the loop (user msg/interrupt/pause).</summary>
     public void OnEvent(EventBase e)
@@ -44,6 +48,13 @@ public sealed class AgentRunner(
                 break;
             case MessageEvent { Source: EventSource.User } m:
                 _incoming.Writer.TryWrite(m);
+                break;
+            // SPEC-22 RF-004: compaction manual via API chega como request
+            // do usuário; requests emitidos pelo próprio runner são
+            // Source=Environment e não re-disparam.
+            case CondensationRequest { Source: EventSource.User } r:
+                _compactRequested = true;
+                _compactInstructions = r.Instructions;
                 break;
         }
     }
@@ -106,13 +117,19 @@ public sealed class AgentRunner(
                 }, ct);
         }
 
+        // SPEC-24 RF-003: counters de atividade do run (progress/summary).
+        var activity = new RunActivityTracker();
         try
         {
             await LoopAsync(events, db, conv, sandbox, executor, tools, mcp,
-                llm, condenser, opt, ct);
+                llm, condenser, opt, activity, ct);
         }
         catch (OperationCanceledException)
         {
+            // SPEC-24 RF-006: pausa/interrupção também fecha com summary.
+            await activity.SummaryAsync(events, conversationId,
+                _pauseRequested ? "paused" : "interrupted", null,
+                CancellationToken.None);
             await SetStatusAsync(events, db, conv,
                 _pauseRequested ? "paused" : "idle",
                 _pauseRequested
@@ -136,19 +153,64 @@ public sealed class AgentRunner(
         Domain.Sandbox.Sandbox sandbox, ISandboxExecutor executor,
         IToolRegistry tools, Application.Mcp.IMcpClientService? mcp,
         IAgentLlmProvider llm, ICondenser condenser,
-        AgentLlmOptions opt, CancellationToken ct)
+        AgentLlmOptions opt, RunActivityTracker activity,
+        CancellationToken ct)
     {
-        var (history, lastEventId) = await BuildHistoryAsync(
-            events, tools, conv, ct);
+        var builder = services.GetRequiredService<Context.ConversationHistoryBuilder>();
+        var contextMeter = services.GetRequiredService<IContextMeter>();
+        // SPEC-29 RF-002: permissões efetivas (org floor → plan overlay →
+        // conversa → org → instância); deny remove a tool do catálogo.
+        var permissions = await ConversationPermissionResolver.ResolveAsync(
+            db, conv, opt, ct);
+        var effectiveTools = ConversationPermissionResolver.Catalog(
+            tools, permissions);
+        // SPEC-33 RF-004: fingerprint do toolset — detecta drift no resume
+        // (tools removidas silenciosamente entre runs).
+        await EmitAgentContractAsync(
+            events, conv, effectiveTools.All, opt, ct);
+        var rebuilt = await builder.BuildAsync(
+            conversationId, conv, effectiveTools, ct);
+        var history = rebuilt.Messages;
+        var ids = rebuilt.EventIds;
+        var lastEventId = rebuilt.LastEventId;
         var confirmationMode = conv.ConfirmationMode;
         var hooks = services.GetService<Application.Hooks.IHookService>();
+        // SPEC-33 RF-001: analyzer por ação — High força confirmação
+        // (mesmo com permission allow), diagnostic security_risk redacted.
+        var security = services.GetService<ISecurityAnalyzer>();
+        // SPEC-34 RF-001: bus de deltas efêmeros — runner publica,
+        // hub repassa; nada disso toca o IEventService.
+        var bus = services.GetService<IAgentActivityBus>();
+        var model = conv.LlmModel ?? opt.Model;
+        // SPEC-23 RF-002: seleção por role + fallback chain. `selection`
+        // acompanha o modelo efetivo (catalogo → janela/provider).
+        var router = services.GetService<IModelRouter>();
+        var selection = router is not null
+            ? await router.SelectAsync(conversationId, ModelRole.Worker,
+                conv.LlmModel, ct)
+            : null;
+        if (selection is not null)
+        {
+            model = selection.Model;
+        }
+
+        var routeWait = System.Diagnostics.Stopwatch.StartNew();
+        var overflowRetried = false;
+        var promoted = false;
+        var overflowPending = false;
+        var stopLengthPending = false;
+        var compactionCount = 0;
+        var sinceLedger = 0;
+        var lastEstimate = 0;
 
         for (var iteration = 0; iteration < opt.MaxIterations; iteration++)
         {
             using var iterSpan = Telemetry.OpenNetTelemetry.StartSpan(
                 "agent_iteration", conversationId, sandbox.Id.ToString());
             iterSpan?.SetTag("iteration", iteration);
-            if (await CheckSignalsAsync(events, db, conv))
+            await activity.ProgressAsync(events, conversationId, iteration,
+                opt.MaxIterations, "iteration", ct);
+            if (await CheckSignalsAsync(services, events, db, conv))
             {
                 return;
             }
@@ -156,7 +218,8 @@ public sealed class AgentRunner(
             // pending_messages: usuário falou durante o run → entra no histórico.
             while (_incoming.Reader.TryRead(out var pending))
             {
-                history.Add(ToLlmMessage(pending));
+                history.Add(Context.ConversationHistoryBuilder.ToLlmMessage(pending));
+                ids.Add(pending.Id);
                 lastEventId = pending.Id;
                 if (hooks is not null)
                 {
@@ -171,14 +234,79 @@ public sealed class AgentRunner(
                 }
             }
 
-            var request = await condenser.CondenseAsync(history, ct);
-            var toolSchemas = tools.All.Select(t => t.Schema).ToList();
-            // SPEC-07: catálogo MCP dinâmico da conversa (falha → degradado).
+            // SPEC-22: compaction — forced (manual/overflow/stop_length) ou
+            // threshold avaliado pelo condenser. Modelo pode promover antes.
+            CompactionTrigger? forced = _compactRequested
+                ? CompactionTrigger.Manual
+                : overflowPending ? CompactionTrigger.Overflow
+                : stopLengthPending ? CompactionTrigger.StopLength : null;
+            var pendingInstructions = _compactInstructions;
+            _compactRequested = false;
+            _compactInstructions = null;
+            overflowPending = false;
+            stopLengthPending = false;
+            var effectiveWindow = selection?.ContextWindow
+                ?? contextMeter.ContextWindow(model);
+            var start = forced is { } ft
+                ? new CompactionStart(ft,
+                    contextMeter.EstimateTokens(history, model),
+                    effectiveWindow)
+                : await condenser.EvaluateAsync(history, model, ct);
+            if (start is { } s)
+            {
+                var condensed = await condenser.CondenseAsync(
+                    history, ids, s.Trigger, model,
+                    cs => Context.CompactionService.EmitRequestAsync(
+                        events, conversationId, cs, pendingInstructions),
+                    ct);
+                if (condensed.Compacted)
+                {
+                    var condensation = await Context.CompactionService
+                        .EmitCondensationAsync(events, conversationId,
+                            condensed, ct);
+                    // summary message passa a mapear para o evento Condensation.
+                    if (condensed.SummaryOffset is { } so
+                        && so < condensed.ResultEventIds.Count)
+                    {
+                        var resultIds = condensed.ResultEventIds.ToList();
+                        resultIds[so] = condensation.Id;
+                        condensed = condensed with { ResultEventIds = resultIds };
+                    }
+
+                    history = condensed.Messages.ToList();
+                    ids = condensed.ResultEventIds.ToList();
+                    compactionCount++;
+                }
+
+                lastEstimate = condensed.TokensAfter;
+            }
+            else
+            {
+                lastEstimate = contextMeter.EstimateTokens(history, model);
+            }
+
+            // SPEC-22 RF-005: ledger de contexto (state_update) — periódico
+            // e sempre que uma compaction aconteceu.
+            if (start is not null
+                || ++sinceLedger >= opt.Compaction.LedgerEveryIterations)
+            {
+                sinceLedger = 0;
+                await Context.CompactionService.EmitLedgerAsync(
+                    events, conversationId, lastEstimate,
+                    effectiveWindow, model, ct, compactionCount);
+            }
+
+            var request = history;
+            var toolSchemas = effectiveTools.All.Select(t => t.Schema).ToList();
+            // SPEC-07: catálogo MCP dinâmico da conversa (falha → degradado);
+            // SPEC-29: mcp__* também respeita o evaluator (glob `mcp__*` deny).
             if (mcp is not null)
             {
                 toolSchemas.AddRange(
                     (await mcp.ListToolsAsync(conversationId, ct))
-                    .Select(Application.Mcp.McpToolCatalog.ToSchema));
+                    .Select(Application.Mcp.McpToolCatalog.ToSchema)
+                    .Where(s => permissions.Decide(s.Name)
+                        != Application.Agent.PermissionDecision.Deny));
             }
 
             var text = new System.Text.StringBuilder();
@@ -186,24 +314,46 @@ public sealed class AgentRunner(
                 System.Text.StringBuilder args)>();
             string? finishReason = null;
             var responseId = "";
+            // SPEC-34 RF-001: um item_id por iteração — deltas efêmeros e o
+            // evento durável que os substitui compartilham o slot.
+            var itemId = Ulid.NewUlid().ToString();
+            var batcher = bus is null
+                ? null
+                : new Deltas.DeltaBatcher(conversationId, itemId, bus);
+            // SPEC-23 RF-003: cada tentativa de modelo emite llm_route —
+            // a UI mostra "tentando X (fallback de Y)" em tempo real.
+            if (selection is not null)
+            {
+                await events.AppendAsync(conversationId,
+                    new ConversationStateUpdateEvent
+                    {
+                        Key = "llm_route",
+                        Value = JsonSerializer.SerializeToElement(new
+                        {
+                            model = selection.Model,
+                            role = "worker",
+                            attempt = selection.Attempt,
+                            fallback_from = selection.FallbackFrom,
+                        }, EventJson.Options),
+                    }, CancellationToken.None);
+            }
+
+            var llmTimer = System.Diagnostics.Stopwatch.StartNew();
             try
             {
                 using var llmSpan = Telemetry.OpenNetTelemetry.StartSpan(
                     "llm_call", conversationId, sandbox.Id.ToString());
-                llmSpan?.SetTag("model", opt.Model);
+                llmSpan?.SetTag("model", model);
                 await foreach (var chunk in llm.ChatStreamAsync(
-                    request, toolSchemas, new LlmOptions(), ct))
+                    request, toolSchemas, new LlmOptions(Model: model), ct))
                 {
                     switch (chunk)
                     {
                         case TextDelta d:
                             text.Append(d.Text);
-                            lastEventId = (await events.AppendAsync(conversationId,
-                                new StreamingDeltaEvent
-                                {
-                                    Content = d.Text,
-                                    ParentId = lastEventId,
-                                }, ct)).Id;
+                            // SPEC-34 RF-001: delta vai só ao bus efêmero —
+                            // nunca persistido/replayado pelo IEventService.
+                            batcher?.Add(d.Text);
                             break;
                         case ToolCallDelta tcd:
                             if (!calls.TryGetValue(tcd.Index, out var cur))
@@ -223,6 +373,15 @@ public sealed class AgentRunner(
                         case CompletionEnd end:
                             finishReason = end.FinishReason;
                             responseId = end.ResponseId;
+                            // SPEC-22 RF-001: calibração online do meter.
+                            contextMeter.ObserveUsage(end.Usage.PromptTokens,
+                                lastEstimate);
+                            if (end.FinishReason == "length"
+                                && opt.Compaction.Enabled)
+                            {
+                                stopLengthPending = true;
+                            }
+
                             await events.AppendAsync(conversationId, new TokenEvent
                             {
                                 Source = EventSource.Agent,
@@ -230,6 +389,8 @@ public sealed class AgentRunner(
                                 PromptTokens = end.Usage.PromptTokens,
                                 CompletionTokens = end.Usage.CompletionTokens,
                                 CostUsd = end.Usage.CostUsd,
+                                Model = model,
+                                Role = "worker",
                             }, ct);
                             Telemetry.OpenNetTelemetry.LlmTokens
                                 .WithLabels("prompt").Inc(end.Usage.PromptTokens);
@@ -255,6 +416,145 @@ public sealed class AgentRunner(
             {
                 throw;
             }
+            catch (ContextOverflowException cex)
+            {
+                // SPEC-22 RF-006: promover para janela maior antes de compactar.
+                if (!promoted && opt.PromotionTarget is { } target
+                    && target != model)
+                {
+                    promoted = true;
+                    var fromModel = model;
+                    logger.LogInformation(
+                        "Context overflow — promoting model {From} → {To}",
+                        fromModel, target);
+                    await activity.DiagnosticAsync(events, conversationId,
+                        "info", "context_promotion",
+                        $"context overflow — promoted {fromModel} → {target}",
+                        CancellationToken.None);
+                    model = target;
+                    conv.LlmModel = target;
+                    await events.AppendAsync(conversationId,
+                        new ConversationStateUpdateEvent
+                        {
+                            Key = "model_change",
+                            Value = JsonSerializer.SerializeToElement(new
+                            {
+                                from = fromModel,
+                                to = target,
+                                reason = "context_promotion",
+                            }, EventJson.Options),
+                        }, CancellationToken.None);
+                    conv.UpdatedAt = DateTimeOffset.UtcNow;
+                    await db.SaveChangesAsync(CancellationToken.None);
+                    iteration--; // retenta a mesma iteração com janela maior
+                    continue;
+                }
+
+                if (!overflowRetried)
+                {
+                    overflowRetried = true;
+                    logger.LogWarning(cex,
+                        "Context overflow — forcing compaction and retry");
+                    await activity.DiagnosticAsync(events, conversationId,
+                        "warn", "context_overflow",
+                        "context overflow — compacting and retrying",
+                        CancellationToken.None);
+                    overflowPending = true;
+                    iteration--;
+                    continue;
+                }
+
+                logger.LogError(cex, "LLM context overflow persists");
+                await events.AppendAsync(conversationId, new AgentErrorEvent
+                {
+                    ToolName = "llm", ToolCallId = "",
+                    Error = SecretRedactor.Redact(cex.Message),
+                }, CancellationToken.None);
+                await activity.DiagnosticAsync(events, conversationId,
+                    "error", "context_overflow",
+                    SecretRedactor.Redact(cex.Message), CancellationToken.None);
+                await activity.SummaryAsync(events, conversationId,
+                    "error", "context overflow", CancellationToken.None);
+                await SetStatusAsync(events, db, conv, "error",
+                    ConversationExecutionStatus.Error, CancellationToken.None);
+                return;
+            }
+            catch (LlmCallException lce) when (router is not null
+                && selection is not null)
+            {
+                // SPEC-23 RF-003: turn recovery — classificação → ação.
+                llmTimer.Stop();
+                await events.AppendAsync(conversationId,
+                    new ConversationStateUpdateEvent
+                    {
+                        Key = "llm_route",
+                        Value = JsonSerializer.SerializeToElement(new
+                        {
+                            model = selection.Model,
+                            role = "worker",
+                            attempt = selection.Attempt,
+                            kind = lce.Kind.ToString().ToLowerInvariant(),
+                            latency_ms = (int)llmTimer.ElapsedMilliseconds,
+                        }, EventJson.Options),
+                    }, CancellationToken.None);
+
+                if (lce.Kind == LlmErrorKind.Auth)
+                {
+                    logger.LogError("LLM auth failure — aborting run");
+                    await events.AppendAsync(conversationId, new AgentErrorEvent
+                    {
+                        ToolName = "llm", ToolCallId = "",
+                        Error = SecretRedactor.Redact(lce.Message),
+                    }, CancellationToken.None);
+                    await SetStatusAsync(events, db, conv, "error",
+                        ConversationExecutionStatus.Error,
+                        CancellationToken.None);
+                    return;
+                }
+
+                if (routeWait.Elapsed
+                    > TimeSpan.FromSeconds(opt.MaxRouteWaitSeconds))
+                {
+                    logger.LogError("Route wait budget exhausted");
+                    await events.AppendAsync(conversationId, new AgentErrorEvent
+                    {
+                        ToolName = "llm", ToolCallId = "",
+                        Error = SecretRedactor.Redact(
+                            $"route budget exceeded: {lce.Message}"),
+                    }, CancellationToken.None);
+                    await SetStatusAsync(events, db, conv, "error",
+                        ConversationExecutionStatus.Error,
+                        CancellationToken.None);
+                    return;
+                }
+
+                var next = await router.NextFallbackAsync(
+                    selection, lce.Kind, CancellationToken.None);
+                if (next is null)
+                {
+                    logger.LogError(lce, "LLM call failed — no fallback left");
+                    await events.AppendAsync(conversationId, new AgentErrorEvent
+                    {
+                        ToolName = "llm", ToolCallId = "",
+                        Error = SecretRedactor.Redact(lce.Message),
+                    }, CancellationToken.None);
+                    await SetStatusAsync(events, db, conv, "error",
+                        ConversationExecutionStatus.Error,
+                        CancellationToken.None);
+                    return;
+                }
+
+                logger.LogWarning(
+                    "LLM {Kind} em {From} — fallback para {To}",
+                    lce.Kind, selection.Model, next.Model);
+                model = next.Model;
+                selection = next;
+                conv.LlmModel = next.Model;
+                conv.UpdatedAt = DateTimeOffset.UtcNow;
+                await db.SaveChangesAsync(CancellationToken.None);
+                iteration--; // retenta a iteração com o modelo seguinte
+                continue;
+            }
             catch (Exception ex)
             {
                 logger.LogError(ex, "LLM completion failed");
@@ -263,6 +563,9 @@ public sealed class AgentRunner(
                     ToolName = "llm", ToolCallId = "",
                     Error = SecretRedactor.Redact(ex.Message),
                 }, CancellationToken.None);
+                await activity.SummaryAsync(events, conversationId,
+                    "error", SecretRedactor.Redact(ex.Message),
+                    CancellationToken.None);
                 await SetStatusAsync(events, db, conv, "error",
                     ConversationExecutionStatus.Error, CancellationToken.None);
                 return;
@@ -282,10 +585,12 @@ public sealed class AgentRunner(
                     return;
                 }
 
+                batcher?.Flush();
                 var msg = new MessageEvent
                 {
                     Source = EventSource.Agent,
                     ParentId = lastEventId,
+                    ItemId = itemId,
                     LlmResponseId = responseId,
                     LlmMessage = JsonSerializer.SerializeToElement(new
                     {
@@ -299,17 +604,27 @@ public sealed class AgentRunner(
                 lastEventId = (await events.AppendAsync(
                     conversationId, msg, ct)).Id;
                 history.Add(LlmMessage.Assistant(text.ToString()));
+                ids.Add(msg.Id);
                 continue;
             }
 
+            // SPEC-22: a mensagem assistant-toolcall cobre N ActionEvents —
+            // o eventId composto (join ',') garante forget consistente.
+            var tcMsgIdx = history.Count;
             history.Add(LlmMessage.AssistantToolCall(
                 text.Length > 0 ? text.ToString() : null, toolCalls));
+            ids.Add(null);
+            var actionIds = new List<string>();
+            // SPEC-34: flush antes do primeiro durável — deltas do pensamento
+            // saem antes dos ActionEvents que substituem o slot item_id.
+            batcher?.Flush();
 
             foreach (var call in toolCalls)
             {
                 var actionEvent = new ActionEvent
                 {
                     ParentId = lastEventId,
+                    ItemId = itemId,
                     ToolName = call.Name,
                     ToolCallId = call.Id,
                     LlmResponseId = responseId,
@@ -322,15 +637,39 @@ public sealed class AgentRunner(
                 };
                 lastEventId = (await events.AppendAsync(
                     conversationId, actionEvent, ct)).Id;
+                actionIds.Add(actionEvent.Id);
 
-                var tool = tools.Find(call.Name);
+                var tool = effectiveTools.Find(call.Name);
+                var decision = permissions.Decide(call.Name);
                 if (tool is null)
                 {
+                    // SPEC-29 RF-002: chamada a tool negada é observabilidade
+                    // (drift do modelo) — diagnostic + erro explícito.
+                    if (decision == Application.Agent.PermissionDecision.Deny)
+                    {
+                        lastEventId = (await events.AppendAsync(conversationId,
+                            new Domain.Events.AgentDiagnosticEvent
+                            {
+                                Severity = "warn",
+                                Code = "permission_deny",
+                                Message = $"tool '{call.Name}' denied by " +
+                                    "permission policy",
+                            }, ct)).Id;
+                    }
+
                     var obsId = await ObserveAsync(events, conversationId,
                         actionEvent,
-                        ToolResult.Error($"unknown tool '{call.Name}'"), ct);
+                        ToolResult.Error(decision ==
+                            Application.Agent.PermissionDecision.Deny
+                                ? $"tool '{call.Name}' denied by permission policy"
+                                : $"unknown tool '{call.Name}'"),
+                        sandbox, executor, ct);
                     history.Add(LlmMessage.ToolResult(
-                        call.Id, $"{{\"error\":\"unknown tool '{call.Name}'\"}}"));
+                        call.Id, decision ==
+                            Application.Agent.PermissionDecision.Deny
+                                ? "{\"error\":\"tool denied by permission policy\"}"
+                                : $"{{\"error\":\"unknown tool '{call.Name}'\"}}"));
+                    ids.Add(obsId);
                     lastEventId = obsId;
                     continue;
                 }
@@ -350,19 +689,46 @@ public sealed class AgentRunner(
                 {
                     var vetoId = await ObserveAsync(events, conversationId,
                         actionEvent,
-                        ToolResult.Error("blocked by hook"), ct);
+                        ToolResult.Error("blocked by hook"),
+                        sandbox, executor, ct);
                     history.Add(LlmMessage.ToolResult(
                         call.Id, "{\"error\":\"blocked by hook\"}"));
+                    ids.Add(vetoId);
                     lastEventId = vetoId;
                     continue;
                 }
 
-                // SPEC-15 RF-003: always-allow auto-aprova ação rotineira
-                // (auditável via decision_auto); destrutiva sempre pergunta.
-                var alwaysAsk = tool.Risky &&
+                // SPEC-33 RF-001: security analyzer — High força confirmação
+                // humana (piso igual ao guardrail destrutivo).
+                var risk = security is null || actionEvent.Action is not { } act
+                    ? SecurityRisk.Low
+                    : await security.AnalyzeAsync(call.Name, act, ct);
+                if (risk >= SecurityRisk.Medium)
+                {
+                    await events.AppendAsync(conversationId,
+                        new AgentDiagnosticEvent
+                        {
+                            Severity = risk == SecurityRisk.High
+                                ? "warning" : "info",
+                            Code = "security_risk",
+                            Message = $"tool {call.Name} scored {risk
+                                .ToString().ToLowerInvariant()} risk",
+                            ParentId = actionEvent.Id,
+                        }, ct);
+                }
+
+                // SPEC-15 RF-003 + SPEC-29 RF-002 + SPEC-33: confirmação
+                // exigida por regra ask, guardrail destrutivo, analyzer High,
+                // ou default Risky+confirmation-mode. Allow explícito pula
+                // confirmação — exceto destrutiva/High (pisos).
+                var alwaysAsk = (tool.Risky &&
                     AutonomyGuardrail.RequiresHumanApproval(
-                        call.Name, actionEvent.Action);
-                if (tool.Risky && !confirmationMode && !alwaysAsk)
+                        call.Name, actionEvent.Action))
+                    || risk == SecurityRisk.High;
+                var needsConfirm = alwaysAsk
+                    || decision == Application.Agent.PermissionDecision.Ask
+                    || (decision is null && tool.Risky && confirmationMode);
+                if (tool.Risky && !needsConfirm)
                 {
                     lastEventId = (await events.AppendAsync(conversationId,
                         new DecisionAutoEvent
@@ -370,11 +736,13 @@ public sealed class AgentRunner(
                             ParentId = lastEventId,
                             AskedId = actionEvent.Id,
                             Chosen = "approve",
-                            Reason = "always_allow",
+                            Reason = decision ==
+                                Application.Agent.PermissionDecision.Allow
+                                    ? "permission_allow" : "always_allow",
                         }, ct)).Id;
                 }
 
-                if (tool.Risky && (confirmationMode || alwaysAsk))
+                if (needsConfirm)
                 {
                     await SetStatusAsync(events, db, conv,
                         "waiting_for_confirmation", null, ct,
@@ -390,6 +758,7 @@ public sealed class AgentRunner(
                     {
                         history.Add(LlmMessage.ToolResult(
                             call.Id, "User rejected this action."));
+                        ids.Add(null); // rejeição sem observation event
                         continue;
                     }
 
@@ -410,7 +779,9 @@ public sealed class AgentRunner(
                         TimeSpan.FromSeconds(opt.ToolTimeoutSeconds));
                     var ctx = new ToolCallContext(conversationId, sandbox,
                         executor, events, services,
-                        TimeSpan.FromSeconds(opt.ToolTimeoutSeconds));
+                        TimeSpan.FromSeconds(opt.ToolTimeoutSeconds),
+                        call.Id, actionEvent.Id);
+                    activity.NoteToolCall(call.Name, call.ArgumentsJson);
                     result = await tool.Handler(ctx,
                         TryParseJson(call.ArgumentsJson)
                             ?? JsonDocument.Parse("{}").RootElement.Clone(),
@@ -426,9 +797,46 @@ public sealed class AgentRunner(
                 }
 
                 var observationId = await ObserveAsync(
-                    events, conversationId, actionEvent, result, ct);
+                    events, conversationId, actionEvent, result,
+                    sandbox, executor, ct);
                 history.Add(LlmMessage.ToolResult(
                     call.Id, result.Observation.GetRawText()));
+                ids.Add(observationId);
+
+                // SPEC-22 RF-004: mid-turn — se o resultado estourou o
+                // threshold, compacta entre tool calls da mesma iteração.
+                if (opt.Compaction.MidTurnEnabled
+                    && await condenser.EvaluateAsync(history, model, ct)
+                        is { } mid)
+                {
+                    var midResult = await condenser.CondenseAsync(
+                        history, ids, CompactionTrigger.MidTurn, model,
+                        cs => Context.CompactionService.EmitRequestAsync(
+                            events, conversationId, cs, null), ct);
+                    if (midResult.Compacted)
+                    {
+                        var midCond = await Context.CompactionService
+                            .EmitCondensationAsync(events, conversationId,
+                                midResult, ct);
+                        if (midResult.SummaryOffset is { } so2
+                            && so2 < midResult.ResultEventIds.Count)
+                        {
+                            var midIds = midResult.ResultEventIds.ToList();
+                            midIds[so2] = midCond.Id;
+                            midResult = midResult with
+                            {
+                                ResultEventIds = midIds,
+                            };
+                        }
+
+                        history = midResult.Messages.ToList();
+                        ids = midResult.ResultEventIds.ToList();
+                        compactionCount++;
+                        // a msg assistant-toolcall pode ter sido esquecida.
+                        tcMsgIdx = history.FindLastIndex(
+                            m => m.ToolCalls is { Count: > 0 });
+                    }
+                }
 
                 // SPEC-11: on_tool_post — auditoria após a observação.
                 if (hooks is not null)
@@ -466,6 +874,8 @@ public sealed class AgentRunner(
                         }, ct);
                     }
 
+                    await activity.SummaryAsync(events, conversationId,
+                        "completed", finalText, CancellationToken.None);
                     await SetStatusAsync(events, db, conv, "finished",
                         ConversationExecutionStatus.Finished, ct);
                     if (hooks is not null)
@@ -486,6 +896,13 @@ public sealed class AgentRunner(
 
                 lastEventId = observationId;
             }
+
+            // SPEC-22: eventId composto da assistant-msg cobre todas as
+            // ActionEvents — forget da mensagem esquece as actions juntas.
+            if (tcMsgIdx >= 0 && tcMsgIdx < ids.Count)
+            {
+                ids[tcMsgIdx] = string.Join(',', actionIds);
+            }
         }
 
         await events.AppendAsync(conversationId, new AgentErrorEvent
@@ -493,19 +910,28 @@ public sealed class AgentRunner(
             ToolName = "loop", ToolCallId = "",
             Error = $"max_iterations ({opt.MaxIterations}) reached",
         }, CancellationToken.None);
+        await activity.DiagnosticAsync(events, conversationId, "warn",
+            "max_iterations",
+            $"max_iterations ({opt.MaxIterations}) reached",
+            CancellationToken.None);
+        await activity.SummaryAsync(events, conversationId, "stuck", null,
+            CancellationToken.None);
         await SetStatusAsync(events, db, conv, "stuck",
             ConversationExecutionStatus.Error, CancellationToken.None);
     }
 
     /// <summary>Interrupt/pause → status de saída; true = encerrar o loop.</summary>
     private async Task<bool> CheckSignalsAsync(
-        IEventService events, AppDbContext db, ConversationRecord conv)
+        IServiceProvider services, IEventService events,
+        AppDbContext db, ConversationRecord conv)
     {
         if (!_interruptSeen)
         {
             return false;
         }
 
+        // SPEC-28 RF-004: interrupt/pause propaga p/ subagentes ativos.
+        services.GetService<ISubagentHost>()?.AbortAll(conversationId);
         await SetStatusAsync(events, db, conv,
             _pauseRequested ? "paused" : "idle",
             _pauseRequested
@@ -583,135 +1009,29 @@ public sealed class AgentRunner(
         }
     }
 
-    /// <summary>Reconstrói o histórico LLM a partir do stream (resume).</summary>
-    private async Task<(List<LlmMessage> history, string? lastEventId)>
-        BuildHistoryAsync(IEventService events, IToolRegistry tools,
-            ConversationRecord conv, CancellationToken ct)
-    {
-        var all = new List<EventBase>();
-        string? cursor = null;
-        do
-        {
-            var page = await events.SearchAsync(conversationId,
-                new EventQuery(PageId: cursor, Limit: 100), ct);
-            all.AddRange(page.Items);
-            cursor = page.NextPageId;
-        }
-        while (cursor is not null);
-
-        var forgotten = all.OfType<Condensation>()
-            .SelectMany(c => c.ForgottenEventIds).ToHashSet();
-        var history = new List<LlmMessage>();
-        string? lastId = null;
-        var hasSystem = false;
-        foreach (var e in all)
-        {
-            if (forgotten.Contains(e.Id))
-            {
-                continue;
-            }
-
-            lastId = e.Id;
-            switch (e)
-            {
-                case SystemPromptEvent sp:
-                    hasSystem = true;
-                    history.Add(new LlmMessage("system", Flatten(sp.SystemPrompt)));
-                    break;
-                case MessageEvent m:
-                    history.Add(ToLlmMessage(m));
-                    break;
-                case ActionEvent a:
-                    history.Add(LlmMessage.AssistantToolCall(
-                        Flatten(a.Thought),
-                        [new LlmToolCall(a.ToolCallId, a.ToolName,
-                            a.Action?.GetRawText() ?? "{}")]));
-                    break;
-                case ObservationEvent o:
-                    history.Add(LlmMessage.ToolResult(
-                        o.ToolCallId, o.Observation.GetRawText()));
-                    break;
-                case UserRejectObservation r:
-                    history.Add(LlmMessage.ToolResult(
-                        r.ToolCallId, $"User rejected: {r.RejectionReason}"));
-                    break;
-            }
-        }
-
-        if (!hasSystem)
-        {
-            // SPEC-11 RF-002: resolve skills por trigger (always/keyword/task)
-            // usando a última mensagem do usuário e as tags da conversa.
-            var lastUserText = all.OfType<MessageEvent>()
-                .Where(m => m.Source == EventSource.User)
-                .Select(m => ToLlmMessage(m).Content)
-                .LastOrDefault();
-            var skills = services.GetService<Application.Skills.ISkillService>()
-                is { } skillSvc
-                ? await skillSvc.ResolveForConversationAsync(
-                    conversationId, lastUserText, null,
-                    conv.CreatedByUserId, conv.OrgId?.ToString(), ct)
-                : [];
-            var prompt = SystemPromptBuilder.Build(
-                conv.SelectedRepository,
-                tools.All.Select(t => t.Schema).ToList(),
-                skills);
-            var sp = new SystemPromptEvent
-            {
-                ParentId = lastId,
-                SystemPrompt = JsonSerializer.SerializeToElement(
-                    new[] { new { type = "text", text = prompt } },
-                    EventJson.Options),
-                Tools = JsonSerializer.SerializeToElement(
-                    tools.All.Select(t => new
-                    {
-                        name = t.Schema.Name,
-                        description = t.Schema.Description,
-                        input_schema = t.Schema.InputSchema,
-                    }), EventJson.Options),
-            };
-            lastId = (await events.AppendAsync(conversationId, sp, ct)).Id;
-            history.Insert(0, new LlmMessage("system", prompt));
-        }
-
-        return (history, lastId);
-    }
-
-    private static LlmMessage ToLlmMessage(MessageEvent m)
-    {
-        try
-        {
-            var el = m.LlmMessage;
-            var role = el.TryGetProperty("role", out var r)
-                ? r.GetString() ?? "user" : "user";
-            var content = el.TryGetProperty("content", out var c)
-                ? c.ValueKind == JsonValueKind.String
-                    ? c.GetString()
-                    : c.ValueKind == JsonValueKind.Array
-                        ? string.Concat(c.EnumerateArray().Select(b =>
-                            b.TryGetProperty("text", out var t)
-                                ? t.GetString() : null))
-                        : c.GetRawText()
-                : null;
-            return new LlmMessage(role, content);
-        }
-        catch (JsonException)
-        {
-            return new LlmMessage("user", m.LlmMessage.GetRawText());
-        }
-    }
-
-    private static async Task<string> ObserveAsync(
+    /// <summary>
+    /// SPEC-25 RF-005: aplica o OutputPolicy (cap por tool + truncamento
+    /// head+tail + artifact_ref) antes de persistir o observation.
+    /// </summary>
+    private async Task<string> ObserveAsync(
         IEventService events, Guid conversationId, ActionEvent action,
-        ToolResult result, CancellationToken ct)
+        ToolResult result, Domain.Sandbox.Sandbox? sandbox,
+        ISandboxExecutor? executor, CancellationToken ct)
     {
+        var policy = services.GetService<Tools.OutputPolicy>();
+        var payload = policy is null
+            ? result.Observation
+            : await policy.ApplyAsync(action.ToolName ?? "", action.Id,
+                result.Observation, sandbox, executor, conversationId,
+                services.GetService<
+                    Application.Artifacts.IArtifactStore>(), ct);
         var obs = new ObservationEvent
         {
             ParentId = action.Id,
             ActionId = action.Id,
-            ToolName = action.ToolName,
+            ToolName = action.ToolName!,
             ToolCallId = action.ToolCallId,
-            Observation = result.Observation,
+            Observation = payload,
         };
         return (await events.AppendAsync(conversationId, obs, ct)).Id;
     }
@@ -755,13 +1075,74 @@ public sealed class AgentRunner(
         }
     }
 
-    private static string? Flatten(JsonElement? el) => el switch
+    /// <summary>
+    /// SPEC-33 RF-004: grava o <c>agent_contract</c> (agent_type + fingerprint
+    /// do toolset efetivo) e compara com o contrato anterior do stream —
+    /// tools removidas entre runs emitem <c>resume_drift</c>; em
+    /// <c>AgentLlm:StrictResume</c> falham o run.
+    /// </summary>
+    private async Task EmitAgentContractAsync(
+        IEventService events, ConversationRecord conv,
+        IReadOnlyList<AgentTool> effectiveTools, AgentLlmOptions opt,
+        CancellationToken ct)
     {
-        null => null,
-        { ValueKind: JsonValueKind.String } s => s.GetString(),
-        { ValueKind: JsonValueKind.Array } arr => string.Concat(
-            arr.EnumerateArray().Select(b =>
-                b.TryGetProperty("text", out var t) ? t.GetString() : null)),
-        { } other => other.GetRawText(),
-    };
+        var names = effectiveTools.Select(t => t.Schema.Name)
+            .OrderBy(n => n, StringComparer.Ordinal).ToList();
+        var fingerprint = Convert.ToHexString(SHA256.HashData(
+            Encoding.UTF8.GetBytes(
+                string.Join(',', names) + "|" + conv.AgentType)))[..16];
+
+        // Contrato anterior = último state update agent_contract no stream.
+        var prior = await events.SearchAsync(conversationId, new EventQuery(
+            KindEq: "ConversationStateUpdateEvent", Limit: 100), ct);
+        var removed = new List<string>();
+        string? priorAgent = null;
+        foreach (var e in prior.Items.Reverse())
+        {
+            if (e is not ConversationStateUpdateEvent { Key: "agent_contract",
+                Value: { } v })
+            {
+                continue;
+            }
+
+            priorAgent = v.TryGetProperty("agent_type", out var at)
+                ? at.GetString() : null;
+            var prevTools = v.TryGetProperty("tools", out var pt)
+                ? pt.EnumerateArray().Select(t => t.GetString() ?? "")
+                    .ToHashSet(StringComparer.Ordinal) : [];
+            removed = prevTools.Except(names).ToList();
+            break;
+        }
+
+        if (removed.Count > 0 || (priorAgent is not null
+            && priorAgent != conv.AgentType))
+        {
+            var msg = $"resume drift: removed tools [{string.Join(
+                ", ", removed)}]"
+                + (priorAgent != conv.AgentType
+                    ? $", agent_type {priorAgent} -> {conv.AgentType}" : "");
+            if (opt.StrictResume)
+            {
+                throw new InvalidOperationException(
+                    $"StrictResume: {msg}");
+            }
+
+            await events.AppendAsync(conversationId,
+                new AgentDiagnosticEvent
+                {
+                    Severity = "warning", Code = "resume_drift",
+                    Message = msg,
+                }, ct);
+        }
+
+        await events.AppendAsync(conversationId,
+            new ConversationStateUpdateEvent
+            {
+                Key = "agent_contract",
+                Value = JsonSerializer.SerializeToElement(new
+                {
+                    agent_type = conv.AgentType, tools = names, fingerprint,
+                }, EventJson.Options),
+            }, ct);
+    }
 }

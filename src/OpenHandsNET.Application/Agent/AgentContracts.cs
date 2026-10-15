@@ -61,5 +61,10 @@ public sealed record LlmOptions(
 public sealed record ToolSchema(
     string Name, string Description, JsonElement InputSchema);
 
+/// <summary>Provider pricing (USD per 1M tokens), when the gateway advertises it.</summary>
+public sealed record ModelPricing(decimal? InputPerMillion, decimal? OutputPerMillion);
+
 /// <summary>Provider model descriptor.</summary>
-public sealed record ModelInfo(string Id, string Provider, int? ContextWindow = null);
+public sealed record ModelInfo(
+    string Id, string Provider, int? ContextWindow = null,
+    ModelPricing? Pricing = null);

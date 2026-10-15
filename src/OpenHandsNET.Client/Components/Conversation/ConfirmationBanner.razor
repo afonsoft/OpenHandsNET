@@ -1,10 +1,15 @@
 @using OpenHandsNET.Client.Services
+@using OpenHandsNET.Client.Components
 
 <div class="confirm-banner" role="alertdialog" aria-label="Action confirmation">
-    <span>&#x1F512;</span>
+    <Icon Name="key" Size="15" />
     <span class="what" title="@Pending.Summary">@Pending.Summary</span>
-    <button class="primary" @onclick="() => OnConfirm.InvokeAsync(true)">Approve</button>
-    <button class="danger" @onclick="() => OnConfirm.InvokeAsync(false)">Reject</button>
+    <button class="primary" @onclick="() => OnConfirm.InvokeAsync(true)">
+        <Icon Name="check" Size="13" /> Approve
+    </button>
+    <button class="danger" @onclick="() => OnConfirm.InvokeAsync(false)">
+        <Icon Name="x" Size="13" /> Reject
+    </button>
 </div>
 
 @code {

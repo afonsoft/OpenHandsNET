@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using OpenHandsNET.Infrastructure.Conversations;
 using OpenHandsNET.Infrastructure.Persistence;
 using OpenHandsNET.Infrastructure.Sandbox;
+using OpenHandsNET.Sandboxing;
 
 namespace OpenHandsNET.IntegrationTests;
 
@@ -78,7 +79,7 @@ public sealed class Spec17RuntimeTests : IAsyncLifetime
             .BuildServiceProvider()
             .GetRequiredService<IServiceScopeFactory>();
 
-    private DockerSandboxService MakeService(
+    private SandboxService MakeService(
         SandboxOptions? overrides = null, WarmPoolService? pool = null,
         SandboxAgentClient? agent = null)
     {
@@ -91,10 +92,12 @@ public sealed class Spec17RuntimeTests : IAsyncLifetime
             NullLogger<WorkspaceProvisioner>.Instance);
         var egress = new DockerNetworkPolicy(_docker, opts,
             NullLogger<DockerNetworkPolicy>.Instance);
-        pool ??= new WarmPoolService(_docker, opts, provisioner,
-            NewScopeFactory(), NullLogger<WarmPoolService>.Instance);
-        return new DockerSandboxService(_db, _docker, provisioner,
-            egress, pool, opts, NullLogger<DockerSandboxService>.Instance,
+        var engine = new DockerSandboxEngine(_docker, provisioner, egress,
+            opts, NullLogger<DockerSandboxEngine>.Instance);
+        pool ??= new WarmPoolService(engine, opts,
+            NullLogger<WarmPoolService>.Instance);
+        return new SandboxService(_db, engine, opts,
+            NullLogger<SandboxService>.Instance,
             dp: _dp, agentClient: agent);
     }
 
@@ -188,8 +191,12 @@ public sealed class Spec17RuntimeTests : IAsyncLifetime
         var optWrap = Options.Create(opts);
         var provisioner = new WorkspaceProvisioner(optWrap,
             NullLogger<WorkspaceProvisioner>.Instance);
-        var pool = new WarmPoolService(_docker, optWrap, provisioner,
-            NewScopeFactory(), NullLogger<WarmPoolService>.Instance);
+        var engine = new DockerSandboxEngine(_docker, provisioner,
+            new DockerNetworkPolicy(_docker, optWrap,
+                NullLogger<DockerNetworkPolicy>.Instance),
+            optWrap, NullLogger<DockerSandboxEngine>.Instance);
+        var pool = new WarmPoolService(engine, optWrap,
+            NullLogger<WarmPoolService>.Instance);
 
         await pool.StartAsync(CancellationToken.None);
         string? claimedId = null;
@@ -229,8 +236,7 @@ public sealed class Spec17RuntimeTests : IAsyncLifetime
             // claim → dormant activation tenta /api/init (falha: bash não é
             // agente de verdade) → segue sem AgentUrl mas claimed.
             var convId = await SeedConversationAsync();
-            var agent = new SandboxAgentClient(_docker,
-                new SimpleHttpFactory(),
+            var agent = new SandboxAgentClient(new SimpleHttpFactory(),
                 NullLogger<SandboxAgentClient>.Instance);
             var svc = MakeService(opts, pool, agent);
             var sb = await svc.StartAsync(

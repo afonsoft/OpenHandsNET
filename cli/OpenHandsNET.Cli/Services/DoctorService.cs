@@ -33,6 +33,117 @@ public sealed class DoctorService(HttpClient http)
         return new DoctorReport(probes, serverUrl);
     }
 
+    /// <summary>
+    /// SPEC-31 RF-002 / SPEC-32 RF-09: preflight de instalação — DNS do
+    /// public domain, egress aos registries, docker, cgroup v2, disco ≥50GB
+    /// e portas livres. Falha rápida (gate de CI/install).
+    /// </summary>
+    public async Task<DoctorReport> RunPreflightAsync(
+        string serverUrl, string workspaceRoot, CancellationToken ct)
+    {
+        var probes = new List<ProbeResult>
+        {
+            await ProbePublicDomainAsync(ct),
+            await ProbeRegistryAsync("registry-1.docker.io", ct),
+            await ProbeRegistryAsync("ghcr.io", ct),
+            await ProbeDockerAsync(ct),
+            ProbeCgroupV2(),
+            ProbeDiskPreflight(workspaceRoot),
+            ProbePortFree(8080),
+            ProbePortFree(30000),
+        };
+        return new DoctorReport(probes, serverUrl);
+    }
+
+    /// <summary>DNS do domínio público (quando configurado).</summary>
+    private static async Task<ProbeResult> ProbePublicDomainAsync(
+        CancellationToken ct)
+    {
+        var domain = Environment.GetEnvironmentVariable(
+            "OPENHANDSNET_PUBLIC_DOMAIN");
+        if (string.IsNullOrWhiteSpace(domain))
+        {
+            return new("dns_public_domain", true,
+                "skipped (OPENHANDSNET_PUBLIC_DOMAIN unset)");
+        }
+
+        try
+        {
+            var ips = await System.Net.Dns.GetHostAddressesAsync(
+                domain, ct);
+            return new("dns_public_domain", ips.Length > 0,
+                $"{domain} → {string.Join(',', ips.Take(3))}");
+        }
+        catch (Exception ex)
+        {
+            return new("dns_public_domain", false,
+                $"{domain}: {ex.Message}");
+        }
+    }
+
+    /// <summary>TCP/443 reachability de um registry/host.</summary>
+    private static async Task<ProbeResult> ProbeRegistryAsync(
+        string host, CancellationToken ct)
+    {
+        try
+        {
+            using var cts = CancellationTokenSource
+                .CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(5));
+            using var tcp = new System.Net.Sockets.TcpClient();
+            await tcp.ConnectAsync(host, 443, cts.Token);
+            return new($"egress_{host}", true, "tcp/443 reachable");
+        }
+        catch (Exception ex)
+        {
+            return new($"egress_{host}", false, ex.Message);
+        }
+    }
+
+    /// <summary>cgroup v2 — exigido por sandboxes com limits.</summary>
+    private static ProbeResult ProbeCgroupV2()
+    {
+        var unified = File.Exists("/sys/fs/cgroup/cgroup.controllers");
+        return new("cgroup_v2", unified,
+            unified ? "unified hierarchy" : "cgroup v1 only");
+    }
+
+    /// <summary>Disco do workspace ≥50GB (sizing enterprise).</summary>
+    private static ProbeResult ProbeDiskPreflight(string workspaceRoot)
+    {
+        try
+        {
+            var root = Path.GetFullPath(workspaceRoot);
+            Directory.CreateDirectory(root);
+            var drive = new DriveInfo(Path.GetPathRoot(root)!);
+            var freeGb = drive.AvailableFreeSpace / (1024.0 * 1024 * 1024);
+            var ok = freeGb >= 50.0;
+            return new("disk_50gb", ok,
+                $"{root} — {freeGb:F1} GiB free{(ok ? "" : " (<50!)")}");
+        }
+        catch (Exception ex)
+        {
+            return new("disk_50gb", false, $"error: {ex.Message}");
+        }
+    }
+
+    /// <summary>Porta livre localmente (8080 api, 30000 admin console).</summary>
+    private static ProbeResult ProbePortFree(int port)
+    {
+        try
+        {
+            var listener = new System.Net.Sockets.TcpListener(
+                System.Net.IPAddress.Loopback, port);
+            listener.Start();
+            listener.Stop();
+            return new($"port_{port}", true, "free");
+        }
+        catch (Exception)
+        {
+            return new($"port_{port}", false, "in use");
+        }
+    }
+
     private async Task<IReadOnlyList<ProbeResult>> ProbeApiAsync(
         string serverUrl, CancellationToken ct)
     {

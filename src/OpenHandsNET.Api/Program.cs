@@ -80,11 +80,23 @@ builder.Services.ConfigureHttpJsonOptions(o =>
         new System.Text.Json.Serialization.JsonStringEnumConverter(
             System.Text.Json.JsonNamingPolicy.SnakeCaseLower));
 });
-builder.Services.AddSignalR().AddJsonProtocol(o =>
+var signalr = builder.Services.AddSignalR().AddJsonProtocol(o =>
 {
     o.PayloadSerializerOptions.PropertyNamingPolicy =
         System.Text.Json.JsonNamingPolicy.SnakeCaseLower;
 });
+// SPEC-36 RF-002: multi-réplica → backplane Redis/Valkey para fan-out
+// dos hubs entre instâncias (fail-open configurado em Cache:*).
+if (OpenHandsNET.Infrastructure.Cache.CacheRegistration
+    .RedisEnabled(builder.Configuration))
+{
+    signalr.AddStackExchangeRedis(
+        builder.Configuration["Cache:Redis:ConnectionString"]!,
+        o => o.Configuration.ChannelPrefix =
+            new StackExchange.Redis.RedisChannel(
+                builder.Configuration["Cache:Redis:InstanceName"] ?? "ohn:",
+                StackExchange.Redis.RedisChannel.PatternMode.Literal));
+}
 builder.Services.AddSingleton<TerminalBridgeService>();
 builder.Services.AddProblemDetails();
 
@@ -227,10 +239,13 @@ app.Use(async (ctx, next) =>
 
 app.UseAuthentication();
 app.UseAuthorization();
+// SPEC-38: sandbox host/path router (no-op em RoutingMode=internal).
+app.UseMiddleware<OpenHandsNET.Api.Routing.SandboxHostRouter>();
 
 app.MapSystemEndpoints();
 app.MapAuthEndpoints();
 app.MapKeysEndpoints();
+app.MapSecretsEndpoints();
 app.MapOrgEndpoints();
 app.MapAdminEndpoints();
 app.MapAppConversationEndpoints();
@@ -238,6 +253,7 @@ app.MapEventEndpoints();
 app.MapSandboxEndpoints();
 app.MapSettingsEndpoints();
 app.MapMiscEndpoints();
+app.MapUserEndpoints();
 app.MapWebhookEndpoints();
 app.MapGitEndpoints();
 app.MapSkillEndpoints();

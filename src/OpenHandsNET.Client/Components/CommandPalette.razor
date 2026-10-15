@@ -1,0 +1,111 @@
+@* SPEC-26 RF-004: Ctrl+K ou "/" abre; ↑↓ navega, Enter executa, Esc fecha. *@
+@using OpenHandsNET.Client.Services
+@inject PaletteService Palette
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@if (Palette.IsOpen)
+{
+    <div class="palette-overlay" @onclick="Palette.Close" @onkeydown="OnKey">
+        <div class="palette" @onclick:stopPropagation>
+            <input @ref="_input" placeholder="buscar comando ou conversa…"
+                   value="@_query" @oninput="OnInput" autofocus />
+            @if (Palette.Filtered.Count == 0)
+            {
+                <div class="empty">sem resultados</div>
+            }
+            else
+            {
+                <ul role="listbox">
+                    @for (var i = 0; i < Palette.Filtered.Count; i++)
+                    {
+                        var idx = i;
+                        var item = Palette.Filtered[i];
+                        <li class="@(idx == Palette.Selected ? "sel" : "")"
+                            role="option" aria-selected="@(idx == Palette.Selected)"
+                            @onclick="() => InvokeAsync(item)">
+                            <Icon Name="@item.Icon" Size="15" />
+                            <span>@item.Label</span>
+                            @if (item.Hint is { } hint)
+                            {
+                                <span class="hint">@hint</span>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private ElementReference _input;
+    private string _query = "";
+    private DotNetObjectReference<CommandPalette>? _ref;
+    private bool _wasOpen;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Palette.Changed += OnChanged;
+        _ref = DotNetObjectReference.Create(this);
+        try
+        {
+            await JS.InvokeVoidAsync("ohnKeys.register", _ref);
+        }
+        catch (JSException) { }
+    }
+
+    /// <summary>Hotkey global (Ctrl+K / "/") — abre a palette.</summary>
+    [JSInvokable]
+    public Task OnPaletteHotkey() => Palette.OpenAsync();
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Palette.IsOpen && !_wasOpen)
+        {
+            _wasOpen = true;
+            _query = "";
+            try { await _input.FocusAsync(); } catch (JSException) { }
+        }
+        else if (!Palette.IsOpen)
+        {
+            _wasOpen = false;
+        }
+    }
+
+    private void OnInput(ChangeEventArgs e)
+    {
+        _query = e.Value?.ToString() ?? "";
+        Palette.SetQuery(_query);
+    }
+
+    private async Task OnKey(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "Escape": Palette.Close(); break;
+            case "ArrowDown": Palette.Move(1); break;
+            case "ArrowUp": Palette.Move(-1); break;
+            case "Enter": await Palette.InvokeSelectedAsync(); break;
+        }
+    }
+
+    private Task InvokeAsync(PaletteService.Item item)
+    {
+        Palette.Close();
+        return item.Action();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Palette.Changed -= OnChanged;
+        try
+        {
+            await JS.InvokeVoidAsync("ohnKeys.unregister");
+        }
+        catch (JSDisconnectedException) { }
+        _ref?.Dispose();
+    }
+}

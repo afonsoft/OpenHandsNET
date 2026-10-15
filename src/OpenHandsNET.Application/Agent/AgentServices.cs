@@ -67,12 +67,31 @@ public interface ITaskTrackerService
 public sealed record TaskTrackerItem(string Title, string Status, string? Notes = null);
 
 /// <summary>
-/// Context-window condensation seam (SPEC-09): MVP is a no-op that returns the
-/// history untouched; a real LLM condenser replaces it in a later phase.
+/// Context-window condensation (SPEC-09 seam, SPEC-22 real impl): evaluates
+/// the history against the model window, prunes/summarizes when needed and
+/// reports the plan so the runner can emit V1 condensation events.
 /// </summary>
 public interface ICondenser
 {
-    /// <summary>Returns the (possibly condensed) message history.</summary>
-    Task<IReadOnlyList<LlmMessage>> CondenseAsync(
-        IReadOnlyList<LlmMessage> messages, CancellationToken ct);
+    /// <summary>
+    /// Threshold evaluation only — returns a <see cref="CompactionStart"/>
+    /// describing the pending compaction, or null when under the threshold
+    /// (or disabled). Cheap: token estimation, no LLM calls.
+    /// </summary>
+    Task<CompactionStart?> EvaluateAsync(
+        IReadOnlyList<LlmMessage> messages, string? model, CancellationToken ct);
+
+    /// <summary>
+    /// Executes a compaction for <paramref name="trigger"/> (from
+    /// <see cref="EvaluateAsync"/> or a forced trigger). When summarization
+    /// starts, <paramref name="onCompacting"/> fires first so the runner can
+    /// emit <c>CondensationRequest</c>.
+    /// </summary>
+    Task<CondenseResult> CondenseAsync(
+        IReadOnlyList<LlmMessage> messages,
+        IReadOnlyList<string?> eventIds,
+        CompactionTrigger trigger,
+        string? model,
+        Func<CompactionStart, Task>? onCompacting,
+        CancellationToken ct);
 }

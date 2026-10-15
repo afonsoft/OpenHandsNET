@@ -14,7 +14,9 @@ public sealed record SandboxSpec(
     IReadOnlyDictionary<string, string>? Env = null,
     bool MountWorkspace = true,
     int PidsLimit = 512,
-    string? Profile = null)
+    string? Profile = null,
+    // SPEC-38: opt-in public ports (preview) — empty by default.
+    IReadOnlyList<int>? PublicPorts = null)
 {
     /// <summary>Default dev image (git + bash + runtimes) until we publish our own.</summary>
     public const string DefaultImage = "nikolaik/python-nodejs:python3.13-nodejs22";

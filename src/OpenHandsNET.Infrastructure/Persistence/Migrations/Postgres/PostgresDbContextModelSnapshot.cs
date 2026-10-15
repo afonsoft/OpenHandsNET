@@ -17,7 +17,7 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -119,6 +119,11 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("text")
                         .HasColumnName("mcp_config_json");
 
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("mode");
+
                     b.Property<Guid?>("OrgId")
                         .HasColumnType("uuid")
                         .HasColumnName("org_id");
@@ -126,6 +131,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                     b.Property<bool>("PendingKickoff")
                         .HasColumnType("boolean")
                         .HasColumnName("pending_kickoff");
+
+                    b.Property<string>("PermissionsJson")
+                        .HasColumnType("text")
+                        .HasColumnName("permissions_json");
 
                     b.Property<bool>("Pinned")
                         .HasColumnType("boolean")
@@ -138,6 +147,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                     b.Property<string>("SandboxProfile")
                         .HasColumnType("text")
                         .HasColumnName("sandbox_profile");
+
+                    b.Property<string>("SecretNamesJson")
+                        .HasColumnType("text")
+                        .HasColumnName("secret_names_json");
 
                     b.Property<string>("SelectedRepository")
                         .HasColumnType("text")
@@ -585,6 +598,56 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                     b.ToTable("mcp_servers", (string)null);
                 });
 
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.MemoryRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("key");
+
+                    b.Property<Guid>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("text");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_memory_records");
+
+                    b.HasIndex("UpdatedAt")
+                        .HasDatabaseName("ix_memory_records_updated_at");
+
+                    b.HasIndex("OrgId", "Key")
+                        .HasDatabaseName("ix_memory_records_org_id_key");
+
+                    b.ToTable("memory_records", (string)null);
+                });
+
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.OrgInvitationRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -996,6 +1059,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("boolean")
                         .HasColumnName("onboarding_done");
 
+                    b.Property<string>("PreferencesJson")
+                        .HasColumnType("text")
+                        .HasColumnName("preferences_json");
+
                     b.Property<string>("RolesJson")
                         .HasColumnType("text")
                         .HasColumnName("roles_json");
@@ -1200,6 +1267,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                     b.Property<string>("Profile")
                         .HasColumnType("text")
                         .HasColumnName("profile");
+
+                    b.Property<string>("PublicPortsJson")
+                        .HasColumnType("text")
+                        .HasColumnName("public_ports_json");
 
                     b.Property<int>("TimeoutMinutes")
                         .HasColumnType("integer")

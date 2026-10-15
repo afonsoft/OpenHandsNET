@@ -20,6 +20,10 @@
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
     <PackageReference Include="prometheus-net.AspNetCore" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+    <!-- SPEC-36: SignalR backplane + distributed cache (Cache:Provider=redis) -->
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
+    <PackageReference Include="StackExchange.Redis" />
     <!-- Pin explícito: levanta System.Security.Cryptography.Pkcs transitivo (via EF.Design → MSBuild) p/ versão sem CVE -->
     <PackageReference Include="System.Security.Cryptography.Pkcs" />
   </ItemGroup>

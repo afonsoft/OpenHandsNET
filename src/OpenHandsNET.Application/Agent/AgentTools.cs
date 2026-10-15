@@ -20,7 +20,17 @@ public sealed record ToolCallContext(
     ISandboxExecutor Executor,
     IEventService Events,
     IServiceProvider Services,
-    TimeSpan DefaultTimeout);
+    TimeSpan DefaultTimeout,
+    string? ToolCallId = null,
+    string? ActionId = null)
+{
+    /// <summary>
+    /// Appends a run-activity event (SPEC-24): <c>command_output</c>,
+    /// <c>tool_progress</c>, <c>files_changed</c>, <c>agent_diagnostic</c>…
+    /// </summary>
+    public async Task EmitAsync(Domain.Events.EventBase e, CancellationToken ct) =>
+        await Events.AppendAsync(ConversationId, e, ct);
+}
 
 /// <summary>
 /// Tool outcome: <paramref name="Observation"/> is the JSON payload appended as

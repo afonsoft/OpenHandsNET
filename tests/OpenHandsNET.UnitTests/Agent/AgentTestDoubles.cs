@@ -74,6 +74,7 @@ internal sealed class FakeSandboxExecutor : ISandboxExecutor
     private readonly Dictionary<string, string> _files = new();
     public List<string> Commands { get; } = [];
     public Func<string, CommandResult>? ExecHandler { get; set; }
+    public Func<string, IReadOnlyList<FileEntry>>? ListHandler { get; set; }
 
     public Task<IBashSession> OpenBashSessionAsync(Sandbox sandbox, CancellationToken ct) =>
         throw new NotSupportedException();
@@ -82,6 +83,18 @@ internal sealed class FakeSandboxExecutor : ISandboxExecutor
         Sandbox sandbox, string command, TimeSpan timeout, CancellationToken ct)
     {
         Commands.Add(command);
+        // Simula o mínimo do shell no mapa de arquivos (SPEC-30 memory forget).
+        var trimmed = command.Trim();
+        if (trimmed.StartsWith("rm ", StringComparison.Ordinal)
+            || trimmed.StartsWith("rm -", StringComparison.Ordinal))
+        {
+            foreach (var part in trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Skip(1).Where(p => !p.StartsWith('-')))
+            {
+                _files.Remove(part);
+            }
+        }
+
         return Task.FromResult(ExecHandler?.Invoke(command)
             ?? new CommandResult(0, "ok\n", "", false));
     }
@@ -99,8 +112,13 @@ internal sealed class FakeSandboxExecutor : ISandboxExecutor
 
     public Task<IReadOnlyList<FileEntry>> ListFilesAsync(
         Sandbox sandbox, string path, CancellationToken ct) =>
-        Task.FromResult<IReadOnlyList<FileEntry>>(
-            _files.Select(kv => new FileEntry(kv.Key, false, kv.Value.Length)).ToList());
+        Task.FromResult(ListHandler?.Invoke(path)
+            ?? (IReadOnlyList<FileEntry>)_files
+                .Select(kv => new FileEntry(kv.Key, false, kv.Value.Length))
+                .ToList());
+
+    /// <summary>Seeds the in-memory file map (test helper).</summary>
+    public void SeedFile(string path, string content) => _files[path] = content;
 
     public Task<GitDiff> GetGitDiffAsync(Sandbox sandbox, CancellationToken ct) =>
         Task.FromResult(new GitDiff([], "", 0, 0));
@@ -132,6 +150,8 @@ internal sealed class FakeSandboxService(Guid sandboxId) : ISandboxService
 
     public Task<SandboxSpec?> GetSpecAsync(Guid specId, CancellationToken ct) =>
         Task.FromResult<SandboxSpec?>(null);
+
+    public Task SweepOrphansAsync(CancellationToken ct) => Task.CompletedTask;
 }
 
 /// <summary>Runner fixture: DI scope com fakes + Sqlite :memory:.</summary>
@@ -143,7 +163,11 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
 
     public AgentRunnerFixture(
         string? mockScript = null, AgentLlmOptions? options = null,
-        bool confirmationMode = false)
+        bool confirmationMode = false, ICondenser? condenser = null,
+        IAgentLlmProvider? provider = null, IModelCatalog? catalog = null,
+        ISecurityAnalyzer? security = null,
+        Action<ConversationRecord>? configureConv = null,
+        IAgentActivityBus? activityBus = null)
     {
         ConversationId = Guid.NewGuid();
         Events = new FakeEventService();
@@ -160,21 +184,45 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
         sc.AddSingleton<ISandboxService>(new FakeSandboxService(SandboxId));
         sc.AddSingleton<ITaskTrackerService, InMemoryTaskTrackerService>();
         sc.AddSingleton<IToolRegistry, ToolRegistry>();
-        sc.AddSingleton<ICondenser, NoOpCondenser>();
+        sc.AddSingleton<ISubagentHost,
+            OpenHandsNET.Infrastructure.Agent.Subagents.SubagentHost>();
+        sc.AddSingleton(condenser ?? (ICondenser)new NoOpCondenser());
+        sc.AddSingleton<IContextMeter>(
+            new OpenHandsNET.Infrastructure.Agent.Context
+                .HeuristicContextMeter(Options.Create(opt)));
+        sc.AddSingleton<OpenHandsNET.Infrastructure.Agent.Context
+            .ConversationHistoryBuilder>();
         sc.AddSingleton(Options.Create(opt));
-        sc.AddSingleton<IAgentLlmProvider>(
+        sc.AddSingleton(provider ?? (IAgentLlmProvider)
             new MockLlmProvider(Parse(mockScript)));
+        if (catalog is not null)
+        {
+            sc.AddSingleton<IModelCatalog>(catalog);
+            sc.AddSingleton<IModelRouter>(
+                new OpenHandsNET.Infrastructure.Agent.Routing
+                    .ModelRouter(catalog, Options.Create(opt)));
+        }
+        if (security is not null)
+        {
+            sc.AddSingleton(security);
+        }
+        if (activityBus is not null)
+        {
+            sc.AddSingleton(activityBus);
+        }
         _provider = sc.BuildServiceProvider();
         _scope = _provider.CreateAsyncScope();
 
         var db = _scope.ServiceProvider.GetRequiredService<AppDbContext>();
         db.Database.EnsureCreated();
-        db.Conversations.Add(new ConversationRecord
+        var record = new ConversationRecord
         {
             Id = ConversationId, SandboxId = SandboxId,
             ExecutionStatus = "Running", ConfirmationMode = confirmationMode,
             CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow,
-        });
+        };
+        configureConv?.Invoke(record);
+        db.Conversations.Add(record);
         db.SaveChanges();
 
         Runner = new AgentRunner(ConversationId, _scope.ServiceProvider,
@@ -186,6 +234,7 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
     public FakeEventService Events { get; }
     public FakeSandboxExecutor Executor { get; }
     public AgentRunner Runner { get; }
+    public IServiceProvider ScopeServices => _scope.ServiceProvider;
 
     public async Task<string?> RecordStatusAsync()
     {

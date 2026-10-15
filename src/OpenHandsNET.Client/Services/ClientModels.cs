@@ -16,6 +16,9 @@ public sealed class ClientEvent
     public string Source => Get("source").GetString() ?? "";
     public string? ParentId => Get("parent_id").ValueKind == JsonValueKind.String
         ? Get("parent_id").GetString() : null;
+    /// <summary>SPEC-34: slot de streaming — remove o delta efêmero.</summary>
+    public string? ItemId => Get("item_id").ValueKind == JsonValueKind.String
+        ? Get("item_id").GetString() : null;
     public DateTimeOffset Timestamp => Get("timestamp").ValueKind == JsonValueKind.String
         && DateTimeOffset.TryParse(Get("timestamp").GetString(), out var ts)
             ? ts : DateTimeOffset.MinValue;
@@ -82,6 +85,9 @@ public sealed class ConversationItem
     public string? Title { get; init; }
     public string? SelectedRepository { get; init; }
     public string? LlmModel { get; init; }
+    public string? AgentType { get; init; }
+    /// <summary>SPEC-29: overlay de permissões — plan (read-only) | build.</summary>
+    public string? Mode { get; init; }
     public required string ExecutionStatus { get; init; }
     public IReadOnlyList<string> Tags { get; init; } = [];
     public bool Pinned { get; init; }

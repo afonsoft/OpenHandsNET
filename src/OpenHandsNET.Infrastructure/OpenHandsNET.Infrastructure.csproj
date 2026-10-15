@@ -3,6 +3,7 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
@@ -19,11 +20,15 @@
     <PackageReference Include="prometheus-net.AspNetCore" />
     <PackageReference Include="ModelContextProtocol" />
     <PackageReference Include="Microsoft.Playwright" />
+    <!-- SPEC-36: Redis/Valkey backplane (gated por Cache:Provider=redis) -->
+    <PackageReference Include="StackExchange.Redis" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
     <!-- Pin explícito: levanta SQLitePCLRaw.lib.e_sqlite3 transitivo para versão sem CVE -->
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../OpenHandsNET.Application/OpenHandsNET.Application.csproj" />
+    <ProjectReference Include="../OpenHandsNET.Sandboxing/OpenHandsNET.Sandboxing.csproj" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Skills/Embedded/*.md" />

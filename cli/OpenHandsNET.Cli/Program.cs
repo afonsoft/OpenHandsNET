@@ -16,14 +16,33 @@ app.Configure(config =>
     config.AddCommand<ServeCommand>("serve")
         .WithDescription("sobe OpenHandsNET.Api local");
     config.AddCommand<DoctorCommand>("doctor")
-        .WithDescription("self-check: api/db/docker/llm/disk [--json]");
-    config.AddCommand<TuiCommand>("tui").IsHidden()
+        .WithDescription("self-check: api/db/docker/llm/disk [--json|--preflight]");
+    config.AddCommand<TuiCommand>("tui")
         .WithDescription("interactive TUI (default sem args)");
+    // SPEC-31 RF-001: parity com opencode/claude-code/codex CLIs.
+    config.AddCommand<ModelsCommand>("models")
+        .WithDescription("catálogo OmniRoute: provider/model/window/price");
+    config.AddCommand<StatsCommand>("stats")
+        .WithDescription("uso agregado (conversas + org usage)");
+    config.AddCommand<SkillsCommand>("skills")
+        .WithDescription("tools efetivas da conversa [--all]");
+    config.AddCommand<ExportCommand>("export")
+        .WithDescription("dump JSONL de eventos [--out file]");
+    config.AddCommand<AttachCommand>("attach")
+        .WithDescription("TUI contra backend remoto: --url");
+    config.AddCommand<EvalCommand>("eval")
+        .WithDescription("SPEC-39: harness de regressão — suite YAML headless");
+    config.AddBranch("mcp", b =>
+    {
+        b.AddCommand<McpListCommand>("list");
+        b.AddCommand<McpTestCommand>("test");
+    });
     config.AddBranch("conversations", b =>
     {
         b.AddCommand<ConversationsListCommand>("list");
         b.AddCommand<ConversationsStatusCommand>("status");
         b.AddCommand<ConversationsDeleteCommand>("delete");
+        b.AddCommand<ResumeCommand>("resume");
     });
 });
 

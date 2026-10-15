@@ -55,7 +55,7 @@ public sealed class AgentRunnerLoopTests
     }
 
     [Fact]
-    public async Task Text_Deltas_Emit_StreamingDeltaEvents_Before_Message()
+    public async Task Text_Deltas_Go_To_Ephemeral_Bus_Not_Event_Store()
     {
         const string script = """
             [{"text":"hello world"},
@@ -64,14 +64,16 @@ public sealed class AgentRunnerLoopTests
         await using var fx = new AgentRunnerFixture(script);
         await fx.Runner.RunAsync(CancellationToken.None);
 
-        var deltas = fx.Events.Events.OfType<StreamingDeltaEvent>().ToList();
-        deltas.ShouldNotBeEmpty();
-        string.Concat(deltas.Select(d => d.Content)).ShouldBe("hello world ");
-        var all = fx.Events.Events.ToList();
-        var firstDeltaIdx = all.FindIndex(e => e is StreamingDeltaEvent);
-        var agentMsgIdx = all.FindIndex(
-            e => e is MessageEvent { Source: EventSource.Agent });
-        firstDeltaIdx.ShouldBeLessThan(agentMsgIdx);
+        // SPEC-34 RF-001: deltas viraram efêmeros (bus) — o stream durável
+        // traz só o MessageEvent final com o item_id do slot efêmero.
+        fx.Events.Events.ShouldNotContain(
+            e => e.GetType() == typeof(StreamingDeltaEvent));
+        var agentMsg = fx.Events.Events
+            .OfType<MessageEvent>()
+            .First(e => e.Source == EventSource.Agent);
+        agentMsg.ItemId.ShouldNotBeNullOrEmpty();
+        agentMsg.LlmMessage.GetProperty("content")[0]
+            .GetProperty("text").GetString()!.ShouldContain("hello world");
         fx.Events.Events.OfType<TokenEvent>().ShouldNotBeEmpty();
     }
 

@@ -1,0 +1,17 @@
+# SPEC-37 defaults — minimal k8s deployment.
+image:
+  repository: openhandsnet
+  tag: latest
+runtimeApi:
+  repository: openhandsnet-runtime-api
+  tag: latest
+sandbox:
+  provider: kubernetes
+  namespace: openhandsnet-sandboxes
+  runtimeClassName: sysbox-runc   # Sysbox p/ DinD nos pods-agente
+  workspaceStorageClass: ""       # default do cluster
+  workspacePvcSize: 4Gi
+cache:
+  provider: memory                # redis quando replicas > 1
+deployment:
+  replicas: 1

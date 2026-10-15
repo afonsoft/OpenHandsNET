@@ -8,8 +8,8 @@
 | Type | `Feature / Agent Core` |
 | Stack | `.NET 10 · sandbox agent v2 · MCP C# SDK` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` (autopilot — improvement wave) |
-| Ticket | [#54](https://github.com/afonsoft/OpenHandsNET/issues/54) |
+| Status | `Done` |
+| Ticket | [#54](https://github.com/afonsoft/OpenHandsNET/issues/54) → PR #60 |
 | Depends on | `09_agent_engine_spec` (tools), `11_skills_hooks_spec` (skills), `07_mcp_integration_spec`, `24_agent_activity_protocol_spec` (agente v2) |
 | Touches | `ToolRegistry`, `BuiltinTools`, `ISkillService`, `SkillService`, `IMcpClientService`, `McpToolCatalog`, `SystemPromptBuilder` |
 

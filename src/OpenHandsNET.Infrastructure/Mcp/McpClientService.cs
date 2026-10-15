@@ -166,6 +166,10 @@ public sealed class McpClientService(
             if (_conns.TryRemove(key, out var conn))
             {
                 await conn.Client.DisposeAsync();
+                // SPEC-25 RF-004: lifecycle state — a UI mostra badge/server.
+                await EmitServerStateAsync(
+                    conversationId, key.Server, "disconnected",
+                    conn.Tools?.Count, null, CancellationToken.None);
             }
         }
     }
@@ -192,9 +196,81 @@ public sealed class McpClientService(
             return cached;
         }
 
+        // SPEC-25 RF-004: state events mcp_servers (connecting → connected).
+        await EmitServerStateAsync(
+            conversationId, cfg.Name, "connecting", null, null, ct);
         var client = await CreateClientAsync(cfg, null, conversationId, ct);
-        return _conns.GetOrAdd(key, new Connection { Client = client });
+        RegisterDiagnostics(client, cfg.Name, conversationId);
+        var conn = _conns.GetOrAdd(key, new Connection { Client = client });
+        await EmitServerStateAsync(
+            conversationId, cfg.Name, "connected", null, null, ct);
+        return conn;
     }
+
+    /// <summary>
+    /// SPEC-25 RF-004: MCP notifications → <c>agent_diagnostic</c>
+    /// (<c>code="mcp_notification"</c>) — logging/progress/list-changed.
+    /// </summary>
+    private void RegisterDiagnostics(
+        McpClient client, string server, Guid conversationId)
+    {
+        foreach (var method in new[]
+        {
+            "notifications/message", "notifications/progress",
+            "notifications/tools/list_changed",
+            "notifications/resources/list_changed",
+        })
+        {
+            client.RegisterNotificationHandler(method,
+                (notification, ct2) =>
+                {
+                    _ = EmitServerStateAsync(conversationId, server,
+                        "notification", null,
+                        $"{notification.Method}: "
+                            + Truncate(
+                                notification.Params?.ToString() ?? "", 400),
+                        CancellationToken.None);
+                    return ValueTask.CompletedTask;
+                });
+        }
+    }
+
+    private async Task EmitServerStateAsync(
+        Guid conversationId, string server, string state,
+        int? tools, string? error, CancellationToken ct)
+    {
+        try
+        {
+            if (state is "notification")
+            {
+                await AppendAsync(conversationId,
+                    new AgentDiagnosticEvent
+                    {
+                        Severity = "info", Code = "mcp_notification",
+                        Message = $"mcp '{server}': {error}",
+                    }, ct);
+                return;
+            }
+
+            await AppendAsync(conversationId,
+                new ConversationStateUpdateEvent
+                {
+                    Key = "mcp_servers",
+                    Value = JsonSerializer.SerializeToElement(new
+                    {
+                        server, state, tools, error,
+                    }, JsonOpts),
+                }, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex, "mcp_servers state emit falhou ({Server})",
+                server);
+        }
+    }
+
+    private static string Truncate(string s, int max) =>
+        s.Length <= max ? s : s[..max] + "…";
 
     private async Task<McpClient> CreateClientAsync(
         McpServerConfig cfg, Domain.Sandbox.Sandbox? sandbox,
@@ -324,6 +400,8 @@ public sealed class McpClientService(
                 Code = "mcp_server_error",
                 Detail = $"servidor '{server}': {ex.Message}",
             }, CancellationToken.None);
+            await EmitServerStateAsync(conversationId, server, "failed",
+                null, ex.Message, CancellationToken.None);
         }
         catch (Exception inner)
         {

@@ -23,6 +23,10 @@ public sealed class DoctorCommand : AsyncCommand<DoctorCommand.Settings>
 
         [CommandOption("--json")]
         public bool Json { get; init; }
+
+        /// <summary>SPEC-31 RF-002: install preflight (DNS/egress/disk/ports).</summary>
+        [CommandOption("--preflight")]
+        public bool Preflight { get; init; }
     }
 
     /// <inheritdoc />
@@ -33,8 +37,12 @@ public sealed class DoctorCommand : AsyncCommand<DoctorCommand.Settings>
             ?? Environment.GetEnvironmentVariable("OPENHANDSNET_SERVER_URL")
             ?? Environment.GetEnvironmentVariable("OPENHANDSNET_CLOUD_URL")
             ?? "http://localhost:8080";
-        var report = await new DoctorService(new HttpClient())
-            .RunAsync(url, settings.Workspace, CancellationToken.None);
+        var svc = new DoctorService(new HttpClient());
+        var report = settings.Preflight
+            ? await svc.RunPreflightAsync(
+                url, settings.Workspace, CancellationToken.None)
+            : await svc.RunAsync(
+                url, settings.Workspace, CancellationToken.None);
 
         if (settings.Json)
         {

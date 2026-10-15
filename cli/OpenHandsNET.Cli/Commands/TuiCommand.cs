@@ -36,6 +36,14 @@ public sealed class TuiCommand : AsyncCommand<TuiCommand.Settings>
             "([grey]/help para comandos[/])");
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(), ct: ct);
+        // SPEC-31 RF-003: keybindings de ~/.openhandsnet/tui.json.
+        var keys = await TuiKeymap.LoadAsync(ct: ct);
+        if (keys.Aliases.Count > 0)
+        {
+            AnsiConsole.MarkupLine(
+                $"[grey]{keys.Aliases.Count} tui alias(es) carregados[/]");
+        }
+
         string? convId = settings.ConversationId;
 
         while (!ct.IsCancellationRequested)
@@ -81,7 +89,7 @@ public sealed class TuiCommand : AsyncCommand<TuiCommand.Settings>
 
             await PumpLoopAsync(api, convId, ct);
             var input = AnsiConsole.Ask<string>("[green]>[/]");
-            switch (input.Trim())
+            switch (keys.Resolve(input).Trim())
             {
                 case "/exit" or "/quit":
                     return 0;

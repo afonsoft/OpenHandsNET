@@ -110,6 +110,8 @@ public sealed class UserRecord
     public bool EmailVerified { get; set; }
     public DateTimeOffset? TosAcceptedAt { get; set; }
     public bool OnboardingDone { get; set; }
+    /// <summary>Preferências de UI (SPEC-26): JSON solto — {"theme":…}.</summary>
+    public string? PreferencesJson { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }
 
@@ -164,6 +166,22 @@ public sealed class OrgInvitationRecord
     public long ExpiresAtTicks { get; set; }
     public DateTimeOffset? AcceptedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
+}
+
+/// <summary>
+/// Org-scoped memory entry (SPEC-30 RF-001) — soft-deleted via
+/// <see cref="DeletedAt"/>; writes are audit-logged by the service.
+/// </summary>
+public sealed class MemoryRecord
+{
+    public required Guid Id { get; set; }
+    public required Guid OrgId { get; set; }
+    public required string Key { get; set; }
+    public required string Text { get; set; }
+    public string? CreatedByUserId { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
 }
 
 /// <summary>Append-only security audit trail (SPEC-08).</summary>

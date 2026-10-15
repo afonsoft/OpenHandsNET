@@ -42,6 +42,12 @@ public static class EventTree
 [JsonDerivedType(typeof(HookExecutionEvent), "HookExecutionEvent")]
 [JsonDerivedType(typeof(LlmCompletionLogEvent), "LLMCompletionLogEvent")]
 [JsonDerivedType(typeof(DecisionAutoEvent), "decision_auto")]
+[JsonDerivedType(typeof(CommandOutputEvent), "command_output")]
+[JsonDerivedType(typeof(ToolProgressEvent), "tool_progress")]
+[JsonDerivedType(typeof(FilesChangedEvent), "files_changed")]
+[JsonDerivedType(typeof(RunProgressEvent), "run_progress")]
+[JsonDerivedType(typeof(WorkSummaryEvent), "work_summary")]
+[JsonDerivedType(typeof(AgentDiagnosticEvent), "agent_diagnostic")]
 public abstract record EventBase
 {
     /// <summary>Unique event id — ULID/UUID7 string (lexicographic == temporal order).</summary>
@@ -58,6 +64,14 @@ public abstract record EventBase
     /// for legacy events; siblings share the same <c>parent_id</c>.
     /// </summary>
     public string? ParentId { get; init; }
+
+    /// <summary>
+    /// SPEC-34 RF-001: streaming item slot — durable events that supersede an
+    /// ephemeral <c>streaming_delta</c> sequence carry its item_id so clients
+    /// can drop the provisional slot (upstream DeltaFrame parity).
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ItemId { get; init; }
 
     /// <summary>
     /// Event kind discriminator value (exact upstream string), resolved from the

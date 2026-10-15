@@ -20,7 +20,14 @@ public sealed class ConversationHubClient : IAsyncDisposable
             .AddJsonProtocol(o => o.PayloadSerializerOptions
                 .PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower)
             .Build();
+        // SPEC-26 RF-004: superfície de conexão para o OfflineBanner.
+        _conn.Reconnecting += _ => { ConnectionChanged?.Invoke(State); return Task.CompletedTask; };
+        _conn.Reconnected += _ => { ConnectionChanged?.Invoke(State); return Task.CompletedTask; };
+        _conn.Closed += _ => { ConnectionChanged?.Invoke(State); return Task.CompletedTask; };
     }
+
+    /// <summary>Dispara em Reconnecting/Reconnected/Closed.</summary>
+    public event Action<HubConnectionState>? ConnectionChanged;
 
     public HubConnectionState State => _conn.State;
 
@@ -59,6 +66,35 @@ public sealed class ConversationHubClient : IAsyncDisposable
 
     public Task PauseAsync(Guid conversationId, CancellationToken ct = default) =>
         _conn.InvokeAsync("Pause", conversationId, ct);
+
+    /// <summary>
+    /// SPEC-34 RF-001: pseudo-kind streaming_delta — frames efêmeros
+    /// <c>{item_id, seq, text}</c>; nunca chegam ao backlog.
+    /// </summary>
+    public async IAsyncEnumerable<DeltaItem> DeltasAsync(
+        Guid conversationId,
+        [System.Runtime.CompilerServices.EnumeratorCancellation]
+        CancellationToken ct = default)
+    {
+        var channel = await _conn.StreamAsChannelAsync<JsonElement>(
+            "Deltas", conversationId, ct);
+        while (await channel.WaitToReadAsync(ct))
+        {
+            while (channel.TryRead(out var f))
+            {
+                var itemId = f.TryGetProperty("item_id", out var i)
+                    ? i.GetString() ?? "" : "";
+                var seq = f.TryGetProperty("seq", out var s)
+                    ? s.GetInt64() : 0;
+                var text = f.TryGetProperty("text", out var t)
+                    ? t.GetString() ?? "" : "";
+                yield return new DeltaItem(itemId, seq, text);
+            }
+        }
+    }
+
+    /// <summary>Frame efêmero do canal de deltas (SPEC-34).</summary>
+    public sealed record DeltaItem(string ItemId, long Seq, string Text);
 
     /// <summary>stdout/stderr live do terminal do sandbox.</summary>
     public async IAsyncEnumerable<string> TerminalOutAsync(

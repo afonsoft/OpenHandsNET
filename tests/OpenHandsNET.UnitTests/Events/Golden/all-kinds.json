@@ -117,6 +117,7 @@
     "source": "environment",
     "parent_id": null,
     "forgotten_event_ids": ["evt1", "evt2"],
+    "pruned_event_ids": ["obs9"],
     "summary": "resumo do contexto",
     "summary_offset": 4,
     "llm_response_id": "resp_c1"
@@ -126,7 +127,10 @@
     "id": "01J5Y0H3AEXAMPLECONDREQ1",
     "timestamp": "2026-01-01T10:00:11+00:00",
     "source": "environment",
-    "parent_id": null
+    "parent_id": null,
+    "trigger": "manual",
+    "instructions": "compact agora",
+    "tokens_before": 12345
   },
   {
     "kind": "CondensationSummaryEvent",
@@ -205,5 +209,75 @@
     "log_data": "{\"choices\":[]}",
     "model_name": "gpt-4o",
     "usage_id": "usage_1"
+  },
+  {
+    "kind": "command_output",
+    "id": "01J5Y0H3AEXAMPLECMDOUT01",
+    "timestamp": "2026-01-01T10:00:19+00:00",
+    "source": "agent",
+    "parent_id": null,
+    "tool_call_id": "call_1",
+    "action_id": "01J5Y0H3AEXAMPLEACT0001",
+    "channel": "stdout",
+    "text": "building…\n"
+  },
+  {
+    "kind": "tool_progress",
+    "id": "01J5Y0H3AEXAMPLETOOLPROG",
+    "timestamp": "2026-01-01T10:00:20+00:00",
+    "source": "agent",
+    "parent_id": null,
+    "tool_call_id": "call_1",
+    "action_id": "01J5Y0H3AEXAMPLEACT0001",
+    "phase": "running",
+    "message": "tests 12/40",
+    "percent": 30
+  },
+  {
+    "kind": "files_changed",
+    "id": "01J5Y0H3AEXAMPLEFILECHG1",
+    "timestamp": "2026-01-01T10:00:21+00:00",
+    "source": "agent",
+    "parent_id": null,
+    "tool_call_id": "call_2",
+    "action_id": null,
+    "source_tool": "file_edit",
+    "paths": [{"path": "/workspace/src/A.cs", "op": "modify"}]
+  },
+  {
+    "kind": "run_progress",
+    "id": "01J5Y0H3AEXAMPLERUNPROG1",
+    "timestamp": "2026-01-01T10:00:22+00:00",
+    "source": "agent",
+    "parent_id": null,
+    "iteration": 7,
+    "max_iterations": 250,
+    "phase": "tool_call",
+    "elapsed_ms": 42000,
+    "tools_used": 5,
+    "files_touched": 3
+  },
+  {
+    "kind": "work_summary",
+    "id": "01J5Y0H3AEXAMPLEWORKSUM1",
+    "timestamp": "2026-01-01T10:00:23+00:00",
+    "source": "agent",
+    "parent_id": null,
+    "summary": "criou o endpoint e cobriu com testes",
+    "files_changed": ["/workspace/src/A.cs"],
+    "commands_run": 4,
+    "duration_ms": 95000,
+    "tests_passed": 12,
+    "tests_failed": 0
+  },
+  {
+    "kind": "agent_diagnostic",
+    "id": "01J5Y0H3AEXAMPLEDIAG001",
+    "timestamp": "2026-01-01T10:00:24+00:00",
+    "source": "environment",
+    "parent_id": null,
+    "severity": "warn",
+    "code": "model_fallback",
+    "message": "gpt-5 falhou (429) — usando claude-opus"
   }
 ]

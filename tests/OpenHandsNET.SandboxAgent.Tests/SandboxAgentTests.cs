@@ -160,4 +160,83 @@ public sealed class SandboxAgentTests
         list.EnumerateArray().ShouldContain(e =>
             e.GetProperty("path").GetString() == "/a/b.txt");
     }
+
+    [Fact]
+    public async Task Alive_V2_Reports_Agent_Version_And_Sessions()
+    {
+        var factory = Factory(new() { ["OHN_SESSION_KEY"] = "k" }, Workspace);
+        var http = factory.CreateClient();
+
+        var alive = await http.GetFromJsonAsync<JsonElement>("/alive");
+        alive.GetProperty("status").GetString().ShouldBe("ok");
+        alive.GetProperty("agent_version").GetInt32().ShouldBe(2);
+        alive.GetProperty("state").GetString().ShouldBe("ready");
+        alive.TryGetProperty("uptime_s", out _).ShouldBeTrue();
+        alive.TryGetProperty("sessions", out _).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ExecStream_Sse_Chunks_And_Terminal_Exit()
+    {
+        var factory = Factory(new() { ["OHN_SESSION_KEY"] = "k" }, Workspace);
+        var http = factory.CreateClient();
+
+        // Guard: sem X-Session-Key → 401.
+        (await http.PostAsJsonAsync("/exec/stream",
+            new { command = "echo hi" })).StatusCode
+            .ShouldBe(HttpStatusCode.Unauthorized);
+
+        var authed = new HttpRequestMessage(HttpMethod.Post, "/exec/stream")
+        {
+            Content = JsonContent.Create(new
+            {
+                command = "echo out && echo err >&2",
+            }),
+        };
+        authed.Headers.Add("X-Session-Key", "k");
+        var res = await http.SendAsync(authed,
+            HttpCompletionOption.ResponseHeadersRead);
+        res.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.Content.Headers.ContentType!.MediaType
+            .ShouldBe("text/event-stream");
+
+        var raw = await res.Content.ReadAsStringAsync();
+        raw.ShouldContain("\"channel\":\"stdout\"");
+        raw.ShouldContain("\"channel\":\"stderr\"");
+        raw.ShouldContain("\"type\":\"exit\"");
+        raw.ShouldContain("\"exit_code\":0");
+    }
+
+    [Fact]
+    public async Task Activity_Replay_And_Proc_And_Sessions()
+    {
+        var factory = Factory(new() { ["OHN_SESSION_KEY"] = "k" }, Workspace);
+        var http = factory.CreateClient();
+        http.DefaultRequestHeaders.Add("X-Session-Key", "k");
+
+        // file_write → registra no ring de atividade.
+        await http.PutAsync("/files/x.txt", new StringContent("1"));
+        var activity = await http.GetFromJsonAsync<JsonElement>("/activity");
+        activity.ValueKind.ShouldBe(JsonValueKind.Array);
+        activity.EnumerateArray().ShouldContain(e =>
+            e.GetProperty("type").GetString() == "file_write");
+
+        // Last-Event-ID → só itens mais novos.
+        var lastId = activity.EnumerateArray().Last()
+            .GetProperty("seq").GetInt64();
+        var req = new HttpRequestMessage(HttpMethod.Get, "/activity");
+        req.Headers.Add("Last-Event-ID", lastId.ToString());
+        var replay = await (await http.SendAsync(req))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        replay.GetArrayLength().ShouldBe(0);
+
+        await http.PostAsJsonAsync("/exec",
+            new { command = "true", session_id = "proc-test" });
+        var sessions = await http.GetFromJsonAsync<JsonElement>(
+            "/exec/sessions");
+        sessions.EnumerateArray().ShouldContain(s =>
+            s.GetProperty("id").GetString() == "proc-test");
+        var proc = await http.GetFromJsonAsync<JsonElement>("/proc");
+        proc.ValueKind.ShouldBe(JsonValueKind.Array);
+    }
 }

@@ -91,12 +91,38 @@ public sealed class OpenAiCompatLlmProvider(
                 }
 
                 var body = await response.Content.ReadAsStringAsync(ct);
-                last = new InvalidOperationException(
-                    $"LLM endpoint {(int)response.StatusCode}: {SecretRedactor.Redact(body)}");
+                var redacted = SecretRedactor.Redact(body);
+                // SPEC-22 RF-004: overflow é classificado — o runner compacta
+                // (ou promove o modelo) e retenta, em vez de falhar a run.
+                if ((int)response.StatusCode == 400 && IsContextOverflow(body))
+                {
+                    throw new ContextOverflowException(
+                        $"LLM context overflow: {redacted[..Math.Min(redacted.Length, 300)]}");
+                }
+
+                // SPEC-23 RF-003: classificação — kinds não retentáveis
+                // (Auth, ModelUnavailable) abortam sem gastar retries.
+                var kind = Classify(response.StatusCode, body);
+                last = new LlmCallException(kind,
+                    $"LLM endpoint {(int)response.StatusCode}: {redacted}",
+                    (int)response.StatusCode);
+                if (!IsRetryable(kind))
+                {
+                    throw last;
+                }
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex) when (ex is not OperationCanceledException
+                and not ContextOverflowException)
             {
-                last = ex;
+                if (ex is LlmCallException lce && !IsRetryable(lce.Kind))
+                {
+                    throw;
+                }
+
+                last = ex is HttpRequestException or TaskCanceledException
+                    ? new LlmCallException(
+                        LlmErrorKind.Transient, ex.Message, null, ex)
+                    : ex;
             }
         }
 
@@ -237,6 +263,45 @@ public sealed class OpenAiCompatLlmProvider(
             yield return new CompletionEnd(new LlmUsage(0, 0, null), finish, responseId);
         }
     }
+
+    private static readonly string[] OverflowMarkers =
+    [
+        "context_length", "context window", "maximum context",
+        "too many tokens", "token limit", "reduce the length",
+        "exceeds the context", "context_length_exceeded",
+    ];
+
+    private static bool IsContextOverflow(string body) =>
+        OverflowMarkers.Any(m =>
+            body.Contains(m, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>SPEC-23 RF-003: status/body → kind acionável pelo router.</summary>
+    internal static LlmErrorKind Classify(
+        System.Net.HttpStatusCode status, string body)
+    {
+        var code = (int)status;
+        return code switch
+        {
+            401 or 403 => LlmErrorKind.Auth,
+            404 when body.Contains("model", StringComparison.OrdinalIgnoreCase)
+                => LlmErrorKind.ModelUnavailable,
+            429 => LlmErrorKind.RateLimited,
+            >= 500 and < 600 => LlmErrorKind.Transient,
+            408 => LlmErrorKind.Transient,
+            _ when body.Contains("rate_limit", StringComparison.OrdinalIgnoreCase)
+                => LlmErrorKind.RateLimited,
+            _ when body.Contains("model_not_found",
+                    StringComparison.OrdinalIgnoreCase)
+                || body.Contains("does not exist",
+                    StringComparison.OrdinalIgnoreCase)
+                => LlmErrorKind.ModelUnavailable,
+            _ => LlmErrorKind.Unknown,
+        };
+    }
+
+    private static bool IsRetryable(LlmErrorKind kind) =>
+        kind is LlmErrorKind.RateLimited or LlmErrorKind.Transient
+            or LlmErrorKind.Unknown;
 
     private static string? FinishReasonOf(JsonElement root) =>
         root.TryGetProperty("choices", out var ch)

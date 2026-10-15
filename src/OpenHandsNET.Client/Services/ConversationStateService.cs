@@ -12,14 +12,17 @@ public sealed class ConversationStateService : IAsyncDisposable
 {
     private readonly OpenHandsNetApiClient _api;
     private readonly ConversationHubClient _hub;
+    private readonly ToastService? _toasts;
     private readonly List<ClientEvent> _events = [];
     private CancellationTokenSource? _cts;
 
     public ConversationStateService(
-        OpenHandsNetApiClient api, ConversationHubClient hub)
+        OpenHandsNetApiClient api, ConversationHubClient hub,
+        ToastService? toasts = null)
     {
         _api = api;
         _hub = hub;
+        _toasts = toasts;
     }
 
     /// <summary>Disparado após qualquer mutação de estado relevante.</summary>
@@ -27,6 +30,16 @@ public sealed class ConversationStateService : IAsyncDisposable
 
     /// <summary>Eventos da conversa, em ordem de chegada.</summary>
     public IReadOnlyList<ClientEvent> Events => _events;
+
+    /// <summary>
+    /// SPEC-34: deltas efêmeros por <c>item_id</c> — slot provisório que o
+    /// evento durável com o mesmo item_id substitui (removido em
+    /// <see cref="Apply"/>). Ordem de chegada preservada.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> LiveDeltas => _liveDeltas;
+    private readonly Dictionary<string, System.Text.StringBuilder>
+        _deltas = new();
+    private readonly Dictionary<string, string> _liveDeltas = new();
 
     public ConversationItem? Conversation { get; private set; }
     public string ExecutionStatus { get; private set; } = "IDLE";
@@ -95,6 +108,37 @@ public sealed class ConversationStateService : IAsyncDisposable
                 Changed?.Invoke();
             }
         }, _cts.Token);
+
+        // SPEC-34: pump do canal de deltas — efêmero, paralelo ao stream
+        // durável; falha dele nunca derruba o stream principal.
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await foreach (var d in _hub.DeltasAsync(
+                    Guid.Parse(conversationId), _cts.Token))
+                {
+                    ApplyDelta(d);
+                    Changed?.Invoke();
+                }
+            }
+            catch (OperationCanceledException) { /* dispose */ }
+            catch (Exception) { /* deltas são best-effort */ }
+        }, _cts.Token);
+    }
+
+    /// <summary>Aplica um frame de delta ao slot efêmero do item_id.</summary>
+    internal void ApplyDelta(ConversationHubClient.DeltaItem d)
+    {
+        if (!_deltas.TryGetValue(d.ItemId, out var buf))
+        {
+            buf = new System.Text.StringBuilder();
+            _deltas[d.ItemId] = buf;
+            _liveDeltas[d.ItemId] = "";
+        }
+
+        buf.Append(d.Text);
+        _liveDeltas[d.ItemId] = buf.ToString();
     }
 
     /// <summary>Envia mensagem de usuário via REST (aparece no stream).</summary>
@@ -117,6 +161,14 @@ public sealed class ConversationStateService : IAsyncDisposable
         if (_events.Any(x => x.Id == e.Id))
         {
             return; // dedup backlog/live overlap
+        }
+
+        // SPEC-34: durável supersedes — evento com item_id descarta o
+        // slot de deltas efêmeros correspondente.
+        if (e.ItemId is { } itemId)
+        {
+            _deltas.Remove(itemId);
+            _liveDeltas.Remove(itemId);
         }
 
         _events.Add(e);
@@ -203,6 +255,19 @@ public sealed class ConversationStateService : IAsyncDisposable
             case "ServerErrorEvent":
                 ErrorMessage = e.Str("error") ?? e.Str("message")
                     ?? e.Raw.ToString()[..Math.Min(200, e.Raw.ToString().Length)];
+                // SPEC-26 RF-004: erros de run viram toast persistente.
+                _toasts?.Error(ErrorMessage);
+                break;
+
+            case "agent_diagnostic":
+                // SPEC-26 RF-004: diagnósticos ≥warn notificam.
+                var sev = e.Str("severity");
+                if (sev is "warn" or "warning" or "error")
+                {
+                    var msg = $"{e.Str("code")}: {e.Str("message")}";
+                    if (sev is "error") { _toasts?.Error(msg); }
+                    else { _toasts?.Warn(msg); }
+                }
                 break;
 
             case "ActionEvent":

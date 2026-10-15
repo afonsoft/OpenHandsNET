@@ -17,12 +17,13 @@ public sealed class AppConversationService(
     IStartTaskService tasks,
     ISandboxService sandboxes,
     OpenHandsNET.Application.Events.IEventService events,
-    Sandbox.WorkspaceProvisioner provisioner,
+    Sandboxing.WorkspaceProvisioner provisioner,
     OpenHandsNET.Application.Agent.IAgentRunnerHost runnerHost,
     OpenHandsNET.Application.Agent.IBrowserService? browser = null,
     OpenHandsNET.Application.Identity.IPlanEnforcementService? enforcement = null,
     OpenHandsNET.Application.Identity.ICurrentUserAccessor? currentUser = null,
-    OpenHandsNET.Application.Identity.IEffectiveOrgResolver? orgResolver = null)
+    OpenHandsNET.Application.Identity.IEffectiveOrgResolver? orgResolver = null,
+    OpenHandsNET.Application.Artifacts.IArtifactStore? artifacts = null)
     : IAppConversationService
 {
     /// <inheritdoc />
@@ -62,6 +63,17 @@ public sealed class AppConversationService(
                 .IsValid(request.SandboxProfile)
                     ? request.SandboxProfile : null,
             ConfirmationMode = request.ConfirmationMode,
+            // SPEC-29: regras de permissão por conversa + modo (plan|build).
+            PermissionsJson = request.Permissions is { Count: > 0 } rules
+                ? Application.Agent.PermissionRules.ToJson(rules) : null,
+            Mode = string.Equals(request.Mode, "plan",
+                StringComparison.OrdinalIgnoreCase) ? "plan" : "build",
+            // SPEC-33 RF-003: só NOMES são persistidos — valores resolvem
+            // na borda via ISecretStore.
+            SecretNamesJson = request.Secrets is { Count: > 0 } names
+                ? System.Text.Json.JsonSerializer.Serialize(
+                    names.Select(n => n.Trim()).Where(
+                        n => n.Length > 0).ToList()) : null,
             // Sinaliza ao worker que o agente deve iniciar ao chegar em READY.
             PendingKickoff = request.InitialMessage?.Run == true,
             ExecutionStatus = ConversationExecutionStatus.Starting.ToString(),
@@ -75,6 +87,20 @@ public sealed class AppConversationService(
         db.Conversations.Add(conv);
         db.StartTasks.Add(task);
         await db.SaveChangesAsync(ct);
+
+        // SPEC-33 RF-003: evento sandbox_env publica apenas NOMES de env
+        // injetados — valores nunca entram no event stream.
+        if (conv.SecretNamesJson is not null)
+        {
+            var envNames = System.Text.Json.JsonSerializer
+                .Deserialize<List<string>>(conv.SecretNamesJson) ?? [];
+            await events.AppendAsync(conv.Id, new ConversationStateUpdateEvent
+            {
+                Key = "sandbox_env",
+                Value = System.Text.Json.JsonSerializer.SerializeToElement(
+                    new { names = envNames }, EventJson.Options),
+            }, ct);
+        }
 
         // A mensagem inicial entra no stream imediatamente (upstream parity).
         if (request.InitialMessage is { } initial)
@@ -215,6 +241,12 @@ public sealed class AppConversationService(
 
         // SPEC-16 RF-006: workspace só sai do host junto com a conversa.
         provisioner.RemoveWorkspace(record.Id);
+        // SPEC-34 RF-003: artefatos (ws/s3) morrem com a conversa.
+        if (artifacts is not null)
+        {
+            await artifacts.DeleteConversationAsync(record.Id, ct);
+        }
+
         // SPEC-18 RF-003: fecha o contexto de browser da conversa.
         if (browser is not null)
         {
@@ -327,6 +359,60 @@ public sealed class AppConversationService(
                 record.LlmModel),
         }, ct);
         return SwitchResult.Ok(record.ToDomain());
+    }
+
+    /// <inheritdoc />
+    public async Task<AppConversation?> SetPermissionsAsync(Guid id,
+        IReadOnlyList<Application.Agent.AgentPermissionRule>? rules,
+        CancellationToken ct)
+    {
+        var record = await db.Conversations.FindAsync([id], ct);
+        if (record is null || record.ExecutionStatus
+                == nameof(ConversationExecutionStatus.Archived))
+        {
+            return null;
+        }
+
+        record.PermissionsJson = rules is { Count: > 0 }
+            ? Application.Agent.PermissionRules.ToJson(rules) : null;
+        record.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(ct);
+        await events.AppendAsync(record.Id, new ConversationStateUpdateEvent
+        {
+            Key = "permissions",
+            Value = System.Text.Json.JsonSerializer.SerializeToElement(
+                rules ?? [], EventJson.Options),
+        }, ct);
+        return record.ToDomain();
+    }
+
+    /// <inheritdoc />
+    public async Task<AppConversation?> SetModeAsync(
+        Guid id, string mode, CancellationToken ct)
+    {
+        var record = await db.Conversations.FindAsync([id], ct);
+        if (record is null || record.ExecutionStatus
+                == nameof(ConversationExecutionStatus.Archived))
+        {
+            return null;
+        }
+
+        var normalized = string.Equals(mode, "plan",
+            StringComparison.OrdinalIgnoreCase) ? "plan" : "build";
+        if (!string.Equals(record.Mode, normalized, StringComparison.Ordinal))
+        {
+            record.Mode = normalized;
+            record.UpdatedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync(ct);
+            await events.AppendAsync(record.Id, new ConversationStateUpdateEvent
+            {
+                Key = "conversation_mode",
+                Value = System.Text.Json.JsonSerializer.SerializeToElement(
+                    normalized, EventJson.Options),
+            }, ct);
+        }
+
+        return record.ToDomain();
     }
 
     /// <inheritdoc />

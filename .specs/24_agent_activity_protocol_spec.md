@@ -8,7 +8,7 @@
 | Type | `Feature / Agent Runtime + UI` |
 | Stack | `.NET 10 · Minimal API (sandbox agent) · SignalR · Blazor WASM` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` (autopilot — improvement wave) |
+| Status | `Done` — PR #59 merged |
 | Ticket | [#53](https://github.com/afonsoft/OpenHandsNET/issues/53) |
 | Depends on | `03_runtime_sandbox_spec`, `17_runtime_image_blueprint_spec` (sandbox agent), `02_event_stream_spec` |
 | Feeds | `26_ui_ux_modernization_spec` (renderers) |

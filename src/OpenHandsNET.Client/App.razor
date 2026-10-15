@@ -1,6 +1,20 @@
-﻿<Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+@using OpenHandsNET.Client.Services
+@using OpenHandsNET.Client.Components
+@inject ThemeService Theme
+
+<Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(Pages.NotFound)">
     <Found Context="routeData">
         <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
 </Router>
+
+@* SPEC-26: hosts globais — toasts + command palette (Ctrl+K). *@
+<ToastHost />
+<CommandPalette />
+
+@code {
+    /// <summary>Init do tema uma vez no boot (persistência + system watch).</summary>
+    protected override async Task OnInitializedAsync() =>
+        await Theme.InitAsync();
+}

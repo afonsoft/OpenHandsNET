@@ -11,6 +11,12 @@ public sealed record Condensation : EventBase
     /// <summary>Event ids forgotten by the condensation.</summary>
     public IReadOnlyList<string> ForgottenEventIds { get; init; } = [];
 
+    /// <summary>
+    /// Observation event ids whose tool output was pruned (SPEC-22) —
+    /// rebuilds render them as a truncation marker instead of full text.
+    /// </summary>
+    public IReadOnlyList<string> PrunedEventIds { get; init; } = [];
+
     /// <summary>LLM-produced summary text.</summary>
     public string? Summary { get; init; }
 

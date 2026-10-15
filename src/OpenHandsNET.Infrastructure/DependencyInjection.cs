@@ -2,8 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OpenHandsNET.Application.Events;
+using OpenHandsNET.Infrastructure.Cache;
 using OpenHandsNET.Infrastructure.Eventing;
 using OpenHandsNET.Infrastructure.Persistence;
+using OpenHandsNET.Sandboxing;
 
 namespace OpenHandsNET.Infrastructure;
 
@@ -57,24 +59,23 @@ public static class DependencyInjection
         services.AddHostedService<EventDispatcher>();
         services.AddHttpClient("webhooks");
 
-        // Sandbox (SPEC-03): Docker lifecycle + executor + workspace + watchers.
-        services.Configure<OpenHandsNET.Infrastructure.Sandbox.SandboxOptions>(
-            configuration.GetSection("Sandbox"));
-        services.AddSingleton(_ =>
-            OpenHandsNET.Infrastructure.Sandbox.DockerClientFactory.Create());
-        services.AddSingleton<OpenHandsNET.Infrastructure.Sandbox.WorkspaceProvisioner>();
-        services.AddScoped<OpenHandsNET.Infrastructure.Sandbox.DockerNetworkPolicy>();
-        services.AddSingleton<OpenHandsNET.Infrastructure.Sandbox.WarmPoolService>();
-        // SPEC-19: proxy Squid compartilhado do egress allowlist.
-        services.AddSingleton<OpenHandsNET.Infrastructure.Sandbox.SquidConfigWriter>();
-        services.AddSingleton<OpenHandsNET.Infrastructure.Sandbox.EgressProxyService>();
+        // SPEC-36: coordination cache/bus — memory (default) ou redis
+        // (exigido quando Deployment:Replicas > 1).
+        services.AddCoordinationCache(configuration);
+
+        // Sandbox (SPEC-03/35): engine layer (docker local | runtime-api
+        // remote) via ISandboxEngine; records/specs ficam no Api.
+        services.AddSandboxing(configuration);
+        services.AddSingleton<OpenHandsNET.Sandboxing.WarmPoolService>();
         services.AddHostedService(p => p.GetRequiredService<
-            OpenHandsNET.Infrastructure.Sandbox.WarmPoolService>());
+            OpenHandsNET.Sandboxing.WarmPoolService>());
         services.AddScoped<OpenHandsNET.Application.Sandbox.ISandboxService,
-            OpenHandsNET.Infrastructure.Sandbox.DockerSandboxService>();
+            OpenHandsNET.Infrastructure.Sandbox.SandboxService>();
         // SPEC-17: executor dual-mode — HTTP agent in-container quando a
         // imagem traz o sandbox-agent; docker exec como fallback legado.
         services.AddHttpClient("sandbox-agent");
+        // SPEC-38: sandbox host/path router upstream calls.
+        services.AddHttpClient("sandbox-router");
         services.AddSingleton<
             OpenHandsNET.Infrastructure.Sandbox.SandboxAgentClient>();
         services.AddScoped<OpenHandsNET.Application.Sandbox.ISandboxExecutor,
@@ -105,8 +106,30 @@ public static class DependencyInjection
         // Skills & hooks (SPEC-11): skill store + builtin seeder + hook runner.
         services.AddScoped<OpenHandsNET.Application.Skills.ISkillService,
             OpenHandsNET.Infrastructure.Skills.SkillService>();
+        // SPEC-25: repo discovery + repo skills federadas + output policy
+        // + web_fetch (egress do worker, SSRF guard).
+        services.AddSingleton<
+            OpenHandsNET.Application.Discovery.IRepoDiscoveryService,
+            OpenHandsNET.Infrastructure.Discovery.RepoDiscoveryService>();
+        services.AddSingleton<
+            OpenHandsNET.Infrastructure.Skills.RepoSkillProvider>();
+        services.AddScoped<
+            OpenHandsNET.Infrastructure.Discovery.RepoContextLoader>();
+        services.AddSingleton<
+            OpenHandsNET.Infrastructure.Agent.Tools.OutputPolicy>();
+        services.AddScoped<OpenHandsNET.Application.Web.IWebFetchService,
+            OpenHandsNET.Infrastructure.Web.WebFetchService>();
+        services.AddHttpClient("web-fetch", c =>
+        {
+            c.Timeout = TimeSpan.FromSeconds(30);
+            c.DefaultRequestHeaders.UserAgent.ParseAdd(
+                "OpenHandsNET/1.0 web_fetch");
+        });
         services.AddScoped<OpenHandsNET.Application.Hooks.IHookService,
             OpenHandsNET.Infrastructure.Hooks.HookService>();
+        // SPEC-30 RF-001: memória org-scoped (DB + audit trail).
+        services.AddScoped<OpenHandsNET.Application.Memory.IMemoryService,
+            OpenHandsNET.Infrastructure.Memory.MemoryService>();
         services.AddHostedService<
             OpenHandsNET.Infrastructure.Skills.BuiltinSkillSeedService>();
 
@@ -191,13 +214,59 @@ public static class DependencyInjection
         services.AddSingleton<
             OpenHandsNET.Application.Agent.IToolRegistry,
             OpenHandsNET.Infrastructure.Agent.ToolRegistry>();
+        // SPEC-23: catálogo OmniRoute + router por role (singletons —
+        // cache compartilhado; seleção é stateless por chamada).
+        services.AddMemoryCache();
         services.AddSingleton<
+            OpenHandsNET.Application.Agent.IModelCatalog,
+            OpenHandsNET.Infrastructure.Agent.Routing.OmniRouteModelCatalog>();
+        services.AddSingleton<
+            OpenHandsNET.Application.Agent.IModelRouter,
+            OpenHandsNET.Infrastructure.Agent.Routing.ModelRouter>();
+        // SPEC-22: context engine — meter/condenser/builder scoped por run.
+        services.AddScoped<
+            OpenHandsNET.Application.Agent.IContextMeter,
+            OpenHandsNET.Infrastructure.Agent.Context.HeuristicContextMeter>();
+        services.AddScoped<
             OpenHandsNET.Application.Agent.ICondenser,
-            OpenHandsNET.Infrastructure.Agent.NoOpCondenser>();
+            OpenHandsNET.Infrastructure.Agent.Context.LlmSummarizingCondenser>();
+        services.AddScoped<
+            OpenHandsNET.Infrastructure.Agent.Context.ConversationHistoryBuilder>();
+        services.AddScoped<
+            OpenHandsNET.Application.Agent.ICompactionService,
+            OpenHandsNET.Infrastructure.Agent.Context.CompactionService>();
         services.AddSingleton<OpenHandsNET.Infrastructure.Agent.AgentRunnerHost>();
         services.AddSingleton<OpenHandsNET.Application.Agent.IAgentRunnerHost>(
             sp => sp.GetRequiredService<
                 OpenHandsNET.Infrastructure.Agent.AgentRunnerHost>());
+        // SPEC-33 RF-001: security analyzer — pattern (default, local) ou
+        // llm (opt-in, classifica via completion + LRU cache).
+        services.AddSingleton<
+            OpenHandsNET.Application.Agent.ISecurityAnalyzer>(sp =>
+        {
+            var o = sp.GetRequiredService<Microsoft.Extensions.Options
+                .IOptions<OpenHandsNET.Application.Agent.AgentLlmOptions>>()
+                .Value;
+            return o.SecurityAnalyzer.Equals("llm",
+                StringComparison.OrdinalIgnoreCase)
+                ? new OpenHandsNET.Infrastructure.Agent.Security
+                    .LlmSecurityAnalyzer(
+                        sp.GetRequiredService<OpenHandsNET.Application.Agent
+                            .IAgentLlmProvider>(),
+                        sp.GetRequiredService<Microsoft.Extensions.Caching
+                            .Memory.IMemoryCache>())
+                    : (OpenHandsNET.Application.Agent.ISecurityAnalyzer)
+                        new OpenHandsNET.Infrastructure.Agent.Security
+                            .PatternSecurityAnalyzer();
+        });
+        // SPEC-33 RF-003: secret store criptografado (DataProtection) —
+        // valores resolvem só na borda do sandbox.
+        services.AddScoped<OpenHandsNET.Application.Contracts.ISecretStore,
+            OpenHandsNET.Infrastructure.Identity.SecretStore>();
+        // SPEC-28: registry in-memory de runs de subagentes (singleton —
+        // compartilhado entre tools do mesmo escopo de processo).
+        services.AddSingleton<OpenHandsNET.Application.Agent.ISubagentHost,
+            OpenHandsNET.Infrastructure.Agent.Subagents.SubagentHost>();
         services.AddSingleton<OpenHandsNET.Application.Agent.IAgentLlmProvider>(sp =>
         {
             var opts = sp.GetRequiredService<Microsoft.Extensions.Options
@@ -237,6 +306,35 @@ public static class DependencyInjection
                 OpenHandsNET.Infrastructure.Agent.Browser.BrowserOptions.Section));
         services.AddSingleton<OpenHandsNET.Application.Agent.IBrowserService,
             OpenHandsNET.Infrastructure.Agent.Browser.PlaywrightBrowserService>();
+
+        // SPEC-34 RF-001: bus de deltas efêmeros (runner→hub; nunca EF).
+        services.AddSingleton<
+            OpenHandsNET.Application.Events.IAgentActivityBus,
+            OpenHandsNET.Infrastructure.Agent.Deltas.AgentActivityBus>();
+        // SPEC-34 RF-002: artifact store — workspace default, s3 opt-in.
+        services.Configure<
+            OpenHandsNET.Infrastructure.Artifacts.ArtifactOptions>(
+            configuration.GetSection(
+                OpenHandsNET.Infrastructure.Artifacts.ArtifactOptions.Section));
+        services.AddSingleton<
+            OpenHandsNET.Application.Artifacts.IArtifactStore>(sp =>
+        {
+            var o = sp.GetRequiredService<Microsoft.Extensions.Options
+                .IOptions<OpenHandsNET.Infrastructure.Artifacts
+                    .ArtifactOptions>>();
+            return o.Value.Provider.Equals("s3",
+                StringComparison.OrdinalIgnoreCase)
+                ? new OpenHandsNET.Infrastructure.Artifacts.S3ArtifactStore(o,
+                    sp.GetRequiredService<Microsoft.Extensions.Logging
+                        .ILogger<OpenHandsNET.Infrastructure.Artifacts
+                            .S3ArtifactStore>>())
+                : (OpenHandsNET.Application.Artifacts.IArtifactStore)
+                    new OpenHandsNET.Infrastructure.Artifacts
+                        .WorkspaceArtifactStore(o,
+                            sp.GetRequiredService<Microsoft.Extensions.Logging
+                                .ILogger<OpenHandsNET.Infrastructure.Artifacts
+                                    .WorkspaceArtifactStore>>());
+        });
         return services;
     }
 

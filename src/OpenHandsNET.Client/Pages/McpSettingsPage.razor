@@ -7,14 +7,14 @@
 
 <div class="settings-wrap">
     <h1>MCP Servers</h1>
-    <p class="sub" style="color:var(--fg-dim)">
+    <p class="sub" style="color:var(--ohn-fg-dim)">
         Servidores Model Context Protocol — tools externas expostas ao agente
         como <code>mcp__servidor__tool</code>.
     </p>
 
     @if (_error is not null)
     {
-        <p style="color:var(--red)">@_error</p>
+        <p style="color:var(--ohn-red)">@_error</p>
     }
 
     @if (_servers is null)
@@ -23,7 +23,7 @@
     }
     else if (_servers.Count == 0)
     {
-        <p style="color:var(--fg-dim)">nenhum servidor configurado.</p>
+        <p style="color:var(--ohn-fg-dim)">nenhum servidor configurado.</p>
     }
     else
     {
@@ -66,7 +66,7 @@
                     </tr>
                     @if (_probeResults.TryGetValue(name, out var pr))
                     {
-                        <tr><td colspan="5" style="color:var(--fg-dim);
+                        <tr><td colspan="5" style="color:var(--ohn-fg-dim);
                             font-size:12px">@pr</td></tr>
                     }
                 }
