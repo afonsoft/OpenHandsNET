@@ -17,7 +17,7 @@ public sealed class AppConversationService(
     IStartTaskService tasks,
     ISandboxService sandboxes,
     OpenHandsNET.Application.Events.IEventService events,
-    Sandbox.WorkspaceProvisioner provisioner,
+    Sandboxing.WorkspaceProvisioner provisioner,
     OpenHandsNET.Application.Agent.IAgentRunnerHost runnerHost,
     OpenHandsNET.Application.Agent.IBrowserService? browser = null,
     OpenHandsNET.Application.Identity.IPlanEnforcementService? enforcement = null,

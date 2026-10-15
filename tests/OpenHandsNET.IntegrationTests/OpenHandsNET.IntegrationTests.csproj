@@ -17,6 +17,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/OpenHandsNET.Api/OpenHandsNET.Api.csproj" />
+    <ProjectReference Include="../../src/OpenHandsNET.RuntimeApi/OpenHandsNET.RuntimeApi.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />

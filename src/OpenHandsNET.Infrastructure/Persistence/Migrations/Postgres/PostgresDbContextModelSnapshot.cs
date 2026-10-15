@@ -1268,6 +1268,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("text")
                         .HasColumnName("profile");
 
+                    b.Property<string>("PublicPortsJson")
+                        .HasColumnType("text")
+                        .HasColumnName("public_ports_json");
+
                     b.Property<int>("TimeoutMinutes")
                         .HasColumnType("integer")
                         .HasColumnName("timeout_minutes");

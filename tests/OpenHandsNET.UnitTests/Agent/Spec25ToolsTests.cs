@@ -10,7 +10,7 @@ using OpenHandsNET.Infrastructure.Agent.Tools;
 using OpenHandsNET.Infrastructure.Discovery;
 using OpenHandsNET.Infrastructure.Skills;
 using OpenHandsNET.Infrastructure.Web;
-using SandboxOptions = OpenHandsNET.Infrastructure.Sandbox.SandboxOptions;
+using SandboxOptions = OpenHandsNET.Sandboxing.SandboxOptions;
 using Shouldly;
 
 namespace OpenHandsNET.UnitTests.Agent;

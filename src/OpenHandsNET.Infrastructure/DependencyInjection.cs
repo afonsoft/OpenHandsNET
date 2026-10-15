@@ -2,8 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OpenHandsNET.Application.Events;
+using OpenHandsNET.Infrastructure.Cache;
 using OpenHandsNET.Infrastructure.Eventing;
 using OpenHandsNET.Infrastructure.Persistence;
+using OpenHandsNET.Sandboxing;
 
 namespace OpenHandsNET.Infrastructure;
 
@@ -57,24 +59,23 @@ public static class DependencyInjection
         services.AddHostedService<EventDispatcher>();
         services.AddHttpClient("webhooks");
 
-        // Sandbox (SPEC-03): Docker lifecycle + executor + workspace + watchers.
-        services.Configure<OpenHandsNET.Infrastructure.Sandbox.SandboxOptions>(
-            configuration.GetSection("Sandbox"));
-        services.AddSingleton(_ =>
-            OpenHandsNET.Infrastructure.Sandbox.DockerClientFactory.Create());
-        services.AddSingleton<OpenHandsNET.Infrastructure.Sandbox.WorkspaceProvisioner>();
-        services.AddScoped<OpenHandsNET.Infrastructure.Sandbox.DockerNetworkPolicy>();
-        services.AddSingleton<OpenHandsNET.Infrastructure.Sandbox.WarmPoolService>();
-        // SPEC-19: proxy Squid compartilhado do egress allowlist.
-        services.AddSingleton<OpenHandsNET.Infrastructure.Sandbox.SquidConfigWriter>();
-        services.AddSingleton<OpenHandsNET.Infrastructure.Sandbox.EgressProxyService>();
+        // SPEC-36: coordination cache/bus — memory (default) ou redis
+        // (exigido quando Deployment:Replicas > 1).
+        services.AddCoordinationCache(configuration);
+
+        // Sandbox (SPEC-03/35): engine layer (docker local | runtime-api
+        // remote) via ISandboxEngine; records/specs ficam no Api.
+        services.AddSandboxing(configuration);
+        services.AddSingleton<OpenHandsNET.Sandboxing.WarmPoolService>();
         services.AddHostedService(p => p.GetRequiredService<
-            OpenHandsNET.Infrastructure.Sandbox.WarmPoolService>());
+            OpenHandsNET.Sandboxing.WarmPoolService>());
         services.AddScoped<OpenHandsNET.Application.Sandbox.ISandboxService,
-            OpenHandsNET.Infrastructure.Sandbox.DockerSandboxService>();
+            OpenHandsNET.Infrastructure.Sandbox.SandboxService>();
         // SPEC-17: executor dual-mode — HTTP agent in-container quando a
         // imagem traz o sandbox-agent; docker exec como fallback legado.
         services.AddHttpClient("sandbox-agent");
+        // SPEC-38: sandbox host/path router upstream calls.
+        services.AddHttpClient("sandbox-router");
         services.AddSingleton<
             OpenHandsNET.Infrastructure.Sandbox.SandboxAgentClient>();
         services.AddScoped<OpenHandsNET.Application.Sandbox.ISandboxExecutor,

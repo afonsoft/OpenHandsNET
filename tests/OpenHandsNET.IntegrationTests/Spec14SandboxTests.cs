@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using OpenHandsNET.Infrastructure.Conversations;
 using OpenHandsNET.Infrastructure.Persistence;
 using OpenHandsNET.Infrastructure.Sandbox;
+using OpenHandsNET.Sandboxing;
 
 namespace OpenHandsNET.IntegrationTests;
 
@@ -51,7 +52,7 @@ public sealed class Spec14SandboxTests : IAsyncLifetime
         await Task.CompletedTask;
     }
 
-    private DockerSandboxService MakeService(
+    private SandboxService MakeService(
         SandboxOptions? overrides = null, WarmPoolService? pool = null)
     {
         var opts = Options.Create(overrides ?? new SandboxOptions
@@ -62,11 +63,12 @@ public sealed class Spec14SandboxTests : IAsyncLifetime
             NullLogger<WorkspaceProvisioner>.Instance);
         var egress = new DockerNetworkPolicy(_docker, opts,
             NullLogger<DockerNetworkPolicy>.Instance);
-        pool ??= new WarmPoolService(_docker, opts, provisioner,
-            NewScopeFactory(),
+        var engine = new DockerSandboxEngine(_docker, provisioner, egress,
+            opts, NullLogger<DockerSandboxEngine>.Instance);
+        pool ??= new WarmPoolService(engine, opts,
             NullLogger<WarmPoolService>.Instance);
-        return new DockerSandboxService(_db, _docker, provisioner,
-            egress, pool, opts, NullLogger<DockerSandboxService>.Instance);
+        return new SandboxService(_db, engine, opts,
+            NullLogger<SandboxService>.Instance);
     }
 
     /// <summary>Real per-scope DbContexts — the provider owns their disposal.</summary>
@@ -202,8 +204,11 @@ public sealed class Spec14SandboxTests : IAsyncLifetime
         var optWrap = Options.Create(opts);
         var provisioner = new WorkspaceProvisioner(optWrap,
             NullLogger<WorkspaceProvisioner>.Instance);
-        var pool = new WarmPoolService(_docker, optWrap, provisioner,
-            NewScopeFactory(),
+        var engine2 = new DockerSandboxEngine(_docker, provisioner,
+            new DockerNetworkPolicy(_docker, optWrap,
+                NullLogger<DockerNetworkPolicy>.Instance),
+            optWrap, NullLogger<DockerSandboxEngine>.Instance);
+        var pool = new WarmPoolService(engine2, optWrap,
             NullLogger<WarmPoolService>.Instance);
 
         // Drive the pool manually — ExecuteAsync's initial fill, minus the loop.
@@ -222,10 +227,8 @@ public sealed class Spec14SandboxTests : IAsyncLifetime
             }
 
             var convId = await SeedConversationAsync();
-            var svc = new DockerSandboxService(_db, _docker, provisioner,
-                new DockerNetworkPolicy(_docker, optWrap,
-                    NullLogger<DockerNetworkPolicy>.Instance),
-                pool, optWrap, NullLogger<DockerSandboxService>.Instance);
+            var svc = new SandboxService(_db, engine2, optWrap,
+                NullLogger<SandboxService>.Instance);
             var sb = await svc.StartAsync(
                 Guid.Empty, convId, CancellationToken.None);
             try

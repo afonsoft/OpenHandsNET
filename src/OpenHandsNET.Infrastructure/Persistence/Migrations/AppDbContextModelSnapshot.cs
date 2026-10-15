@@ -1259,6 +1259,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("profile");
 
+                    b.Property<string>("PublicPortsJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("public_ports_json");
+
                     b.Property<int>("TimeoutMinutes")
                         .HasColumnType("INTEGER")
                         .HasColumnName("timeout_minutes");

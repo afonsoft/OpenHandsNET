@@ -18,6 +18,7 @@ namespace OpenHandsNET.Domain.Sandbox;
 /// <param name="PoolKey">SPEC-17: chave do pool que originou o container (imagem).</param>
 /// <param name="BlueprintStatus">SPEC-17: <c>ok|failed|none</c> do blueprint.</param>
 /// <param name="BlueprintLogTail">SPEC-17: cauda (4 KB) do log do blueprint.</param>
+/// <param name="ServiceUrls">SPEC-38: <c>service_urls</c> públicas conforme RoutingMode.</param>
 public sealed record Sandbox(
     Guid Id,
     Guid SpecId,
@@ -31,4 +32,5 @@ public sealed record Sandbox(
     string Pool = "cold",
     string? PoolKey = null,
     string BlueprintStatus = "none",
-    string? BlueprintLogTail = null);
+    string? BlueprintLogTail = null,
+    IReadOnlyDictionary<int, string>? ServiceUrls = null);

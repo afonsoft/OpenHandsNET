@@ -2,11 +2,52 @@ using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace OpenHandsNET.Infrastructure.Sandbox;
+namespace OpenHandsNET.Sandboxing;
 
 /// <summary>Sandbox infrastructure options (<c>Sandbox</c> config section).</summary>
 public sealed class SandboxOptions
 {
+    /// <summary>
+    /// SPEC-35 RF-002: engine provider — <c>local</c> (Docker.DotNet in-process,
+    /// default) ou <c>remote</c> (<c>openhandsnet-runtime-api</c> via HTTP).
+    /// </summary>
+    public string Provider { get; set; } = "local";
+
+    /// <summary>
+    /// SPEC-35: base URL do runtime-api remoto (ex.: <c>http://runtime-api:8090</c>).
+    /// </summary>
+    public string? RemoteBaseUrl { get; set; }
+
+    /// <summary>
+    /// SPEC-35: chave interna do runtime-api (<c>X-Runtime-Key</c>) — nunca
+    /// uma <c>sk-*</c> de usuário; injetada por env.
+    /// </summary>
+    public string? RemoteApiKey { get; set; }
+
+    /// <summary>
+    /// SPEC-35: rede de controle compartilhada entre Api e sandboxes
+    /// (modo split) — o agente é alcançado pelo IP nesta rede, sem publicar
+    /// portas no host. Null = bridge IP atual.
+    /// </summary>
+    public string? ControlNetwork { get; set; }
+
+    /// <summary>
+    /// SPEC-35: host acessível para URLs de agente publicadas
+    /// (<c>PublishAgentPort</c> — ex.: <c>host.docker.internal</c> no compose
+    /// split). Null = <c>127.0.0.1</c>.
+    /// </summary>
+    public string? AgentHost { get; set; }
+
+    /// <summary>
+    /// SPEC-38: <c>internal</c> (default — comportamento atual) |
+    /// <c>path</c> (proxy /sandbox/{id}/…) | <c>host</c>
+    /// ({id}-{port}.{PublicBaseDomain}, wildcard DNS/TLS).
+    /// </summary>
+    public string RoutingMode { get; set; } = "internal";
+
+    /// <summary>SPEC-38: domínio público wildcard p/ RoutingMode=host.</summary>
+    public string? PublicBaseDomain { get; set; }
+
     /// <summary>Host root for per-conversation workspaces (bind-mounted).</summary>
     public string WorkspaceRoot { get; set; } = "data/workspaces";
 

@@ -182,14 +182,14 @@ public sealed class Spec33HardeningTests
         var svc = new AppConversationService(
             db, new FakeStartTaskService(),
             new FakeSandboxService(Guid.NewGuid()), events,
-            new OpenHandsNET.Infrastructure.Sandbox.WorkspaceProvisioner(
+            new OpenHandsNET.Sandboxing.WorkspaceProvisioner(
                 Microsoft.Extensions.Options.Options.Create(
-                    new OpenHandsNET.Infrastructure.Sandbox.SandboxOptions
+                    new OpenHandsNET.Sandboxing.SandboxOptions
                     {
                         WorkspaceRoot = workspace,
                     }),
                 Microsoft.Extensions.Logging.Abstractions
-                    .NullLogger<OpenHandsNET.Infrastructure.Sandbox
+                    .NullLogger<OpenHandsNET.Sandboxing
                         .WorkspaceProvisioner>.Instance),
             new FakeRunnerHost());
         var task = await svc.CreateAsync(

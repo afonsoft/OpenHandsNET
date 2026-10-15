@@ -19,22 +19,52 @@ public static class HealthEndpoints
             HealthCheckService health,
             IDockerClient docker,
             IOptions<AgentLlmOptions> llm,
-            IOptions<OpenHandsNET.Infrastructure.Sandbox.SandboxOptions> sandbox,
+            IOptions<OpenHandsNET.Sandboxing.SandboxOptions> sandbox,
+            System.IServiceProvider sp,
             CancellationToken ct) =>
         {
             var report = await health.CheckHealthAsync(
                 r => r.Tags.Contains("ready"), ct);
 
-            // docker: ping real ao daemon (sandbox substrate).
+            // docker: ping real ao daemon (substrate local). SPEC-35: em
+            // Provider=remote o substrate vive no runtime-api — o check é
+            // o /healthz dele em vez do daemon local.
             string dockerStatus;
-            try
+            if ((sandbox.Value.Provider ?? "local").Equals("remote",
+                    StringComparison.OrdinalIgnoreCase))
             {
-                await docker.System.PingAsync(ct);
-                dockerStatus = "healthy";
+                try
+                {
+                    using var http = new HttpClient
+                    {
+                        BaseAddress = new Uri(sandbox.Value.RemoteBaseUrl!),
+                        Timeout = TimeSpan.FromSeconds(3),
+                    };
+                    if (sandbox.Value.RemoteApiKey is { } rk)
+                    {
+                        http.DefaultRequestHeaders.Add("X-Runtime-Key", rk);
+                    }
+
+                    var res = await http.GetAsync("/healthz", ct);
+                    dockerStatus = res.IsSuccessStatusCode
+                        ? "healthy" : $"runtime-api {(int)res.StatusCode}";
+                }
+                catch (Exception ex)
+                {
+                    dockerStatus = $"runtime-api unreachable: {ex.GetType().Name}";
+                }
             }
-            catch (Exception ex)
+            else
             {
-                dockerStatus = $"unreachable: {ex.GetType().Name}";
+                try
+                {
+                    await docker.System.PingAsync(ct);
+                    dockerStatus = "healthy";
+                }
+                catch (Exception ex)
+                {
+                    dockerStatus = $"unreachable: {ex.GetType().Name}";
+                }
             }
 
             var llmStatus = string.IsNullOrEmpty(llm.Value.Provider) &&
@@ -50,6 +80,12 @@ public static class HealthEndpoints
                 ["docker"] = dockerStatus,
                 ["llm"] = llmStatus,
             };
+
+            // SPEC-36: provider redis → reporta conectividade (fail-open:
+            // degraded, nunca derruba o endpoint).
+            var mux = sp.GetService<StackExchange.Redis.IConnectionMultiplexer>();
+            checks["cache"] = mux is null ? "memory"
+                : mux.IsConnected ? "ok" : "degraded";
             var healthy = report.Status == HealthStatus.Healthy &&
                           dockerStatus == "healthy";
 
@@ -62,7 +98,7 @@ public static class HealthEndpoints
                 try
                 {
                     var p = await docker.Containers.InspectContainerAsync(
-                        OpenHandsNET.Infrastructure.Sandbox.EgressProxyService
+                        OpenHandsNET.Sandboxing.EgressProxyService
                             .ProxyName, ct);
                     proxyStatus = p.State is { Running: true }
                         ? "healthy" : p.State?.Status ?? "unknown";

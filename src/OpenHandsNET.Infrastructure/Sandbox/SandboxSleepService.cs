@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenHandsNET.Sandboxing;
 using OpenHandsNET.Application.Sandbox;
 
 namespace OpenHandsNET.Infrastructure.Sandbox;

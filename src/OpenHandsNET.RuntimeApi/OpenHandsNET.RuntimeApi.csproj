@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Description>openhandsnet-runtime-api (SPEC-35): internal REST front of the sandbox engine for split deployments. Owns Docker + warm pool; Api keeps EF records.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../OpenHandsNET.Sandboxing/OpenHandsNET.Sandboxing.csproj" />
+  </ItemGroup>
+
+</Project>

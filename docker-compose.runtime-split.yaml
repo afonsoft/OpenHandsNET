@@ -1,0 +1,52 @@
+# SPEC-35: split deployment — `docker compose -f docker-compose.yaml
+# -f docker-compose.runtime-split.yaml up`.
+# O engine (docker + warm pool) roda em `runtime-api`; o app delega via
+# HTTP interno autenticado por X-Runtime-Key (Sandbox:Provider=remote).
+# Workspace: o daemon resolve binds no HOST — monte o mesmo path absoluto
+# dentro do runtime-api (OPENHANDSNET_WORKSPACE_HOST).
+services:
+  app:
+    environment:
+      - OPENHANDSNET_Sandbox__Provider=remote
+      - OPENHANDSNET_Sandbox__RemoteBaseUrl=http://runtime-api:8081
+      - OPENHANDSNET_Sandbox__RemoteApiKey=${OPENHANDSNET_RUNTIME_KEY:?set OPENHANDSNET_RUNTIME_KEY}
+      - OPENHANDSNET_Sandbox__ControlNetwork=openhandsnet-control
+    networks:
+      - default
+      - control
+    depends_on:
+      runtime-api:
+        condition: service_healthy
+    # Sem socket docker: o app não toca o daemon em modo remoto.
+
+  runtime-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.runtime-api
+    image: openhandsnet-runtime-api:latest
+    container_name: openhandsnet-runtime-api
+    environment:
+      - OPENHANDSNET_Sandbox__RemoteApiKey=${OPENHANDSNET_RUNTIME_KEY:?set OPENHANDSNET_RUNTIME_KEY}
+      - OPENHANDSNET_Sandbox__ControlNetwork=openhandsnet-control
+      - OPENHANDSNET_Sandbox__WorkspaceRoot=${OPENHANDSNET_WORKSPACE_HOST:-/tmp/ohn-workspaces}
+      - OPENHANDSNET_Sandbox__WarmPoolSize=${OPENHANDSNET_WARM_POOL_SIZE:-0}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Mesmo path absoluto dentro do container e no host — o daemon
+      # interpreta binds como paths do host.
+      - ${OPENHANDSNET_WORKSPACE_HOST:-/tmp/ohn-workspaces}:${OPENHANDSNET_WORKSPACE_HOST:-/tmp/ohn-workspaces}
+    networks:
+      - control
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # NÃO publica portas — interno apenas.
+
+networks:
+  control:
+    name: openhandsnet-control
+    driver: bridge

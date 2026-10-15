@@ -150,6 +150,8 @@ internal sealed class FakeSandboxService(Guid sandboxId) : ISandboxService
 
     public Task<SandboxSpec?> GetSpecAsync(Guid specId, CancellationToken ct) =>
         Task.FromResult<SandboxSpec?>(null);
+
+    public Task SweepOrphansAsync(CancellationToken ct) => Task.CompletedTask;
 }
 
 /// <summary>Runner fixture: DI scope com fakes + Sqlite :memory:.</summary>

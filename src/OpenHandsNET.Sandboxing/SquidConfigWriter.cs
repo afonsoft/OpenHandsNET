@@ -3,7 +3,7 @@ using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace OpenHandsNET.Infrastructure.Sandbox;
+namespace OpenHandsNET.Sandboxing;
 
 /// <summary>
 /// SPEC-19 RF-002: materializes <c>squid.conf</c> + <c>allowlist.txt</c> for

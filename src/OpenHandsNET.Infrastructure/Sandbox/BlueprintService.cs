@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenHandsNET.Sandboxing;
 using OpenHandsNET.Application.Sandbox;
 using OpenHandsNET.Infrastructure.Agent;
 using OpenHandsNET.Infrastructure.Persistence;

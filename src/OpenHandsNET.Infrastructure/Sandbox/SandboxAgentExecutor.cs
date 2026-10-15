@@ -19,6 +19,7 @@ namespace OpenHandsNET.Infrastructure.Sandbox;
 public sealed class SandboxAgentExecutor(
     IDockerClient docker,
     SandboxAgentClient agent,
+    ISandboxEngine engine,
     AppDbContext db,
     IHttpClientFactory httpFactory,
     ILogger<SandboxAgentExecutor> logger,
@@ -175,7 +176,8 @@ public sealed class SandboxAgentExecutor(
         }
 
         var key = await SessionKeyAsync(sandbox.Id, ct);
-        var baseUrl = await agent.ResolveBaseUrlAsync(sandbox.ContainerId, ct);
+        var baseUrl = (await engine.InspectAsync(sandbox.ContainerId, ct))
+            ?.AgentUrl;
         if (key is null || baseUrl is null)
         {
             _capability.TryRemove(sandbox.Id, out _);
@@ -209,8 +211,8 @@ public sealed class SandboxAgentExecutor(
     {
         try
         {
-            var baseUrl = await agent.ResolveBaseUrlAsync(
-                sandbox.ContainerId!, CancellationToken.None);
+            var baseUrl = (await engine.InspectAsync(
+                sandbox.ContainerId!, CancellationToken.None))?.AgentUrl;
             return baseUrl is null
                 ? null
                 : await agent.ProbeAliveV2Async(baseUrl, CancellationToken.None);

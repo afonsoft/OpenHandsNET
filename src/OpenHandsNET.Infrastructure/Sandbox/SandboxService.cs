@@ -1,5 +1,3 @@
-using Docker.DotNet;
-using Docker.DotNet.Models;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -7,26 +5,26 @@ using Microsoft.Extensions.Options;
 using OpenHandsNET.Application.Sandbox;
 using OpenHandsNET.Domain.Sandbox;
 using OpenHandsNET.Infrastructure.Persistence;
+using OpenHandsNET.Sandboxing;
 using DomainSandbox = OpenHandsNET.Domain.Sandbox.Sandbox;
 
 namespace OpenHandsNET.Infrastructure.Sandbox;
 
 /// <summary>
-/// <see cref="ISandboxService"/> backed by the local Docker engine.
-/// Pull → create (labels, limits, workspace bind) → start → Running.
+/// <see cref="ISandboxService"/> — records/specs/credentials in EF
+/// (Api-owned); container lifecycle delegated to <see cref="ISandboxEngine"/>
+/// (<see cref="DockerSandboxEngine"/> local | <see cref="HttpSandboxEngine"/>
+/// remote, SPEC-35). Engine-agnostic: the same record logic serves both
+/// providers.
 /// </summary>
-public sealed class DockerSandboxService(
+public sealed class SandboxService(
     AppDbContext db,
-    IDockerClient docker,
-    WorkspaceProvisioner workspaces,
-    DockerNetworkPolicy egress,
-    WarmPoolService warmPool,
+    ISandboxEngine engine,
     IOptions<SandboxOptions> options,
-    ILogger<DockerSandboxService> logger,
+    ILogger<SandboxService> logger,
     Git.GitCredentialProvider? gitCredentials = null,
     Microsoft.AspNetCore.DataProtection.IDataProtectionProvider? dp = null,
     SandboxAgentClient? agentClient = null,
-    EgressProxyService? egressProxy = null,
     Application.Contracts.ISecretStore? secretStore = null) : ISandboxService
 {
     /// <summary>
@@ -53,9 +51,6 @@ public sealed class DockerSandboxService(
         return key;
     }
 
-    /// <summary>Label prefix on all managed containers.</summary>
-    public const string LabelPrefix = "openhandsnet.";
-
     /// <inheritdoc />
     public async Task<DomainSandbox> StartAsync(
         Guid specId, Guid? conversationId, CancellationToken ct)
@@ -81,75 +76,32 @@ public sealed class DockerSandboxService(
         {
             // Warm-pool claim: só para spec default (specId vazio) — specs
             // customizadas têm imagem/recursos próprios e não cabem no pool.
-            // SPEC-19 RF-005: warm containers nascem sem proxy env — em modo
-            // allowlist o claim é impossível (env é imutável) → cold start.
-            var warmId = specId == Guid.Empty && spec.MountWorkspace
+            // SPEC-19 RF-005: em modo allowlist o claim é impossível — o
+            // engine devolve null → cold start.
+            var name = $"ohn-sandbox-{record.Id:N}";
+            var claim = specId == Guid.Empty && spec.MountWorkspace
                 && conversationId is not null
-                && !egress.IsAllowlist
-                ? await TryClaimWarmAsync(
-                    record.Id, conversationId.Value, spec.Image, ct)
+                ? await engine.ClaimWarmAsync(
+                    new WarmClaimRequest(spec.Image, name, conversationId), ct)
                 : null;
-            if (warmId is not null)
+            if (claim is not null)
             {
-                record.ContainerId = warmId;
+                record.ContainerId = claim.ContainerId;
                 record.Pool = "warm";
                 record.PoolKey = spec.Image;
                 // SPEC-17 RF-007: container warm nasce dormant — claim ativa
-                // via POST /api/init (bootstrap key na label do container).
-                await ActivateWarmAsync(record, ct);
+                // via POST /api/init (init key veio na claim).
+                await ActivateWarmAsync(record, claim, ct);
                 record.Status = SandboxStatus.Running.ToString();
                 await db.SaveChangesAsync(ct);
                 logger.LogInformation(
                     "Sandbox {SandboxId} attached warm container {ContainerId}",
-                    record.Id, warmId[..12]);
+                    record.Id, claim.ContainerId[..12]);
                 return record.ToDomain();
             }
 
-            await EnsureImageAsync(spec.Image, ct);
-            var binds = new List<string>();
-            if (spec.MountWorkspace && conversationId is not null)
-            {
-                var hostPath = await workspaces.PrepareAsync(conversationId.Value, ct);
-                binds.Add($"{hostPath}:{Domain.Sandbox.SandboxSpec.WorkspacePath}:rw");
-            }
-
-            // DinD alternativa fraca: socket mount explícito (SPEC-14 RF-002).
-            if (options.Value.DockerSocketMount && !options.Value.EnableDinD)
-            {
-                binds.Add("/var/run/docker.sock:/var/run/docker.sock");
-            }
-
-            var labels = new Dictionary<string, string>
-            {
-                [$"{LabelPrefix}managed"] = "true",
-                [$"{LabelPrefix}owner"] = options.Value.InstanceOwner,
-                [$"{LabelPrefix}sandbox_id"] = record.Id.ToString(),
-            };
-            if (conversationId is not null)
-            {
-                labels[$"{LabelPrefix}conversation_id"] = conversationId.Value.ToString();
-            }
-
-            var env = spec.Env?.Select(kv => $"{kv.Key}={kv.Value}").ToList() ?? [];
-            env.AddRange(egress.EgressEnv());
-            // SPEC-19 RF-003/004: allowlist → o sandbox fica na rede internal e
-            // recebe o proxy compartilhado por env. Falha aqui aborta o start
-            // (fail-closed — nunca sobe sandbox restrito sem enforcement).
-            if (egress.IsAllowlist)
-            {
-                var net = await egress.EnsureNetworkAsync(ct)
-                    ?? throw new InvalidOperationException(
-                        "egress internal network unavailable");
-                if (egressProxy is null)
-                {
-                    throw new InvalidOperationException(
-                        "egress proxy service unavailable — allowlist mode " +
-                        "cannot start sandboxes without enforcement");
-                }
-
-                await egressProxy.EnsureProxyAsync(net, ct);
-                env.AddRange(EgressProxyService.ProxyEnv());
-            }
+            var env = new List<string>(
+                spec.Env?.Select(kv => $"{kv.Key}={kv.Value}") ?? []);
             env.AddRange(await ResolveCredentialEnvAsync(conversationId, ct));
 
             // SPEC-17: imagem-agente não leva Cmd (entrypoint é o agente);
@@ -166,66 +118,38 @@ public sealed class DockerSandboxService(
                 }
             }
 
-            var hostConfig = new HostConfig
+            var labels = new Dictionary<string, string>
             {
-                Memory = spec.MemoryMb * 1024L * 1024L,
-                NanoCPUs = (long)(spec.CpuLimit * 1_000_000_000L),
-                PidsLimit = spec.PidsLimit,
-                Binds = binds,
-                AutoRemove = false,
+                [EngineLabels.SandboxId] = record.Id.ToString(),
             };
-            if (isAgentImage && options.Value.PublishAgentPort)
+            if (conversationId is not null)
             {
-                // Docker Desktop / daemon remoto: publica 8000 em 127.0.0.1.
-                hostConfig.PortBindings = new Dictionary<string, IList<PortBinding>>
-                {
-                    ["8000/tcp"] = [new PortBinding
-                    { HostIP = "127.0.0.1", HostPort = "" }],
-                };
+                labels[EngineLabels.ConversationId] =
+                    conversationId.Value.ToString();
             }
 
-            var createParams = new CreateContainerParameters
-            {
-                Image = spec.Image,
-                Name = $"ohn-sandbox-{record.Id:N}",
-                Labels = labels,
-                Env = env,
-                HostConfig = hostConfig,
-                NetworkingConfig = await BuildNetworkingConfigAsync(ct),
-                WorkingDir = Domain.Sandbox.SandboxSpec.WorkspacePath,
-                Tty = false,
-            };
-            if (!isAgentImage)
-            {
-                // Imagem legada sem agente: mantém o container vivo para exec.
-                createParams.Cmd = ["sleep", "infinity"];
-            }
+            var info = await engine.CreateAndStartAsync(new EngineCreateRequest(
+                Name: name,
+                Image: spec.Image,
+                Env: env,
+                Binds: [],
+                Labels: labels,
+                MemoryBytes: spec.MemoryMb * 1024L * 1024L,
+                NanoCpus: (long)(spec.CpuLimit * 1_000_000_000L),
+                PidsLimit: spec.PidsLimit,
+                Cmd: isAgentImage ? null : ["sleep", "infinity"],
+                WorkingDir: Domain.Sandbox.SandboxSpec.WorkspacePath,
+                IsAgentImage: isAgentImage,
+                WorkspaceConversationId: spec.MountWorkspace
+                    ? conversationId : null), ct);
 
-            var container = await docker.Containers.CreateContainerAsync(
-                createParams, ct);
-
-            await docker.Containers.StartContainerAsync(container.ID, null, ct);
-            record.ContainerId = container.ID;
-
-            // DinD opt-in (SPEC-14 RF-002): sidecar privileged compartilhando
-            // o netns do sandbox → DOCKER_HOST=tcp://localhost:2375.
-            if (options.Value.EnableDinD)
-            {
-                await StartDinDSidecarAsync(container.ID, ct);
-            }
-
-            // SPEC-17: registra a URL do agente para o executor HTTP.
-            if (isAgentImage && agentClient is not null)
-            {
-                record.AgentUrl = (await agentClient.ResolveBaseUrlAsync(
-                    container.ID, ct))?.ToString();
-            }
-
+            record.ContainerId = info.ContainerId;
+            record.AgentUrl = info.AgentUrl?.ToString();
             record.Status = SandboxStatus.Running.ToString();
             await db.SaveChangesAsync(ct);
             logger.LogInformation(
                 "Sandbox {SandboxId} running (container {ContainerId}, image {Image}, profile {Profile})",
-                record.Id, container.ID[..12], spec.Image,
+                record.Id, info.ContainerId[..12], spec.Image,
                 spec.Profile ?? "custom");
         }
         catch (Exception ex)
@@ -247,19 +171,17 @@ public sealed class DockerSandboxService(
         {
             try
             {
-                await docker.Containers.PauseContainerAsync(
-                    record.ContainerId, ct);
+                await engine.PauseAsync(record.ContainerId, ct);
                 record.Status = SandboxStatus.Paused.ToString();
             }
-            catch (DockerApiException ex)
+            catch (SandboxEngineException ex)
             {
                 // SPEC-16 NFR: cgroup pause indisponível (rootless/v1) →
                 // fallback stop preserva fs/workspace (processos morrem).
                 logger.LogWarning(ex,
-                    "docker pause failed for {ContainerId} — falling back to stop",
+                    "engine pause failed for {ContainerId} — falling back to stop",
                     record.ContainerId);
-                await docker.Containers.StopContainerAsync(
-                    record.ContainerId, new ContainerStopParameters(), ct);
+                await engine.StopAsync(record.ContainerId, ct);
                 record.Status = SandboxStatus.Stopped.ToString();
             }
         }
@@ -284,16 +206,14 @@ public sealed class DockerSandboxService(
             {
                 if (record.Status == nameof(SandboxStatus.Paused))
                 {
-                    await docker.Containers.UnpauseContainerAsync(
-                        record.ContainerId, ct);
+                    await engine.UnpauseAsync(record.ContainerId, ct);
                 }
 
-                await docker.Containers.StopContainerAsync(
-                    record.ContainerId, new ContainerStopParameters(), ct);
+                await engine.StopAsync(record.ContainerId, ct);
                 record.Status = SandboxStatus.Stopped.ToString();
                 Telemetry.OpenNetTelemetry.SandboxSleeps.Inc();
             }
-            catch (DockerContainerNotFoundException)
+            catch (SandboxEngineException ex) when (ex.NotFound)
             {
                 record.Status = SandboxStatus.Missing.ToString();
             }
@@ -315,19 +235,26 @@ public sealed class DockerSandboxService(
         }
         else if (record.Status == nameof(SandboxStatus.Stopped))
         {
-            // SPEC-16 RF-003: docker start + probe antes de declarar Running.
+            // SPEC-16 RF-003: start + probe antes de declarar Running.
             try
             {
-                await docker.Containers.StartContainerAsync(
-                    record.ContainerId, null, ct);
-                await docker.Containers.InspectContainerAsync(record.ContainerId, ct);
-                record.Status = SandboxStatus.Running.ToString();
+                await engine.StartAsync(record.ContainerId, ct);
+                var info = await engine.InspectAsync(record.ContainerId, ct)
+                    ?? throw new SandboxEngineException(
+                        "container gone after start", notFound: true);
+                record.Status = info.State == "running"
+                    ? SandboxStatus.Running.ToString()
+                    : SandboxStatus.Error.ToString();
+                if (info.AgentUrl is not null)
+                {
+                    record.AgentUrl = info.AgentUrl.ToString();
+                }
             }
-            catch (DockerContainerNotFoundException)
+            catch (SandboxEngineException ex) when (ex.NotFound)
             {
                 record.Status = SandboxStatus.Missing.ToString();
             }
-            catch (DockerApiException ex)
+            catch (SandboxEngineException ex)
             {
                 record.Status = SandboxStatus.Error.ToString();
                 record.LastError = ex.Message;
@@ -337,10 +264,10 @@ public sealed class DockerSandboxService(
         {
             try
             {
-                await docker.Containers.UnpauseContainerAsync(record.ContainerId, ct);
+                await engine.UnpauseAsync(record.ContainerId, ct);
                 record.Status = SandboxStatus.Running.ToString();
             }
-            catch (DockerContainerNotFoundException)
+            catch (SandboxEngineException ex) when (ex.NotFound)
             {
                 record.Status = SandboxStatus.Missing.ToString();
             }
@@ -370,23 +297,7 @@ public sealed class DockerSandboxService(
 
         if (record.ContainerId is not null)
         {
-            try
-            {
-                await docker.Containers.RemoveContainerAsync(
-                    record.ContainerId,
-                    new ContainerRemoveParameters { Force = true }, ct);
-            }
-            catch (DockerContainerNotFoundException)
-            {
-                // already gone — delete stays idempotent
-            }
-            catch (DockerApiException ex)
-            {
-                // daemon races (ex.: removal already in progress) não bloqueiam
-                logger.LogWarning(ex,
-                    "Container {ContainerId} removal reported an error (ignored)",
-                    record.ContainerId);
-            }
+            await engine.RemoveAsync(record.ContainerId, ct);
         }
 
         Telemetry.OpenNetTelemetry.SandboxSeconds
@@ -408,7 +319,13 @@ public sealed class DockerSandboxService(
             }
 
             await ReconcileAsync(record, ct);
-            return record.ToDomain();
+            return record.ToDomain() with
+            {
+                // SPEC-38: service_urls emitidas conforme RoutingMode.
+                ServiceUrls = SandboxUrlBuilder.Build(
+                    record.ToDomain(), await GetSpecAsync(record.SpecId, ct),
+                    options.Value),
+            };
         }
         finally
         {
@@ -437,12 +354,19 @@ public sealed class DockerSandboxService(
         {
             var rows = await q.OrderByDescending(r => r.CreatedAtTicks)
                 .ToListAsync(ct);
+            var result = new List<DomainSandbox>(rows.Count);
             foreach (var row in rows)
             {
                 await ReconcileAsync(row, ct);
+                result.Add(row.ToDomain() with
+                {
+                    ServiceUrls = SandboxUrlBuilder.Build(
+                        row.ToDomain(), await GetSpecAsync(row.SpecId, ct),
+                        options.Value),
+                });
             }
 
-            return rows.Select(r => r.ToDomain()).ToList();
+            return result;
         }
         finally
         {
@@ -483,54 +407,26 @@ public sealed class DockerSandboxService(
         return record?.ToDomain();
     }
 
-    /// <summary>
-    /// Removes managed containers whose records are gone/stale (boot sweep).
-    /// </summary>
+    /// <inheritdoc />
     public async Task SweepOrphansAsync(CancellationToken ct)
     {
-        var containers = await docker.Containers.ListContainersAsync(
-            new ContainersListParameters
-            {
-                All = true,
-                Filters = new Dictionary<string, IDictionary<string, bool>>
-                {
-                    ["label"] = new Dictionary<string, bool>
-                    {
-                        [$"{LabelPrefix}managed=true"] = true,
-                        [$"{LabelPrefix}owner={options.Value.InstanceOwner}"] = true,
-                    },
-                },
-            }, ct);
-
+        var managed = await engine.ListManagedAsync(ct);
         var known = (await db.Sandboxes
             .Select(r => r.ContainerId)
             .ToListAsync(ct))
             .ToHashSet(StringComparer.Ordinal);
 
-        foreach (var c in containers)
+        foreach (var c in managed)
         {
-            if (known.Contains(c.ID))
+            if (known.Contains(c.ContainerId))
             {
                 continue;
             }
 
-            logger.LogWarning("Removing orphan sandbox container {ContainerId}", c.ID[..12]);
-            try
-            {
-                await docker.Containers.RemoveContainerAsync(
-                    c.ID, new ContainerRemoveParameters { Force = true }, ct);
-            }
-            catch (DockerContainerNotFoundException)
-            {
-                // already gone
-            }
-            catch (DockerApiException ex)
-            {
-                // daemon races (ex.: removal already in progress) não bloqueiam o sweep
-                logger.LogWarning(ex,
-                    "Orphan container {ContainerId} removal reported an error (ignored)",
-                    c.ID[..12]);
-            }
+            logger.LogWarning(
+                "Removing orphan sandbox container {ContainerId}",
+                c.ContainerId[..12]);
+            await engine.RemoveAsync(c.ContainerId, ct);
         }
     }
 
@@ -606,57 +502,6 @@ public sealed class DockerSandboxService(
     }
 
     /// <summary>
-    /// Claims a warm container: moves its pre-mounted workspace dir to the
-    /// conversation path (rename keeps the bind target) and returns the id.
-    /// </summary>
-    private async Task<string?> TryClaimWarmAsync(
-        Guid sandboxId, Guid conversationId, string image, CancellationToken ct)
-    {
-        var containerId = await warmPool.TryClaimAsync(image, ct);
-        if (containerId is null)
-        {
-            return null;
-        }
-
-        try
-        {
-            var inspect = await docker.Containers.InspectContainerAsync(containerId, ct);
-            var wsMount = inspect.Mounts.FirstOrDefault(m =>
-                m.Destination == Domain.Sandbox.SandboxSpec.WorkspacePath);
-            if (wsMount is not null)
-            {
-                var target = workspaces.PreparePath(conversationId);
-                if (!Directory.Exists(target))
-                {
-                    Directory.Move(wsMount.Source, target);
-                }
-                else
-                {
-                    Directory.Delete(wsMount.Source, recursive: true);
-                }
-            }
-            await workspaces.PrepareAsync(conversationId, ct);
-            return containerId;
-        }
-        catch (Exception e) when (e is not OperationCanceledException)
-        {
-            logger.LogWarning(e,
-                "Warm claim of {ContainerId} failed — falling back to cold start",
-                containerId[..12]);
-            try
-            {
-                await docker.Containers.RemoveContainerAsync(containerId,
-                    new ContainerRemoveParameters { Force = true }, ct);
-            }
-            catch (DockerApiException)
-            {
-                // best-effort cleanup; pool prune/sweep picks leftovers
-            }
-            return null;
-        }
-    }
-
-    /// <summary>
     /// SPEC-17 RF-004: aplica <c>image</c>/<c>env</c> resolvidos pelo blueprint
     /// de um sandbox anterior da mesma conversa (repo persistido no workspace).
     /// </summary>
@@ -708,28 +553,30 @@ public sealed class DockerSandboxService(
     }
 
     /// <summary>
-    /// SPEC-17 RF-007: ativa um container warm dormant — lê a init key da
-    /// label <c>openhandsnet.init_key</c>, gera session key nova e chama
-    /// <c>POST /api/init</c>. Falha/legado sem agente → segue em exec-fallback.
+    /// SPEC-17 RF-007: ativa um container warm dormant — init key veio na
+    /// claim, gera session key nova e chama <c>POST /api/init</c>.
+    /// Falha/legado sem agente → segue em exec-fallback.
     /// </summary>
-    private async Task ActivateWarmAsync(SandboxRecord record, CancellationToken ct)
+    private async Task ActivateWarmAsync(
+        SandboxRecord record, EngineWarmClaim claim, CancellationToken ct)
     {
-        if (agentClient is null || record.ContainerId is null)
+        if (agentClient is null || claim.InitKey is null)
         {
-            return;
+            return; // imagem legada no pool — sem agente, segue exec
         }
 
         try
         {
-            var inspect = await docker.Containers
-                .InspectContainerAsync(record.ContainerId, ct);
-            var initKey = inspect.Config?.Labels is { } l
-                && l.TryGetValue($"{LabelPrefix}init_key", out var k) ? k : null;
-            var baseUrl = await agentClient.ResolveBaseUrlAsync(
-                record.ContainerId, ct);
-            if (initKey is null || baseUrl is null)
+            var baseUrl = claim.AgentUrl;
+            if (baseUrl is null && record.ContainerId is not null)
             {
-                return; // imagem legada no pool — sem agente, segue exec
+                baseUrl = (await engine.InspectAsync(
+                    record.ContainerId, ct))?.AgentUrl;
+            }
+
+            if (baseUrl is null)
+            {
+                return;
             }
 
             var sessionKey = NewSessionKey(record);
@@ -738,8 +585,8 @@ public sealed class DockerSandboxService(
                 return;
             }
 
-            var ok = await agentClient.InitAsync(baseUrl, initKey, sessionKey,
-                Domain.Sandbox.SandboxSpec.WorkspacePath, null, ct);
+            var ok = await agentClient.InitAsync(baseUrl, claim.InitKey,
+                sessionKey, Domain.Sandbox.SandboxSpec.WorkspacePath, null, ct);
             if (ok)
             {
                 record.AgentUrl = baseUrl.ToString();
@@ -748,75 +595,16 @@ public sealed class DockerSandboxService(
             {
                 logger.LogWarning(
                     "warm container {ContainerId} /api/init failed — exec fallback",
-                    record.ContainerId[..12]);
+                    record.ContainerId![..12]);
             }
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
             logger.LogWarning(e,
                 "warm activation failed for {ContainerId} — exec fallback",
-                record.ContainerId[..12]);
+                record.ContainerId?[..12]);
         }
     }
-
-    /// <summary>Egress network wiring: internal network for deny/allowlist.</summary>
-    private async Task<NetworkingConfig?> BuildNetworkingConfigAsync(CancellationToken ct)
-    {
-        var net = await egress.EnsureNetworkAsync(ct);
-        return net is null ? null : new NetworkingConfig
-        {
-            EndpointsConfig = new Dictionary<string, EndpointSettings>
-            {
-                [net] = new(),
-            },
-        };
-    }
-
-    /// <summary>
-    /// DinD sidecar sharing the sandbox net namespace (SPEC-14 RF-002):
-    /// privileged <c>docker:dind</c> + shared workspace bind; the sandbox
-    /// reaches the daemon via <c>DOCKER_HOST=tcp://localhost:2375</c>.
-    /// </summary>
-    private async Task StartDinDSidecarAsync(string sandboxContainerId, CancellationToken ct)
-    {
-        const string dindImage = "docker:27-dind";
-        await EnsureImageAsync(dindImage, ct);
-        var inspect = await docker.Containers.InspectContainerAsync(sandboxContainerId, ct);
-        var wsMount = inspect.Mounts.FirstOrDefault(m =>
-            m.Destination == Domain.Sandbox.SandboxSpec.WorkspacePath);
-        var binds = wsMount is null ? []
-            : new List<string>
-            {
-                $"{wsMount.Source}:{Domain.Sandbox.SandboxSpec.WorkspacePath}:rw",
-            };
-        var sidecar = await docker.Containers.CreateContainerAsync(
-            new CreateContainerParameters
-            {
-                Image = dindImage,
-                Name = $"ohn-dind-{sandboxContainerId[..12]}",
-                Labels = new Dictionary<string, string>
-                {
-                    [$"{LabelPrefix}managed"] = "true",
-                    [$"{LabelPrefix}owner"] = options.Value.InstanceOwner,
-                    [$"{LabelPrefix}dind_for"] = sandboxContainerId,
-                },
-                HostConfig = new HostConfig
-                {
-                    Privileged = true,
-                    Binds = binds,
-                    NetworkMode = $"container:{sandboxContainerId}",
-                    AutoRemove = true,
-                },
-                Env = ["DOCKER_TLS_CERTDIR="],
-            }, ct);
-        await docker.Containers.StartContainerAsync(sidecar.ID, null, ct);
-        logger.LogInformation("DinD sidecar {SidecarId} for sandbox {ContainerId}",
-            sidecar.ID[..12], sandboxContainerId[..12]);
-    }
-
-    private async Task<SandboxRecord> RequireAsync(Guid id, CancellationToken ct) =>
-        await db.Sandboxes.FindAsync([id], ct)
-            ?? throw new KeyNotFoundException($"Sandbox {id} not found");
 
     /// <summary>
     /// SPEC-15 RF-004: injeta <c>GH_TOKEN</c>/<c>GITHUB_TOKEN</c> (github.com) ou
@@ -924,6 +712,10 @@ public sealed class DockerSandboxService(
             : null;
     }
 
+    private async Task<SandboxRecord> RequireAsync(Guid id, CancellationToken ct) =>
+        await db.Sandboxes.FindAsync([id], ct)
+            ?? throw new KeyNotFoundException($"Sandbox {id} not found");
+
     private async Task ReconcileAsync(SandboxRecord record, CancellationToken ct)
     {
         if (record.Status is nameof(SandboxStatus.Error) or nameof(SandboxStatus.Missing)
@@ -932,54 +724,36 @@ public sealed class DockerSandboxService(
             return;
         }
 
-        try
-        {
-            var inspect = await docker.Containers.InspectContainerAsync(
-                record.ContainerId, ct);
-            // SPEC-16 RF-005: "exited"/"created" é o estado *esperado* de um
-            // record Stopped (docker stop preserva o container); só é Error
-            // quando o record dizia que estava vivo.
-            var status = inspect.State?.Status switch
-            {
-                "running" => SandboxStatus.Running,
-                "paused" => SandboxStatus.Paused,
-                "created" => record.Status == nameof(SandboxStatus.Starting)
-                    ? SandboxStatus.Starting : SandboxStatus.Stopped,
-                "exited" or "dead" => record.Status == nameof(SandboxStatus.Stopped)
-                    ? SandboxStatus.Stopped : SandboxStatus.Error,
-                _ => SandboxStatus.Error,
-            };
-            if (status.ToString() != record.Status)
-            {
-                record.Status = status.ToString();
-                if (status is SandboxStatus.Error)
-                {
-                    record.LastError = inspect.State?.Error;
-                }
-
-                await db.SaveChangesAsync(ct);
-            }
-        }
-        catch (DockerContainerNotFoundException)
+        var info = await engine.InspectAsync(record.ContainerId, ct);
+        if (info is null)
         {
             record.Status = SandboxStatus.Missing.ToString();
             await db.SaveChangesAsync(ct);
+            return;
         }
-    }
 
-    private async Task EnsureImageAsync(string image, CancellationToken ct)
-    {
-        try
+        // SPEC-16 RF-005: "exited"/"created" é o estado *esperado* de um
+        // record Stopped (stop preserva o container); só é Error quando o
+        // record dizia que estava vivo.
+        var status = info.State switch
         {
-            await docker.Images.InspectImageAsync(image, ct);
-        }
-        catch (DockerImageNotFoundException)
+            "running" => SandboxStatus.Running,
+            "paused" => SandboxStatus.Paused,
+            "created" => record.Status == nameof(SandboxStatus.Starting)
+                ? SandboxStatus.Starting : SandboxStatus.Stopped,
+            "exited" or "dead" => record.Status == nameof(SandboxStatus.Stopped)
+                ? SandboxStatus.Stopped : SandboxStatus.Error,
+            _ => SandboxStatus.Error,
+        };
+        if (status.ToString() != record.Status)
         {
-            var (name, tag) = image.Split(':') is [var n, var t] ? (n, t) : (image, "latest");
-            logger.LogInformation("Pulling sandbox image {Image}…", image);
-            await docker.Images.CreateImageAsync(
-                new ImagesCreateParameters { FromImage = name, Tag = tag },
-                null, new Progress<JSONMessage>(), ct);
+            record.Status = status.ToString();
+            if (status is SandboxStatus.Error)
+            {
+                record.LastError = info.Error;
+            }
+
+            await db.SaveChangesAsync(ct);
         }
     }
 }

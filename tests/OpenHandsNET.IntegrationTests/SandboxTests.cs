@@ -8,6 +8,7 @@ using OpenHandsNET.Application.Sandbox;
 using OpenHandsNET.Domain.Sandbox;
 using OpenHandsNET.Infrastructure.Persistence;
 using OpenHandsNET.Infrastructure.Sandbox;
+using OpenHandsNET.Sandboxing;
 
 namespace OpenHandsNET.IntegrationTests;
 
@@ -25,7 +26,7 @@ public sealed class DockerSandboxTests : IAsyncLifetime
     private readonly string _owner = $"test-{Guid.NewGuid():N}";
     private AppDbContext _db = null!;
     private IDockerClient _docker = null!;
-    private DockerSandboxService _service = null!;
+    private SandboxService _service = null!;
     private DockerSandboxExecutor _executor = null!;
     private bool _dockerUp;
 
@@ -56,13 +57,10 @@ public sealed class DockerSandboxTests : IAsyncLifetime
             NullLogger<WorkspaceProvisioner>.Instance);
         var egress = new DockerNetworkPolicy(_docker, opts,
             NullLogger<DockerNetworkPolicy>.Instance);
-        var pool = new WarmPoolService(_docker, opts, provisioner,
-            new ServiceCollection().BuildServiceProvider()
-                .GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<WarmPoolService>.Instance);
-        _service = new DockerSandboxService(
-            _db, _docker, provisioner, egress, pool, opts,
-            NullLogger<DockerSandboxService>.Instance);
+        var engine = new DockerSandboxEngine(_docker, provisioner, egress,
+            opts, NullLogger<DockerSandboxEngine>.Instance);
+        _service = new SandboxService(
+            _db, engine, opts, NullLogger<SandboxService>.Instance);
         _executor = new DockerSandboxExecutor(_docker);
     }
 

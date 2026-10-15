@@ -56,8 +56,17 @@ SPECs (Spec-Driven Development) do port do ecossistema **OpenHands** para
 | `32_upstream_enterprise_gap_analysis.md` | Gap analysis vs `OpenHands/*` upstream: streaming deltas, `SecurityAnalyzer`, secrets by-ref, artifact store S3, runtime-api/k8s, resume validation | 27 | TBD |
 | `33_agent_hardening_spec.md` | `ISecurityAnalyzer` (pattern/LLM/policy), secrets by-ref no start-task, `resume_drift` diagnostic | 09, 22, 23, 29 | #65 |
 | `34_streaming_deltas_artifacts_spec.md` | `streaming_delta` efêmero (SignalR-only, durable supersedes) + `IArtifactStore` (workspace|S3) | 02, 24, 25 | #66 |
+| `35_runtime_api_split_spec.md` | `openhandsnet-runtime-api` REST dedicado; `HttpSandboxService`; compose `split` | 03, 14, 16, 17 | #74 |
+| `36_distributed_cache_backplane_spec.md` | Valkey/Redis: `IDistributedCache`, SignalR backplane, warm-pool/rate-limit multi-réplica | 04, 13, 14, 34 | #75 |
+| `37_kubernetes_runtime_spec.md` | `KubernetesSandboxService` (pods + Sysbox DinD + PVC), Helm chart, RBAC | 03, 14, 16, 17, 35 | #76 |
+| `38_sandbox_host_routing_spec.md` | `Sandbox:RoutingMode=internal\|path\|host`, wildcard DNS, `service_urls`, `public_ports` | 03, 04, 14 | #77 |
+| `39_eval_harness_spec.md` | `openhandsnet eval` — tasks YAML, scoring, baseline diff, smoke/nightly suites | 06, 09, 24, 31 | #78 |
+
 
 Build order: `01 → (02 ∥ 03 ∥ 10 ∥ 13) → (04 ∥ 09 ∥ 11 ∥ 12) → (05 ∥ 06 ∥ 08) → 07 → 14 → 15 → 16 → 17 → (18 ∥ 19 ∥ 20) → 21 → (22 → 23 ∥ 24) → 25 → (26 ∥ 27) → (29 → (28 ∥ 33) ∥ 30 ∥ 31 ∥ 34)`.
+
+Enterprise wave (futura — Drafts 35–39): `(35 → (36 ∥ 37 ∥ 38) → 39)` —
+35 antes de 37 (k8s roda atrás do runtime-api); 39 independente.
 
 ## Fluxo
 

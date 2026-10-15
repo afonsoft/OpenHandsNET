@@ -1,6 +1,6 @@
 using Docker.DotNet;
 
-namespace OpenHandsNET.Infrastructure.Sandbox;
+namespace OpenHandsNET.Sandboxing;
 
 /// <summary>Docker.DotNet client factory (unix socket default, DOCKER_HOST honored).</summary>
 public static class DockerClientFactory
