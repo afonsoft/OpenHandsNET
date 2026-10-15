@@ -181,6 +181,8 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
         sc.AddSingleton<ISandboxService>(new FakeSandboxService(SandboxId));
         sc.AddSingleton<ITaskTrackerService, InMemoryTaskTrackerService>();
         sc.AddSingleton<IToolRegistry, ToolRegistry>();
+        sc.AddSingleton<ISubagentHost,
+            OpenHandsNET.Infrastructure.Agent.Subagents.SubagentHost>();
         sc.AddSingleton(condenser ?? (ICondenser)new NoOpCondenser());
         sc.AddSingleton<IContextMeter>(
             new OpenHandsNET.Infrastructure.Agent.Context

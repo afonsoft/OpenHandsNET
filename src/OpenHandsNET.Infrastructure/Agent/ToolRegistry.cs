@@ -34,6 +34,13 @@ public sealed class ToolRegistry : IToolRegistry
             // SPEC-30 RF-002: memória persistente (project + org).
             BuiltinTools.Memory(),
             BuiltinTools.InvokeSkill(),
+            .. options.Value.Subagents.MaxDepth >= 1
+                // SPEC-28: task/task_status/task_result só no nível do pai
+                // (filhos nunca recebem task — depth cap via preset).
+                ? (AgentTool[])[
+                    BuiltinTools.SpawnTask(), BuiltinTools.TaskStatusTool(),
+                    BuiltinTools.TaskResultTool()]
+                : [],
             BuiltinTools.Finish(),
         ];
     }

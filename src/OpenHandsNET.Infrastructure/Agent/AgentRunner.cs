@@ -207,7 +207,7 @@ public sealed class AgentRunner(
             iterSpan?.SetTag("iteration", iteration);
             await activity.ProgressAsync(events, conversationId, iteration,
                 opt.MaxIterations, "iteration", ct);
-            if (await CheckSignalsAsync(events, db, conv))
+            if (await CheckSignalsAsync(services, events, db, conv))
             {
                 return;
             }
@@ -910,13 +910,16 @@ public sealed class AgentRunner(
 
     /// <summary>Interrupt/pause → status de saída; true = encerrar o loop.</summary>
     private async Task<bool> CheckSignalsAsync(
-        IEventService events, AppDbContext db, ConversationRecord conv)
+        IServiceProvider services, IEventService events,
+        AppDbContext db, ConversationRecord conv)
     {
         if (!_interruptSeen)
         {
             return false;
         }
 
+        // SPEC-28 RF-004: interrupt/pause propaga p/ subagentes ativos.
+        services.GetService<ISubagentHost>()?.AbortAll(conversationId);
         await SetStatusAsync(events, db, conv,
             _pauseRequested ? "paused" : "idle",
             _pauseRequested
