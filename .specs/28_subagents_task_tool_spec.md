@@ -8,7 +8,7 @@
 | Type | `Feature / Agent Core` |
 | Stack | `.NET 10 · AgentRunner · ISandboxExecutor · SPEC-23 routing` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Done` (PR #70) |
 | Ticket | #61 |
 | Depends on | `09` (agent engine), `22` (context), `23` (routing), `24` (activity), `25` (tools), `29` (permissoes) |
 | Touches | `BuiltinTools`, `ToolRegistry`, `AgentRunner`, `IAgentRunnerHost`, `AgentLlmOptions` |

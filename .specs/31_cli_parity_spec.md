@@ -8,7 +8,7 @@
 | Type | `Feature / CLI` |
 | Stack | `Spectre.Console · System.CommandLine` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Done` (PR #72) |
 | Ticket | #64 |
 | Depends on | `06` (CLI), `20` (usage), `23` (`/models`), `24` (agent info), `25` (`/tools`) |
 | Touches | `cli/OpenHandsNET.Cli/Commands/*`, `ApiClient` |
