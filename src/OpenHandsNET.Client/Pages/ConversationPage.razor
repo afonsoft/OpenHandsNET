@@ -4,22 +4,26 @@
 @inject ConversationStateService State
 @inject IJSRuntime JS
 @inject NavigationManager Nav
+@inject OpenHandsNetApiClient Api
+@inject ToastService Toasts
 @implements IAsyncDisposable
 
 <PageTitle>@(State.Conversation?.Title ?? "conversation") · OpenHandsNET</PageTitle>
 
 <div class="conv-page">
     <div class="topbar">
-        <a href="/" title="back" style="font-size:16px">←</a>
+        <a href="/" class="icon-btn" title="back" aria-label="Back">
+            <Icon Name="chevron-left" Size="16" />
+        </a>
         <span class="title">@(State.Conversation?.Title ?? "loading…")</span>
         @if (State.Conversation?.SelectedRepository is { } repo)
         {
-            <span class="repo">&#x1F4C1; @repo</span>
+            <span class="repo"><Icon Name="git-branch" Size="13" /> @repo</span>
         }
-        @if (State.Conversation?.LlmModel is { } model)
-        {
-            <span class="repo">@model</span>
-        }
+        <ModelSelector Current="@State.Conversation?.LlmModel"
+                       OnSwitch="OnModelSwitch" />
+        <AgentModeToggle Mode="@State.Conversation?.Mode"
+                         OnSwitch="OnModeSwitch" />
         <span class="spacer"></span>
         <span class="tokens">@(State.PromptTokens + State.CompletionTokens) tok ·
             $@State.CostUsd.ToString("F4")</span>
@@ -106,6 +110,34 @@
     {
         try { await InvokeAsync(StateHasChanged); }
         catch { }
+    }
+
+    /// <summary>SPEC-26: troca de modelo — vale a partir do próximo run.</summary>
+    private async Task OnModelSwitch(string model)
+    {
+        try
+        {
+            await Api.SwitchModelAsync(Id, model);
+            Toasts.Success($"modelo → {model}");
+        }
+        catch (HttpRequestException ex)
+        {
+            Toasts.Error($"troca de modelo falhou: {ex.Message}");
+        }
+    }
+
+    /// <summary>SPEC-26/29: overlay plan|build.</summary>
+    private async Task OnModeSwitch(string mode)
+    {
+        try
+        {
+            await Api.SetModeAsync(Id, mode);
+            Toasts.Success($"modo → {mode}");
+        }
+        catch (HttpRequestException ex)
+        {
+            Toasts.Error($"troca de modo falhou: {ex.Message}");
+        }
     }
 
     private static string BadgeClass(string status) =>

@@ -1,0 +1,59 @@
+@* SPEC-26 RF-003: seletor de modelo no topbar — catálogo /models,
+   switch via POST /{id}/switch_acp_model (vale a partir do próximo run). *@
+@using OpenHandsNET.Client.Services
+@inject OpenHandsNetApiClient Api
+@inject ToastService Toasts
+
+<select class="model-sel" value="@Current" @onchange="OnChange"
+        aria-label="Model" title="Modelo do agente">
+    @if (_models.Count == 0)
+    {
+        <option value="@Current">@Current</option>
+    }
+    @foreach (var m in _models)
+    {
+        <option value="@m">@m</option>
+    }
+    @if (Current is { } cur && !_models.Contains(cur))
+    {
+        <option value="@cur">@cur</option>
+    }
+</select>
+
+@code {
+    /// <summary>Modelo atual da conversa (pode ser nulo → default).</summary>
+    [Parameter] public string? Current { get; set; }
+    /// <summary>Dispara quando o usuário confirma a troca.</summary>
+    [Parameter] public EventCallback<string> OnSwitch { get; set; }
+
+    private List<string> _models = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var (ids, def) = await Api.GetModelsAsync();
+            _models = ids.Where(i => i.Length > 0).ToList();
+            if (Current is null && def is not null)
+            {
+                Current = def;
+            }
+        }
+        catch (HttpRequestException) { /* descoberta degradada — só atual */ }
+    }
+
+    private async Task OnChange(ChangeEventArgs e)
+    {
+        var model = e.Value?.ToString();
+        if (string.IsNullOrEmpty(model) || model == Current)
+        {
+            return;
+        }
+
+        Current = model;
+        if (OnSwitch.HasDelegate)
+        {
+            await OnSwitch.InvokeAsync(model);
+        }
+    }
+}

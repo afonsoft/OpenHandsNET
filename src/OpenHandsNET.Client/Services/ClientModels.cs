@@ -85,6 +85,9 @@ public sealed class ConversationItem
     public string? Title { get; init; }
     public string? SelectedRepository { get; init; }
     public string? LlmModel { get; init; }
+    public string? AgentType { get; init; }
+    /// <summary>SPEC-29: overlay de permissões — plan (read-only) | build.</summary>
+    public string? Mode { get; init; }
     public required string ExecutionStatus { get; init; }
     public IReadOnlyList<string> Tags { get; init; } = [];
     public bool Pinned { get; init; }

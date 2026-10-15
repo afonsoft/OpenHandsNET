@@ -20,7 +20,14 @@ public sealed class ConversationHubClient : IAsyncDisposable
             .AddJsonProtocol(o => o.PayloadSerializerOptions
                 .PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower)
             .Build();
+        // SPEC-26 RF-004: superfície de conexão para o OfflineBanner.
+        _conn.Reconnecting += _ => { ConnectionChanged?.Invoke(State); return Task.CompletedTask; };
+        _conn.Reconnected += _ => { ConnectionChanged?.Invoke(State); return Task.CompletedTask; };
+        _conn.Closed += _ => { ConnectionChanged?.Invoke(State); return Task.CompletedTask; };
     }
+
+    /// <summary>Dispara em Reconnecting/Reconnected/Closed.</summary>
+    public event Action<HubConnectionState>? ConnectionChanged;
 
     public HubConnectionState State => _conn.State;
 

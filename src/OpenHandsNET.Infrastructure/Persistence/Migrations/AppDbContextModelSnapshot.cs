@@ -1050,6 +1050,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("INTEGER")
                         .HasColumnName("onboarding_done");
 
+                    b.Property<string>("PreferencesJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("preferences_json");
+
                     b.Property<string>("RolesJson")
                         .HasColumnType("TEXT")
                         .HasColumnName("roles_json");

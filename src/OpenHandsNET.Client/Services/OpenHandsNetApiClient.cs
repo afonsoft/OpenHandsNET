@@ -90,6 +90,43 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
         (await http.DeleteAsync($"/api/v1/app-conversations/{id}", ct))
             .EnsureSuccessStatusCode();
 
+    /// <summary>SPEC-26: GET /models → ids disponíveis + default.</summary>
+    public async Task<(IReadOnlyList<string> Ids, string? Default)>
+        GetModelsAsync(CancellationToken ct = default)
+    {
+        var doc = await http.GetFromJsonAsync<JsonElement>(
+            "/api/v1/models", Json, ct);
+        var ids = new List<string>();
+        if (doc.TryGetProperty("models", out var arr))
+        {
+            foreach (var m in arr.EnumerateArray())
+            {
+                if (m.TryGetProperty("id", out var id))
+                {
+                    ids.Add(id.GetString() ?? "");
+                }
+            }
+        }
+
+        var def = doc.TryGetProperty("default", out var d)
+            ? d.GetString() : null;
+        return (ids, def);
+    }
+
+    /// <summary>SPEC-26: POST /{id}/switch_acp_model — próximo run.</summary>
+    public async Task SwitchModelAsync(
+        string conversationId, string model, CancellationToken ct = default) =>
+        (await http.PostAsJsonAsync(
+            $"/api/v1/app-conversations/{conversationId}/switch_acp_model",
+            new { model }, Json, ct)).EnsureSuccessStatusCode();
+
+    /// <summary>SPEC-26/29: POST /{id}/mode — overlay plan|build.</summary>
+    public async Task SetModeAsync(
+        string conversationId, string mode, CancellationToken ct = default) =>
+        (await http.PostAsJsonAsync(
+            $"/api/v1/app-conversations/{conversationId}/mode",
+            new { mode }, Json, ct)).EnsureSuccessStatusCode();
+
     // ---- events --------------------------------------------------------
 
     /// <summary>GET /conversation/{id}/events/search → eventos crus.</summary>
@@ -254,6 +291,32 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
 
     public Task<JsonElement> GetConfigAsync(CancellationToken ct = default) =>
         http.GetFromJsonAsync<JsonElement>("/api/v1/config", ct)!;
+
+    // ---- user preferences (SPEC-26) -------------------------------------
+
+    /// <summary>GET /users/me/preferences → dict solto ({} se vazio/401).</summary>
+    public async Task<Dictionary<string, string>> GetPreferencesAsync(
+        CancellationToken ct = default)
+    {
+        var resp = await http.GetAsync("/api/v1/users/me/preferences", ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            return new Dictionary<string, string>();
+        }
+
+        return await resp.Content
+            .ReadFromJsonAsync<Dictionary<string, string>>(Json, ct)
+            ?? new Dictionary<string, string>();
+    }
+
+    /// <summary>PUT /users/me/preferences — merge raso no servidor.</summary>
+    public async Task PutPreferencesAsync(
+        IReadOnlyDictionary<string, string> prefs, CancellationToken ct = default)
+    {
+        var resp = await http.PutAsJsonAsync(
+            "/api/v1/users/me/preferences", prefs, ct);
+        resp.EnsureSuccessStatusCode();
+    }
 
     private async Task<T?> GetOrNull<T>(string url, CancellationToken ct)
     {

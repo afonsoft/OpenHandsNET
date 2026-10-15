@@ -1,0 +1,37 @@
+@* SPEC-26 RF-003 / SPEC-29 RF-003: alterna o overlay plan|build da conversa.
+   plan = read-only (deny mutations); build = default. *@
+@using OpenHandsNET.Client.Services
+@inject ToastService Toasts
+
+<div class="mode-toggle" role="group" aria-label="Agent mode">
+    <button class="@(Mode == "plan" ? "sel" : "")"
+            title="Plan — somente leitura" aria-pressed="@(Mode == "plan")"
+            @onclick='() => SwitchAsync("plan")'>
+        <Icon Name="eye" Size="13" /> plan
+    </button>
+    <button class="@(Mode != "plan" ? "sel" : "")"
+            title="Build — acesso completo" aria-pressed="@(Mode != "plan")"
+            @onclick='() => SwitchAsync("build")'>
+        <Icon Name="wrench" Size="13" /> build
+    </button>
+</div>
+
+@code {
+    [Parameter] public string? Mode { get; set; }
+    /// <summary>Dispara com o novo modo após o usuário clicar.</summary>
+    [Parameter] public EventCallback<string> OnSwitch { get; set; }
+
+    private async Task SwitchAsync(string mode)
+    {
+        if (mode == Mode)
+        {
+            return;
+        }
+
+        Mode = mode;
+        if (OnSwitch.HasDelegate)
+        {
+            await OnSwitch.InvokeAsync(mode);
+        }
+    }
+}

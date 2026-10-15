@@ -29,6 +29,13 @@ public sealed class DockerSandboxService(
     EgressProxyService? egressProxy = null,
     Application.Contracts.ISecretStore? secretStore = null) : ISandboxService
 {
+    /// <summary>
+    /// Serializa o acesso ao <see cref="AppDbContext"/> scoped — leitores
+    /// concorrentes (polling de <see cref="GetAsync"/>/background reconcile)
+    /// não podem sobrepor operações EF no mesmo contexto.
+    /// </summary>
+    private readonly SemaphoreSlim _dbGate = new(1, 1);
+
     /// <summary>Protector da session key do agente in-container (SPEC-17).</summary>
     private Microsoft.AspNetCore.DataProtection.IDataProtector? SessionProtector =>
         dp?.CreateProtector("openhandsnet.sandbox.session");
@@ -391,14 +398,22 @@ public sealed class DockerSandboxService(
     /// <inheritdoc />
     public async Task<DomainSandbox?> GetAsync(Guid sandboxId, CancellationToken ct)
     {
-        var record = await db.Sandboxes.FindAsync([sandboxId], ct);
-        if (record is null)
+        await _dbGate.WaitAsync(ct);
+        try
         {
-            return null;
-        }
+            var record = await db.Sandboxes.FindAsync([sandboxId], ct);
+            if (record is null)
+            {
+                return null;
+            }
 
-        await ReconcileAsync(record, ct);
-        return record.ToDomain();
+            await ReconcileAsync(record, ct);
+            return record.ToDomain();
+        }
+        finally
+        {
+            _dbGate.Release();
+        }
     }
 
     /// <inheritdoc />
@@ -417,13 +432,22 @@ public sealed class DockerSandboxService(
             q = q.Where(r => r.ConversationId == conversationId);
         }
 
-        var rows = await q.OrderByDescending(r => r.CreatedAtTicks).ToListAsync(ct);
-        foreach (var row in rows)
+        await _dbGate.WaitAsync(ct);
+        try
         {
-            await ReconcileAsync(row, ct);
-        }
+            var rows = await q.OrderByDescending(r => r.CreatedAtTicks)
+                .ToListAsync(ct);
+            foreach (var row in rows)
+            {
+                await ReconcileAsync(row, ct);
+            }
 
-        return rows.Select(r => r.ToDomain()).ToList();
+            return rows.Select(r => r.ToDomain()).ToList();
+        }
+        finally
+        {
+            _dbGate.Release();
+        }
     }
 
     /// <inheritdoc />

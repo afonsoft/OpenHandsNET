@@ -12,14 +12,17 @@ public sealed class ConversationStateService : IAsyncDisposable
 {
     private readonly OpenHandsNetApiClient _api;
     private readonly ConversationHubClient _hub;
+    private readonly ToastService? _toasts;
     private readonly List<ClientEvent> _events = [];
     private CancellationTokenSource? _cts;
 
     public ConversationStateService(
-        OpenHandsNetApiClient api, ConversationHubClient hub)
+        OpenHandsNetApiClient api, ConversationHubClient hub,
+        ToastService? toasts = null)
     {
         _api = api;
         _hub = hub;
+        _toasts = toasts;
     }
 
     /// <summary>Disparado após qualquer mutação de estado relevante.</summary>
@@ -252,6 +255,19 @@ public sealed class ConversationStateService : IAsyncDisposable
             case "ServerErrorEvent":
                 ErrorMessage = e.Str("error") ?? e.Str("message")
                     ?? e.Raw.ToString()[..Math.Min(200, e.Raw.ToString().Length)];
+                // SPEC-26 RF-004: erros de run viram toast persistente.
+                _toasts?.Error(ErrorMessage);
+                break;
+
+            case "agent_diagnostic":
+                // SPEC-26 RF-004: diagnósticos ≥warn notificam.
+                var sev = e.Str("severity");
+                if (sev is "warn" or "warning" or "error")
+                {
+                    var msg = $"{e.Str("code")}: {e.Str("message")}";
+                    if (sev is "error") { _toasts?.Error(msg); }
+                    else { _toasts?.Warn(msg); }
+                }
                 break;
 
             case "ActionEvent":
