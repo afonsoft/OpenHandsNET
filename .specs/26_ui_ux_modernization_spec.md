@@ -9,7 +9,7 @@
 | Stack | `Blazor WASM · Tailwind v4 · Monaco · SignalR` |
 | Repository | `afonsoft/OpenHandsNET` |
 | Status | `Done` (PR #73) |
-| Ticket | `TBD` |
+| Ticket | [#55](https://github.com/afonsoft/OpenHandsNET/issues/55) |
 | Depends on | `05_devin_ui_integration_spec`, `21_client_completion_spec` (Tailwind pipeline + Monaco), `24_agent_activity_protocol_spec` (eventos novos) |
 | Reference | `afonsoft/open-webui` ("Open-WebUI+Code" — fork .NET do usuário) |
 | Touches | `Client/wwwroot/css`, `Client/Layout`, `Client/Components`, `Client/Services` |

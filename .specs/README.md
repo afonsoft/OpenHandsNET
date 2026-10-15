@@ -43,30 +43,32 @@ SPECs (Spec-Driven Development) do port do ecossistema **OpenHands** para
 | `19_egress_domain_allowlist_spec.md` | Egress `allowlist` real por domínio via proxy sidecar Squid dual-homed | 14 | [#43](https://github.com/afonsoft/OpenHandsNET/issues/43) |
 | `20_plan_enforcement_billing_spec.md` | Enforcement de planos (conversas/dia, runs concorrentes, tokens/mês, sandbox-s/mês) + write-path de usage metering + plans CRUD admin | 08, 14 | [#44](https://github.com/afonsoft/OpenHandsNET/issues/44) |
 | `21_client_completion_spec.md` | Admin UI (users/admins/audit/flags/plans/usage/support-bundle), Monaco (files+diff), pipeline Tailwind v4 | 05, 08, 14, 20 | [#45](https://github.com/afonsoft/OpenHandsNET/issues/45) ✅ |
-| `22_context_engine_compaction_spec.md` | Context engine: `IContextMeter`, `LlmSummarizingCondenser`, pruning, triggers (threshold/mid-turn/overflow/manual), ledger + promotion | 02, 09 | ✅ #57 |
-| `23_omniroute_model_catalog_routing_spec.md` | OmniRoute `/models` catalog, `IModelRouter` por role, retry/fallback/turn recovery, `llm_route` | 09, 22 | ✅ #58 |
-| `24_agent_activity_protocol_spec.md` | Sandbox-agent v2 (`/exec/stream`, `/proc`, `/activity`), kinds `command_output`/`tool_progress`/`files_changed`/`run_progress`/`work_summary`/`agent_diagnostic` | 03, 17, 02 | ✅ #59 |
-| `25_tools_skills_discovery_spec.md` | Repo discovery (`AGENTS.md`, `.openhands/skills`…), repo skills federadas, tools `search`/`file_read` v2/`file_edit` modes/`web_fetch`, MCP schema fidelity | 07, 09, 11, 24 | ✅ #60 |
-| `26_ui_ux_modernization_spec.md` | Temas dark/light/system, icon set SVG, markdown+ToolCallCard, command palette, notificações, responsivo (ref: open-webui fork) | 05, 21, 24 | TBD |
-| `27_cli_opencode_comparative_spec.md` | Análise comparativa: nosso CLI vs opencode/claude-code/gemini/codex/aider + deltas do fork `alltomatos/opencode` → backlog RF-A..I (subagents, permissões, memória, CLI parity) | 06, 09, 22–25 | TBD |
-| `28_subagents_task_tool_spec.md` | Orquestração de subagentes: tool `task`, presets explore/scout/general/plan, depth/concurrency, sync+background | 09, 22–25, 29 | #61 |
-| `29_tool_permissions_spec.md` | Permissões `allow/deny/ask` por tool (glob `mcp__*`), override por conversa, plan mode read-only | 09, 25 | #62 |
-| `30_centralized_memory_spec.md` | Memória org (DB+audit) + project (`.openhands/memory/*.md`), tool `memory`, digest estável no prompt | 22, 25, 29 | #63 |
-| `31_cli_parity_spec.md` | CLI: `models`, `resume`, `stats`, `skills`, `mcp`, `export`, `attach`, `doctor --preflight`, `tui` keybindings | 06, 20, 23–25 | #64 |
-| `32_upstream_enterprise_gap_analysis.md` | Gap analysis vs `OpenHands/*` upstream: streaming deltas, `SecurityAnalyzer`, secrets by-ref, artifact store S3, runtime-api/k8s, resume validation | 27 | TBD |
-| `33_agent_hardening_spec.md` | `ISecurityAnalyzer` (pattern/LLM/policy), secrets by-ref no start-task, `resume_drift` diagnostic | 09, 22, 23, 29 | #65 |
-| `34_streaming_deltas_artifacts_spec.md` | `streaming_delta` efêmero (SignalR-only, durable supersedes) + `IArtifactStore` (workspace|S3) | 02, 24, 25 | #66 |
-| `35_runtime_api_split_spec.md` | `openhandsnet-runtime-api` REST dedicado; `HttpSandboxService`; compose `split` | 03, 14, 16, 17 | #74 |
-| `36_distributed_cache_backplane_spec.md` | Valkey/Redis: `IDistributedCache`, SignalR backplane, warm-pool/rate-limit multi-réplica | 04, 13, 14, 34 | #75 |
-| `37_kubernetes_runtime_spec.md` | `KubernetesSandboxService` (pods + Sysbox DinD + PVC), Helm chart, RBAC | 03, 14, 16, 17, 35 | #76 |
-| `38_sandbox_host_routing_spec.md` | `Sandbox:RoutingMode=internal\|path\|host`, wildcard DNS, `service_urls`, `public_ports` | 03, 04, 14 | #77 |
-| `39_eval_harness_spec.md` | `openhandsnet eval` — tasks YAML, scoring, baseline diff, smoke/nightly suites | 06, 09, 24, 31 | #78 |
+| `22_context_engine_compaction_spec.md` | Context engine: `IContextMeter`, `LlmSummarizingCondenser`, pruning, triggers (threshold/mid-turn/overflow/manual), ledger + promotion | 02, 09 | [#51](https://github.com/afonsoft/OpenHandsNET/issues/51) ✅ #57 |
+| `23_omniroute_model_catalog_routing_spec.md` | OmniRoute `/models` catalog, `IModelRouter` por role, retry/fallback/turn recovery, `llm_route` | 09, 22 | [#52](https://github.com/afonsoft/OpenHandsNET/issues/52) ✅ #58 |
+| `24_agent_activity_protocol_spec.md` | Sandbox-agent v2 (`/exec/stream`, `/proc`, `/activity`), kinds `command_output`/`tool_progress`/`files_changed`/`run_progress`/`work_summary`/`agent_diagnostic` | 03, 17, 02 | [#53](https://github.com/afonsoft/OpenHandsNET/issues/53) ✅ #59 |
+| `25_tools_skills_discovery_spec.md` | Repo discovery (`AGENTS.md`, `.openhands/skills`…), repo skills federadas, tools `search`/`file_read` v2/`file_edit` modes/`web_fetch`, MCP schema fidelity | 07, 09, 11, 24 | [#54](https://github.com/afonsoft/OpenHandsNET/issues/54) ✅ #60 |
+| `26_ui_ux_modernization_spec.md` | Temas dark/light/system, icon set SVG, markdown+ToolCallCard, command palette, notificações, responsivo (ref: open-webui fork) | 05, 21, 24 | [#55](https://github.com/afonsoft/OpenHandsNET/issues/55) ✅ #73 |
+| `27_cli_opencode_comparative_spec.md` | Análise comparativa CLI/agent-harness (opencode e pares) — backlog que originou 28–31 | 06, 09, 11, 22–25 | `TBD` (análise) |
+| `28_subagents_task_tool_spec.md` | Orquestração de subagentes via tool `task` (fork/merge de contexto) | 09, 22–25, 29 | #61 ✅ #70 |
+| `29_tool_permissions_spec.md` | Permissões por tool `allow`/`deny`/`ask` + plan mode | 09, 25 | #62 ✅ #67 |
+| `30_centralized_memory_spec.md` | Memória centralizada (escopos org + projeto) | 22, 25, 29 | #63 ✅ #68 |
+| `31_cli_parity_spec.md` | Paridade CLI: models/resume/stats/mcp/skills/export/attach/doctor preflight | 06, 20, 23–25 | #64 ✅ #72 |
+| `32_upstream_enterprise_gap_analysis.md` | Gap analysis vs upstream (Enterprise/Cloud/Agent-SDK) — origem de 33–39 | 27 | `TBD` (análise) |
+| `33_agent_hardening_spec.md` | `ISecurityAnalyzer` plugável, secrets by-ref, resume validation (`agent_contract`) | 09, 22, 23, 29 | #65 ✅ #69 |
+| `34_streaming_deltas_artifacts_spec.md` | `streaming_delta` efêmero (batcher+hub) + `IArtifactStore` workspace/S3 | 02, 24, 25 | #66 ✅ #71 |
+| `35_runtime_api_split_spec.md` | Runtime-API split: `ISandboxEngine` local/remote + `openhandsnet-runtime-api` | 03, 14, 16, 17 | #74 ✅ #79 |
+| `36_distributed_cache_backplane_spec.md` | `IDistributedCache` Redis/Valkey + backplane SignalR + `ICoordinationBus`/`IDistributedCounter` (consumidores pendentes) | 04, 13, 14, 34 | #75 ◐ #79 |
+| `37_kubernetes_runtime_spec.md` | `KubernetesSandboxEngine` (pods+Sysbox+PVC); Helm chart e doctor probe pendentes | 03, 14, 16, 17, 35 | #76 ◐ #79 |
+| `38_sandbox_host_routing_spec.md` | Routing `path\|host` (`{id}-{port}.{domain}`) p/ surfaces do sandbox | 03, 04, 14, 35/37 | #77 ✅ #79 |
+| `39_eval_harness_spec.md` | `openhandsnet eval` — runner headless + fixtures + scoring (parcial) | 06/31, 09, 22, 24, 28 | #78 ◐ #79 |
+| `40_sandbox_agent_server_surfaces_spec.md` | Surfaces do agent-server: gateway `/v1/chat/completions`, terminal/VSCode web, preview tokens, ACP mínimo | 03, 04, 08, 17, 24, 34, 38 | `TBD` |
 
 
 Build order: `01 → (02 ∥ 03 ∥ 10 ∥ 13) → (04 ∥ 09 ∥ 11 ∥ 12) → (05 ∥ 06 ∥ 08) → 07 → 14 → 15 → 16 → 17 → (18 ∥ 19 ∥ 20) → 21 → (22 → 23 ∥ 24) → 25 → (26 ∥ 27) → (29 → (28 ∥ 33) ∥ 30 ∥ 31 ∥ 34)`.
 
-Enterprise wave (futura — Drafts 35–39): `(35 → (36 ∥ 37 ∥ 38) → 39)` —
-35 antes de 37 (k8s roda atrás do runtime-api); 39 independente.
+Enterprise wave: `(35 → (36 ∥ 37 ∥ 38) ∥ 39) → 40` — entregue parcialmente
+no PR #79 (35/38 Done; 36/37/39 com pendências nos Status); 40 fecha os
+surfaces user-facing do agent-server.
 
 ## Fluxo
 

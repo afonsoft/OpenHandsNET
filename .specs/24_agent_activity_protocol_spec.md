@@ -9,7 +9,7 @@
 | Stack | `.NET 10 · Minimal API (sandbox agent) · SignalR · Blazor WASM` |
 | Repository | `afonsoft/OpenHandsNET` |
 | Status | `Done` — PR #59 merged |
-| Ticket | `TBD` |
+| Ticket | [#53](https://github.com/afonsoft/OpenHandsNET/issues/53) |
 | Depends on | `03_runtime_sandbox_spec`, `17_runtime_image_blueprint_spec` (sandbox agent), `02_event_stream_spec` |
 | Feeds | `26_ui_ux_modernization_spec` (renderers) |
 | Touches | `OpenHandsNET.SandboxAgent/Program.cs`, `ISandboxExecutor`, `DockerSandboxExecutor`, `BuiltinTools`, `AgentRunner`, `TerminalTab`, `EventCard` |

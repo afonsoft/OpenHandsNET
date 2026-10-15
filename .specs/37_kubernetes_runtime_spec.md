@@ -8,7 +8,7 @@
 | Type | `Infra / Enterprise` |
 | Stack | `.NET 10 · KubernetesClient · Helm · Sysbox` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` (enterprise wave; origem SPEC-32) |
+| Status | `In implementation` (PR #79 — `KubernetesSandboxEngine` ok; `charts/` skeleton sem workloads e `doctor` sem probe de cluster/sysbox pendentes) |
 | Ticket | #76 |
 | Depends on | `03` (sandbox), `14` (ops/sizing), `16` (lifecycle), `17` (image), `35` (runtime-api split) |
 | Touches | `ISandboxService` provider, deploy/ (Helm), docs |

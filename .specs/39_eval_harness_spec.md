@@ -8,7 +8,7 @@
 | Type | `Feature / Tooling (Quality)` |
 | Stack | `.NET 10 · CLI (Spectre) · headless runner · fixtures` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` (enterprise wave; origem SPEC-32) |
+| Status | `In implementation` (PR #79 — comando `eval` básico ok; `run|report|list`, `--parallel`, `llm_judge`, asserts `exit_code`/`file_contains`, fixtures `evals/` e nightly pendentes) |
 | Ticket | #78 |
 | Depends on | `06`/`31` (CLI), `09` (agent engine), `24` (activity/events), `22` (context), `28` (subagents) |
 | Touches | `cli/OpenHandsNET.Cli` (`eval` command), `tests/` (fixtures), CI nightly |

@@ -9,7 +9,7 @@
 | Stack | `.NET 10 · EF Core · Minimal API` |
 | Repository | `afonsoft/OpenHandsNET` |
 | Status | `Done` — PR #57 merged |
-| Ticket | `TBD` |
+| Ticket | [#51](https://github.com/afonsoft/OpenHandsNET/issues/51) |
 | Depends on | `09_agent_engine_spec` (loop/eventos), `02_event_stream_spec` (V1 kinds) |
 | Feeds | `23_omniroute_model_catalog_routing_spec` (janela por modelo) |
 | Touches | `ICondenser`, `NoOpCondenser`, `AgentRunner.BuildHistoryAsync`, `Condensation*` events, `ConversationStateUpdateEvent`, `TokenEvent` |
