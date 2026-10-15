@@ -13,6 +13,7 @@ namespace OpenHandsNET.Api.Hubs;
 /// </summary>
 public sealed class ConversationHub(
     IEventService events, TerminalBridgeService terminals,
+    IAgentActivityBus activity,
     OpenHandsNET.Application.Agent.IAgentRunnerHost runnerHost) : Hub
 {
     /// <summary>
@@ -59,6 +60,15 @@ public sealed class ConversationHub(
             yield return e;
         }
     }
+
+    /// <summary>
+    /// SPEC-34 RF-001: pseudo-kind <c>streaming_delta</c> — tokens efêmeros
+    /// do run corrente. Nunca persistidos/replayados: o evento durável com
+    /// o mesmo <c>item_id</c> substitui o slot provisório no client.
+    /// </summary>
+    public IAsyncEnumerable<DeltaFrame> Deltas(
+        Guid conversationId, CancellationToken ct) =>
+        activity.SubscribeAsync(conversationId, ct);
 
     /// <summary>Envia mensagem do usuário (aparece no stream como MessageEvent).</summary>
     public async Task SendUserMessage(

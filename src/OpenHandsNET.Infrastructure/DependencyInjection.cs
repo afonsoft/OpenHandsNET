@@ -298,6 +298,35 @@ public static class DependencyInjection
                 OpenHandsNET.Infrastructure.Agent.Browser.BrowserOptions.Section));
         services.AddSingleton<OpenHandsNET.Application.Agent.IBrowserService,
             OpenHandsNET.Infrastructure.Agent.Browser.PlaywrightBrowserService>();
+
+        // SPEC-34 RF-001: bus de deltas efêmeros (runner→hub; nunca EF).
+        services.AddSingleton<
+            OpenHandsNET.Application.Events.IAgentActivityBus,
+            OpenHandsNET.Infrastructure.Agent.Deltas.AgentActivityBus>();
+        // SPEC-34 RF-002: artifact store — workspace default, s3 opt-in.
+        services.Configure<
+            OpenHandsNET.Infrastructure.Artifacts.ArtifactOptions>(
+            configuration.GetSection(
+                OpenHandsNET.Infrastructure.Artifacts.ArtifactOptions.Section));
+        services.AddSingleton<
+            OpenHandsNET.Application.Artifacts.IArtifactStore>(sp =>
+        {
+            var o = sp.GetRequiredService<Microsoft.Extensions.Options
+                .IOptions<OpenHandsNET.Infrastructure.Artifacts
+                    .ArtifactOptions>>();
+            return o.Value.Provider.Equals("s3",
+                StringComparison.OrdinalIgnoreCase)
+                ? new OpenHandsNET.Infrastructure.Artifacts.S3ArtifactStore(o,
+                    sp.GetRequiredService<Microsoft.Extensions.Logging
+                        .ILogger<OpenHandsNET.Infrastructure.Artifacts
+                            .S3ArtifactStore>>())
+                : (OpenHandsNET.Application.Artifacts.IArtifactStore)
+                    new OpenHandsNET.Infrastructure.Artifacts
+                        .WorkspaceArtifactStore(o,
+                            sp.GetRequiredService<Microsoft.Extensions.Logging
+                                .ILogger<OpenHandsNET.Infrastructure.Artifacts
+                                    .WorkspaceArtifactStore>>());
+        });
         return services;
     }
 

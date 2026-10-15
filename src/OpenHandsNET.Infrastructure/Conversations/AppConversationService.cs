@@ -22,7 +22,8 @@ public sealed class AppConversationService(
     OpenHandsNET.Application.Agent.IBrowserService? browser = null,
     OpenHandsNET.Application.Identity.IPlanEnforcementService? enforcement = null,
     OpenHandsNET.Application.Identity.ICurrentUserAccessor? currentUser = null,
-    OpenHandsNET.Application.Identity.IEffectiveOrgResolver? orgResolver = null)
+    OpenHandsNET.Application.Identity.IEffectiveOrgResolver? orgResolver = null,
+    OpenHandsNET.Application.Artifacts.IArtifactStore? artifacts = null)
     : IAppConversationService
 {
     /// <inheritdoc />
@@ -240,6 +241,12 @@ public sealed class AppConversationService(
 
         // SPEC-16 RF-006: workspace só sai do host junto com a conversa.
         provisioner.RemoveWorkspace(record.Id);
+        // SPEC-34 RF-003: artefatos (ws/s3) morrem com a conversa.
+        if (artifacts is not null)
+        {
+            await artifacts.DeleteConversationAsync(record.Id, ct);
+        }
+
         // SPEC-18 RF-003: fecha o contexto de browser da conversa.
         if (browser is not null)
         {

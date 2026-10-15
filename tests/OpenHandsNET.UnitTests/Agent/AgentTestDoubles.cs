@@ -152,7 +152,8 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
         bool confirmationMode = false, ICondenser? condenser = null,
         IAgentLlmProvider? provider = null, IModelCatalog? catalog = null,
         ISecurityAnalyzer? security = null,
-        Action<ConversationRecord>? configureConv = null)
+        Action<ConversationRecord>? configureConv = null,
+        IAgentActivityBus? activityBus = null)
     {
         ConversationId = Guid.NewGuid();
         Events = new FakeEventService();
@@ -188,6 +189,10 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
         if (security is not null)
         {
             sc.AddSingleton(security);
+        }
+        if (activityBus is not null)
+        {
+            sc.AddSingleton(activityBus);
         }
         _provider = sc.BuildServiceProvider();
         _scope = _provider.CreateAsyncScope();

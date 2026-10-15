@@ -66,6 +66,14 @@ public abstract record EventBase
     public string? ParentId { get; init; }
 
     /// <summary>
+    /// SPEC-34 RF-001: streaming item slot — durable events that supersede an
+    /// ephemeral <c>streaming_delta</c> sequence carry its item_id so clients
+    /// can drop the provisional slot (upstream DeltaFrame parity).
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ItemId { get; init; }
+
+    /// <summary>
     /// Event kind discriminator value (exact upstream string), resolved from the
     /// <see cref="JsonDerivedTypeAttribute"/> registration on <see cref="EventBase"/>.
     /// </summary>

@@ -10,6 +10,15 @@
     {
         <EventCard Event="e" />
     }
+    @* SPEC-34: slots de delta efêmeros — removidos quando o evento durável
+       com o mesmo item_id chega (supersedes). *@
+    @foreach (var delta in State.LiveDeltas)
+    {
+        <div class="ev-card msg delta" data-item-id="@delta.Key">
+            <div class="ev-head"><span>assistant</span><em>streaming…</em></div>
+            <pre>@delta.Value</pre>
+        </div>
+    }
 </div>
 @if (State.ErrorMessage is { } err)
 {

@@ -178,6 +178,9 @@ public sealed class AgentRunner(
         // SPEC-33 RF-001: analyzer por ação — High força confirmação
         // (mesmo com permission allow), diagnostic security_risk redacted.
         var security = services.GetService<ISecurityAnalyzer>();
+        // SPEC-34 RF-001: bus de deltas efêmeros — runner publica,
+        // hub repassa; nada disso toca o IEventService.
+        var bus = services.GetService<IAgentActivityBus>();
         var model = conv.LlmModel ?? opt.Model;
         // SPEC-23 RF-002: seleção por role + fallback chain. `selection`
         // acompanha o modelo efetivo (catalogo → janela/provider).
@@ -311,6 +314,12 @@ public sealed class AgentRunner(
                 System.Text.StringBuilder args)>();
             string? finishReason = null;
             var responseId = "";
+            // SPEC-34 RF-001: um item_id por iteração — deltas efêmeros e o
+            // evento durável que os substitui compartilham o slot.
+            var itemId = Ulid.NewUlid().ToString();
+            var batcher = bus is null
+                ? null
+                : new Deltas.DeltaBatcher(conversationId, itemId, bus);
             // SPEC-23 RF-003: cada tentativa de modelo emite llm_route —
             // a UI mostra "tentando X (fallback de Y)" em tempo real.
             if (selection is not null)
@@ -342,12 +351,9 @@ public sealed class AgentRunner(
                     {
                         case TextDelta d:
                             text.Append(d.Text);
-                            lastEventId = (await events.AppendAsync(conversationId,
-                                new StreamingDeltaEvent
-                                {
-                                    Content = d.Text,
-                                    ParentId = lastEventId,
-                                }, ct)).Id;
+                            // SPEC-34 RF-001: delta vai só ao bus efêmero —
+                            // nunca persistido/replayado pelo IEventService.
+                            batcher?.Add(d.Text);
                             break;
                         case ToolCallDelta tcd:
                             if (!calls.TryGetValue(tcd.Index, out var cur))
@@ -579,10 +585,12 @@ public sealed class AgentRunner(
                     return;
                 }
 
+                batcher?.Flush();
                 var msg = new MessageEvent
                 {
                     Source = EventSource.Agent,
                     ParentId = lastEventId,
+                    ItemId = itemId,
                     LlmResponseId = responseId,
                     LlmMessage = JsonSerializer.SerializeToElement(new
                     {
@@ -607,12 +615,16 @@ public sealed class AgentRunner(
                 text.Length > 0 ? text.ToString() : null, toolCalls));
             ids.Add(null);
             var actionIds = new List<string>();
+            // SPEC-34: flush antes do primeiro durável — deltas do pensamento
+            // saem antes dos ActionEvents que substituem o slot item_id.
+            batcher?.Flush();
 
             foreach (var call in toolCalls)
             {
                 var actionEvent = new ActionEvent
                 {
                     ParentId = lastEventId,
+                    ItemId = itemId,
                     ToolName = call.Name,
                     ToolCallId = call.Id,
                     LlmResponseId = responseId,
@@ -1007,7 +1019,9 @@ public sealed class AgentRunner(
         var payload = policy is null
             ? result.Observation
             : await policy.ApplyAsync(action.ToolName ?? "", action.Id,
-                result.Observation, sandbox, executor, ct);
+                result.Observation, sandbox, executor, conversationId,
+                services.GetService<
+                    Application.Artifacts.IArtifactStore>(), ct);
         var obs = new ObservationEvent
         {
             ParentId = action.Id,
