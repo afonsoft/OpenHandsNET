@@ -7,6 +7,8 @@ COPY Directory.Build.props Directory.Packages.props global.json nuget.config ./
 COPY src/OpenHandsNET.Domain/OpenHandsNET.Domain.csproj src/OpenHandsNET.Domain/
 COPY src/OpenHandsNET.Application/OpenHandsNET.Application.csproj src/OpenHandsNET.Application/
 COPY src/OpenHandsNET.Infrastructure/OpenHandsNET.Infrastructure.csproj src/OpenHandsNET.Infrastructure/
+COPY src/OpenHandsNET.Sandboxing/OpenHandsNET.Sandboxing.csproj src/OpenHandsNET.Sandboxing/
+COPY src/OpenHandsNET.RuntimeApi/OpenHandsNET.RuntimeApi.csproj src/OpenHandsNET.RuntimeApi/
 COPY src/OpenHandsNET.Client/OpenHandsNET.Client.csproj src/OpenHandsNET.Client/
 COPY src/OpenHandsNET.Api/OpenHandsNET.Api.csproj src/OpenHandsNET.Api/
 COPY cli/OpenHandsNET.Cli/OpenHandsNET.Cli.csproj cli/OpenHandsNET.Cli/

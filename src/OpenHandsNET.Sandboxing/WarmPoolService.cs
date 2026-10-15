@@ -120,8 +120,9 @@ public sealed class WarmPoolService(
 
     /// <summary>Free pool slots serving <paramref name="image"/> (tests).</summary>
     public async Task<int> FreeCountAsync(string image, CancellationToken ct) =>
-        (await engine.ListPoolAsync(ct)).Count(c => PoolKeyOf(c)
-            .Equals(image, StringComparison.OrdinalIgnoreCase));
+        (await engine.ListPoolAsync(ct)).Count(c =>
+            c.State == "running" && PoolKeyOf(c)
+                .Equals(image, StringComparison.OrdinalIgnoreCase));
 
     private async Task EnsurePoolSizeAsync(CancellationToken ct)
     {
@@ -130,7 +131,8 @@ public sealed class WarmPoolService(
             return;
         }
 
-        var free = await engine.ListPoolAsync(ct);
+        var free = (await engine.ListPoolAsync(ct))
+            .Where(c => c.State == "running").ToList();
         foreach (var (image, target) in PoolTargets())
         {
             var have = free.Count(c => PoolKeyOf(c)
