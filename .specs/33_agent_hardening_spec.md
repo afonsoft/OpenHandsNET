@@ -8,7 +8,7 @@
 | Type | `Feature / Security` |
 | Stack | `.NET 10 · AgentRunner · DI` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Done` (PR #69) |
 | Ticket | #65 |
 | Depends on | `09`, `22`, `23`, `29` |
 | Touches | `AgentRunner` (dispatch), `ConversationStartWorker`, `ISecretsStore`, `ConversationHistoryBuilder` |
