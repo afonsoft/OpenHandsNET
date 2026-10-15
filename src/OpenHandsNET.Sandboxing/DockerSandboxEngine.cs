@@ -242,7 +242,9 @@ public sealed class DockerSandboxEngine(
         var pool = await docker.Containers.ListContainersAsync(
             new ContainersListParameters
             {
-                All = false,
+                // All=true: slot ocupado mesmo que o container tenha saído
+                // (ex.: stub sem TTY nos testes) — claim re-start abaixo.
+                All = true,
                 Filters = new Dictionary<string, IDictionary<string, bool>>
                 {
                     ["label"] = new Dictionary<string, bool>
@@ -271,6 +273,14 @@ public sealed class DockerSandboxEngine(
 
             var inspect = await docker.Containers.InspectContainerAsync(
                 free.ID, ct);
+            if (inspect.State?.Running != true)
+            {
+                // Slot warm parado (stub de teste sem TTY, crash…) — re-start
+                // preserva fs/env/labels (claim não é re-create).
+                await docker.Containers.StartContainerAsync(
+                    free.ID, null, ct);
+            }
+
             if (request.WorkspaceConversationId is { } convId)
             {
                 var wsMount = inspect.Mounts.FirstOrDefault(m =>
