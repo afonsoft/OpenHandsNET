@@ -45,6 +45,18 @@ public sealed class MockLlmProvider : IAgentLlmProvider
         var step = _script.Count > 0 ? _script.Dequeue() : AutoFinish();
         var responseId = $"mock-{++_completion}";
 
+        // SPEC-41 RF-001: script "reasoning" emite deltas no canal thinking.
+        if (step["reasoning"]?.GetValue<string>() is { } think
+            && think.Length > 0)
+        {
+            foreach (var word in think.Split(' '))
+            {
+                ct.ThrowIfCancellationRequested();
+                yield return new ReasoningDelta(word + " ");
+                await Task.Yield();
+            }
+        }
+
         if (step["text"]?.GetValue<string>() is { } text && text.Length > 0)
         {
             // Deltas por palavra — suficiente para exercitar o streaming path.

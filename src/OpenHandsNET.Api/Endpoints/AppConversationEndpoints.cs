@@ -130,6 +130,30 @@ public static class AppConversationEndpoints
 
         group.MapPost("/{id:guid}/send-message", SendMessageAsync);
 
+        // SPEC-41 RF-005: resume retoma run pausado — 409 fora de Paused.
+        group.MapPost("/{id:guid}/resume", async (
+            Guid id, IAppConversationService svc,
+            OpenHandsNET.Application.Agent.IAgentRunnerHost runnerHost,
+            HttpContext http, CancellationToken ct) =>
+        {
+            if (await svc.GetAsync(id, ct) is not { } conv)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Conversation {id} not found");
+            }
+
+            if (conv.ExecutionStatus
+                    != OpenHandsNET.Domain.Conversations
+                        .ConversationExecutionStatus.Paused)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 409, $"Conversation {id} is not paused");
+            }
+
+            await runnerHost.ResumeAsync(id, ct);
+            return Results.Accepted();
+        });
+
         // SPEC-18 RF-005/006: switch_profile recria o sandbox com o novo
         // profile (start-task); switch_acp_model vale a partir do próximo run.
         group.MapPost("/{id:guid}/switch_profile", async (

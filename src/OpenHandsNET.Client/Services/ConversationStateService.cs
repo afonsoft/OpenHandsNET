@@ -41,6 +41,16 @@ public sealed class ConversationStateService : IAsyncDisposable
         _deltas = new();
     private readonly Dictionary<string, string> _liveDeltas = new();
 
+    /// <summary>
+    /// SPEC-41 RF-001: reasoning efêmero por item_id (canal "reasoning") —
+    /// mesma semântica de supersedes que <see cref="LiveDeltas"/>, mas
+    /// renderizado na ThinkingSection, não no content.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> LiveReasoning => _liveReasoning;
+    private readonly Dictionary<string, System.Text.StringBuilder>
+        _reasoning = new();
+    private readonly Dictionary<string, string> _liveReasoning = new();
+
     public ConversationItem? Conversation { get; private set; }
     public string ExecutionStatus { get; private set; } = "IDLE";
     public string? ErrorMessage { get; private set; }
@@ -51,6 +61,16 @@ public sealed class ConversationStateService : IAsyncDisposable
     public double CostUsd { get; private set; }
     public bool Connected { get; private set; }
     public bool LoadingBacklog { get; private set; } = true;
+
+    /// <summary>SPEC-41 RF-004: instante do último evento/delta recebido.</summary>
+    public DateTimeOffset LastEventAt { get; private set; } =
+        DateTimeOffset.UtcNow;
+
+    /// <summary>
+    /// SPEC-41 RF-004: true quando o run está RUNNING e há &gt;45s sem
+    /// evento/delta/heartbeat — sinal de stall para a UI.
+    /// </summary>
+    public bool Stalled { get; private set; }
 
     /// <summary>Buffer de saída do terminal (live + obs de bash).</summary>
     public System.Text.StringBuilder TerminalBuffer { get; } = new();
@@ -86,7 +106,30 @@ public sealed class ConversationStateService : IAsyncDisposable
         }
 
         Connected = true;
+        LastEventAt = DateTimeOffset.UtcNow;
         Changed?.Invoke();
+
+        // SPEC-41 RF-004: watchdog de stall — avalia o silêncio a cada 5s;
+        // heartbeats de run_progress renovam LastEventAt e mantêm Stalled=false.
+        _ = Task.Run(async () =>
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+            try
+            {
+                while (await timer.WaitForNextTickAsync(_cts.Token))
+                {
+                    var stalled = ExecutionStatus == "RUNNING"
+                        && DateTimeOffset.UtcNow - LastEventAt
+                            > TimeSpan.FromSeconds(45);
+                    if (stalled != Stalled)
+                    {
+                        Stalled = stalled;
+                        Changed?.Invoke();
+                    }
+                }
+            }
+            catch (OperationCanceledException) { /* dispose */ }
+        }, _cts.Token);
 
         var lastId = _events.Count > 0 ? _events[^1].Id : null;
         _ = Task.Run(async () =>
@@ -130,15 +173,19 @@ public sealed class ConversationStateService : IAsyncDisposable
     /// <summary>Aplica um frame de delta ao slot efêmero do item_id.</summary>
     internal void ApplyDelta(ConversationHubClient.DeltaItem d)
     {
-        if (!_deltas.TryGetValue(d.ItemId, out var buf))
+        LastEventAt = DateTimeOffset.UtcNow;
+        // SPEC-41 RF-001: canal "reasoning" acumula em slot paralelo.
+        var store = d.Channel == "reasoning" ? _reasoning : _deltas;
+        var live = d.Channel == "reasoning" ? _liveReasoning : _liveDeltas;
+        if (!store.TryGetValue(d.ItemId, out var buf))
         {
             buf = new System.Text.StringBuilder();
-            _deltas[d.ItemId] = buf;
-            _liveDeltas[d.ItemId] = "";
+            store[d.ItemId] = buf;
+            live[d.ItemId] = "";
         }
 
         buf.Append(d.Text);
-        _liveDeltas[d.ItemId] = buf.ToString();
+        live[d.ItemId] = buf.ToString();
     }
 
     /// <summary>Envia mensagem de usuário via REST (aparece no stream).</summary>
@@ -155,6 +202,14 @@ public sealed class ConversationStateService : IAsyncDisposable
     public Task InterruptAsync(CancellationToken ct = default) =>
         _hub.InterruptAsync(Guid.Parse(Conversation!.Id), ct);
 
+    /// <summary>SPEC-41 RF-005: pausa (resumível) o run corrente.</summary>
+    public Task PauseAsync(CancellationToken ct = default) =>
+        _hub.PauseAsync(Guid.Parse(Conversation!.Id), ct);
+
+    /// <summary>SPEC-41 RF-005: retoma run pausado.</summary>
+    public Task ResumeAsync(CancellationToken ct = default) =>
+        _hub.ResumeAsync(Guid.Parse(Conversation!.Id), ct);
+
     /// <summary>Aplica um evento ao estado derivado (único writer).</summary>
     internal void Apply(ClientEvent e)
     {
@@ -163,12 +218,15 @@ public sealed class ConversationStateService : IAsyncDisposable
             return; // dedup backlog/live overlap
         }
 
+        LastEventAt = DateTimeOffset.UtcNow;
         // SPEC-34: durável supersedes — evento com item_id descarta o
         // slot de deltas efêmeros correspondente.
         if (e.ItemId is { } itemId)
         {
             _deltas.Remove(itemId);
             _liveDeltas.Remove(itemId);
+            _reasoning.Remove(itemId);
+            _liveReasoning.Remove(itemId);
         }
 
         _events.Add(e);

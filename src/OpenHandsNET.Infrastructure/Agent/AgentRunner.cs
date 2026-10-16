@@ -119,6 +119,24 @@ public sealed class AgentRunner(
 
         // SPEC-24 RF-003: counters de atividade do run (progress/summary).
         var activity = new RunActivityTracker();
+
+        // SPEC-41 RF-004: heartbeat — LLM/tool calls longas não emitem
+        // eventos; o ping de 15s mantém o watchdog do client quieto.
+        using var hbCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var heartbeat = Task.Run(async () =>
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(15));
+            try
+            {
+                while (await timer.WaitForNextTickAsync(hbCts.Token))
+                {
+                    await activity.HeartbeatAsync(events, conversationId,
+                        CancellationToken.None);
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception) { /* heartbeat é best-effort */ }
+        }, CancellationToken.None);
         try
         {
             await LoopAsync(events, db, conv, sandbox, executor, tools, mcp,
@@ -139,6 +157,10 @@ public sealed class AgentRunner(
         }
         finally
         {
+            hbCts.Cancel();
+            try { await heartbeat; }
+            catch (Exception) { }
+
             // SPEC-07 RF-002: conexões MCP órfãs fecham com a conversa.
             if (mcp is not null)
             {
@@ -310,6 +332,10 @@ public sealed class AgentRunner(
             }
 
             var text = new System.Text.StringBuilder();
+            // SPEC-41 RF-001: reasoning acumulado por completion — viaja no
+            // canal "reasoning" do bus e pousa em ActionEvent.ReasoningContent;
+            // nunca entra no content da mensagem.
+            var reasoning = new System.Text.StringBuilder();
             var calls = new SortedDictionary<int, (string id, string name,
                 System.Text.StringBuilder args)>();
             string? finishReason = null;
@@ -354,6 +380,12 @@ public sealed class AgentRunner(
                             // SPEC-34 RF-001: delta vai só ao bus efêmero —
                             // nunca persistido/replayado pelo IEventService.
                             batcher?.Add(d.Text);
+                            break;
+                        case ReasoningDelta rd:
+                            reasoning.Append(rd.Text);
+                            // SPEC-41 RF-001: canal separado — o client
+                            // renderiza na ThinkingSection, não no content.
+                            batcher?.Add(rd.Text, "reasoning");
                             break;
                         case ToolCallDelta tcd:
                             if (!calls.TryGetValue(tcd.Index, out var cur))
@@ -634,6 +666,10 @@ public sealed class AgentRunner(
                             new[] { new { type = "text", text = text.ToString() } },
                             EventJson.Options)
                         : null,
+                    // SPEC-41 RF-001: reasoning normalizado do provider —
+                    // re-renderizável após replay (canal live já expirou).
+                    ReasoningContent = reasoning.Length > 0
+                        ? reasoning.ToString() : null,
                 };
                 lastEventId = (await events.AppendAsync(
                     conversationId, actionEvent, ct)).Id;

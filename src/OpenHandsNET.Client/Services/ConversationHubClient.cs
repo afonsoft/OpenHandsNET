@@ -67,9 +67,14 @@ public sealed class ConversationHubClient : IAsyncDisposable
     public Task PauseAsync(Guid conversationId, CancellationToken ct = default) =>
         _conn.InvokeAsync("Pause", conversationId, ct);
 
+    /// <summary>SPEC-41 RF-005: retoma run pausado.</summary>
+    public Task ResumeAsync(Guid conversationId, CancellationToken ct = default) =>
+        _conn.InvokeAsync("Resume", conversationId, ct);
+
     /// <summary>
     /// SPEC-34 RF-001: pseudo-kind streaming_delta — frames efêmeros
-    /// <c>{item_id, seq, text}</c>; nunca chegam ao backlog.
+    /// <c>{item_id, seq, text, channel}</c>; nunca chegam ao backlog.
+    /// SPEC-41 RF-001: <c>channel</c> "reasoning" viaja separado de content.
     /// </summary>
     public async IAsyncEnumerable<DeltaItem> DeltasAsync(
         Guid conversationId,
@@ -88,13 +93,16 @@ public sealed class ConversationHubClient : IAsyncDisposable
                     ? s.GetInt64() : 0;
                 var text = f.TryGetProperty("text", out var t)
                     ? t.GetString() ?? "" : "";
-                yield return new DeltaItem(itemId, seq, text);
+                var ch = f.TryGetProperty("channel", out var c)
+                    ? c.GetString() ?? "content" : "content";
+                yield return new DeltaItem(itemId, seq, text, ch);
             }
         }
     }
 
-    /// <summary>Frame efêmero do canal de deltas (SPEC-34).</summary>
-    public sealed record DeltaItem(string ItemId, long Seq, string Text);
+    /// <summary>Frame efêmero do canal de deltas (SPEC-34/41).</summary>
+    public sealed record DeltaItem(
+        string ItemId, long Seq, string Text, string Channel = "content");
 
     /// <summary>stdout/stderr live do terminal do sandbox.</summary>
     public async IAsyncEnumerable<string> TerminalOutAsync(

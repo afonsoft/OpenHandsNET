@@ -38,6 +38,12 @@ public abstract record LlmStreamChunk;
 public sealed record TextDelta(string Text) : LlmStreamChunk;
 
 /// <summary>
+/// SPEC-41 RF-001: incremental reasoning delta (thinking models) — travels
+/// a parallel channel, never merged into content.
+/// </summary>
+public sealed record ReasoningDelta(string Text) : LlmStreamChunk;
+
+/// <summary>
 /// Incremental tool-call delta (OpenAI streaming shape): fragments accumulate
 /// per <see cref="ToolCallDelta.Index"/> until the completion ends.
 /// </summary>

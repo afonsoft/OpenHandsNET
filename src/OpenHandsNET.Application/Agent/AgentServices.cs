@@ -44,6 +44,12 @@ public interface IAgentRunnerHost
     /// <summary>Requests a graceful pause (interrupt + status paused).</summary>
     Task PauseAsync(Guid conversationId, CancellationToken ct);
 
+    /// <summary>
+    /// SPEC-41 RF-005: resumes a paused run — the event-sourced history is
+    /// resume-safe, so this is the same wake path as a new user message.
+    /// </summary>
+    Task ResumeAsync(Guid conversationId, CancellationToken ct);
+
     /// <summary>Whether a runner is currently active for the conversation.</summary>
     bool IsRunning(Guid conversationId);
 }

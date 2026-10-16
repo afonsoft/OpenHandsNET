@@ -385,6 +385,9 @@ public sealed class Spec16LifecycleTests : IAsyncLifetime
 
         public Task PauseAsync(Guid conversationId, CancellationToken ct) =>
             Task.CompletedTask;
+
+        public Task ResumeAsync(Guid conversationId, CancellationToken ct) =>
+            Task.CompletedTask;
     }
 
     private sealed class FakeEventService : IEventService

@@ -138,6 +138,12 @@ public sealed class AgentRunnerHost(
         }
     }
 
+    /// <inheritdoc />
+    public Task ResumeAsync(Guid conversationId, CancellationToken ct) =>
+        // SPEC-41 RF-005: a history reconstruída do stream é resume-safe —
+        // acordar o host equivale a retomar o turno interrompido.
+        NotifyMessageAsync(conversationId, ct);
+
     private async Task AppendControlAsync(
         Guid conversationId, EventBase e, CancellationToken ct)
     {

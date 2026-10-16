@@ -60,6 +60,23 @@ public sealed class RunActivityTracker
         }, ct);
 
     /// <summary>
+    /// SPEC-41 RF-004: liveness ping durante calls longas (LLM/tool) —
+    /// o watchdog do client mede silêncio de eventos; sem heartbeat uma
+    /// tool de 60s pareceria travada. Iteration=0 marca "não-iteração".
+    /// </summary>
+    public async Task HeartbeatAsync(IEventService events,
+        Guid conversationId, CancellationToken ct) =>
+        await events.AppendAsync(conversationId, new RunProgressEvent
+        {
+            Iteration = 0,
+            MaxIterations = 0,
+            Phase = "heartbeat",
+            ElapsedMs = _elapsed.ElapsedMilliseconds,
+            ToolsUsed = _toolsUsed,
+            FilesTouched = _filesTouched.Count,
+        }, ct);
+
+    /// <summary>
     /// Deterministic end-of-run summary (SPEC-24 RF-005): counts and the
     /// changed-file list — no LLM call, so it is available even on
     /// error/pause paths.

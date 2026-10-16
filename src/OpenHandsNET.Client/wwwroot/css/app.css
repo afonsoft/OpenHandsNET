@@ -192,6 +192,21 @@ pre, code { font-family: var(--ohn-mono); font-size: 12.5px; }
 .ev-card.delta pre { white-space: pre-wrap; }
 details.ev-details summary { cursor: pointer; color: var(--ohn-fg-dim); font-size: 11.5px; }
 
+/* ---------- SPEC-41: thinking / tool-call card / copy ---------- */
+.ev-card.thinking { border-style: dotted; }
+.ev-card.thinking .ev-head { cursor: pointer; user-select: none; }
+.ev-card.thinking .ev-head em.thinking-live { color: var(--ohn-accent); font-style: normal; margin-left: auto; }
+.ev-card.thinking .thinking-body {
+    font-family: var(--ohn-mono); font-size: 11.5px; color: var(--ohn-fg-dim);
+    white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto;
+}
+.chip.done { color: var(--ohn-green); border-color: var(--ohn-green); }
+.chip.pending { color: var(--ohn-fg-dim); border-style: dashed; }
+.ev-card.tc-card .args-preview { opacity: .7; font-size: 11px; }
+.msg { position: relative; }
+.msg .copy-btn { position: absolute; top: 4px; right: 4px; opacity: 0; transition: opacity .15s; }
+.msg:hover .copy-btn { opacity: .8; }
+
 /* ---------- SPEC-24: run-activity cards ---------- */
 .ev-card.cmd pre.cmd-out {
     font-family: var(--ohn-mono); font-size: 11.5px; white-space: pre-wrap;

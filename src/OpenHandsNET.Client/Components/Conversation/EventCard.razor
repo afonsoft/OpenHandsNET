@@ -2,6 +2,7 @@
 @using OpenHandsNET.Client.Components
 @using System.Text.Json
 @inject MarkdownService Md
+@inject IJSRuntime JS
 
 @* Renderiza um evento V1 conforme o kind — paridade visual com o Agent Canvas.
    SPEC-26: ícones SVG (Icon), markdown sanitizado nas mensagens, cards de
@@ -12,24 +13,45 @@
     case "MessageEvent":
         <div class="msg @(Event.Role() == "user" ? "user" : "agent")">
             <div class="md">@Md.Render(Event.MessageText())</div>
+            @* SPEC-41 RF-006: copy da saída de texto do agente. *@
+            @if (Event.Role() != "user")
+            {
+                <button class="icon-btn copy-btn"
+                        @onclick="() => CopyAsync(Event.MessageText())"
+                        aria-label="Copy message" title="Copiar">
+                    <Icon Name="@(_copied ? "check" : "copy")" Size="12" />
+                </button>
+            }
         </div>
         break;
 
     case "ActionEvent":
+        @* SPEC-41 RF-003: ToolCallCard rico — nome, status (obs link),
+           duração, args colapsáveis, reasoning persistido colapsável. *@
         <div class="ev-card tc-card">
             <div class="ev-head tc-head">
                 <Icon Name="@ToolIcon()" Size="14" />
                 <span class="tool">@Event.ToolName()</span>
-                <span class="dur">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
-                @if (Event.ToolCommand() is null)
+                @if (LinkedObservation() is { } linked)
                 {
-                    <button class="icon-btn" style="margin-left:auto;width:22px;height:22px"
-                            @onclick="() => _expanded = !_expanded"
-                            aria-label="Toggle arguments" aria-expanded="@_expanded">
-                        <Icon Name="@(_expanded ? "chevron-down" : "chevron-right")" Size="13" />
-                    </button>
+                    <span class="chip done">done</span>
+                    <span class="dur">@DurationText(linked)</span>
                 }
+                else
+                {
+                    <span class="chip pending">pending</span>
+                }
+                <span class="dur">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+                <button class="icon-btn" style="margin-left:auto;width:22px;height:22px"
+                        @onclick="() => _expanded = !_expanded"
+                        aria-label="Toggle arguments" aria-expanded="@_expanded">
+                    <Icon Name="@(_expanded ? "chevron-down" : "chevron-right")" Size="13" />
+                </button>
             </div>
+            @if (Event.Str("reasoning_content") is { Length: > 0 } rc)
+            {
+                <ThinkingSection Reasoning="@rc" />
+            }
             @if (Event.ToolCommand() is { } cmd)
             {
                 <pre>$ @cmd</pre>
@@ -37,6 +59,10 @@
             else if (_expanded)
             {
                 <pre>@Pretty(Event.Get("tool"))</pre>
+            }
+            else if (ArgsPreview() is { } preview)
+            {
+                <pre class="args-preview">@preview</pre>
             }
         </div>
         break;
@@ -47,7 +73,12 @@
                 <Icon Name="upload" Size="14" />
                 <span>observation · @Event.ToolName()</span>
                 <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
-                <button class="icon-btn" style="margin-left:auto;width:22px;height:22px"
+                <button class="icon-btn"
+                        @onclick="() => CopyAsync(ObsText())"
+                        aria-label="Copy output" title="Copiar">
+                    <Icon Name="@(_copied ? "check" : "copy")" Size="12" />
+                </button>
+                <button class="icon-btn" style="width:22px;height:22px"
                         @onclick="() => _expanded = !_expanded"
                         aria-label="Toggle output" aria-expanded="@_expanded">
                     <Icon Name="@(_expanded ? "chevron-down" : "chevron-right")" Size="13" />
@@ -147,13 +178,33 @@
         break;
 
     case "run_progress":
+        @* SPEC-41 RF-004: heartbeat é liveness — não renderiza card. *@
+        @if (Event.Str("phase") != "heartbeat")
+        {
+            <div class="ev-card condense">
+                — iteration @Event.Get("iteration").GetInt32()/@Event.Get("max_iterations").GetInt32()
+                · @Event.Str("phase")
+                · @(Event.Get("tools_used").ValueKind == JsonValueKind.Number
+                    ? Event.Get("tools_used").GetInt32() : 0) tools
+                · @(Event.Get("files_touched").ValueKind == JsonValueKind.Number
+                    ? Event.Get("files_touched").GetInt32() : 0) files —
+            </div>
+        }
+        break;
+
+    case "PauseEvent":
         <div class="ev-card condense">
-            — iteration @Event.Get("iteration").GetInt32()/@Event.Get("max_iterations").GetInt32()
-            · @Event.Str("phase")
-            · @(Event.Get("tools_used").ValueKind == JsonValueKind.Number
-                ? Event.Get("tools_used").GetInt32() : 0) tools
-            · @(Event.Get("files_touched").ValueKind == JsonValueKind.Number
-                ? Event.Get("files_touched").GetInt32() : 0) files —
+            <div class="ev-head" style="justify-content:center">
+                <Icon Name="pause" Size="13" /><span>run paused</span>
+            </div>
+        </div>
+        break;
+
+    case "InterruptEvent":
+        <div class="ev-card condense">
+            <div class="ev-head" style="justify-content:center">
+                <Icon Name="stop" Size="13" /><span>run interrupted</span>
+            </div>
         </div>
         break;
 
@@ -214,9 +265,60 @@
     [Parameter, EditorRequired] public ClientEvent Event { get; set; } = default!;
     [Parameter] public bool Expanded { get; set; }
 
+    /// <summary>
+    /// SPEC-41 RF-003: irmãos do stream — usados para linkar a observation
+    /// do action (status done + duração) sem depender de ordem estrita.
+    /// </summary>
+    [Parameter] public IReadOnlyList<ClientEvent>? Siblings { get; set; }
+
     private bool _expanded;
+    private bool _copied;
 
     protected override void OnParametersSet() => _expanded = Expanded;
+
+    /// <summary>ObservationEvent cujo action_id casa com este ActionEvent.</summary>
+    private ClientEvent? LinkedObservation() =>
+        Siblings?.FirstOrDefault(s =>
+            s.Kind == "ObservationEvent" && s.Str("action_id") == Event.Id);
+
+    private string DurationText(ClientEvent obs)
+    {
+        var d = obs.Timestamp - Event.Timestamp;
+        return d.TotalSeconds >= 1
+            ? $"{d.TotalSeconds:F1}s" : $"{d.TotalMilliseconds:F0}ms";
+    }
+
+    /// <summary>Preview one-line dos args (card colapsado, não-bash).</summary>
+    private string? ArgsPreview()
+    {
+        var tool = Event.Get("tool");
+        if (tool.ValueKind != JsonValueKind.Object
+            || !tool.TryGetProperty("arguments", out var args))
+        {
+            return null;
+        }
+
+        var s = args.ValueKind == JsonValueKind.String
+            ? args.GetString() ?? "" : args.ToString();
+        s = s.Replace('\n', ' ').Trim();
+        return s.Length == 0 ? null
+            : s.Length > 80 ? s[..80] + "…" : s;
+    }
+
+    /// <summary>SPEC-41 RF-006: copy → clipboard com feedback breve.</summary>
+    private async Task CopyAsync(string text)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            _copied = true;
+            StateHasChanged();
+            await Task.Delay(1500);
+            _copied = false;
+            StateHasChanged();
+        }
+        catch (Exception) { /* clipboard indisponível (bUnit/sem permissão) */ }
+    }
 
     private string ToolIcon() => Event.ToolName() switch
     {
