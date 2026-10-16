@@ -64,6 +64,56 @@ public static class AppConversationEndpoints
         group.MapPost("/", CreateAsync);
         group.MapPost("/stream-start", StreamStartAsync);
 
+        // SPEC-40 RF-002: surfaces do sandbox (terminal ttyd…) resolvidas
+        // para URL pública (SPEC-38) + preview token (RF-004). RoutingMode
+        // internal → url null (surface não é alcançável fora da rede).
+        group.MapGet("/{id:guid}/surfaces", async (
+            Guid id, IAppConversationService convs,
+            ISandboxService sandboxes, ISandboxExecutor executor,
+            Microsoft.Extensions.Options.IOptions<OpenHandsNET.Sandboxing.SandboxOptions> options,
+            Routing.PreviewTokenService tokens,
+            HttpContext http, CancellationToken ct) =>
+        {
+            var conv = await convs.GetAsync(id, ct);
+            if (conv is null)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Conversation {id} not found");
+            }
+
+            if (conv.SandboxId is not { } sid
+                || await sandboxes.GetAsync(sid, ct) is not { } sandbox)
+            {
+                return Results.Ok(Array.Empty<object>());
+            }
+
+            var surfaces = await executor.SurfacesAsync(sandbox, ct);
+            var internalMode = (options.Value.RoutingMode ?? "internal")
+                .Equals("internal", StringComparison.OrdinalIgnoreCase);
+            return Results.Ok(surfaces.Select(s =>
+            {
+                string? url = null;
+                DateTimeOffset? expires = null;
+                if (!internalMode)
+                {
+                    var (token, exp) = tokens.Mint(sandbox.Id, s.Port);
+                    var base_ = OpenHandsNET.Sandboxing.SandboxUrlBuilder
+                        .BuildFor(options.Value, sandbox.Id, s.Port);
+                    url = $"{base_}?token={Uri.EscapeDataString(token)}";
+                    expires = exp;
+                }
+
+                return (object)new
+                {
+                    name = s.Name,
+                    protocol = s.Protocol,
+                    port = s.Port,
+                    url,
+                    expires_at = expires,
+                };
+            }).ToList());
+        }).RequireAuthorization();
+
         group.MapPatch("/{id:guid}", async (
             Guid id, PatchConversationRequest body,
             IAppConversationService svc, HttpContext http, CancellationToken ct) =>

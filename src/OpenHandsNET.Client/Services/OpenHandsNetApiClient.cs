@@ -127,6 +127,21 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
             $"/api/v1/app-conversations/{conversationId}/mode",
             new { mode }, Json, ct)).EnsureSuccessStatusCode();
 
+    /// <summary>
+    /// SPEC-40 RF-002: GET /{id}/surfaces — surfaces do sandbox com URL
+    /// pública + preview token (null quando routing internal/desligada).
+    /// </summary>
+    public async Task<IReadOnlyList<SurfaceItem>> GetSurfacesAsync(
+        string conversationId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<SurfaceItem>>(
+            $"/api/v1/app-conversations/{conversationId}/surfaces",
+            Json, ct) ?? [];
+
+    /// <summary>Surface publicada pelo sandbox.</summary>
+    public sealed record SurfaceItem(
+        string Name, string Protocol, int Port,
+        string? Url, DateTimeOffset? ExpiresAt);
+
     // ---- events --------------------------------------------------------
 
     /// <summary>GET /conversation/{id}/events/search → eventos crus.</summary>

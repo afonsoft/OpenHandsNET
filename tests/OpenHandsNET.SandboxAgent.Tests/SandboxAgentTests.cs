@@ -169,7 +169,7 @@ public sealed class SandboxAgentTests
 
         var alive = await http.GetFromJsonAsync<JsonElement>("/alive");
         alive.GetProperty("status").GetString().ShouldBe("ok");
-        alive.GetProperty("agent_version").GetInt32().ShouldBe(2);
+        alive.GetProperty("agent_version").GetInt32().ShouldBe(3);
         alive.GetProperty("state").GetString().ShouldBe("ready");
         alive.TryGetProperty("uptime_s", out _).ShouldBeTrue();
         alive.TryGetProperty("sessions", out _).ShouldBeTrue();
@@ -238,5 +238,46 @@ public sealed class SandboxAgentTests
             s.GetProperty("id").GetString() == "proc-test");
         var proc = await http.GetFromJsonAsync<JsonElement>("/proc");
         proc.ValueKind.ShouldBe(JsonValueKind.Array);
+    }
+
+    [Fact]
+    public async Task Surfaces_Empty_When_Terminal_Flag_Off()
+    {
+        var factory = Factory(new() { ["OHN_SESSION_KEY"] = "k" },
+            Workspace);
+        var http = factory.CreateClient();
+        http.DefaultRequestHeaders.Add("X-Session-Key", "k");
+
+        var surfaces = await http.GetFromJsonAsync<JsonElement>("/surfaces");
+        surfaces.GetArrayLength().ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Surfaces_Requires_Session_Key()
+    {
+        var factory = Factory(new() { ["OHN_SESSION_KEY"] = "k" },
+            Workspace);
+        var http = factory.CreateClient();
+        (await http.GetAsync("/surfaces")).StatusCode
+            .ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Surfaces_Empty_When_Ttyd_Binary_Missing()
+    {
+        // SANDBOX_TERMINAL=1 mas ttyd ausente do PATH → degrada sem crash.
+        var factory = Factory(new()
+        {
+            ["OHN_SESSION_KEY"] = "k",
+            ["SANDBOX_TERMINAL"] = "1",
+        }, Workspace);
+        var http = factory.CreateClient();
+        http.DefaultRequestHeaders.Add("X-Session-Key", "k");
+
+        await Task.Delay(1500); // supervisão tenta o spawn uma vez
+        var surfaces = await http.GetFromJsonAsync<JsonElement>("/surfaces");
+        surfaces.GetArrayLength().ShouldBe(0);
+        // Agente continua saudável.
+        (await http.GetAsync("/alive")).StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 }

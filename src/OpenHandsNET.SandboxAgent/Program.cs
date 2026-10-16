@@ -17,6 +17,19 @@ builder.Services.ConfigureHttpJsonOptions(o =>
 var runtime = LoadState(builder.Configuration);
 var app = builder.Build();
 
+// SPEC-40 RF-002: terminal web (ttyd) opt-in — env do container ativa no
+// boot; env do blueprint/init ativa após /api/init. Sem flag → surface
+// ausente e nenhum processo extra roda no sandbox.
+var terminal = new TerminalSurface(runtime);
+if (FlagOn(builder.Configuration["SANDBOX_TERMINAL"]))
+{
+    terminal.Start();
+}
+
+static bool FlagOn(string? v) =>
+    string.Equals(v, "1", StringComparison.OrdinalIgnoreCase)
+    || string.Equals(v, "true", StringComparison.OrdinalIgnoreCase);
+
 var ExecStreamJson = new JsonSerializerOptions
 {
     PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -99,6 +112,14 @@ app.MapPost("/api/init", (HttpContext http, InitRequest req) =>
 
         Directory.CreateDirectory(runtime.WorkspaceRoot);
         runtime.Status = "ready";
+        // SPEC-40 RF-002: terminal opt-in via env do blueprint/init.
+        if (FlagOn(req.Env is not null
+                && req.Env.TryGetValue("SANDBOX_TERMINAL", out var f)
+                ? f : null))
+        {
+            terminal.Start();
+        }
+
         return Results.Ok(new { state = runtime.Status });
     }
     catch (Exception ex)
@@ -331,6 +352,29 @@ app.MapDelete("/exec/sessions/{id}", (string id, HttpContext http) =>
     return Results.NoContent();
 });
 
+// SPEC-40 RF-002: surfaces ativas — a Api publica cada porta via
+// SandboxUrlBuilder (SPEC-38) + preview token (RF-004).
+app.MapGet("/surfaces", (HttpContext http) =>
+{
+    if (!Authorized(http))
+    {
+        return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+    }
+
+    var surfaces = new List<object>();
+    if (terminal.Running)
+    {
+        surfaces.Add(new
+        {
+            name = "terminal",
+            port = TerminalSurface.Port,
+            protocol = "ws",
+        });
+    }
+
+    return Results.Ok(surfaces);
+});
+
 // ---- files (confinados ao workspace) ----
 app.MapGet("/files/{**path}", (string? path, HttpContext http) =>
 {
@@ -398,8 +442,9 @@ public sealed class AgentState
         Status = Deferred ? "dormant" : "initializing";
     }
 
-    /// <summary>Protocol version — &gt;=2 exposes /exec/stream + /proc + /activity.</summary>
-    public int AgentVersion => 2;
+    /// <summary>Protocol version — &gt;=2 exposes /exec/stream + /proc +
+    /// /activity; &gt;=3 exposes /surfaces (SPEC-40).</summary>
+    public int AgentVersion => 3;
     public DateTimeOffset StartedAt { get; } = DateTimeOffset.UtcNow;
     public string Status { get; set; }
     public string WorkspaceRoot { get; set; }
@@ -758,6 +803,94 @@ public sealed class BashSession : IDisposable
     {
         try { _proc.Kill(entireProcessTree: true); } catch { }
         _proc.Dispose();
+    }
+}
+
+/// <summary>
+/// SPEC-40 RF-002: supervisor do ttyd — spawn <c>ttyd -p 7681 -W bash</c>
+/// (bind 0.0.0.0: o host-router entra pelo IP do container) e respawn com
+/// backoff enquanto habilitado. Sem credencial própria: a auth fica no
+/// preview token do SandboxHostRouter (RF-004) — a porta só é alcançável
+/// pela rede interna do sandbox.
+/// </summary>
+public sealed class TerminalSurface(AgentState state)
+{
+    /// <summary>Porta fixa da surface terminal (paridade ttyd 7681).</summary>
+    public const int Port = 7681;
+
+    private const int MaxRestarts = 10;
+    private Process? _proc;
+    private bool _enabled;
+
+    /// <summary>ttyd vivo agora.</summary>
+    public bool Running => _proc is { HasExited: false };
+
+    /// <summary>Liga a surface e inicia o loop de supervisão.</summary>
+    public void Start()
+    {
+        if (_enabled)
+        {
+            return;
+        }
+
+        _enabled = true;
+        _ = Task.Run(SuperviseAsync);
+    }
+
+    private async Task SuperviseAsync()
+    {
+        var restarts = 0;
+        while (_enabled && restarts < MaxRestarts)
+        {
+            Process proc;
+            try
+            {
+                proc = Process.Start(new ProcessStartInfo("ttyd")
+                {
+                    WorkingDirectory = state.WorkspaceRoot,
+                    RedirectStandardOutput = false,
+                    RedirectStandardError = false,
+                    ArgumentList =
+                    {
+                        "--port", Port.ToString(),
+                        "--writable",
+                        "--cwd", state.WorkspaceRoot,
+                        "-t", "disableLeaveAlert=true",
+                        "bash", "-l",
+                    },
+                })!;
+            }
+            catch (Exception)
+            {
+                // ttyd ausente da imagem → surface indisponível, sem crash.
+                _enabled = false;
+                return;
+            }
+
+            _proc = proc;
+            state.Record("surface_start", $"terminal:{Port}");
+            try
+            {
+                await proc.WaitForExitAsync();
+            }
+            catch
+            {
+                // Agente encerrando — sai sem respawn.
+                return;
+            }
+
+            _proc = null;
+            restarts++;
+            state.Record("surface_exit",
+                $"terminal:{Port} exit={proc.ExitCode} restart={restarts}");
+            proc.Dispose();
+            if (_enabled)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2));
+            }
+        }
+
+        _enabled = false;
     }
 }
 
