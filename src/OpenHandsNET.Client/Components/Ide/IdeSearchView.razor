@@ -1,0 +1,90 @@
+@using OpenHandsNET.Client.Services
+@inject OpenHandsNetApiClient Api
+
+@* SPEC-42 RF-006: busca global — debounce 400ms, resultados agrupados
+   por arquivo, click abre na linha. *@
+
+<div class="ide-search">
+    <div class="ide-panel-head"><span>SEARCH</span></div>
+    <input placeholder="search in workspace…" @bind="_q"
+           @bind:event="oninput" @bind:after="QueueSearch"
+           aria-label="Search workspace" />
+    <input placeholder="glob (ex.: *.cs)" @bind="_glob"
+           @bind:event="oninput" @bind:after="QueueSearch"
+           aria-label="File glob" style="margin-top:4px" />
+
+    @if (_busy)
+    {
+        <div class="empty-state">searching…</div>
+    }
+    else if (_q.Length > 0 && _results.Count == 0)
+    {
+        <div class="empty-state">no results</div>
+    }
+    else
+    {
+        @foreach (var g in _results.GroupBy(m => m.Path))
+        {
+            <div class="ide-search-file">@g.Key</div>
+            @foreach (var m in g)
+            {
+                <button class="ide-search-row"
+                        @onclick="() => OpenAsync(m)">
+                    <span class="loc">@m.Line:@m.Col</span> @m.Preview.Trim()
+                </button>
+            }
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string ConversationId { get; set; } = "";
+    /// <summary>Abre arquivo na linha/coluna do match.</summary>
+    [Parameter] public EventCallback<(string Path, int Line)> OnOpenFile
+    { get; set; }
+
+    private string _q = "";
+    private string _glob = "";
+    private readonly List<FileSearchMatch> _results = [];
+    private bool _busy;
+    private CancellationTokenSource? _debounce;
+
+    /// <summary>Debounce 400ms — cancela a busca anterior.</summary>
+    private void QueueSearch()
+    {
+        _debounce?.Cancel();
+        _debounce = new CancellationTokenSource();
+        var token = _debounce.Token;
+        _ = Task.Delay(400, token).ContinueWith(async t =>
+        {
+            if (t.IsCanceled || token.IsCancellationRequested) { return; }
+            await InvokeAsync(RunSearchAsync);
+        }, TaskScheduler.Default);
+    }
+
+    private async Task RunSearchAsync()
+    {
+        if (_q.Trim().Length == 0)
+        {
+            _results.Clear();
+            StateHasChanged();
+            return;
+        }
+
+        _busy = true;
+        StateHasChanged();
+        try
+        {
+            var found = await Api.SearchFilesAsync(
+                ConversationId, _q.Trim(),
+                _glob.Trim() is { Length: > 0 } g ? g : null);
+            _results.Clear();
+            _results.AddRange(found);
+        }
+        catch { }
+        finally { _busy = false; StateHasChanged(); }
+    }
+
+    private async Task OpenAsync(FileSearchMatch m) =>
+        await OnOpenFile.InvokeAsync((m.Path, m.Line));
+}

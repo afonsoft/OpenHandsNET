@@ -199,6 +199,152 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
             ? c.GetString() ?? "" : "";
     }
 
+    /// <summary>
+    /// SPEC-42 RF-001: leitura com ETag (sha256 do conteúdo) — o editor
+    /// guarda o etag para o optimistic lock do PUT.
+    /// </summary>
+    public async Task<FileReadResult?> ReadFileWithEtagAsync(
+        string conversationId, string path, CancellationToken ct = default)
+    {
+        var resp = await http.GetAsync(
+            $"/api/v1/app-conversations/{conversationId}/file"
+            + $"?path={Uri.EscapeDataString(path)}", ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
+        var etag = doc.TryGetProperty("etag", out var e)
+            ? e.GetString() : null;
+        if (doc.TryGetProperty("encoding", out var enc)
+            && enc.GetString() == "base64")
+        {
+            return new FileReadResult(
+                doc.GetProperty("content").GetString() ?? "", etag,
+                IsBinary: true);
+        }
+
+        return new FileReadResult(
+            doc.TryGetProperty("content", out var c)
+                ? c.GetString() ?? "" : "", etag, IsBinary: false);
+    }
+
+    /// <summary>
+    /// SPEC-42 RF-001: PUT <c>{content_base64, etag?}</c> — 409 devolve
+    /// <see cref="FileWriteResult.Conflict"/> com o etag corrente.
+    /// </summary>
+    public async Task<FileWriteResult> WriteFileAsync(
+        string conversationId, string path, string content,
+        string? etag, CancellationToken ct = default)
+    {
+        var resp = await http.PutAsJsonAsync(
+            $"/api/v1/app-conversations/{conversationId}/file"
+            + $"?path={Uri.EscapeDataString(path)}",
+            new
+            {
+                content_base64 = Convert.ToBase64String(
+                    System.Text.Encoding.UTF8.GetBytes(content)),
+                etag,
+            }, Json, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            return new FileWriteResult(false, null, Conflict: true);
+        }
+
+        if (!resp.IsSuccessStatusCode)
+        {
+            return new FileWriteResult(false, null, Conflict: false);
+        }
+
+        var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
+        return new FileWriteResult(true,
+            doc.TryGetProperty("etag", out var e) ? e.GetString() : null,
+            Conflict: false);
+    }
+
+    /// <summary>SPEC-42 RF-001: mkdir — comando fixo server-side.</summary>
+    public Task<bool> MkdirAsync(string conversationId, string path,
+        CancellationToken ct = default) =>
+        FileOpAsync(conversationId, "mkdir", new { path }, ct);
+
+    /// <summary>SPEC-42 RF-001: rename/move.</summary>
+    public Task<bool> RenameAsync(string conversationId, string from,
+        string to, CancellationToken ct = default) =>
+        FileOpAsync(conversationId, "rename", new { from, to }, ct);
+
+    /// <summary>SPEC-42 RF-001: delete (rm -rf guardado).</summary>
+    public Task<bool> DeleteFileAsync(string conversationId, string path,
+        CancellationToken ct = default) =>
+        FileOpAsync(conversationId, "delete", new { path }, ct);
+
+    private async Task<bool> FileOpAsync(
+        string conversationId, string op, object body,
+        CancellationToken ct)
+    {
+        var resp = await http.PostAsJsonAsync(
+            $"/api/v1/app-conversations/{conversationId}/files/{op}",
+            body, Json, ct);
+        return resp.IsSuccessStatusCode;
+    }
+
+    /// <summary>SPEC-42 RF-001: busca global (grep -rInF, cap 500).</summary>
+    public async Task<IReadOnlyList<FileSearchMatch>> SearchFilesAsync(
+        string conversationId, string q, string? glob = null,
+        CancellationToken ct = default)
+    {
+        var url = $"/api/v1/app-conversations/{conversationId}/files/search"
+            + $"?q={Uri.EscapeDataString(q)}"
+            + (glob is { Length: > 0 }
+                ? $"&glob={Uri.EscapeDataString(glob)}" : "");
+        var resp = await http.GetAsync(url, ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            return [];
+        }
+
+        var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
+        return doc.TryGetProperty("matches", out var m)
+            ? m.Deserialize<List<FileSearchMatch>>(Json) ?? [] : [];
+    }
+
+    /// <summary>SPEC-42 RF-005: commit → <c>{sha}</c> ou null.</summary>
+    public async Task<string?> GitCommitAsync(
+        string conversationId, string message,
+        IReadOnlyList<string>? files = null, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync(
+            $"/api/v1/app-conversations/{conversationId}/git/commit",
+            new { message, files }, Json, ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
+        return doc.TryGetProperty("sha", out var s) ? s.GetString() : null;
+    }
+
+    /// <summary>
+    /// SPEC-42 RF-008: exec one-shot — usado pelo painel de testes do IDE.
+    /// </summary>
+    public async Task<ExecResult> ExecOneShotAsync(
+        string conversationId, string command, int timeoutS = 300,
+        CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync(
+            $"/api/v1/app-conversations/{conversationId}/exec",
+            new { command, timeout_s = timeoutS }, Json, ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            return new ExecResult(-1, "",
+                $"exec failed ({(int)resp.StatusCode})", false);
+        }
+
+        return (await resp.Content.ReadFromJsonAsync<ExecResult>(Json, ct))
+            ?? new ExecResult(-1, "", "empty response", false);
+    }
+
     public async Task<JsonElement> GetGitChangesAsync(
         string conversationId, CancellationToken ct = default) =>
         await http.GetFromJsonAsync<JsonElement>(

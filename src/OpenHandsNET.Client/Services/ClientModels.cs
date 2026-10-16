@@ -112,3 +112,24 @@ public sealed class FileItem
     public bool IsDirectory { get; init; }
     public long Size { get; init; }
 }
+
+/// <summary>SPEC-42: leitura de arquivo + ETag para optimistic lock.</summary>
+public sealed record FileReadResult(
+    string Content, string? Etag, bool IsBinary);
+
+/// <summary>SPEC-42: resultado do PUT — Conflict carrega o etag corrente.</summary>
+public sealed record FileWriteResult(
+    bool Ok, string? Etag, bool Conflict);
+
+/// <summary>SPEC-42: match de <c>files/search</c>.</summary>
+public sealed class FileSearchMatch
+{
+    public required string Path { get; init; }
+    public int Line { get; init; }
+    public int Col { get; init; }
+    public string Preview { get; init; } = "";
+}
+
+/// <summary>SPEC-42: resultado de <c>POST /exec</c> one-shot.</summary>
+public sealed record ExecResult(
+    int ExitCode, string Stdout, string Stderr, bool TimedOut);

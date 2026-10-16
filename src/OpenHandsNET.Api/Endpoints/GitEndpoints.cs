@@ -26,6 +26,15 @@ public static class GitEndpoints
         conv.MapGet("/{id:guid}/git/log", GitLogAsync);
         conv.MapGet("/{id:guid}/files", ListFilesAsync);
         conv.MapGet("/{id:guid}/file", ReadFileAsync);
+        // SPEC-42 RF-001: escrita com optimistic lock (ETag sha256) +
+        // operações de diretório/arquivo via comandos fixos server-side +
+        // busca global + commit git.
+        conv.MapPut("/{id:guid}/file", WriteFileAsync);
+        conv.MapPost("/{id:guid}/files/mkdir", MkdirAsync);
+        conv.MapPost("/{id:guid}/files/rename", RenameAsync);
+        conv.MapPost("/{id:guid}/files/delete", DeleteAsync);
+        conv.MapGet("/{id:guid}/files/search", SearchFilesAsync);
+        conv.MapPost("/{id:guid}/git/commit", GitCommitAsync);
         conv.MapPost("/{id:guid}/exec", ExecCommandAsync);
 
         app.MapGet("/api/v1/git/credentials", async (
@@ -217,6 +226,9 @@ public static class GitEndpoints
             Array.Resize(ref bytes, limit);
         }
 
+        // SPEC-42 RF-001: ETag sha256 do conteúdo — optimistic lock do PUT.
+        var etag = ETag(bytes);
+
         // Binário? devolve base64 + flag (paridade upstream).
         if (bytes.AsSpan().IndexOf((byte)0) >= 0)
         {
@@ -225,6 +237,7 @@ public static class GitEndpoints
                 encoding = "base64",
                 content = Convert.ToBase64String(bytes),
                 truncated,
+                etag,
             });
         }
 
@@ -233,8 +246,341 @@ public static class GitEndpoints
             encoding = "utf-8",
             content = Encoding.UTF8.GetString(bytes),
             truncated,
+            etag,
         });
     }
+
+    /// <summary>
+    /// SPEC-42 RF-001: PUT de arquivo — <c>{content_base64, etag?}</c>.
+    /// ETag divergente → 409 <c>{current_etag}</c> (optimistic concurrency
+    /// contra escritas do agente no mesmo workdir). Cap 5MB.
+    /// </summary>
+    private static async Task<IResult> WriteFileAsync(
+        Guid id, string path, WriteFileRequest body,
+        IAppConversationService svc, ISandboxExecutor executor,
+        HttpContext http, CancellationToken ct)
+    {
+        if (!IsValidWorkspacePath(path))
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 400, "path must stay under /workspace");
+        }
+
+        byte[] bytes;
+        try
+        {
+            bytes = Convert.FromBase64String(body.ContentBase64 ?? "");
+        }
+        catch (FormatException)
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 400, "content_base64 must be valid base64");
+        }
+
+        const int maxBytes = 5 * 1024 * 1024; // 5 MB
+        if (bytes.Length > maxBytes)
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 400, "file exceeds 5MB cap");
+        }
+
+        var sb = await SandboxOfAsync(id, svc, http, ct);
+        if (sb is null)
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 409, OpenHandsNetProblemFactory.SandboxNotRunning);
+        }
+
+        if (body.Etag is not null)
+        {
+            var current = await TryReadEtagAsync(sb, path, executor, ct);
+            if (!string.Equals(current, body.Etag, StringComparison.Ordinal))
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 409,
+                    $"etag conflict — current={current ?? "missing"}");
+            }
+        }
+
+        var dir = Path.GetDirectoryName(path.Replace('/', '/'))
+            ?.Replace('\\', '/');
+        if (dir is { Length: > 0 })
+        {
+            await executor.ExecAsync(sb,
+                $"mkdir -p -- '{dir.Replace("'", "'\\''")}'",
+                TimeSpan.FromSeconds(15), ct);
+        }
+
+        await executor.WriteFileAsync(
+            sb, path, Encoding.UTF8.GetString(bytes), ct);
+        return Results.Ok(new { etag = ETag(bytes) });
+    }
+
+    /// <summary>SPEC-42 RF-001: <c>mkdir -p</c> — comando fixo server-side.</summary>
+    private static async Task<IResult> MkdirAsync(
+        Guid id, FilePathRequest body,
+        IAppConversationService svc, ISandboxExecutor executor,
+        HttpContext http, CancellationToken ct) =>
+        await FixedExecAsync(id, svc, executor, http, ct, body.Path,
+            p => $"mkdir -p -- '{Escape(p)}'");
+
+    /// <summary>SPEC-42 RF-001: <c>mv</c> — ambos os paths validados.</summary>
+    private static async Task<IResult> RenameAsync(
+        Guid id, RenameRequest body,
+        IAppConversationService svc, ISandboxExecutor executor,
+        HttpContext http, CancellationToken ct)
+    {
+        if (body.From is null || body.To is null
+            || !IsValidWorkspacePath(body.From)
+            || !IsValidWorkspacePath(body.To))
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 400, "paths must stay under /workspace");
+        }
+
+        var sb = await SandboxOfAsync(id, svc, http, ct);
+        if (sb is null)
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 409, OpenHandsNetProblemFactory.SandboxNotRunning);
+        }
+
+        var r = await executor.ExecAsync(sb,
+            $"mv -- '{Escape(body.From)}' '{Escape(body.To)}'",
+            TimeSpan.FromSeconds(15), ct);
+        return r.ExitCode == 0
+            ? Results.NoContent()
+            : OpenHandsNetProblemFactory.Create(
+                http, 400, r.StdErr.Trim() is { Length: > 0 } e
+                    ? e : "rename failed");
+    }
+
+    /// <summary>SPEC-42 RF-001: <c>rm -rf</c> — raiz do workspace proibida.</summary>
+    private static async Task<IResult> DeleteAsync(
+        Guid id, FilePathRequest body,
+        IAppConversationService svc, ISandboxExecutor executor,
+        HttpContext http, CancellationToken ct)
+    {
+        var p = body.Path?.TrimEnd('/');
+        if (p is null || !IsValidWorkspacePath(p) || p.Length <= "/workspace/".Length)
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 400, "path must stay under /workspace");
+        }
+
+        var sb = await SandboxOfAsync(id, svc, http, ct);
+        if (sb is null)
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 409, OpenHandsNetProblemFactory.SandboxNotRunning);
+        }
+
+        var r = await executor.ExecAsync(sb,
+            $"rm -rf -- '{Escape(p)}'",
+            TimeSpan.FromSeconds(15), ct);
+        return r.ExitCode == 0
+            ? Results.NoContent()
+            : OpenHandsNetProblemFactory.Create(
+                http, 400, r.StdErr.Trim() is { Length: > 0 } e
+                    ? e : "delete failed");
+    }
+
+    /// <summary>
+    /// SPEC-42 RF-001: busca global — <c>grep -rInF</c> via exec (literal,
+    /// -I ignora binários), cap 500 matches, timeout 30s.
+    /// Retorna <c>[{path,line,col,preview}]</c>.
+    /// </summary>
+    private static async Task<IResult> SearchFilesAsync(
+        Guid id, string? q, string? glob,
+        IAppConversationService svc, ISandboxExecutor executor,
+        HttpContext http, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(q) || q.Contains('\n'))
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 400, "q required (single line)");
+        }
+
+        if (glob is { Length: > 0 } g
+            && (g.Contains('\'', StringComparison.Ordinal)
+                || g.Contains("..", StringComparison.Ordinal)))
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 400, "invalid glob");
+        }
+
+        var sb = await SandboxOfAsync(id, svc, http, ct);
+        if (sb is null)
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 409, OpenHandsNetProblemFactory.SandboxNotRunning);
+        }
+
+        // BusyBox grep (imagem bash:5) não tem --include/-I — glob é
+        // filtrado no parse abaixo. 2>/dev/null silencia binários/dirs.
+        var r = await executor.ExecAsync(sb,
+            $"cd /workspace && grep -rnF -e '{Escape(q)}' ."
+            + " 2>/dev/null | head -500",
+            TimeSpan.FromSeconds(30), ct);
+
+        // grep exit 1 = zero matches (não é erro); 2+ = erro real.
+        if (r.ExitCode > 1 && r.TimedOut is false)
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 500, r.StdErr.Trim() is { Length: > 0 } e
+                    ? e : "search failed");
+        }
+
+        var globRe = glob is { Length: > 0 }
+            ? new System.Text.RegularExpressions.Regex(
+                "^" + System.Text.RegularExpressions.Regex.Escape(glob)
+                    .Replace("\\*", ".*").Replace("\\?", ".") + "$",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+            : null;
+
+        var matches = new List<object>();
+        foreach (var line in r.StdOut.Split('\n',
+            StringSplitOptions.RemoveEmptyEntries))
+        {
+            // ./rel/path:NN:text — primeiro ':' separa path, segundo a linha.
+            var first = line.IndexOf(':');
+            var second = first < 0 ? -1 : line.IndexOf(':', first + 1);
+            if (second < 0
+                || !int.TryParse(line.AsSpan(first + 1, second - first - 1),
+                    out var ln))
+            {
+                continue;
+            }
+
+            var p = line[..first].TrimStart('.', '/');
+            if (globRe is not null
+                && !globRe.IsMatch(Path.GetFileName(p)))
+            {
+                continue;
+            }
+
+            var preview = line[(second + 1)..];
+            var col = preview.IndexOf(q, StringComparison.Ordinal);
+            matches.Add(new
+            {
+                path = "/workspace/" + p,
+                line = ln,
+                col = col < 0 ? 0 : col + 1,
+                preview = preview.Length > 200 ? preview[..200] : preview,
+            });
+        }
+
+        return Results.Ok(new { matches, timed_out = r.TimedOut });
+    }
+
+    /// <summary>SPEC-42 RF-005: commit via GitService (author agent).</summary>
+    private static async Task<IResult> GitCommitAsync(
+        Guid id, GitCommitRequest body,
+        IAppConversationService svc, IGitService git,
+        HttpContext http, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(body.Message))
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 400, "message required");
+        }
+
+        if (body.Files is { } files
+            && files.Any(f => f.Contains("..", StringComparison.Ordinal)
+                || f.Contains('\'', StringComparison.Ordinal)))
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 400, "invalid file path");
+        }
+
+        var sb = await SandboxOfAsync(id, svc, http, ct);
+        if (sb is null)
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 409, OpenHandsNetProblemFactory.SandboxNotRunning);
+        }
+
+        if (!await git.HasRepositoryAsync(sb, ct))
+        {
+            return OpenHandsNetProblemFactory.Create(http, 404, "no_repository");
+        }
+
+        var r = await git.CommitAsync(sb, body.Message, body.Files, ct);
+        return r.Success
+            ? Results.Ok(new { sha = r.Hash })
+            : OpenHandsNetProblemFactory.Create(
+                http, 400, r.Error ?? "commit failed");
+    }
+
+    private static async Task<IResult> FixedExecAsync(
+        Guid id, IAppConversationService svc, ISandboxExecutor executor,
+        HttpContext http, CancellationToken ct, string? path,
+        Func<string, string> command)
+    {
+        if (path is null || !IsValidWorkspacePath(path))
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 400, "path must stay under /workspace");
+        }
+
+        var sb = await SandboxOfAsync(id, svc, http, ct);
+        if (sb is null)
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 409, OpenHandsNetProblemFactory.SandboxNotRunning);
+        }
+
+        var r = await executor.ExecAsync(
+            sb, command(path), TimeSpan.FromSeconds(15), ct);
+        return r.ExitCode == 0
+            ? Results.NoContent()
+            : OpenHandsNetProblemFactory.Create(
+                http, 400, r.StdErr.Trim() is { Length: > 0 } e
+                    ? e : "operation failed");
+    }
+
+    private static async Task<string?> TryReadEtagAsync(
+        Domain.Sandbox.Sandbox sb, string path,
+        ISandboxExecutor executor, CancellationToken ct)
+    {
+        try
+        {
+            // Mesmo cap de leitura do GET (1MB) — ETags comparáveis.
+            var head = await executor.ExecAsync(sb,
+                $"head -c {1024 * 1024 + 1} -- '{Escape(path)}'",
+                TimeSpan.FromSeconds(30), ct);
+            if (head.ExitCode != 0)
+            {
+                return null;
+            }
+
+            var bytes = Encoding.UTF8.GetBytes(head.StdOut);
+            if (bytes.Length > 1024 * 1024)
+            {
+                Array.Resize(ref bytes, 1024 * 1024);
+            }
+
+            return ETag(bytes);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    private static string ETag(byte[] bytes) =>
+        Convert.ToHexStringLower(
+            System.Security.Cryptography.SHA256.HashData(bytes));
+
+    private static string Escape(string s) =>
+        s.Replace("'", "'\\''");
+
+    private sealed record WriteFileRequest(
+        string? ContentBase64, string? Etag);
+    private sealed record FilePathRequest(string? Path);
+    private sealed record RenameRequest(string? From, string? To);
+    private sealed record GitCommitRequest(
+        string? Message, IReadOnlyList<string>? Files);
 
     /// <summary>
     /// SPEC-39 RF-001: exec one-shot pós-run para asserts do eval harness

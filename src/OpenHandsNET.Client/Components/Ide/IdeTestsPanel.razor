@@ -1,0 +1,72 @@
+@using OpenHandsNET.Client.Services
+@inject OpenHandsNetApiClient Api
+
+@* SPEC-42 RF-008: runner de testes — comando configurável (heurística
+   por marker file), exec via POST /exec, output + exit code. *@
+
+<div class="ide-tests">
+    <div class="ide-panel-head"><span>TESTS</span></div>
+    <div class="ide-commitbox">
+        <input @bind="_cmd" @bind:event="oninput"
+               aria-label="Test command" />
+        <button class="primary" disabled="@_busy"
+                @onclick="RunAsync" aria-label="Run tests">
+            <Icon Name="play" Size="13" /> Run
+        </button>
+    </div>
+
+    @if (_busy)
+    {
+        <div class="empty-state">running…</div>
+    }
+    else if (_result is { } r)
+    {
+        <div class="ide-scm-fb">
+            exit <span class="chip @(r.ExitCode == 0 ? "done" : "pending")">
+                @r.ExitCode</span>
+            @(r.TimedOut ? "· timed out" : "")
+        </div>
+        <pre class="ide-test-out">@r.Stdout@(r.Stderr.Length > 0
+            ? "\n--- stderr ---\n" + r.Stderr : "")</pre>
+    }
+    else
+    {
+        <div class="empty-state">
+            comando sugerido por marker file — ajuste e rode
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string ConversationId { get; set; } = "";
+
+    private string _cmd = "dotnet test";
+    private ExecResult? _result;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Heurística: package.json → npm test; *.sln/*.csproj → dotnet test.
+        try
+        {
+            var root = await Api.ListFilesAsync(
+                ConversationId, "/workspace/repo");
+            _cmd = root.Any(f => f.Path.EndsWith("package.json",
+                StringComparison.Ordinal))
+                ? "npm test" : "dotnet test";
+        }
+        catch { }
+    }
+
+    private async Task RunAsync()
+    {
+        _busy = true;
+        _result = null;
+        try
+        {
+            _result = await Api.ExecOneShotAsync(
+                ConversationId, _cmd, timeoutS: 300);
+        }
+        finally { _busy = false; }
+    }
+}

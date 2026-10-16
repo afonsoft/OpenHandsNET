@@ -1,0 +1,217 @@
+@using OpenHandsNET.Client.Services
+@inject OpenHandsNetApiClient Api
+
+@* SPEC-42 RF-003: explorer lazy + decorations git (M/A/D) + ações
+   new file/folder/rename/delete via endpoints RF-001. *@
+
+<div class="ide-explorer">
+    <div class="ide-panel-head">
+        <span>EXPLORER</span>
+        <button title="Novo arquivo" aria-label="New file"
+                @onclick="() => _newFile = !_newFile">
+            <Icon Name="plus" Size="13" />
+        </button>
+        <button title="Nova pasta" aria-label="New folder"
+                @onclick="() => _newDir = !_newDir">
+            <Icon Name="folder" Size="13" />
+        </button>
+        <button title="Refresh" aria-label="Refresh"
+                @onclick="LoadAsync">
+            <Icon Name="refresh" Size="13" />
+        </button>
+    </div>
+
+    @if (_newFile || _newDir)
+    {
+        <div class="ide-newrow">
+            <input placeholder="@(_newFile ? "/workspace/repo/novo.cs"
+                : "/workspace/repo/nova-pasta")"
+                   @bind="_newPath" @bind:event="oninput"
+                   @onkeydown="OnNewKey" aria-label="New path" />
+        </div>
+    }
+
+    @foreach (var (entry, depth) in _flat)
+    {
+        <div class="ide-row @(entry.IsDirectory ? "dir" : "file")"
+             style="padding-left:@(6 + depth * 12)px">
+            <span class="ide-row-main" role="button"
+                  @onclick="() => OnItemClick(entry)">
+                @(entry.IsDirectory ? "▸" : "·") @Name(entry.Path)
+                @if (_git.TryGetValue(entry.Path, out var op))
+                {
+                    <span class="chip @op">@op</span>
+                }
+            </span>
+            <span class="ide-row-acts">
+                <button title="Renomear" aria-label="Rename"
+                        @onclick="() => StartRename(entry)">
+                    <Icon Name="file" Size="11" />
+                </button>
+                <button title="Excluir" aria-label="Delete"
+                        @onclick="() => DeleteAsync(entry)">
+                    <Icon Name="x" Size="11" />
+                </button>
+            </span>
+        </div>
+        @if (_renamePath == entry.Path)
+        {
+            <div class="ide-newrow" style="padding-left:@(6 + depth * 12)px">
+                <input @bind="_renameTo" @bind:event="oninput"
+                       @onkeydown="OnRenameKey" aria-label="Rename to" />
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string ConversationId { get; set; } = "";
+    /// <summary>Abre arquivo no editor (click no item).</summary>
+    [Parameter] public EventCallback<string> OnOpenFile { get; set; }
+    /// <summary>Notifica o pai para reidratar caches (fuzzy/status).</summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private readonly List<(FileItem Entry, int Depth)> _flat = [];
+    private readonly HashSet<string> _expanded = [];
+    private readonly Dictionary<string, string> _git = new();
+    private bool _newFile, _newDir;
+    private string _newPath = "/workspace/repo/";
+    private string? _renamePath;
+    private string _renameTo = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        await LoadGitAsync();
+    }
+
+    private static string Name(string path) =>
+        path.TrimEnd('/').Split('/').Last();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            var root = await Api.ListFilesAsync(
+                ConversationId, "/workspace/repo");
+            _flat.Clear();
+            _expanded.RemoveWhere(x => !root.Any(f => f.Path == x));
+            foreach (var f in root.OrderByDescending(f => f.IsDirectory)
+                .ThenBy(f => f.Path))
+            {
+                _flat.Add((f, 0));
+            }
+        }
+        catch { }
+    }
+
+    /// <summary>Decorations M/A/D a partir de git/changes.</summary>
+    private async Task LoadGitAsync()
+    {
+        try
+        {
+            var changes = await Api.GetGitChangesAsync(ConversationId);
+            _git.Clear();
+            if (changes.TryGetProperty("files", out var f))
+            {
+                foreach (var item in f.EnumerateArray())
+                {
+                    if (item.ValueKind
+                        != System.Text.Json.JsonValueKind.Object)
+                    {
+                        continue;
+                    }
+
+                    var p = item.TryGetProperty("path", out var pp)
+                        ? pp.GetString() : null;
+                    var st = item.TryGetProperty("status", out var ss)
+                        ? ss.GetString() ?? "M" : "M";
+                    if (p is not null)
+                    {
+                        _git[$"/workspace/repo/{p}"] =
+                            st.Contains('D') ? "D"
+                            : st.Contains('A') || st.Contains('?') ? "A" : "M";
+                    }
+                }
+            }
+        }
+        catch { }
+    }
+
+    private async Task OnItemClick(FileItem entry)
+    {
+        if (!entry.IsDirectory)
+        {
+            await OnOpenFile.InvokeAsync(entry.Path);
+            return;
+        }
+
+        if (!_expanded.Add(entry.Path))
+        {
+            _expanded.Remove(entry.Path);
+            _flat.RemoveAll(f => f.Entry.Path.StartsWith(
+                entry.Path + "/", StringComparison.Ordinal));
+            return;
+        }
+
+        try
+        {
+            var children = await Api.ListFilesAsync(
+                ConversationId, entry.Path);
+            var at = _flat.FindIndex(f => f.Entry.Path == entry.Path) + 1;
+            var depth = _flat[at - 1].Depth + 1;
+            _flat.InsertRange(at,
+                children.OrderByDescending(c => c.IsDirectory)
+                    .ThenBy(c => c.Path).Select(c => (c, depth)));
+        }
+        catch { }
+    }
+
+    private void StartRename(FileItem entry)
+    {
+        _renamePath = entry.Path;
+        _renameTo = entry.Path;
+    }
+
+    private async Task OnNewKey(KeyboardEventArgs e)
+    {
+        if (e.Key != "Enter" || string.IsNullOrWhiteSpace(_newPath))
+        {
+            return;
+        }
+
+        var ok = _newDir
+            ? await Api.MkdirAsync(ConversationId, _newPath.Trim())
+            : (await Api.WriteFileAsync(
+                ConversationId, _newPath.Trim(), "", null)).Ok;
+        if (ok)
+        {
+            _newFile = _newDir = false;
+            await LoadAsync();
+            await OnChanged.InvokeAsync();
+        }
+    }
+
+    private async Task OnRenameKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") { _renamePath = null; return; }
+        if (e.Key != "Enter" || _renamePath is null) { return; }
+
+        if (await Api.RenameAsync(
+            ConversationId, _renamePath, _renameTo.Trim()))
+        {
+            _renamePath = null;
+            await LoadAsync();
+            await OnChanged.InvokeAsync();
+        }
+    }
+
+    private async Task DeleteAsync(FileItem entry)
+    {
+        if (await Api.DeleteFileAsync(ConversationId, entry.Path))
+        {
+            await LoadAsync();
+            await OnChanged.InvokeAsync();
+        }
+    }
+}
