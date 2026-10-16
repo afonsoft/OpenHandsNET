@@ -1,0 +1,109 @@
+@using OpenHandsNET.Client.Services
+@inject OpenHandsNetApiClient Api
+
+@* SPEC-42 RF-005: SCM view — changes + diff (via callback p/ o editor) +
+   commit box → POST /git/commit. *@
+
+<div class="ide-scm">
+    <div class="ide-panel-head">
+        <span>SOURCE CONTROL</span>
+        <button title="Refresh" aria-label="Refresh scm"
+                @onclick="LoadAsync">
+            <Icon Name="refresh" Size="13" />
+        </button>
+    </div>
+
+    <div class="ide-commitbox">
+        <input placeholder="commit message…" @bind="_msg"
+               @bind:event="oninput" @onkeydown="OnKey"
+               aria-label="Commit message" />
+        <button class="primary" disabled="@(_busy || _msg.Trim().Length == 0)"
+                @onclick="CommitAsync" aria-label="Commit">
+            <Icon Name="check" Size="13" /> Commit
+        </button>
+    </div>
+    @if (_feedback is { } fb)
+    {
+        <div class="ide-scm-fb">@fb</div>
+    }
+
+    @if (_files.Count == 0)
+    {
+        <div class="empty-state">no changes</div>
+    }
+    else
+    {
+        @foreach (var f in _files)
+        {
+            <button class="ide-scm-row" @onclick="() => OpenDiff(f)">
+                <Icon Name="file" Size="12" /> @f
+            </button>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string ConversationId { get; set; } = "";
+    [Parameter] public ConversationStateService? State { get; set; }
+    /// <summary>Abre o diff no editor do workbench.</summary>
+    [Parameter] public EventCallback<string> OnOpenDiff { get; set; }
+
+    private readonly List<string> _files = [];
+    private string _msg = "";
+    private string? _feedback;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            var changes = await Api.GetGitChangesAsync(ConversationId);
+            _files.Clear();
+            if (changes.TryGetProperty("files", out var f))
+            {
+                foreach (var item in f.EnumerateArray())
+                {
+                    var p = item.ValueKind
+                        == System.Text.Json.JsonValueKind.String
+                        ? item.GetString()!
+                        : item.TryGetProperty("path", out var pp)
+                            ? pp.GetString()! : item.ToString();
+                    _files.Add(p);
+                }
+            }
+        }
+        catch { }
+    }
+
+    private async Task OpenDiff(string rel) =>
+        await OnOpenDiff.InvokeAsync(rel);
+
+    private async Task OnKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await CommitAsync();
+        }
+    }
+
+    private async Task CommitAsync()
+    {
+        if (_msg.Trim().Length == 0 || _busy) { return; }
+        _busy = true;
+        try
+        {
+            var sha = await Api.GitCommitAsync(
+                ConversationId, _msg.Trim());
+            _feedback = sha is null
+                ? "commit falhou" : $"committed {sha[..Math.Min(7, sha.Length)]}";
+            if (sha is not null)
+            {
+                _msg = "";
+                await LoadAsync();
+            }
+        }
+        finally { _busy = false; }
+    }
+}

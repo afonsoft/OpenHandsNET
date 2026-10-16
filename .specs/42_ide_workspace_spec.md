@@ -8,7 +8,7 @@
 | Type | `Feature / Client + API` |
 | Stack | `Blazor WASM · Monaco (vendored) · ISandboxExecutor` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `In review` (PR [#108](https://github.com/afonsoft/OpenHandsNET/pull/108)) |
 | Ticket | [#100](https://github.com/afonsoft/OpenHandsNET/issues/100) |
 | Depends on | `03` (sandbox/executor), `05` (layout conversa), `12` (git), `21` (Monaco), `24` (exec/stream) |
 | Soft dep | `43` (CheckpointList embutida no SCM — degrada se ausente) |

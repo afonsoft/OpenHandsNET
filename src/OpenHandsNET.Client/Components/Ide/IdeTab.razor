@@ -1,0 +1,450 @@
+@using OpenHandsNET.Client.Services
+@implements IAsyncDisposable
+@inject OpenHandsNetApiClient Api
+@inject MonacoInterop Monaco
+
+@* SPEC-42 RF-002: workbench IDE — activity bar (explorer/search/scm/tests),
+   side panel, editor Monaco editável com tabs/dirty/Ctrl+S, quick-open
+   Ctrl+P e status bar. *@
+
+<div class="ide-shell" @onkeydown="OnShellKey" tabindex="-1">
+    <div class="ide-activity" role="tablist" aria-label="IDE panels">
+        @foreach (var (panel, icon, tip) in _panels)
+        {
+            <button role="tab" aria-selected="@(_panel == panel)"
+                    class="@(_panel == panel ? "active" : "")"
+                    title="@tip" @onclick="() => _panel = panel">
+                <Icon Name="@icon" Size="16" />
+            </button>
+        }
+    </div>
+
+    <div class="ide-side">
+        @switch (_panel)
+        {
+            case "explorer":
+                <IdeExplorer ConversationId="@ConvId"
+                             OnOpenFile="@(async p => await OpenFileAsync(p))"
+                             OnChanged="@(async () => await RefreshPathsAsync())"
+                             @ref="_explorer" />
+                break;
+            case "search":
+                <IdeSearchView ConversationId="@ConvId"
+                               OnOpenFile="@(async x => await
+                                   OpenFileAtLineAsync(x.Path, x.Line))" />
+                break;
+            case "scm":
+                <IdeScmView ConversationId="@ConvId" State="State"
+                            OnOpenDiff="@(async r => await OpenDiffAsync(r))" />
+                break;
+            case "tests":
+                <IdeTestsPanel ConversationId="@ConvId" />
+                break;
+        }
+    </div>
+
+    <div class="ide-main">
+        @* Tabs com dirty-dot — SPEC-42 RF-004. *@
+        @if (_tabs.Count > 0)
+        {
+            <div class="ide-tabs" role="tablist">
+                @for (var i = 0; i < _tabs.Count; i++)
+                {
+                    var idx = i;
+                    var t = _tabs[idx];
+                    <button role="tab" aria-selected="@(_active == idx)"
+                            class="ide-tab @(_active == idx ? "active" : "")"
+                            @onclick="() => ActivateAsync(idx)">
+                        @t.Name@(t.Dirty ? " ●" : "")
+                        <span class="ide-tab-close" title="Fechar"
+                              @onclick:stopPropagation
+                              @onclick="() => CloseTab(idx)">×</span>
+                    </button>
+                }
+            </div>
+        }
+
+        @if (_diff is { } diff)
+        {
+            <div class="diff-meta">
+                @diff.Path — HEAD × workspace
+                <button style="float:right" @onclick="CloseDiff">× fechar diff</button>
+            </div>
+            <div id="ide-diff" class="monaco-host"></div>
+        }
+        else if (Active is { } tab)
+        {
+            @if (_conflict)
+            {
+                <div class="ide-conflict" role="alert">
+                    arquivo mudou no workspace —
+                    <button @onclick="() => SaveAsync(force: true)">forçar save</button>
+                    <button @onclick="() => ActivateAsync(_active)">recarregar</button>
+                </div>
+            }
+            @if (tab.Binary)
+            {
+                <pre class="ide-binary">[binary file — base64 omitted]</pre>
+            }
+            else
+            {
+                <div id="ide-monaco" class="monaco-host"></div>
+            }
+        }
+        else
+        {
+            <div class="empty-state">
+                explorer à esquerda · Ctrl+P abre arquivo
+            </div>
+        }
+
+        @* SPEC-42 RF-009: status bar. *@
+        <div class="ide-statusbar">
+            <span>@_branch</span>
+            <span>@(_dirtyCount > 0 ? $"{_dirtyCount} altered" : "clean")</span>
+            <span class="grow"></span>
+            <span>@(Active?.Name ?? "—")</span>
+            <span>@(Active is null ? "" : MonacoInterop.LanguageFor(Active.Path))</span>
+            <span>Ln @_line, Col @_col</span>
+        </div>
+    </div>
+
+    @* SPEC-42 RF-007: quick-open fuzzy (Ctrl+P / botão). *@
+    @if (_quickOpen)
+    {
+        <div class="ide-quickopen" @onkeydown:stopPropagation>
+            <input @ref="_qoInput" placeholder="go to file…"
+                   @bind="_qoQuery" @bind:event="oninput"
+                   @onkeydown="OnQoKey" aria-label="Quick open file" />
+            <div class="ide-quickopen-list">
+                @foreach (var p in QoMatches())
+                {
+                    <button class="@(p == _qoSel ? "sel" : "")"
+                            @onclick="() => PickAsync(p)">@p</button>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ConversationStateService State { get; set; } = default!;
+
+    private string ConvId => State.Conversation!.Id;
+
+    private static readonly (string Panel, string Icon, string Tip)[] _panels =
+    [
+        ("explorer", "folder", "Explorer"),
+        ("search", "search", "Search"),
+        ("scm", "git-branch", "Source control"),
+        ("tests", "play", "Tests"),
+    ];
+
+    private sealed class Tab
+    {
+        public required string Path { get; init; }
+        public string Name => Path.TrimEnd('/').Split('/').Last();
+        public string? Etag { get; set; }
+        public bool Dirty { get; set; }
+        public bool Binary { get; init; }
+        /// <summary>Conteúdo carregado do disco (baseline do save).</summary>
+        public string Cached = "";
+    }
+
+    private sealed record DiffView(string Path, string Orig, string Mod);
+
+    private readonly List<Tab> _tabs = [];
+    private int _active = -1;
+    private string _panel = "explorer";
+    private IdeExplorer? _explorer;
+    private DiffView? _diff;
+    private bool _conflict;
+    private bool _editorDirty; // (re)cria o Monaco no próximo render
+    private bool _monacoFailed;
+    private int _line = 1, _col = 1;
+    private int _dirtyCount;
+    private string _branch = "";
+    private DotNetObjectReference<IdeTab>? _self;
+
+    private bool _quickOpen;
+    private string _qoQuery = "";
+    private string? _qoSel;
+    private ElementReference _qoInput;
+    private readonly List<string> _allPaths = [];
+
+    private Tab? Active => _active >= 0 && _active < _tabs.Count
+        ? _tabs[_active] : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _self = DotNetObjectReference.Create(this);
+        await RefreshPathsAsync();
+        await RefreshBranchAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Editor normal — (re)cria quando a tab ativa muda.
+        if (_editorDirty && _diff is null && Active is { } t && !t.Binary
+            && !_monacoFailed)
+        {
+            _editorDirty = false;
+            try
+            {
+                var ok = await Monaco.CreateEditorAsync("ide-monaco",
+                    t.Cached, MonacoInterop.LanguageFor(t.Path),
+                    readOnly: false);
+                if (ok && _self is not null)
+                {
+                    // Editor recriado a cada tab — re-subscreve os hooks.
+                    await Monaco.OnChangedAsync("ide-monaco", _self,
+                        nameof(NotifyDirty));
+                    await Monaco.OnSaveAsync("ide-monaco", _self,
+                        nameof(NotifySave));
+                    await Monaco.OnCursorAsync("ide-monaco", _self,
+                        nameof(NotifyCursor));
+                }
+            }
+            catch (JSException) { _monacoFailed = true; }
+            catch (InvalidOperationException) { _monacoFailed = true; }
+        }
+
+        // Diff view — editor duplo HEAD × workspace.
+        if (_diff is { } d && _editorDirty && !_monacoFailed)
+        {
+            _editorDirty = false;
+            try
+            {
+                await Monaco.CreateDiffEditorAsync("ide-diff",
+                    d.Orig, d.Mod, MonacoInterop.LanguageFor(d.Path));
+            }
+            catch (JSException) { _monacoFailed = true; }
+            catch (InvalidOperationException) { _monacoFailed = true; }
+        }
+
+        if (_quickOpen)
+        {
+            try { await _qoInput.FocusAsync(); } catch { }
+        }
+    }
+
+    // ---- JS callbacks (Monaco) -----------------------------------------
+
+    [JSInvokable]
+    public async Task NotifyDirty()
+    {
+        if (Active is { } t && !t.Dirty)
+        {
+            t.Dirty = true;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    [JSInvokable]
+    public async Task NotifySave() => await SaveAsync(force: false);
+
+    [JSInvokable]
+    public async Task NotifyCursor(int line, int col)
+    {
+        _line = line;
+        _col = col;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // ---- Files / tabs ---------------------------------------------------
+
+    /// <summary>Abre arquivo do explorer/quick-open.</summary>
+    public async Task OpenFileAsync(string path) =>
+        await OpenFileAtLineAsync(path, 1);
+
+    /// <summary>Abre arquivo posicionando numa linha (busca/SCM).</summary>
+    public async Task OpenFileAtLineAsync(string path, int line)
+    {
+        var existing = _tabs.FindIndex(t => t.Path == path);
+        if (existing >= 0)
+        {
+            _active = existing;
+        }
+        else
+        {
+            var r = await Api.ReadFileWithEtagAsync(ConvId, path);
+            var tab = new Tab
+            {
+                Path = path, Etag = r?.Etag, Binary = r?.IsBinary ?? false,
+            };
+            tab.Cached = r?.Content ?? $"# unable to read {path}";
+            _tabs.Add(tab);
+            _active = _tabs.Count - 1;
+        }
+
+        _diff = null;
+        _conflict = false;
+        _editorDirty = true;
+        StateHasChanged();
+        if (line > 1)
+        {
+            _pendingLine = line;
+        }
+    }
+
+    private int _pendingLine;
+
+    private async Task ActivateAsync(int idx)
+    {
+        _active = idx;
+        _conflict = false;
+        _editorDirty = true;
+        // Recarrega do disco — descarta edições se dirty? Mantém cache.
+    }
+
+    private void CloseTab(int idx)
+    {
+        _tabs.RemoveAt(idx);
+        if (_active >= _tabs.Count) { _active = _tabs.Count - 1; }
+        _editorDirty = true;
+    }
+
+    // ---- Save (Ctrl+S) ---------------------------------------------------
+
+    private async Task SaveAsync(bool force)
+    {
+        if (Active is not { } t || t.Binary)
+        {
+            return;
+        }
+
+        string content;
+        try { content = await Monaco.GetValueAsync("ide-monaco"); }
+        catch (JSException) { content = t.Cached; }
+        var r = await Api.WriteFileAsync(
+            ConvId, t.Path, content, force ? null : t.Etag);
+        if (r.Conflict && !force)
+        {
+            _conflict = true;
+        }
+        else if (r.Ok)
+        {
+            t.Etag = r.Etag;
+            t.Cached = content;
+            t.Dirty = false;
+            _conflict = false;
+        }
+
+        StateHasChanged();
+    }
+
+    // ---- Diff (SCM) -------------------------------------------------------
+
+    private async Task OpenDiffAsync(string rel)
+    {
+        var orig = await Api.GetGitFileAtRefAsync(ConvId, rel, "HEAD") ?? "";
+        var mod = (await Api.ReadFileWithEtagAsync(
+            ConvId, $"/workspace/repo/{rel}"))?.Content ?? "";
+        _diff = new DiffView(rel, orig, mod);
+        _editorDirty = true;
+        StateHasChanged();
+    }
+
+    private void CloseDiff()
+    {
+        _diff = null;
+        _editorDirty = true;
+    }
+
+    // ---- Quick-open --------------------------------------------------------
+
+    private void OnShellKey(KeyboardEventArgs e)
+    {
+        if (e.CtrlKey && e.Key == "p")
+        {
+            _quickOpen = true;
+            _qoQuery = "";
+        }
+    }
+
+    private void OnQoKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") { _quickOpen = false; }
+        else if (e.Key == "Enter" && _qoSel is { } sel)
+        {
+            _ = PickAsync(sel);
+        }
+    }
+
+    private IEnumerable<string> QoMatches()
+    {
+        var top = IdeQuickOpenFuzzy.Top(_qoQuery, _allPaths);
+        _qoSel = top.FirstOrDefault();
+        return top;
+    }
+
+    private async Task PickAsync(string path)
+    {
+        _quickOpen = false;
+        await OpenFileAsync(path);
+    }
+
+    // ---- Refresh ----------------------------------------------------------
+
+    /// <summary>Cache de paths p/ fuzzy — reidratado após ops de arquivo.</summary>
+    public async Task RefreshPathsAsync()
+    {
+        try
+        {
+            _allPaths.Clear();
+            var root = await Api.ListFilesAsync(ConvId, "/workspace/repo");
+            _allPaths.AddRange(root.Where(f => !f.IsDirectory)
+                .Select(f => f.Path));
+        }
+        catch { }
+    }
+
+    private async Task RefreshBranchAsync()
+    {
+        try
+        {
+            var log = await Api.GetGitLogAsync(ConvId);
+            _branch = log.Count > 0
+                && log[0].TryGetProperty("message", out var m)
+                ? m.GetString() ?? "main" : "main";
+        }
+        catch { _branch = "no repository"; }
+
+        // Dirty count = arquivos alterados não commitados (git/changes).
+        try
+        {
+            var changes = await Api.GetGitChangesAsync(ConvId);
+            _dirtyCount = changes.TryGetProperty("files", out var f)
+                && f.ValueKind == System.Text.Json.JsonValueKind.Array
+                    ? f.GetArrayLength() : 0;
+        }
+        catch { _dirtyCount = 0; }
+    }
+
+    // ---- pending reveal ---------------------------------------------------
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (_pendingLine > 0)
+        {
+            var line = _pendingLine;
+            _pendingLine = 0;
+            _ = Task.Delay(50).ContinueWith(_ =>
+                InvokeAsync(async () =>
+                {
+                    try
+                    {
+                        await Monaco.RevealLineAsync("ide-monaco", line);
+                    }
+                    catch { }
+                }));
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _self?.Dispose();
+        try { await Monaco.DisposeAsync("ide-monaco"); } catch { }
+        try { await Monaco.DisposeAsync("ide-diff"); } catch { }
+    }
+}

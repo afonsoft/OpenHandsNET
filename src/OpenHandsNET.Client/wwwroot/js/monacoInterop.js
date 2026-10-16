@@ -92,6 +92,50 @@
             }
         },
 
+        // SPEC-42 RF-004: editor editável — leitura do conteúdo e hooks
+        // de dirty/save/cursor para o workbench IDE.
+        getValue: function (hostId) {
+            const ed = _editors.get(hostId);
+            const m = ed && ed.getModel ? ed.getModel() : null;
+            return m ? m.getValue() : '';
+        },
+
+        onChanged: function (hostId, dotNet, method) {
+            const ed = _editors.get(hostId);
+            if (ed && ed.onDidChangeModelContent) {
+                ed.onDidChangeModelContent(() =>
+                    dotNet.invokeMethodAsync(method));
+            }
+        },
+
+        onSave: function (hostId, dotNet, method) {
+            const ed = _editors.get(hostId);
+            if (ed && ed.addCommand) {
+                ed.addCommand(
+                    window.monaco.KeyMod.CtrlCmd
+                        | window.monaco.KeyCode.KeyS,
+                    () => dotNet.invokeMethodAsync(method));
+            }
+        },
+
+        onCursor: function (hostId, dotNet, method) {
+            const ed = _editors.get(hostId);
+            if (ed && ed.onDidChangeCursorPosition) {
+                ed.onDidChangeCursorPosition(e =>
+                    dotNet.invokeMethodAsync(
+                        method, e.position.lineNumber, e.position.column));
+            }
+        },
+
+        revealLine: function (hostId, line, col) {
+            const ed = _editors.get(hostId);
+            if (ed && ed.revealLineInCenter) {
+                ed.setPosition({ lineNumber: line || 1, column: col || 1 });
+                ed.revealLineInCenter(line || 1);
+                ed.focus();
+            }
+        },
+
         dispose,
     };
 

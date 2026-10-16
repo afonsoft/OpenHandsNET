@@ -42,6 +42,40 @@ public sealed class MonacoInterop(IJSRuntime js)
     public async Task DisposeAsync(string hostId, CancellationToken ct = default) =>
         await js.InvokeVoidAsync("monacoInterop.dispose", ct, hostId);
 
+    // ---- SPEC-42 RF-004: workbench editável -----------------------------
+
+    /// <summary>Conteúdo atual do modelo do editor.</summary>
+    public async Task<string> GetValueAsync(
+        string hostId, CancellationToken ct = default) =>
+        await js.InvokeAsync<string>("monacoInterop.getValue", ct, hostId);
+
+    /// <summary>Callback DotNet a cada mudança de conteúdo (dirty flag).</summary>
+    public async Task OnChangedAsync<T>(
+        string hostId, DotNetObjectReference<T> self, string method,
+        CancellationToken ct = default) where T : class =>
+        await js.InvokeVoidAsync(
+            "monacoInterop.onChanged", ct, hostId, self, method);
+
+    /// <summary>Binding Ctrl+S → callback DotNet de save.</summary>
+    public async Task OnSaveAsync<T>(
+        string hostId, DotNetObjectReference<T> self, string method,
+        CancellationToken ct = default) where T : class =>
+        await js.InvokeVoidAsync(
+            "monacoInterop.onSave", ct, hostId, self, method);
+
+    /// <summary>Posição do cursor (line, col) → status bar.</summary>
+    public async Task OnCursorAsync<T>(
+        string hostId, DotNetObjectReference<T> self, string method,
+        CancellationToken ct = default) where T : class =>
+        await js.InvokeVoidAsync(
+            "monacoInterop.onCursor", ct, hostId, self, method);
+
+    /// <summary>Abre/revela uma linha no editor (jump de busca/SCM).</summary>
+    public async Task RevealLineAsync(
+        string hostId, int line, int col = 1, CancellationToken ct = default) =>
+        await js.InvokeVoidAsync(
+            "monacoInterop.revealLine", ct, hostId, line, col);
+
     /// <summary>Mapa extensão → linguagem Monaco.</summary>
     public static string LanguageFor(string path) =>
         Path.GetExtension(path).ToLowerInvariant() switch
