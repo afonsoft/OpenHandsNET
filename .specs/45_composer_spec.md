@@ -8,7 +8,7 @@
 | Type | `Feature / Client + API` |
 | Stack | `Blazor WASM · ISandboxExecutor (upload)` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `In review (PR #111)` |
 | Ticket | [#103](https://github.com/afonsoft/OpenHandsNET/issues/103) |
 | Depends on | `04` (send-message), `12` (files API), `25` (repo skills catalog) |
 | Reference | `afonsoft/open-webui` (MIT — port permitido): `ChatView` composer (@menções, /slash, drafts, histórico), `RepoSlashCommands.cs`, `AttachmentThumb` |
