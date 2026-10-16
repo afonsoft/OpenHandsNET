@@ -5,6 +5,7 @@
 @inject OpenHandsNetApiClient Api
 @inject ThemeService Theme
 @inject PaletteService Palette
+@inject AttentionInboxState Inbox
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -16,6 +17,9 @@
                 <Icon Name="menu" Size="16" />
             </button>
             <span class="logo">OpenHandsNET</span>
+            <span class="grow"></span>
+            <AttentionBadge Active="_attentionOnly"
+                            OnClick="ToggleAttentionFilter" />
         </div>
         @if (!_collapsed)
         {
@@ -39,7 +43,7 @@
             {
                 <a class="sb-item @(IsActive($"/conversations/{c.Id}") ? "active" : "")"
                    href="/conversations/@c.Id" title="@(c.Title ?? c.Id)">
-                    <span class="dot @DotClass(c.ExecutionStatus)"></span>
+                    <span class="dot @DotFor(c)"></span>
                     @if (_collapsed)
                     {
                         <Icon Name="chat" Size="16" />
@@ -83,12 +87,15 @@
 
     private bool _isAdmin;
     private bool _collapsed;
+    private bool _attentionOnly;
     private string _filter = "";
     private IReadOnlyList<ConversationItem> _convs = [];
 
     protected override async Task OnInitializedAsync()
     {
         _isAdmin = await Admin.EnsureLoadedAsync();
+        Inbox.Changed += OnAttentionChanged;
+        await Inbox.EnsureStartedAsync();
         try
         {
             _collapsed = await JS.InvokeAsync<string?>(
@@ -104,6 +111,12 @@
 
     private void OnNav(object? s, LocationChangedEventArgs e) =>
         InvokeAsync(StateHasChanged);
+
+    /// <summary>SPEC-44: ticks do inbox re-renderizam dots/badge.</summary>
+    private void OnAttentionChanged() => InvokeAsync(StateHasChanged);
+
+    /// <summary>SPEC-44 RF-003: filtro "Aguardando você".</summary>
+    private void ToggleAttentionFilter() => _attentionOnly = !_attentionOnly;
 
     /// <summary>Itens da palette: ações fixas + conversas recentes.</summary>
     private async Task<IEnumerable<PaletteService.Item>> BuildPaletteAsync()
@@ -158,14 +171,33 @@
         catch (JSException) { }
     }
 
-    private IEnumerable<ConversationItem> FilteredConvs() =>
-        string.IsNullOrWhiteSpace(_filter)
-            ? _convs
-            : _convs.Where(c =>
+    private IEnumerable<ConversationItem> FilteredConvs()
+    {
+        var convs = _attentionOnly
+            ? _convs.Where(c => AttentionKindOf(c.Id) is not null)
+            : _convs;
+        return string.IsNullOrWhiteSpace(_filter)
+            ? convs
+            : convs.Where(c =>
                 (c.Title ?? "").Contains(_filter,
                     StringComparison.OrdinalIgnoreCase)
                 || (c.SelectedRepository ?? "").Contains(_filter,
                     StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>Kind de attention do inbox (fonte live) para a conversa.</summary>
+    private string? AttentionKindOf(string conversationId) =>
+        Inbox.Items.FirstOrDefault(i =>
+            i.ConversationId.Equals(conversationId,
+                StringComparison.OrdinalIgnoreCase))?.Kind
+        ?? (_convs.FirstOrDefault(c => c.Id == conversationId)
+            ?.NeedsAttention);
+
+    /// <summary>SPEC-44: dot por kind de attention vence o de status.</summary>
+    private string DotFor(ConversationItem c) =>
+        AttentionKindOf(c.Id) is { } kind
+            ? $"attention attention-{kind}"
+            : DotClass(c.ExecutionStatus);
 
     private static string DotClass(string status) => status.ToUpperInvariant() switch
     {
@@ -184,5 +216,9 @@
                 new Uri(new Uri(Nav.BaseUri), prefix.TrimStart('/')).ToString(),
                 StringComparison.OrdinalIgnoreCase);
 
-    public void Dispose() => Nav.LocationChanged -= OnNav;
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnNav;
+        Inbox.Changed -= OnAttentionChanged;
+    }
 }

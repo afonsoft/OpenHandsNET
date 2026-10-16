@@ -71,6 +71,8 @@ public sealed record AppConversationDto
     public IReadOnlyList<string> Tags { get; init; } = [];
     public bool Pinned { get; init; }
     public bool ConfirmationMode { get; init; }
+    /// <summary>SPEC-44: kind de attention pendente (null quando nada).</summary>
+    public string? NeedsAttention { get; init; }
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset UpdatedAt { get; init; }
 }

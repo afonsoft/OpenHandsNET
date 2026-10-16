@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using OpenHandsNET.Application.Conversations;
+using OpenHandsNET.Application.Events;
 using OpenHandsNET.Domain.Conversations;
 using OpenHandsNET.Domain.Events;
 using OpenHandsNET.Infrastructure.Persistence;
@@ -23,7 +24,8 @@ public sealed class AppConversationService(
     OpenHandsNET.Application.Identity.IPlanEnforcementService? enforcement = null,
     OpenHandsNET.Application.Identity.ICurrentUserAccessor? currentUser = null,
     OpenHandsNET.Application.Identity.IEffectiveOrgResolver? orgResolver = null,
-    OpenHandsNET.Application.Artifacts.IArtifactStore? artifacts = null)
+    OpenHandsNET.Application.Artifacts.IArtifactStore? artifacts = null,
+    OpenHandsNET.Application.Conversations.IAttentionBus? attention = null)
     : IAppConversationService
 {
     /// <inheritdoc />
@@ -131,6 +133,12 @@ public sealed class AppConversationService(
             q = q.Where(r => r.Title == query.TitleEq);
         }
 
+        // SPEC-44 RF-002: filtro "Aguardando você".
+        if (query.Attention)
+        {
+            q = q.Where(r => r.NeedsAttentionKind != null);
+        }
+
         if (query.CreatedAtGte is not null)
         {
             var gte = query.CreatedAtGte.Value.UtcTicks;
@@ -175,6 +183,111 @@ public sealed class AppConversationService(
         }
 
         return q.LongCountAsync(ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<AttentionItem>> ListAttentionAsync(
+        int limit, CancellationToken ct)
+    {
+        var rows = await db.Conversations
+            .Where(r => r.ExecutionStatus
+                != nameof(ConversationExecutionStatus.Archived)
+                && r.NeedsAttentionKind != null)
+            .OrderByDescending(r => r.NeedsAttentionAtTicks)
+            .Take(Math.Clamp(limit, 1, 50))
+            .ToListAsync(ct);
+
+        var items = new List<AttentionItem>(rows.Count);
+        foreach (var r in rows)
+        {
+            items.Add(new AttentionItem(
+                r.Id, r.Title, r.NeedsAttentionKind!,
+                r.NeedsAttentionAtTicks ?? 0,
+                await AttentionExcerptAsync(r, ct)));
+        }
+
+        return items;
+    }
+
+    /// <inheritdoc />
+    public async Task<AttentionDismissResult> DismissAttentionAsync(
+        Guid id, CancellationToken ct)
+    {
+        var r = await db.Conversations.FindAsync([id], ct);
+        if (r is null)
+        {
+            return AttentionDismissResult.NotFound;
+        }
+
+        if (r.NeedsAttentionKind is null)
+        {
+            return AttentionDismissResult.Noop;
+        }
+
+        // SPEC-29/44: confirmation exige a decisão real — dismiss vira 409.
+        if (r.NeedsAttentionKind == AttentionKinds.Confirmation)
+        {
+            return AttentionDismissResult.Conflict;
+        }
+
+        r.NeedsAttentionKind = null;
+        r.NeedsAttentionAtTicks = null;
+        r.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(ct);
+        attention?.PublishChanged();
+        return AttentionDismissResult.Dismissed;
+    }
+
+    /// <summary>
+    /// Excerpt barato por kind: <c>failed</c> → último
+    /// <c>AgentErrorEvent.Error</c>; <c>confirmation/question</c> → último
+    /// <c>ActionEvent</c> (command/question truncado). Falhas → null.
+    /// </summary>
+    private async Task<string?> AttentionExcerptAsync(
+        ConversationRecord r, CancellationToken ct)
+    {
+        try
+        {
+            if (r.NeedsAttentionKind == AttentionKinds.Failed)
+            {
+                var page = await events.SearchAsync(r.Id, new EventQuery(
+                    KindEq: "AgentErrorEvent",
+                    Sort: EventSortOrder.TimestampDesc, Limit: 1), ct);
+                return page.Items.OfType<AgentErrorEvent>()
+                    .Select(e => Truncate(e.Error, 140))
+                    .FirstOrDefault();
+            }
+
+            // confirmation/question — a ação pendente é o último ActionEvent.
+            var acts = await events.SearchAsync(r.Id, new EventQuery(
+                KindEq: "ActionEvent",
+                Sort: EventSortOrder.TimestampDesc, Limit: 1), ct);
+            return acts.Items.OfType<ActionEvent>()
+                .Select(AttentionExcerpt)
+                .FirstOrDefault();
+        }
+        catch (Exception) { return null; }
+    }
+
+    private static string? AttentionExcerpt(ActionEvent a)
+    {
+        // ask_user manda a pergunta em args.question; demais tools usam
+        // command/path — pega o primeiro campo de texto útil.
+        if (a.Action is { } action && action.ValueKind
+            == System.Text.Json.JsonValueKind.Object)
+        {
+            foreach (var key in new[] { "question", "command", "path" })
+            {
+                if (action.TryGetProperty(key, out var v)
+                    && v.ValueKind == System.Text.Json.JsonValueKind.String
+                    && v.GetString() is { Length: > 0 } s)
+                {
+                    return Truncate(s, 140);
+                }
+            }
+        }
+
+        return a.ToolName;
     }
 
     /// <inheritdoc />

@@ -49,6 +49,17 @@ public sealed class ConversationRecord : IOrgScoped
     public DateTimeOffset UpdatedAt { get; set; }
 
     /// <summary>
+    /// Projeção de attention (SPEC-44 RF-001): <c>null | confirmation |
+    /// question | failed</c> — setada pelo runner nas transições de status,
+    /// limpa na retomada/mensagem do usuário/dismiss. Projeção, não fonte
+    /// de verdade (reconcilia no próximo transition).
+    /// </summary>
+    public string? NeedsAttentionKind { get; set; }
+
+    /// <summary>Ticks UTC de quando a attention foi marcada.</summary>
+    public long? NeedsAttentionAtTicks { get; set; }
+
+    /// <summary>
     /// Espelho numérico de <see cref="CreatedAt"/> (UtcTicks) — SQLite não
     /// ordena DateTimeOffset; sincronizado no SaveChanges (ver AppDbContext).
     /// </summary>
@@ -62,7 +73,7 @@ public sealed class ConversationRecord : IOrgScoped
             ? []
             : System.Text.Json.JsonSerializer.Deserialize<List<string>>(TagsJson) ?? [],
         Pinned, CreatedAt, UpdatedAt, CreatedByUserId, ConfirmationMode,
-        SandboxProfile);
+        SandboxProfile, NeedsAttentionKind);
 }
 
 /// <summary>Persisted start-task row.</summary>
@@ -93,8 +104,11 @@ public sealed class ConversationRecordConfiguration : IEntityTypeConfiguration<C
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Title).HasMaxLength(500);
         builder.Property(e => e.ExecutionStatus).HasMaxLength(20).IsRequired();
+        builder.Property(e => e.NeedsAttentionKind).HasMaxLength(20);
         builder.HasIndex(e => e.CreatedAtTicks);
         builder.HasIndex(e => e.ExecutionStatus);
+        // SPEC-44 RF-001: count/list de attention baratos por org.
+        builder.HasIndex(e => new { e.OrgId, e.NeedsAttentionAtTicks });
     }
 }
 

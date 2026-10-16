@@ -295,6 +295,28 @@ public static class BuiltinTools
         });
 
     /// <summary>
+    /// SPEC-44 RF-001: <c>ask_user</c> — faz uma pergunta ao usuário e
+    /// aguarda a resposta (interceptada pelo runner: status
+    /// <c>waiting_for_question</c> + attention <c>question</c>; a próxima
+    /// mensagem do usuário no chat é a resposta). O handler aqui é só um
+    /// fallback defensivo — a execução real acontece no AgentRunner.
+    /// </summary>
+    public static AgentTool AskUser() => new(
+        new ToolSchema("ask_user",
+            "Ask the user a question and wait for their reply in chat. " +
+            "Use when blocked on a decision only the user can make.",
+            Schema("""
+                {"type":"object","properties":{
+                  "question":{"type":"string",
+                    "description":"The question to ask the user"}},
+                 "required":["question"]}
+                """)),
+        Risky: false,
+        Handler: (ctx, args, ct) => Task.FromResult(
+            ToolResult.Error(
+                "ask_user is handled by the agent runner")));
+
+    /// <summary>
     /// SPEC-43 RF-002: <c>checkpoint</c> — snapshot sob demanda do workdir
     /// (git-dir separado); o agente usa antes de refactors arriscados.
     /// </summary>

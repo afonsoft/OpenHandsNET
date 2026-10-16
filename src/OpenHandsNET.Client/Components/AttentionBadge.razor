@@ -1,0 +1,38 @@
+@* SPEC-44 RF-003: badge do inbox — sino + contador; breakdown por kind
+   no title. Click ativa o filtro "Aguardando você" (OnClick). *@
+@using OpenHandsNET.Client.Services
+@inject AttentionInboxState Inbox
+@implements IDisposable
+
+<button class="attention-badge @(Active ? "active" : "")"
+        @onclick="OnClick" title="@Title"
+        aria-label="@($"Aguardando você: {Inbox.Count}")">
+    <Icon Name="bell" Size="16" />
+    @if (Inbox.Count > 0)
+    {
+        <span class="attention-count">@Inbox.Count</span>
+    }
+</button>
+
+@code {
+    /// <summary>Filtro de attention ativo (destaque visual).</summary>
+    [Parameter] public bool Active { get; set; }
+    /// <summary>Callback do toggle do filtro.</summary>
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    private string Title => Inbox.Count == 0
+        ? "Aguardando você"
+        : $"Aguardando você: {Inbox.Count} " +
+          $"({Breakdown})";
+
+    private string Breakdown => string.Join(", ",
+        Inbox.Items.GroupBy(i => i.Kind)
+            .Select(g => $"{g.Key}: {g.Count()}"));
+
+    protected override void OnInitialized() =>
+        Inbox.Changed += OnChanged;
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Inbox.Changed -= OnChanged;
+}

@@ -92,8 +92,27 @@ public sealed class ConversationItem
     public IReadOnlyList<string> Tags { get; init; } = [];
     public bool Pinned { get; init; }
     public bool ConfirmationMode { get; init; }
+    /// <summary>SPEC-44: attention pendente (null|confirmation|question|failed).</summary>
+    public string? NeedsAttention { get; init; }
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset UpdatedAt { get; init; }
+}
+
+/// <summary>SPEC-44: item do inbox de attention.</summary>
+public sealed class AttentionItemDto
+{
+    public required string ConversationId { get; init; }
+    public string? Title { get; init; }
+    public required string Kind { get; init; }
+    public long Since { get; init; }
+    public string? Excerpt { get; init; }
+}
+
+/// <summary>SPEC-44: resposta de GET /attention.</summary>
+public sealed class AttentionListDto
+{
+    public int Count { get; init; }
+    public IReadOnlyList<AttentionItemDto> Items { get; init; } = [];
 }
 
 /// <summary>Start-task DTO wire (WORKING → … → READY|ERROR).</summary>

@@ -393,6 +393,15 @@ details.ev-details summary { cursor: pointer; color: var(--ohn-fg-dim); font-siz
 .sb-item .dot.waiting { background: var(--ohn-purple); }
 .sb-item .dot.error { background: var(--ohn-red); }
 .sb-item .dot.idle { background: var(--ohn-fg-dim); }
+
+/* SPEC-44 attention inbox */
+.sb-item .dot.attention { box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 25%, transparent); }
+.sb-item .dot.attention-confirmation { background: var(--ohn-purple); }
+.sb-item .dot.attention-question { background: var(--ohn-yellow); }
+.sb-item .dot.attention-failed { background: var(--ohn-red); }
+.attention-badge { position: relative; display: inline-flex; align-items: center; padding: 4px; border-radius: var(--ohn-radius); color: var(--ohn-fg-dim); background: none; border: 0; cursor: pointer; }
+.attention-badge:hover, .attention-badge.active { color: var(--ohn-fg); background: var(--ohn-bg-2); }
+.attention-count { position: absolute; top: -2px; right: -2px; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px; background: var(--ohn-red); color: #fff; font-size: 10px; font-weight: 600; line-height: 14px; text-align: center; }
 .sb-item .badge-n {
     font-size: 10px; background: var(--ohn-accent); color: #fff;
     border-radius: 999px; padding: 0 6px; line-height: 16px;

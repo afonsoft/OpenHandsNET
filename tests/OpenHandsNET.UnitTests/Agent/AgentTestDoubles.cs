@@ -167,7 +167,9 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
         IAgentLlmProvider? provider = null, IModelCatalog? catalog = null,
         ISecurityAnalyzer? security = null,
         Action<ConversationRecord>? configureConv = null,
-        IAgentActivityBus? activityBus = null)
+        IAgentActivityBus? activityBus = null,
+        OpenHandsNET.Application.Conversations.IAttentionBus?
+            attentionBus = null)
     {
         ConversationId = Guid.NewGuid();
         Events = new FakeEventService();
@@ -209,6 +211,10 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
         if (activityBus is not null)
         {
             sc.AddSingleton(activityBus);
+        }
+        if (attentionBus is not null)
+        {
+            sc.AddSingleton(attentionBus);
         }
         _provider = sc.BuildServiceProvider();
         _scope = _provider.CreateAsyncScope();

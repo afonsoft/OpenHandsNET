@@ -22,12 +22,15 @@ public sealed record CreateConversationRequest(
 public sealed record InitialMessage(
     string Role, IReadOnlyList<object> Content, bool Run = true);
 
-/// <summary>Paged search over conversations.</summary>
+/// <summary>Paged search over conversations. SPEC-44:
+/// <c>Attention=true</c> filtra só conversas com
+/// <c>NeedsAttentionKind != null</c> ("Aguardando você").</summary>
 public sealed record ConversationQuery(
     string? TitleEq = null,
     DateTimeOffset? CreatedAtGte = null,
     string? PageId = null,
-    int Limit = 100);
+    int Limit = 100,
+    bool Attention = false);
 
 /// <summary>Paged result (cursor semantics equal to EventPage).</summary>
 public sealed record ConversationPage(
@@ -90,6 +93,61 @@ public interface IAppConversationService
     /// </summary>
     Task<AppConversation?> SetModeAsync(
         Guid id, string mode, CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-44 RF-002: conversations que aguardam o usuário
+    /// (<c>NeedsAttentionKind != null</c>, exceto arquivadas) — mais
+    /// recentes primeiro; excerpt = texto do evento pendente quando
+    /// barato de derivar.
+    /// </summary>
+    Task<IReadOnlyList<AttentionItem>> ListAttentionAsync(
+        int limit, CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-44 RF-002: limpa a projeção de attention. Retorna o kind
+    /// removido; <see cref="AttentionKinds.Confirmation"/> nunca é
+    /// dismissável (a decisão real é exigida — SPEC-29) → retorna
+    /// <see cref="AttentionDismissResult.Conflict"/> nesse caso.
+    /// </summary>
+    Task<AttentionDismissResult> DismissAttentionAsync(
+        Guid id, CancellationToken ct);
+}
+
+/// <summary>SPEC-44: kinds de attention persistidos na projeção.</summary>
+public static class AttentionKinds
+{
+    /// <summary>Permission ask pendente (<c>waiting_for_confirmation</c>).</summary>
+    public const string Confirmation = "confirmation";
+
+    /// <summary>Tool <c>ask_user</c> aguardando resposta.</summary>
+    public const string Question = "question";
+
+    /// <summary>Run terminou em erro e ainda não foi vista.</summary>
+    public const string Failed = "failed";
+}
+
+/// <summary>SPEC-44: um item do inbox de attention.</summary>
+public sealed record AttentionItem(
+    Guid ConversationId,
+    string? Title,
+    string Kind,
+    long SinceTicks,
+    string? Excerpt);
+
+/// <summary>Resultado do dismiss de attention.</summary>
+public enum AttentionDismissResult
+{
+    /// <summary>Projeção limpa.</summary>
+    Dismissed,
+
+    /// <summary>404 — conversa inexistente.</summary>
+    NotFound,
+
+    /// <summary>409 — kind <c>confirmation</c> exige decisão real.</summary>
+    Conflict,
+
+    /// <summary>Nada a limpar (kind já null).</summary>
+    Noop,
 }
 
 /// <summary>Outcome of a conversation switch operation (SPEC-18).</summary>

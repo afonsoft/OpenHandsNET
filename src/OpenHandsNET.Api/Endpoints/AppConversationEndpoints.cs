@@ -26,17 +26,52 @@ public static class AppConversationEndpoints
 
         group.MapGet("/search", async (
             string? title__eq, DateTimeOffset? created_at__gte,
-            string? page_id, int? limit,
+            string? page_id, int? limit, string? attention,
             IAppConversationService svc, CancellationToken ct) =>
         {
             var page = await svc.SearchAsync(new ConversationQuery(
-                title__eq, created_at__gte, page_id, limit ?? 100), ct);
+                title__eq, created_at__gte, page_id, limit ?? 100,
+                Attention: attention == "1" || attention == "true"), ct);
             return Results.Ok(new
             {
                 items = page.Items.Select(ToDto),
                 next_page_id = page.NextPageId,
             });
         });
+
+        // SPEC-44 RF-002: inbox de attention — conversas que aguardam o
+        // usuário (mesmo scoping do /search: não-arquivadas).
+        group.MapGet("/attention", async (
+            int? limit, IAppConversationService svc, CancellationToken ct) =>
+        {
+            var items = await svc.ListAttentionAsync(limit ?? 20, ct);
+            return Results.Ok(new
+            {
+                count = items.Count,
+                items = items.Select(i => new
+                {
+                    conversation_id = i.ConversationId,
+                    title = i.Title,
+                    kind = i.Kind,
+                    since = i.SinceTicks,
+                    excerpt = i.Excerpt,
+                }),
+            });
+        });
+
+        group.MapPost("/{id:guid}/attention/dismiss", async (
+            Guid id, IAppConversationService svc, HttpContext http,
+            CancellationToken ct) =>
+            await svc.DismissAttentionAsync(id, ct) switch
+            {
+                AttentionDismissResult.Dismissed
+                    or AttentionDismissResult.Noop => Results.NoContent(),
+                AttentionDismissResult.Conflict =>
+                    OpenHandsNetProblemFactory.Create(http, 409,
+                        "confirmation requires an explicit decision"),
+                _ => OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Conversation {id} not found"),
+            });
 
         group.MapGet("/count", async (
             string? title__eq, DateTimeOffset? created_at__gte,
@@ -679,6 +714,7 @@ public static class AppConversationEndpoints
         LlmModel = c.LlmModel, SandboxProfile = c.SandboxProfile,
         ExecutionStatus = c.ExecutionStatus.ToString().ToUpperInvariant(),
         Tags = c.Tags, Pinned = c.Pinned, ConfirmationMode = c.ConfirmationMode,
+        NeedsAttention = c.NeedsAttentionKind,
         CreatedAt = c.CreatedAt, UpdatedAt = c.UpdatedAt,
     };
 }

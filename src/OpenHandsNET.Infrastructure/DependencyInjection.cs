@@ -111,6 +111,12 @@ public static class DependencyInjection
         services.AddScoped<OpenHandsNET.Application.Checkpoints.ICheckpointService,
             OpenHandsNET.Infrastructure.Checkpoints.CheckpointService>();
 
+        // SPEC-44: invalidação do inbox de attention — tick sem payload,
+        // client refaz fetch com scoping normal.
+        services.AddSingleton<
+            OpenHandsNET.Application.Conversations.IAttentionBus,
+            OpenHandsNET.Infrastructure.Conversations.AttentionBus>();
+
         // Conversations (SPEC-04): aggregate service + start-task queue/worker.
         services.AddSingleton<OpenHandsNET.Infrastructure.Conversations.StartTaskService>();
         services.AddSingleton<OpenHandsNET.Application.Conversations.IStartTaskService>(
