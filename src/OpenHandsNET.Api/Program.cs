@@ -98,6 +98,7 @@ if (OpenHandsNET.Infrastructure.Cache.CacheRegistration
                 StackExchange.Redis.RedisChannel.PatternMode.Literal));
 }
 builder.Services.AddSingleton<TerminalBridgeService>();
+builder.Services.AddSingleton<OpenHandsNET.Api.Routing.PreviewTokenService>();
 builder.Services.AddProblemDetails();
 // SPEC-36 RF-002: rate limit global (IDistributedCounter; off por default).
 builder.Services.Configure<OpenHandsNET.Api.Middleware.ApiRateLimitOptions>(

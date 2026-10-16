@@ -49,9 +49,13 @@ public sealed class SandboxHostRouter(
         }
 
         var (sandboxId, port) = target.Value;
-        // RF-004: auth obrigatória antes de qualquer proxy (ports
-        // públicas com preview token ficam como follow-up da wave).
-        if (ctx.User.Identity?.IsAuthenticated != true)
+        // RF-004/SPEC-40: auth de sessão ou preview token (?token=)
+        // obrigatório antes de qualquer proxy — surfaces públicas
+        // (ttyd/code-server) têm auth própria fraca ou nenhuma.
+        if (ctx.User.Identity?.IsAuthenticated != true
+            && !ctx.RequestServices
+                .GetRequiredService<PreviewTokenService>()
+                .Validate(ctx.Request.Query["token"], sandboxId, port))
         {
             ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return;

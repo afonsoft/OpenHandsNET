@@ -1,3 +1,4 @@
+using System.Text.Json;
 using OpenHandsNET.Api.DTOs;
 using OpenHandsNET.Api.ProblemDetails;
 using OpenHandsNET.Application.Sandbox;
@@ -64,6 +65,27 @@ public static class SandboxEndpoints
             await svc.DeleteAsync(id, ct);
             return Results.NoContent();
         });
+
+        // SPEC-40 RF-004: preview token p/ surfaces públicas (iframe/WS
+        // de ttyd/code-server — cookie de sessão não cobre terceiros).
+        sandboxes.MapPost("/{id:guid}/preview-token", async (
+            Guid id, JsonElement body,
+            ISandboxService svc,
+            Routing.PreviewTokenService tokens,
+            HttpContext http, CancellationToken ct) =>
+        {
+            if (await svc.GetAsync(id, ct) is null)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Sandbox {id} not found");
+            }
+
+            var port = body.ValueKind == JsonValueKind.Object
+                && body.TryGetProperty("port", out var p)
+                && p.TryGetInt32(out var pv) ? pv : 8000;
+            var (token, exp) = tokens.Mint(id, port);
+            return Results.Ok(new { token, expires_at = exp, port });
+        }).RequireAuthorization();
 
         // SPEC-24 RF-007: probe /alive v2 do agent in-container
         // (agent_version nulo = v1/sem agent → sem streaming).
