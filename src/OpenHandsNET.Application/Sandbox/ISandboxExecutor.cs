@@ -37,6 +37,45 @@ public interface ISandboxExecutor
     Task WriteFileAsync(
         Domain.Sandbox.Sandbox sandbox, string path, string content, CancellationToken ct);
 
+    /// <summary>
+    /// SPEC-45 RF-005: binary-safe write. Default: base64 via
+    /// <see cref="ExecAsync"/> em chunks de 64KB (abaixo do
+    /// MAX_ARG_STRLEN) acumulados em <c>{path}.upload.b64</c> + decode —
+    /// funciona em qualquer transporte com exec. Transports com HTTP
+    /// file-put podem sobrescrever p/ 1 chamada.
+    /// </summary>
+    async Task WriteFileBytesAsync(
+        Domain.Sandbox.Sandbox sandbox, string path, byte[] content,
+        CancellationToken ct)
+    {
+        var b64 = Convert.ToBase64String(content);
+        var tmp = path + ".upload.b64";
+        const int chunk = 64 * 1024;
+        for (var i = 0; i < b64.Length; i += chunk)
+        {
+            var part = b64.Substring(i, Math.Min(chunk, b64.Length - i));
+            var op = i == 0 ? ">" : ">>";
+            var r = await ExecAsync(sandbox,
+                $"echo -n '{part}' {op} '{tmp}'",
+                TimeSpan.FromSeconds(30), ct);
+            if (r.ExitCode != 0)
+            {
+                throw new IOException(
+                    $"sandbox upload staging failed ({path}): {r.StdErr}");
+            }
+        }
+
+        var done = await ExecAsync(sandbox,
+            $"mkdir -p -- \"$(dirname -- '{path}')\" && " +
+            $"base64 -d '{tmp}' > '{path}' && rm -f -- '{tmp}'",
+            TimeSpan.FromSeconds(60), ct);
+        if (done.ExitCode != 0)
+        {
+            throw new IOException(
+                $"sandbox upload decode failed ({path}): {done.StdErr}");
+        }
+    }
+
     Task<IReadOnlyList<FileEntry>> ListFilesAsync(
         Domain.Sandbox.Sandbox sandbox, string path, CancellationToken ct);
 

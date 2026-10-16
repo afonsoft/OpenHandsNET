@@ -81,3 +81,14 @@ window.ohnChat = {
         }
     }
 };
+
+// SPEC-45: composer — auto-grow até ~10 linhas + helpers de caret.
+window.ohnComposer = {
+    grow(el) {
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = Math.min(el.scrollHeight, 240) + 'px';
+    },
+    focus(el) { if (el) el.focus(); },
+    caretAtStart(el) { return el ? el.selectionStart === 0 : false; }
+};

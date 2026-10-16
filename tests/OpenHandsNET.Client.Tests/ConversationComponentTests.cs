@@ -12,7 +12,14 @@ public class ConversationComponentTests : TestContext
     public ConversationComponentTests()
     {
         // SPEC-26: EventCard/ChatPane injetam MarkdownService.
+        // SPEC-45: ChatPane renderiza ChatComposer (Api/Toasts/JS).
+        JSInterop.Mode = JSRuntimeMode.Loose;
         Services.AddSingleton(new MarkdownService());
+        Services.AddSingleton(new ToastService());
+        Services.AddSingleton(new OpenHandsNetApiClient(new HttpClient
+        {
+            BaseAddress = new Uri("http://localhost:8080"),
+        }));
     }
 
     private static ClientEvent Ev(string json) => new()

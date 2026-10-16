@@ -14,6 +14,13 @@ namespace OpenHandsNET.Client.Tests;
 /// </summary>
 public class HomePageTests : TestContext
 {
+    public HomePageTests()
+    {
+        // SPEC-45: Home renderiza ChatComposer (Toasts/JS; Api por teste).
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddSingleton(new ToastService());
+    }
+
     private sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> fn)
         : HttpMessageHandler
     {

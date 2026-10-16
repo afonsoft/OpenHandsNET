@@ -117,6 +117,36 @@ public sealed class SandboxAgentExecutor(
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// SPEC-45 RF-005: PUT HTTP do b64 (sem limite de argv) + decode —
+    /// 2 chamadas para qualquer tamanho.
+    /// </remarks>
+    public async Task WriteFileBytesAsync(
+        DomainSandbox sandbox, string path, byte[] content,
+        CancellationToken ct)
+    {
+        var transport = await ResolveAsync(sandbox, ct);
+        if (transport is null)
+        {
+            await ((Application.Sandbox.ISandboxExecutor)_dockerExec)
+                .WriteFileBytesAsync(sandbox, path, content, ct);
+            return;
+        }
+
+        var tmp = RelativeWorkspace(path) + ".upload.b64";
+        await transport.PutFileAsync(
+            tmp, Convert.ToBase64String(content), ct);
+        var r = await ExecAsync(sandbox,
+            $"base64 -d '/workspace/{tmp}' > '{path}' && rm -f -- '/workspace/{tmp}'",
+            TimeSpan.FromSeconds(60), ct);
+        if (r.ExitCode != 0)
+        {
+            throw new IOException(
+                $"sandbox upload decode failed ({path}): {r.StdErr}");
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<FileEntry>> ListFilesAsync(
         DomainSandbox sandbox, string path, CancellationToken ct)
     {

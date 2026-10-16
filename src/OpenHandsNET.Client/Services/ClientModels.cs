@@ -140,6 +140,16 @@ public sealed record FileReadResult(
 public sealed record FileWriteResult(
     bool Ok, string? Etag, bool Conflict);
 
+/// <summary>SPEC-45: skill resolvida da conversa (repo + user).</summary>
+public sealed class SkillItem
+{
+    public required string Id { get; init; }
+    public required string Name { get; init; }
+    public string? Description { get; init; }
+    public string? ContentMd { get; init; }
+    public string? Source { get; init; }
+}
+
 /// <summary>SPEC-42: match de <c>files/search</c>.</summary>
 public sealed class FileSearchMatch
 {

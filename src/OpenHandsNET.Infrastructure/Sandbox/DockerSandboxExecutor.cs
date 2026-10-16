@@ -86,8 +86,18 @@ public sealed class DockerSandboxExecutor(IDockerClient docker) : ISandboxExecut
     public async Task WriteFileAsync(
         DomainSandbox sandbox, string path, string content, CancellationToken ct)
     {
+        var bytes = Encoding.UTF8.GetBytes(content);
+        // SPEC-45: acima de ~48KB o b64 estoura MAX_ARG_STRLEN no arg do
+        // sh -c — cai no caminho chunked (binário/texto grandes).
+        if (bytes.Length > 48 * 1024)
+        {
+            await ((Application.Sandbox.ISandboxExecutor)this)
+                .WriteFileBytesAsync(sandbox, path, bytes, ct);
+            return;
+        }
+
         // base64 no comando evita problemas de quoting/tamanho de argv.
-        var b64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(content));
+        var b64 = Convert.ToBase64String(bytes);
         var r = await ExecAsync(
             sandbox,
             $"mkdir -p -- \"$(dirname -- '{Escape(path)}')\" && " +
