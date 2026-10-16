@@ -1,0 +1,10 @@
+name: run-tests
+setup:
+  - "mkdir -p /workspace/proj && printf 'def add(a,b):\\n    return a+b\\n' > /workspace/proj/calc.py && printf 'from calc import add\\ndef test_add():\\n    assert add(1,2)==3\\n' > /workspace/proj/test_calc.py"
+task: "Run pytest in /workspace/proj and make sure the test suite passes."
+timeout: 10m
+assert:
+  - type: exit_code
+    cmd: "cd /workspace/proj && (pytest -x -q || python -m pytest -x -q)"
+    expect: 0
+tags: [run-test, nightly]

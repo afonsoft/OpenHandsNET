@@ -28,3 +28,7 @@ logs/
 !.vscode/settings.json
 !.vscode/extensions.json
 node_modules/
+
+# SPEC-39: artifacts de eval runs (gitignored por SPEC-39 §4)
+evals/results/
+evals/recordings/

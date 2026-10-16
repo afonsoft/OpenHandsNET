@@ -1,0 +1,8 @@
+name: echo-marker
+task: "Run `echo EVAL-MARKER-9911` in the workspace shell and confirm it printed."
+timeout: 5m
+assert:
+  - type: exit_code
+    cmd: "echo EVAL-MARKER-9911 | grep -q EVAL-MARKER-9911"
+    expect: 0
+tags: [run-test, smoke]

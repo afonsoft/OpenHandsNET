@@ -26,6 +26,7 @@ public static class GitEndpoints
         conv.MapGet("/{id:guid}/git/log", GitLogAsync);
         conv.MapGet("/{id:guid}/files", ListFilesAsync);
         conv.MapGet("/{id:guid}/file", ReadFileAsync);
+        conv.MapPost("/{id:guid}/exec", ExecCommandAsync);
 
         app.MapGet("/api/v1/git/credentials", async (
             OpenHandsNET.Infrastructure.Git.GitCredentialProvider store,
@@ -232,6 +233,43 @@ public static class GitEndpoints
             encoding = "utf-8",
             content = Encoding.UTF8.GetString(bytes),
             truncated,
+        });
+    }
+
+    /// <summary>
+    /// SPEC-39 RF-001: exec one-shot pós-run para asserts do eval harness
+    /// (<c>exit_code</c>). Comando roda no sandbox via <c>bash -c</c>.
+    /// </summary>
+    private static async Task<IResult> ExecCommandAsync(
+        Guid id, JsonElement body,
+        IAppConversationService svc, ISandboxExecutor executor,
+        HttpContext http, CancellationToken ct)
+    {
+        var cmd = body.TryGetProperty("command", out var c)
+            ? c.GetString() : null;
+        if (string.IsNullOrWhiteSpace(cmd))
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 400, "command required");
+        }
+
+        var timeoutS = body.TryGetProperty("timeout_s", out var t)
+            && t.TryGetInt32(out var ts) ? ts : 120;
+
+        var sb = await SandboxOfAsync(id, svc, http, ct);
+        if (sb is null)
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 409, OpenHandsNetProblemFactory.SandboxNotRunning);
+        }
+
+        var r = await executor.ExecAsync(sb,
+            $"cd /workspace && {cmd}",
+            TimeSpan.FromSeconds(Math.Clamp(timeoutS, 1, 600)), ct);
+        return Results.Ok(new
+        {
+            exit_code = r.ExitCode, stdout = r.StdOut,
+            stderr = r.StdErr, timed_out = r.TimedOut,
         });
     }
 

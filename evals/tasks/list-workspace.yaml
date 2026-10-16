@@ -1,0 +1,8 @@
+name: list-workspace
+task: "List the files in /workspace and report how many entries exist."
+timeout: 5m
+assert:
+  - type: exit_code
+    cmd: "ls /workspace"
+    expect: 0
+tags: [search, smoke]

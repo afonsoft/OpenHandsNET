@@ -1,0 +1,11 @@
+name: create-file
+task: "Create a file /workspace/hello.txt containing exactly: hello world"
+timeout: 5m
+assert:
+  - type: file_contains
+    path: /workspace/hello.txt
+    pattern: "hello world"
+  - type: exit_code
+    cmd: "test -f /workspace/hello.txt"
+    expect: 0
+tags: [edit, smoke]

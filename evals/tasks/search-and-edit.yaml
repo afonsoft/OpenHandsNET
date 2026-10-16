@@ -1,0 +1,13 @@
+name: search-and-edit
+setup:
+  - "printf 'alpha\\nbeta\\ngamma\\n' > /workspace/data.txt"
+task: "Find the line containing 'beta' in /workspace/data.txt and prepend a line 'zero' at the top of the file."
+timeout: 10m
+assert:
+  - type: file_contains
+    path: /workspace/data.txt
+    pattern: "zero"
+  - type: exit_code
+    cmd: "head -1 /workspace/data.txt | grep -q zero"
+    expect: 0
+tags: [search, edit, nightly]

@@ -1,0 +1,11 @@
+name: write-and-verify
+task: "Write /workspace/answer.txt with the number 42, then verify it exists."
+timeout: 5m
+assert:
+  - type: file_contains
+    path: /workspace/answer.txt
+    pattern: "42"
+  - type: exit_code
+    cmd: "grep -q 42 /workspace/answer.txt"
+    expect: 0
+tags: [edit, run-test, smoke]
