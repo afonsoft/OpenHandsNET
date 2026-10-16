@@ -25,10 +25,22 @@
         <AgentModeToggle Mode="@State.Conversation?.Mode"
                          OnSwitch="OnModeSwitch" />
         <span class="spacer"></span>
-        <button class="icon-btn" title="Terminal (nova aba)"
-                aria-label="Open terminal" @onclick="OpenTerminalAsync">
-            <Icon Name="terminal" Size="15" />
-        </button>
+        @if (_surfaces.Any(s => s.Name == "terminal" && s.Url is not null))
+        {
+            <button class="icon-btn" title="Terminal (nova aba)"
+                    aria-label="Open terminal"
+                    @onclick='() => OpenSurfaceAsync("terminal")'>
+                <Icon Name="terminal" Size="15" />
+            </button>
+        }
+        @if (_surfaces.Any(s => s.Name == "vscode" && s.Url is not null))
+        {
+            <button class="icon-btn" title="Open in editor (nova aba)"
+                    aria-label="Open in editor"
+                    @onclick='() => OpenSurfaceAsync("vscode")'>
+                <Icon Name="code" Size="15" />
+            </button>
+        }
         <span class="tokens">@(State.PromptTokens + State.CompletionTokens) tok ·
             $@State.CostUsd.ToString("F4")</span>
         <span class="badge @BadgeClass(State.ExecutionStatus)">
@@ -89,6 +101,7 @@
     [Parameter] public string Id { get; set; } = "";
 
     private string _tab = "terminal";
+    private IReadOnlyList<OpenHandsNetApiClient.SurfaceItem> _surfaces = [];
 
     private static readonly (string Tab, string Label)[] _tabs =
     [
@@ -100,6 +113,46 @@
     {
         State.Changed += OnChanged;
         await State.OpenAsync(Id);
+        _ = RefreshSurfacesAsync();
+    }
+
+    /// <summary>
+    /// SPEC-40 RF-002/003: surfaces ativas do sandbox — ícones do topbar
+    /// só aparecem quando a surface tem URL pública (routing != internal).
+    /// </summary>
+    private async Task RefreshSurfacesAsync()
+    {
+        try
+        {
+            _surfaces = await Api.GetSurfacesAsync(Id);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch { /* surfaces off/unreachable → ícones ocultos */ }
+    }
+
+    /// <summary>Abre a surface em nova aba com preview token fresco.</summary>
+    private async Task OpenSurfaceAsync(string name)
+    {
+        try
+        {
+            // Refetch: o token HMAC expira em ~15min — a URL cacheada
+            // pode estar vencida.
+            _surfaces = await Api.GetSurfacesAsync(Id);
+            var s = _surfaces.FirstOrDefault(
+                x => x.Name == name && x.Url is not null);
+            if (s?.Url is { } url)
+            {
+                await JS.InvokeVoidAsync("open", url, "_blank");
+            }
+            else
+            {
+                Toasts.Info($"surface '{name}' indisponível");
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            Toasts.Error($"surfaces falhou: {ex.Message}");
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -141,34 +194,6 @@
         catch (HttpRequestException ex)
         {
             Toasts.Error($"troca de modo falhou: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// SPEC-40 RF-002: abre o terminal web (ttyd) em nova aba — URL
-    /// resolvida pela Api com preview token; indisponível quando a
-    /// surface está off ou o routing é internal.
-    /// </summary>
-    private async Task OpenTerminalAsync()
-    {
-        try
-        {
-            var surfaces = await Api.GetSurfacesAsync(Id);
-            var term = surfaces.FirstOrDefault(s =>
-                s.Name == "terminal" && s.Url is not null);
-            if (term?.Url is { } url)
-            {
-                await JS.InvokeVoidAsync("open", url, "_blank");
-            }
-            else
-            {
-                Toasts.Info("terminal indisponível — habilite " +
-                    "SANDBOX_TERMINAL=1 no blueprint");
-            }
-        }
-        catch (HttpRequestException ex)
-        {
-            Toasts.Error($"surfaces falhou: {ex.Message}");
         }
     }
 
