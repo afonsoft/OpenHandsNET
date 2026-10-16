@@ -48,6 +48,12 @@ public sealed class SandboxOptions
     /// <summary>SPEC-38: domínio público wildcard p/ RoutingMode=host.</summary>
     public string? PublicBaseDomain { get; set; }
 
+    /// <summary>
+    /// SPEC-40 RF-004: segredo HMAC dos preview tokens de surfaces.
+    /// Null → chave efêmera por boot (tokens morrem no restart).
+    /// </summary>
+    public string? PreviewTokenSecret { get; set; }
+
     /// <summary>Host root for per-conversation workspaces (bind-mounted).</summary>
     public string WorkspaceRoot { get; set; } = "data/workspaces";
 
