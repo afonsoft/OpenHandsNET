@@ -8,8 +8,8 @@
 | Type | `Feature / Client + API` |
 | Stack | `Blazor WASM · Monaco (vendored) · ISandboxExecutor` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Draft` |
-| Ticket | `TBD` |
+| Status | `Approved` |
+| Ticket | [#100](https://github.com/afonsoft/OpenHandsNET/issues/100) |
 | Depends on | `03` (sandbox/executor), `05` (layout conversa), `12` (git), `21` (Monaco), `24` (exec/stream) |
 | Soft dep | `43` (CheckpointList embutida no SCM — degrada se ausente) |
 | Reference | `afonsoft/open-webui` (MIT — port permitido): `Pages/Ide.razor`, `Ide*` components, `WorkspaceFileEndpoints`, `IdeQuickOpenFuzzy.cs` |

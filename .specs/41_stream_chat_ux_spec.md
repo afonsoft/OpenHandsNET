@@ -8,8 +8,8 @@
 | Type | `Feature / Client + Agent` |
 | Stack | `Blazor WASM · SignalR · AgentRunner · Semantic Kernel` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Draft` |
-| Ticket | `TBD` |
+| Status | `Approved` |
+| Ticket | [#99](https://github.com/afonsoft/OpenHandsNET/issues/99) |
 | Depends on | `02` (events), `09` (agent loop), `24` (activity protocol), `26` (ToolCallCard base), `34` (streaming_delta) |
 | Reference | `afonsoft/open-webui` (MIT — port permitido): `ChatStreamService`, `ThinkingSection.razor`, `ToolCallCard.razor`, `ChatView` resume/watchdog |
 | Touches | `src/OpenHandsNET.Infrastructure/Agent` (provider delta pipeline), `src/OpenHandsNET.Application/Events` (DeltaFrame), `src/OpenHandsNET.Api` (endpoints + hub), `src/OpenHandsNET.Client` (ChatPane, EventCard, novos componentes) |

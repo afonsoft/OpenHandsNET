@@ -8,8 +8,8 @@
 | Type | `Feature / Infrastructure + Client` |
 | Stack | `.NET 10 · ISandboxExecutor (git exec) · Blazor WASM` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Draft` |
-| Ticket | `TBD` |
+| Status | `Approved` |
+| Ticket | [#101](https://github.com/afonsoft/OpenHandsNET/issues/101) |
 | Depends on | `03` (executor), `12` (git), `16` (sleep/wake), `24` (files_changed) |
 | Reference | `afonsoft/open-webui` (MIT — port permitido): `CheckpointService` (git-dir separado + alternates), `CheckpointEndpoints`, `CheckpointList.razor`; padrão opencode `src/snapshot` |
 | Touches | `src/OpenHandsNET.Infrastructure/Checkpoints` (novo), `src/OpenHandsNET.Api/Endpoints`, `src/OpenHandsNET.Client` (CheckpointList) |

@@ -62,13 +62,13 @@ SPECs (Spec-Driven Development) do port do ecossistema **OpenHands** para
 | `38_sandbox_host_routing_spec.md` | Routing `path\|host` (`{id}-{port}.{domain}`) p/ surfaces do sandbox | 03, 04, 14, 35/37 | #77 ✅ #79 |
 | `39_eval_harness_spec.md` | `openhandsnet eval` — runner headless + fixtures + scoring (parcial) | 06/31, 09, 22, 24, 28 | #78 ◐ #79 |
 | `40_sandbox_agent_server_surfaces_spec.md` | Surfaces do agent-server: gateway `/v1/chat/completions`, terminal/VSCode web, preview tokens, ACP mínimo | 03, 04, 08, 17, 24, 34, 38 | #81 |
-| `41_stream_chat_ux_spec.md` | Reasoning (`ThinkingSection` + `DeltaFrame.channel` + `ThinkingBlocks`), heartbeat+watchdog, ToolCallCard rico, copy, Pause/Resume | 02, 09, 24, 26, 34 | `TBD` |
-| `42_ide_workspace_spec.md` | Aba `ide` workbench (explorer+Monaco editável+SCM+search+tests+quick-open); write/search/commit API | 03, 05, 12, 21, 24 (soft 43) | `TBD` |
-| `43_checkpoints_revert_spec.md` | Snapshots por turno em git-dir separado no sandbox + `POST /checkpoints/{hash}/revert` + CheckpointList | 03, 12, 16, 24 | `TBD` |
-| `44_attention_inbox_spec.md` | Inbox de conversas aguardando usuário (confirm/question/failed) — projeção persistida + badge + filtro, push SignalR | 04, 09, 10, 29 | `TBD` |
-| `45_composer_spec.md` | Composer rico: @menções workspace, /slash (skills+builtins), drafts, histórico, uploads→path, edit-resend | 04, 12, 25 | `TBD` |
-| `46_i18n_spec.md` | `LocalizationService` JSON (port open-webui), en-US+pt-BR completos + 6 best-effort, parity test | 26 | `TBD` |
-| `47_automations_spec.md` | Schedules (interval/daily/weekly/once)→start-task, run history, run-now, hook triggers, tool `routine` | 04, 08, 10, 20, 25 | `TBD` |
+| `41_stream_chat_ux_spec.md` | Reasoning (`ThinkingSection` + `DeltaFrame.channel` + `ThinkingBlocks`), heartbeat+watchdog, ToolCallCard rico, copy, Pause/Resume | 02, 09, 24, 26, 34 | #99 |
+| `42_ide_workspace_spec.md` | Aba `ide` workbench (explorer+Monaco editável+SCM+search+tests+quick-open); write/search/commit API | 03, 05, 12, 21, 24 (soft 43) | #100 |
+| `43_checkpoints_revert_spec.md` | Snapshots por turno em git-dir separado no sandbox + `POST /checkpoints/{hash}/revert` + CheckpointList | 03, 12, 16, 24 | #101 |
+| `44_attention_inbox_spec.md` | Inbox de conversas aguardando usuário (confirm/question/failed) — projeção persistida + badge + filtro, push SignalR | 04, 09, 10, 29 | #102 |
+| `45_composer_spec.md` | Composer rico: @menções workspace, /slash (skills+builtins), drafts, histórico, uploads→path, edit-resend | 04, 12, 25 | #103 |
+| `46_i18n_spec.md` | `LocalizationService` JSON (port open-webui), en-US+pt-BR completos + 6 best-effort, parity test | 26 | #104 |
+| `47_automations_spec.md` | Schedules (interval/daily/weekly/once)→start-task, run history, run-now, hook triggers, tool `routine` | 04, 08, 10, 20, 25 | #105 |
 
 
 Build order: `01 → (02 ∥ 03 ∥ 10 ∥ 13) → (04 ∥ 09 ∥ 11 ∥ 12) → (05 ∥ 06 ∥ 08) → 07 → 14 → 15 → 16 → 17 → (18 ∥ 19 ∥ 20) → 21 → (22 → 23 ∥ 24) → 25 → (26 ∥ 27) → (29 → (28 ∥ 33) ∥ 30 ∥ 31 ∥ 34)`.

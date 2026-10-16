@@ -8,8 +8,8 @@
 | Type | `Feature / API + Client` |
 | Stack | `.NET 10 · EF Core (2 ctx) · SignalR · Blazor WASM` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Draft` |
-| Ticket | `TBD` |
+| Status | `Approved` |
+| Ticket | [#102](https://github.com/afonsoft/OpenHandsNET/issues/102) |
 | Depends on | `04` (API/hub), `09` (runner pending_action), `10` (persistence), `29` (permission ask) |
 | Reference | `afonsoft/open-webui` (MIT — port permitido): `AttentionInboxState`, `AttentionBadge.razor`, `chats/attention` endpoints, filtro "Aguardando você" |
 | Touches | `src/OpenHandsNET.Infrastructure` (record+runner), `src/OpenHandsNET.Api/Endpoints`, `src/OpenHandsNET.Client` (state, badge, sidebar) |
