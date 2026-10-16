@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using OpenHandsNET.Application.Checkpoints;
 
 namespace OpenHandsNET.Client.Services;
 
@@ -358,6 +359,87 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
         return resp.IsSuccessStatusCode
             ? await resp.Content.ReadAsStringAsync(ct) : "";
     }
+
+    // ---- checkpoints (SPEC-43) ------------------------------------------
+
+    /// <summary>SPEC-43: lista de checkpoints (mais novo primeiro).</summary>
+    public async Task<IReadOnlyList<CheckpointItem>> ListCheckpointsAsync(
+        string conversationId, CancellationToken ct = default)
+    {
+        var resp = await http.GetAsync(
+            $"/api/v1/app-conversations/{conversationId}/checkpoints", ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            return [];
+        }
+
+        return (await resp.Content.ReadFromJsonAsync<
+            List<CheckpointItem>>(Json, ct)) ?? [];
+    }
+
+    /// <summary>SPEC-43: detalhe/diffstat de um checkpoint.</summary>
+    public async Task<CheckpointDetail?> GetCheckpointAsync(
+        string conversationId, string hash, CancellationToken ct = default)
+    {
+        var resp = await http.GetAsync(
+            $"/api/v1/app-conversations/{conversationId}/checkpoints/{hash}",
+            ct);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<CheckpointDetail>(Json, ct)
+            : null;
+    }
+
+    /// <summary>SPEC-43: snapshot manual.</summary>
+    public async Task<CheckpointItem?> CreateCheckpointAsync(
+        string conversationId, string label,
+        CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync(
+            $"/api/v1/app-conversations/{conversationId}/checkpoints",
+            new { label }, Json, ct);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<CheckpointItem>(Json, ct)
+            : null;
+    }
+
+    /// <summary>
+    /// SPEC-43: revert — <c>409</c> devolve os conflitos de drift com
+    /// <c>Reverted=false</c>.
+    /// </summary>
+    public async Task<CheckpointRevertResult> RevertCheckpointAsync(
+        string conversationId, string hash, bool force = false,
+        CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync(
+            $"/api/v1/app-conversations/{conversationId}/checkpoints" +
+            $"/{hash}/revert", new { force }, Json, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            var doc = await resp.Content
+                .ReadFromJsonAsync<JsonElement>(Json, ct);
+            return new CheckpointRevertResult
+            {
+                Reverted = false,
+                Conflicts = StrList(doc, "conflicts"),
+                Untracked = StrList(doc, "untracked"),
+            };
+        }
+
+        return resp.IsSuccessStatusCode
+            ? (await resp.Content.ReadFromJsonAsync<
+                CheckpointRevertResult>(Json, ct))!
+            : new CheckpointRevertResult
+            {
+                Reverted = false, Conflicts = [],
+                Untracked = [$"http {(int)resp.StatusCode}"],
+            };
+    }
+
+    private static List<string> StrList(JsonElement doc, string name) =>
+        doc.TryGetProperty(name, out var a)
+            && a.ValueKind == JsonValueKind.Array
+            ? a.EnumerateArray().Select(e => e.GetString() ?? "").ToList()
+            : [];
 
     /// <summary>
     /// SPEC-21 RF-006: conteúdo do arquivo no <paramref name="gitRef"/>

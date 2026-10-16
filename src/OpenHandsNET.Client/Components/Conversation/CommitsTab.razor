@@ -1,6 +1,10 @@
 @using OpenHandsNET.Client.Services
 @inject OpenHandsNetApiClient Api
 
+@* SPEC-43 RF-004: checkpoints embutidos acima do git log (fallback
+   standalone — na aba IDE vivem dentro do painel SCM). *@
+<CheckpointList ConversationId="@State.Conversation!.Id" />
+
 <div class="commit-list">
     @if (_commits is null)
     {

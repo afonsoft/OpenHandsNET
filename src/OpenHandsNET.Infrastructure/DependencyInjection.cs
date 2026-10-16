@@ -104,6 +104,13 @@ public static class DependencyInjection
         services.AddScoped<OpenHandsNET.Application.Git.IGitService,
             OpenHandsNET.Infrastructure.Git.GitService>();
 
+        // Checkpoints (SPEC-43): git-dir separado no sandbox, snapshots
+        // pós-turno/manuais, revert com drift guard.
+        services.Configure<OpenHandsNET.Application.Checkpoints.CheckpointOptions>(
+            configuration.GetSection("Checkpoints"));
+        services.AddScoped<OpenHandsNET.Application.Checkpoints.ICheckpointService,
+            OpenHandsNET.Infrastructure.Checkpoints.CheckpointService>();
+
         // Conversations (SPEC-04): aggregate service + start-task queue/worker.
         services.AddSingleton<OpenHandsNET.Infrastructure.Conversations.StartTaskService>();
         services.AddSingleton<OpenHandsNET.Application.Conversations.IStartTaskService>(

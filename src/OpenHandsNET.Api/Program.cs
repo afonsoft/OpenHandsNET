@@ -263,6 +263,7 @@ app.MapMiscEndpoints();
 app.MapUserEndpoints();
 app.MapWebhookEndpoints();
 app.MapGitEndpoints();
+app.MapCheckpointEndpoints();
 app.MapSkillEndpoints();
 app.MapHookEndpoints();
 app.MapMcpEndpoints();

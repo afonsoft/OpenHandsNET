@@ -1,0 +1,196 @@
+@using OpenHandsNET.Application.Checkpoints
+@using OpenHandsNET.Client.Services
+@inject OpenHandsNetApiClient Api
+
+@* SPEC-43 RF-004: lista de checkpoints + revert c/ confirmação.
+   409 drift mostra conflitos e oferece force. *@
+
+<div class="ckpt-list">
+    <div class="ckpt-head">
+        <span>CHECKPOINTS</span>
+        <button title="Snapshot agora" aria-label="Snapshot now"
+                disabled="@_busy" @onclick="SnapshotAsync">
+            <Icon Name="plus" Size="13" /> snapshot
+        </button>
+        <button title="Refresh" aria-label="Refresh checkpoints"
+                @onclick="LoadAsync">
+            <Icon Name="refresh" Size="13" />
+        </button>
+    </div>
+
+    @if (_items.Count == 0)
+    {
+        <div class="empty-state">no checkpoints yet</div>
+    }
+    else
+    {
+        @foreach (var c in _items)
+        {
+            <div class="ckpt-row">
+                <button class="ckpt-main"
+                        @onclick="() => ToggleAsync(c.Hash)"
+                        aria-expanded="@(_expanded == c.Hash)">
+                    <code>@c.Hash[..7]</code> @c.Label
+                    <span class="ckpt-stats">
+                        @c.FilesChanged f +@c.Insertions −@c.Deletions
+                    </span>
+                    <span class="ckpt-ts">@FmtTs(c.Timestamp)</span>
+                </button>
+                <button class="ckpt-revert" title="Revert p/ este estado"
+                        aria-label="Revert to @c.Hash[..7]"
+                        @onclick="() => AskRevert(c)">
+                    <Icon Name="refresh" Size="12" /> revert
+                </button>
+            </div>
+            @if (_expanded == c.Hash)
+            {
+                <div class="ckpt-detail">
+                    @if (_detail is { } d && d.Hash == c.Hash)
+                    {
+                        @if (d.Files.Count == 0)
+                        {
+                            <div class="ckpt-file">(empty snapshot)</div>
+                        }
+                        @foreach (var f in d.Files.Take(30))
+                        {
+                            <div class="ckpt-file">
+                                @f.Path <span class="ckpt-stats">
+                                    +@f.Ins −@f.Del</span>
+                            </div>
+                        }
+                        @if (d.Files.Count > 30)
+                        {
+                            <div class="ckpt-file">
+                                … @(d.Files.Count - 30) more
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="ckpt-file">loading…</div>
+                    }
+                </div>
+            }
+        }
+    }
+
+    @* Modal de confirmação — mostra conflitos quando o drift 409 veio. *@
+    @if (_revertTarget is { } t)
+    {
+        <div class="modal-backdrop" @onclick="CancelRevert">
+            <div class="modal-card" @onclick:stopPropagation role="dialog"
+                 aria-label="Confirm revert">
+                <h3>Revert to @t.Hash[..7]?</h3>
+                <p>@t.Label</p>
+                @if (_conflicts.Count > 0)
+                {
+                    <p class="ckpt-warn">
+                        @_conflicts.Count arquivo(s) mudaram depois deste
+                        checkpoint — revert sobrescreve:
+                    </p>
+                    <div class="ckpt-detail">
+                        @foreach (var c in _conflicts.Take(20))
+                        {
+                            <div class="ckpt-file">@c</div>
+                        }
+                    </div>
+                }
+                @if (_untracked.Count > 0)
+                {
+                    <p class="ckpt-note">
+                        @_untracked.Count arquivo(s) novos serão preservados.
+                    </p>
+                }
+                <div class="modal-actions">
+                    <button @onclick="CancelRevert">cancelar</button>
+                    <button class="primary" disabled="@_busy"
+                            @onclick="() =>
+                                DoRevertAsync(force: _conflicts.Count > 0)">
+                        @(_conflicts.Count > 0 ? "revert (force)" : "revert")
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string ConversationId { get; set; } = "";
+    /// <summary>Notifica o pai após snapshot/revert (refresh SCM/files).</summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private IReadOnlyList<CheckpointItem> _items = [];
+    private string? _expanded;
+    private CheckpointDetail? _detail;
+    private CheckpointItem? _revertTarget;
+    private IReadOnlyList<string> _conflicts = [];
+    private IReadOnlyList<string> _untracked = [];
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    /// <summary>Recarrega a lista (público p/ o pai disparar refresh).</summary>
+    public async Task LoadAsync()
+    {
+        try { _items = await Api.ListCheckpointsAsync(ConversationId); }
+        catch { }
+        StateHasChanged();
+    }
+
+    private async Task SnapshotAsync()
+    {
+        _busy = true;
+        try
+        {
+            await Api.CreateCheckpointAsync(ConversationId, "manual");
+            await LoadAsync();
+            await OnChanged.InvokeAsync();
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task ToggleAsync(string hash)
+    {
+        if (_expanded == hash) { _expanded = null; return; }
+        _expanded = hash;
+        _detail = null;
+        _detail = await Api.GetCheckpointAsync(ConversationId, hash);
+    }
+
+    private void AskRevert(CheckpointItem c)
+    {
+        _revertTarget = c;
+        _conflicts = [];
+        _untracked = [];
+    }
+
+    private void CancelRevert() => _revertTarget = null;
+
+    private async Task DoRevertAsync(bool force)
+    {
+        if (_revertTarget is not { } t || _busy) { return; }
+        _busy = true;
+        try
+        {
+            var r = await Api.RevertCheckpointAsync(
+                ConversationId, t.Hash, force);
+            if (r.Reverted)
+            {
+                _revertTarget = null;
+                await LoadAsync();
+                await OnChanged.InvokeAsync();
+            }
+            else if (r.Conflicts.Count > 0)
+            {
+                // 409 drift — modal passa a listar os conflitos.
+                _conflicts = r.Conflicts;
+                _untracked = r.Untracked;
+            }
+        }
+        finally { _busy = false; }
+    }
+
+    private static string FmtTs(long ts) =>
+        DateTimeOffset.FromUnixTimeSeconds(ts).ToLocalTime()
+            .ToString("HH:mm:ss");
+}

@@ -27,6 +27,8 @@ public sealed class ToolRegistry : IToolRegistry
             BuiltinTools.Think(),
             BuiltinTools.TaskTracker(tracker),
             BuiltinTools.GitCommit(bashTimeout),
+            // SPEC-43 RF-002: snapshot sob demanda (pre-refactor etc.).
+            BuiltinTools.Checkpoint(),
             BuiltinTools.Browser(),
             // SPEC-25 RF-003: search/web_fetch + file_read/file_edit v2.
             BuiltinTools.Search(bashTimeout),
