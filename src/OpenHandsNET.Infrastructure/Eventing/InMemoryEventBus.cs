@@ -24,6 +24,14 @@ public sealed class InMemoryEventBus : IEventBus
         await _global.Writer.WriteAsync(new EventEnvelope(conversationId, e), ct);
     }
 
+    /// <summary>
+    /// SPEC-36: injeta evento vindo de outra réplica só no canal da
+    /// conversa — nunca no stream global (webhooks disparariam N×).
+    /// </summary>
+    internal ValueTask PublishLocalAsync(
+        Guid conversationId, EventBase e, CancellationToken ct) =>
+        Channel(conversationId).Writer.WriteAsync(e, ct);
+
     /// <inheritdoc />
     public async IAsyncEnumerable<EventBase> SubscribeAsync(
         Guid conversationId, [EnumeratorCancellation] CancellationToken ct)

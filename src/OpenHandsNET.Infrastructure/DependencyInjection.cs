@@ -53,7 +53,18 @@ public static class DependencyInjection
         services.AddHostedService<DatabaseMigrator>();
 
         // Event stream (SPEC-02): store + in-process fan-out + dispatcher/webhooks.
-        services.AddSingleton<IEventBus, InMemoryEventBus>();
+        services.AddSingleton<InMemoryEventBus>();
+        services.AddSingleton<IEventBus>(sp =>
+            // SPEC-36 RF-002: fan-out cross-réplica só quando Redis —
+            // single-réplica segue in-process (sem overhead de pub/sub).
+            CacheRegistration.RedisEnabled(configuration)
+                ? new DistributedEventBus(
+                    sp.GetRequiredService<InMemoryEventBus>(),
+                    sp.GetRequiredService<
+                        OpenHandsNET.Application.Coordination.ICoordinationBus>(),
+                    sp.GetRequiredService<Microsoft.Extensions.Logging
+                        .ILogger<DistributedEventBus>>())
+                : sp.GetRequiredService<InMemoryEventBus>());
         services.AddScoped<IEventService, EventStore>();
         services.AddSingleton<WebhookDispatcher>();
         services.AddHostedService<EventDispatcher>();
@@ -170,8 +181,20 @@ public static class DependencyInjection
                 OpenHandsNET.Infrastructure.Identity.BillingOptions.Section));
         services.AddScoped<OpenHandsNET.Application.Identity.IPlanEnforcementService,
             OpenHandsNET.Infrastructure.Identity.PlanEnforcementService>();
-        services.AddScoped<OpenHandsNET.Application.Identity.IUsageMeter,
-            OpenHandsNET.Infrastructure.Identity.UsageMeter>();
+        // SPEC-36 RF-002: write-path bufferado (Redis) + flush worker
+        // quando multi-réplica; single-réplica grava direto no EF.
+        if (CacheRegistration.RedisEnabled(configuration))
+        {
+            services.AddScoped<OpenHandsNET.Application.Identity.IUsageMeter,
+                OpenHandsNET.Infrastructure.Identity.BufferedUsageMeter>();
+            services.AddHostedService<
+                OpenHandsNET.Infrastructure.Identity.UsageFlushWorker>();
+        }
+        else
+        {
+            services.AddScoped<OpenHandsNET.Application.Identity.IUsageMeter,
+                OpenHandsNET.Infrastructure.Identity.UsageMeter>();
+        }
         services.AddScoped<OpenHandsNET.Application.Identity.IPlanAdminService,
             OpenHandsNET.Infrastructure.Identity.PlanAdminService>();
         services.AddScoped<
@@ -308,9 +331,23 @@ public static class DependencyInjection
             OpenHandsNET.Infrastructure.Agent.Browser.PlaywrightBrowserService>();
 
         // SPEC-34 RF-001: bus de deltas efêmeros (runner→hub; nunca EF).
+        // SPEC-36 RF-002: cross-réplica via bus de coordenação quando Redis.
         services.AddSingleton<
-            OpenHandsNET.Application.Events.IAgentActivityBus,
             OpenHandsNET.Infrastructure.Agent.Deltas.AgentActivityBus>();
+        services.AddSingleton<
+            OpenHandsNET.Application.Events.IAgentActivityBus>(sp =>
+            CacheRegistration.RedisEnabled(configuration)
+                ? new OpenHandsNET.Infrastructure.Agent.Deltas
+                    .DistributedAgentActivityBus(
+                        sp.GetRequiredService<OpenHandsNET.Infrastructure
+                            .Agent.Deltas.AgentActivityBus>(),
+                        sp.GetRequiredService<OpenHandsNET.Application
+                            .Coordination.ICoordinationBus>(),
+                        sp.GetRequiredService<Microsoft.Extensions.Logging
+                            .ILogger<OpenHandsNET.Infrastructure.Agent.Deltas
+                                .DistributedAgentActivityBus>>())
+                : sp.GetRequiredService<OpenHandsNET.Infrastructure.Agent
+                    .Deltas.AgentActivityBus>());
         // SPEC-34 RF-002: artifact store — workspace default, s3 opt-in.
         services.Configure<
             OpenHandsNET.Infrastructure.Artifacts.ArtifactOptions>(

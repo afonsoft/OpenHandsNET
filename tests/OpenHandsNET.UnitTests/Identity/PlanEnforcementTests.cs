@@ -42,6 +42,7 @@ public sealed class PlanEnforcementTests : IDisposable
 
     private PlanEnforcementService Enforcement(bool enabled = true) => new(
         _db, Options.Create(new BillingOptions { EnforcementEnabled = enabled }),
+        new OpenHandsNET.Application.Identity.NullUsageBuffer(),
         NullLogger<PlanEnforcementService>.Instance);
 
     private async Task<Guid> SeedOrgAsync(string? limitsJson = null)

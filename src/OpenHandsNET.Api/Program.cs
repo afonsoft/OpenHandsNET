@@ -99,6 +99,10 @@ if (OpenHandsNET.Infrastructure.Cache.CacheRegistration
 }
 builder.Services.AddSingleton<TerminalBridgeService>();
 builder.Services.AddProblemDetails();
+// SPEC-36 RF-002: rate limit global (IDistributedCounter; off por default).
+builder.Services.Configure<OpenHandsNET.Api.Middleware.ApiRateLimitOptions>(
+    builder.Configuration.GetSection(
+        OpenHandsNET.Api.Middleware.ApiRateLimitOptions.Section));
 
 // Dual auth (SPEC-08 RF-002): cookie session (browser) + Bearer sk-* (API key),
 // plus optional OIDC broker when Auth:Provider=oidc. "smart" dispatches on the
@@ -239,6 +243,8 @@ app.Use(async (ctx, next) =>
 
 app.UseAuthentication();
 app.UseAuthorization();
+// SPEC-36 RF-002: janela global — depois do auth p/ chavear por identidade.
+app.UseMiddleware<OpenHandsNET.Api.Middleware.ApiRateLimitMiddleware>();
 // SPEC-38: sandbox host/path router (no-op em RoutingMode=internal).
 app.UseMiddleware<OpenHandsNET.Api.Routing.SandboxHostRouter>();
 

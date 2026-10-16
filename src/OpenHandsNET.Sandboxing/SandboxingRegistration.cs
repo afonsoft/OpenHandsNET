@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using OpenHandsNET.Application.Coordination;
 using OpenHandsNET.Application.Sandbox;
 
 namespace OpenHandsNET.Sandboxing;
@@ -19,6 +21,9 @@ public static class SandboxingRegistration
         this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<SandboxOptions>(configuration.GetSection("Sandbox"));
+        // SPEC-36: host sem AddCoordinationCache (ex.: runtime-api isolado)
+        // cai no lock no-op — o Api sobrescreve com Redis quando provider.
+        services.TryAddSingleton<IDistributedLock, NullDistributedLock>();
         // SPEC-37: provider kubernetes (pods + Sysbox + PVC).
         services.Configure<KubernetesOptions>(
             configuration.GetSection("Sandbox:Kubernetes"));

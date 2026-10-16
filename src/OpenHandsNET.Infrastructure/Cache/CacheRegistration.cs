@@ -3,6 +3,8 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using OpenHandsNET.Application.Coordination;
+using OpenHandsNET.Application.Identity;
 using StackExchange.Redis;
 
 namespace OpenHandsNET.Infrastructure.Cache;
@@ -20,30 +22,6 @@ public sealed class CacheOptions
     public string InstanceName { get; set; } = "ohn:";
 }
 
-/// <summary>
-/// SPEC-36 RF-003: pub/sub tipado. In-memory em single-replica; Redis
-/// pub/sub <c>{instance}bus:{channel}</c> quando distribuído.
-/// </summary>
-public interface ICoordinationBus
-{
-    /// <summary>Publica payload JSON num canal.</summary>
-    Task PublishAsync(string channel, object payload, CancellationToken ct);
-
-    /// <summary>Assina um canal; handler roda por mensagem.</summary>
-    Task SubscribeAsync(string channel,
-        Func<string, CancellationToken, Task> handler, CancellationToken ct);
-}
-
-/// <summary>
-/// SPEC-36 RF-003: contadores com TTL — rate limit sliding window e
-/// usage buffer (<c>ohn:counter:{key}</c>, INCR + expire).
-/// </summary>
-public interface IDistributedCounter
-{
-    /// <summary>Incrementa e devolve o valor corrente (janela <paramref name="ttl"/>).</summary>
-    Task<long> IncrementAsync(string key, TimeSpan ttl, CancellationToken ct);
-}
-
 /// <summary>SPEC-36: cache/coordenação — fail-open, degrades a local.</summary>
 public static class CacheRegistration
 {
@@ -59,7 +37,8 @@ public static class CacheRegistration
     /// <summary>
     /// RF-001/004: valida o gate (Replicas&gt;1 exige redis + conn string) e
     /// registra <see cref="IDistributedCache"/>, <see cref="ICoordinationBus"/>,
-    /// <see cref="IDistributedCounter"/> — Redis ou in-memory.
+    /// <see cref="IDistributedCounter"/>, <see cref="IDistributedLock"/> e
+    /// <see cref="IUsageBuffer"/> — Redis ou in-memory/no-op.
     /// </summary>
     public static IServiceCollection AddCoordinationCache(
         this IServiceCollection services, IConfiguration configuration)
@@ -106,12 +85,16 @@ public static class CacheRegistration
             });
             services.AddSingleton<ICoordinationBus, RedisCoordinationBus>();
             services.AddSingleton<IDistributedCounter, RedisDistributedCounter>();
+            services.AddSingleton<IDistributedLock, RedisDistributedLock>();
+            services.AddSingleton<IUsageBuffer, RedisUsageBuffer>();
         }
         else
         {
             services.AddDistributedMemoryCache();
             services.AddSingleton<ICoordinationBus, InMemoryCoordinationBus>();
             services.AddSingleton<IDistributedCounter, InMemoryCounter>();
+            services.AddSingleton<IDistributedLock, NullDistributedLock>();
+            services.AddSingleton<IUsageBuffer, NullUsageBuffer>();
         }
 
         return services;
