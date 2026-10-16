@@ -11,8 +11,8 @@
     <p class="sub">Agent-driven software development — cloud &amp; self-hosted.</p>
 
     <div class="new-conv">
-        <textarea placeholder="Descreva a tarefa para o agente…"
-                  @bind="_initialMessage" @bind:event="oninput"></textarea>
+        <ChatComposer Placeholder="Descreva a tarefa para o agente…"
+                      DraftKey="new" OnSend="OnComposerSendAsync" />
         <div class="row">
             <input placeholder="selected_repository (opcional — ex.: owner/repo ou https://…)"
                    @bind="_repository" @bind:event="oninput" />
@@ -86,6 +86,13 @@
 
     private static string BadgeClass(string status) =>
         "badge " + status.ToLowerInvariant().Replace(' ', '_');
+
+    /// <summary>SPEC-45: composer da Home — envio inicia a conversa.</summary>
+    private async Task OnComposerSendAsync(string text)
+    {
+        _initialMessage = text;
+        await StartAsync();
+    }
 
     private async Task StartAsync()
     {

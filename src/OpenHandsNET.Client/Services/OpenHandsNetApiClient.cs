@@ -171,6 +171,49 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
             $"/api/v1/app-conversations/{conversationId}/mode",
             new { mode }, Json, ct)).EnsureSuccessStatusCode();
 
+    /// <summary>SPEC-45 RF-003: POST /{id}/context/compact (/compact).</summary>
+    public async Task CompactContextAsync(
+        string conversationId, CancellationToken ct = default) =>
+        (await http.PostAsync(
+            $"/api/v1/app-conversations/{conversationId}/context/compact",
+            null, ct)).EnsureSuccessStatusCode();
+
+    /// <summary>SPEC-45 RF-003: GET /{id}/skills (repo+user skills).</summary>
+    public async Task<IReadOnlyList<SkillItem>>
+        GetConversationSkillsAsync(
+            string conversationId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<SkillItem>>(
+            $"/api/v1/app-conversations/{conversationId}/skills",
+            Json, ct) ?? [];
+
+    /// <summary>
+    /// SPEC-45 RF-005: POST /{id}/uploads (multipart `file`) →
+    /// <c>{path}</c> no workspace; null em erro de validação (4xx/409).
+    /// </summary>
+    public async Task<string?> UploadFileAsync(
+        string conversationId, string fileName, byte[] content,
+        string? contentType = null, CancellationToken ct = default)
+    {
+        using var form = new MultipartFormDataContent();
+        using var fc = new ByteArrayContent(content);
+        fc.Headers.ContentType =
+            new System.Net.Http.Headers.MediaTypeHeaderValue(
+                contentType ?? "application/octet-stream");
+        form.Add(fc, "file", fileName);
+        var resp = await http.PostAsync(
+            $"/api/v1/app-conversations/{conversationId}/uploads",
+            form, ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var dto = await resp.Content.ReadFromJsonAsync<JsonElement>(
+            Json, ct);
+        return dto.TryGetProperty("path", out var p)
+            ? p.GetString() : null;
+    }
+
     /// <summary>
     /// SPEC-40 RF-002: GET /{id}/surfaces — surfaces do sandbox com URL
     /// pública + preview token (null quando routing internal/desligada).

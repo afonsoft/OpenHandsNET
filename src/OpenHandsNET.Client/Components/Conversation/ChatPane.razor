@@ -9,7 +9,16 @@
     }
     @foreach (var e in State.Events)
     {
-        <EventCard Event="e" Siblings="State.Events" />
+        // SPEC-45 RF-006: última mensagem do usuário ganha "Editar".
+        var isLastUser = ReferenceEquals(e, _lastUser);
+        <div class="ev-wrap @(isLastUser ? "editable" : "")">
+            <EventCard Event="e" Siblings="State.Events" />
+            @if (isLastUser && _composer is not null)
+            {
+                <button class="ev-edit" title="Editar e reenviar"
+                        @onclick="EditLastUserAsync">editar</button>
+            }
+        </div>
     }
     @* SPEC-34: slots de delta efêmeros — removidos quando o evento durável
        com o mesmo item_id chega (supersedes). Cursor ▍ via CSS .delta::after.
@@ -48,44 +57,27 @@
 {
     <ConfirmationBanner Pending="pending" OnConfirm="OnConfirm" />
 }
-<div class="chat-input">
-    <input placeholder="Envie uma mensagem ao agente…"
-           @bind="_draft" @bind:event="oninput"
-           @onkeydown="OnKey" disabled="@_sending"
-           aria-label="Message the agent" />
-    <button class="primary" @onclick="SendAsync"
-            disabled="@(_sending || string.IsNullOrWhiteSpace(_draft))"
-            aria-label="Send message">
-        <Icon Name="send" Size="14" /> Send
-    </button>
-    @if (State.ExecutionStatus is "RUNNING")
-    {
-        @* SPEC-41 RF-005: pause resumível ao lado do interrupt. *@
-        <button title="Pause run" aria-label="Pause run"
-                @onclick="() => State.PauseAsync()">
-            <Icon Name="pause" Size="14" />
-        </button>
-        <button title="Interrupt run" aria-label="Interrupt run"
-                @onclick="() => State.InterruptAsync()">
-            <Icon Name="stop" Size="14" />
-        </button>
-    }
-    @if (State.ExecutionStatus is "PAUSED")
-    {
-        <button title="Resume run" aria-label="Resume run"
-                @onclick="() => State.ResumeAsync()">
-            <Icon Name="play" Size="14" />
-        </button>
-    }
-</div>
+<ChatComposer @ref="_composer"
+              ConversationId="@State.Conversation?.Id"
+              DraftKey="@(State.Conversation?.Id ?? "new")"
+              Busy="@(State.ExecutionStatus is "RUNNING")"
+              Paused="@(State.ExecutionStatus is "PAUSED")"
+              OnSend="SendTextAsync"
+              OnPause="() => State.PauseAsync()"
+              OnInterrupt="() => State.InterruptAsync()"
+              OnResume="() => State.ResumeAsync()" />
 
 @code {
     [Parameter, EditorRequired] public ConversationStateService State { get; set; } = default!;
 
     private ElementReference _scroll;
-    private string _draft = "";
-    private bool _sending;
+    private ChatComposer? _composer;
     private int _lastCount;
+
+    /// <summary>Último MessageEvent user — alvo do edit-resend.</summary>
+    private OpenHandsNET.Client.Services.ClientEvent? _lastUser =>
+        State.Events.LastOrDefault(e =>
+            e.Kind == "MessageEvent" && e.Str("source") == "user");
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -105,24 +97,16 @@
         }
     }
 
-    private async Task OnKey(KeyboardEventArgs e)
-    {
-        if (e.Key is "Enter")
-        {
-            await SendAsync();
-        }
-    }
+    private async Task SendTextAsync(string text) =>
+        await State.SendMessageAsync(text);
 
-    private async Task SendAsync()
+    /// <summary>RF-006: carrega a última msg do usuário no composer.</summary>
+    private async Task EditLastUserAsync()
     {
-        if (string.IsNullOrWhiteSpace(_draft)) { return; }
-        _sending = true;
-        try
+        if (_lastUser is { } e && _composer is not null)
         {
-            await State.SendMessageAsync(_draft.Trim());
-            _draft = "";
+            await _composer.SetTextAsync(e.MessageText());
         }
-        finally { _sending = false; }
     }
 
     private async Task OnConfirm(bool approved) => await State.ConfirmAsync(approved);
