@@ -72,6 +72,49 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
         string id, CancellationToken ct = default) =>
         GetOrNull<ConversationItem>($"/api/v1/app-conversations/{id}", ct);
 
+    /// <summary>SPEC-44: lista com filtro "Aguardando você" (?attention=1).</summary>
+    public async Task<IReadOnlyList<ConversationItem>>
+        ListAttentionConversationsAsync(CancellationToken ct = default)
+    {
+        var page = await http.GetFromJsonAsync<JsonElement>(
+            "/api/v1/app-conversations/search?attention=1&limit=100", ct);
+        var items = new List<ConversationItem>();
+        if (page.TryGetProperty("items", out var arr))
+        {
+            foreach (var el in arr.EnumerateArray())
+            {
+                items.Add(el.Deserialize<ConversationItem>(Json)!);
+            }
+        }
+
+        return items;
+    }
+
+    /// <summary>SPEC-44: inbox de attention (count + items).</summary>
+    public async Task<AttentionListDto> GetAttentionAsync(
+        CancellationToken ct = default)
+    {
+        var resp = await http.GetAsync(
+            "/api/v1/app-conversations/attention", ct);
+        return resp.IsSuccessStatusCode
+            ? (await resp.Content.ReadFromJsonAsync<AttentionListDto>(
+                Json, ct)) ?? new AttentionListDto()
+            : new AttentionListDto();
+    }
+
+    /// <summary>
+    /// SPEC-44: dismiss de attention — false quando 409 (confirmation
+    /// exige decisão real) ou 404.
+    /// </summary>
+    public async Task<bool> DismissAttentionAsync(
+        string conversationId, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsync(
+            $"/api/v1/app-conversations/{conversationId}/attention/dismiss",
+            null, ct);
+        return resp.IsSuccessStatusCode;
+    }
+
     public async Task SendMessageAsync(
         string conversationId, string text, bool run = true,
         CancellationToken ct = default)

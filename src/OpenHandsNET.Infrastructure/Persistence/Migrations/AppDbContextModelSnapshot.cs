@@ -115,6 +115,15 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("mode");
 
+                    b.Property<long?>("NeedsAttentionAtTicks")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("needs_attention_at_ticks");
+
+                    b.Property<string>("NeedsAttentionKind")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("needs_attention_kind");
+
                     b.Property<Guid?>("OrgId")
                         .HasColumnType("TEXT")
                         .HasColumnName("org_id");
@@ -172,6 +181,9 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ExecutionStatus")
                         .HasDatabaseName("ix_conversations_execution_status");
+
+                    b.HasIndex("OrgId", "NeedsAttentionAtTicks")
+                        .HasDatabaseName("ix_conversations_org_id_needs_attention_at_ticks");
 
                     b.ToTable("conversations", (string)null);
                 });

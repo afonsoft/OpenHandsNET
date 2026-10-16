@@ -790,7 +790,8 @@ public sealed class AgentRunner(
                 {
                     await SetStatusAsync(events, db, conv,
                         "waiting_for_confirmation", null, ct,
-                        pendingAction: actionEvent.Id);
+                        pendingAction: actionEvent.Id,
+                        pendingTool: call.Name);
                     var approved = await WaitConfirmationAsync(
                         events, db, conv, actionEvent.Id, opt, ct);
                     if (approved is null)
@@ -811,33 +812,55 @@ public sealed class AgentRunner(
                 }
 
                 ToolResult result;
-                using var toolSpan = Telemetry.OpenNetTelemetry.StartSpan(
-                    "tool_call", conversationId, sandbox.Id.ToString());
-                toolSpan?.SetTag("tool", call.Name);
-                Telemetry.OpenNetTelemetry.ToolCalls.WithLabels(call.Name).Inc();
-                try
+                if (string.Equals(call.Name, "ask_user",
+                    StringComparison.Ordinal))
                 {
-                    using var toolCts =
-                        CancellationTokenSource.CreateLinkedTokenSource(ct);
-                    toolCts.CancelAfter(
-                        TimeSpan.FromSeconds(opt.ToolTimeoutSeconds));
-                    var ctx = new ToolCallContext(conversationId, sandbox,
-                        executor, events, services,
-                        TimeSpan.FromSeconds(opt.ToolTimeoutSeconds),
-                        call.Id, actionEvent.Id);
-                    activity.NoteToolCall(call.Name, call.ArgumentsJson);
-                    result = await tool.Handler(ctx,
-                        TryParseJson(call.ArgumentsJson)
-                            ?? JsonDocument.Parse("{}").RootElement.Clone(),
-                        toolCts.Token);
+                    // SPEC-44 RF-001: ask_user — a resposta é a próxima
+                    // mensagem do usuário no canal _incoming (mesma UX de
+                    // uma pergunta no chat; kind=question no inbox).
+                    var answer = await WaitUserAnswerAsync(
+                        events, db, conv, actionEvent, call, opt, ct);
+                    if (answer is null)
+                    {
+                        return; // interrupt/timeout já sinalizados
+                    }
+
+                    result = answer;
                 }
-                catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+                else
                 {
-                    result = ToolResult.Error("tool timed out");
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    result = ToolResult.Error(SecretRedactor.Redact(ex.Message));
+                    using var toolSpan = Telemetry.OpenNetTelemetry.StartSpan(
+                        "tool_call", conversationId, sandbox.Id.ToString());
+                    toolSpan?.SetTag("tool", call.Name);
+                    Telemetry.OpenNetTelemetry.ToolCalls
+                        .WithLabels(call.Name).Inc();
+                    try
+                    {
+                        using var toolCts =
+                            CancellationTokenSource.CreateLinkedTokenSource(ct);
+                        toolCts.CancelAfter(
+                            TimeSpan.FromSeconds(opt.ToolTimeoutSeconds));
+                        var ctx = new ToolCallContext(conversationId, sandbox,
+                            executor, events, services,
+                            TimeSpan.FromSeconds(opt.ToolTimeoutSeconds),
+                            call.Id, actionEvent.Id);
+                        activity.NoteToolCall(call.Name, call.ArgumentsJson);
+                        result = await tool.Handler(ctx,
+                            TryParseJson(call.ArgumentsJson)
+                                ?? JsonDocument.Parse("{}").RootElement.Clone(),
+                            toolCts.Token);
+                    }
+                    catch (OperationCanceledException)
+                        when (!ct.IsCancellationRequested)
+                    {
+                        result = ToolResult.Error("tool timed out");
+                    }
+                    catch (Exception ex)
+                        when (ex is not OperationCanceledException)
+                    {
+                        result = ToolResult.Error(
+                            SecretRedactor.Redact(ex.Message));
+                    }
                 }
 
                 var observationId = await ObserveAsync(
@@ -1030,6 +1053,51 @@ public sealed class AgentRunner(
         return true;
     }
 
+    /// <summary>
+    /// SPEC-44 RF-001: <c>ask_user</c> — status
+    /// <c>waiting_for_question</c> (sem <c>pending_action</c> — não é
+    /// approve/reject; o usuário responde no composer) e kind
+    /// <c>question</c> no inbox. A próxima mensagem do usuário em
+    /// <see cref="_incoming"/> vira o resultado do tool. null =
+    /// interrupt/timeout (status já sinalizado).
+    /// </summary>
+    private async Task<ToolResult?> WaitUserAnswerAsync(
+        IEventService events, AppDbContext db, ConversationRecord conv,
+        ActionEvent action, LlmToolCall call, AgentLlmOptions opt,
+        CancellationToken ct)
+    {
+        await SetStatusAsync(events, db, conv, "waiting_for_question",
+            null, ct,
+            attentionKind: Application.Conversations
+                .AttentionKinds.Question);
+        try
+        {
+            using var timeout = CancellationTokenSource
+                .CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(
+                TimeSpan.FromMinutes(opt.ConfirmationTimeoutMinutes));
+            var msg = await _incoming.Reader.ReadAsync(timeout.Token);
+            var text = Context.ConversationHistoryBuilder
+                .ToLlmMessage(msg).Content ?? "";
+            await SetStatusAsync(events, db, conv, "running",
+                ConversationExecutionStatus.Running, ct);
+            return ToolResult.Ok(
+                string.IsNullOrWhiteSpace(text) ? "(empty answer)" : text);
+        }
+        catch (OperationCanceledException)
+        {
+            await events.AppendAsync(conversationId, new InterruptEvent(),
+                CancellationToken.None);
+            await SetStatusAsync(events, db, conv,
+                _pauseRequested ? "paused" : "idle",
+                _pauseRequested
+                    ? ConversationExecutionStatus.Paused
+                    : ConversationExecutionStatus.Running,
+                CancellationToken.None);
+            return null;
+        }
+    }
+
     private async Task<bool?> WaitConfirmationAsync(
         IEventService events, AppDbContext db, ConversationRecord conv,
         string actionId, AgentLlmOptions opt, CancellationToken ct)
@@ -1125,10 +1193,19 @@ public sealed class AgentRunner(
         return (await events.AppendAsync(conversationId, obs, ct)).Id;
     }
 
+    /// <summary>
+    /// Atualiza status (evento + record). SPEC-44 RF-001: projeta
+    /// attention — <c>waiting_for_confirmation</c> →
+    /// <paramref name="attentionKind"/> (default <c>confirmation</c>,
+    /// <c>question</c> p/ ask_user), <c>error</c>/<c>stuck</c> →
+    /// <c>failed</c>, demais limpam. Roda mesmo quando
+    /// <paramref name="recordStatus"/> é null.
+    /// </summary>
     private async Task SetStatusAsync(
         IEventService events, AppDbContext db, ConversationRecord conv,
         string status, ConversationExecutionStatus? recordStatus,
-        CancellationToken ct, string? pendingAction = null)
+        CancellationToken ct, string? pendingAction = null,
+        string? pendingTool = null, string? attentionKind = null)
     {
         await events.AppendAsync(conversationId, new ConversationStateUpdateEvent
         {
@@ -1136,14 +1213,57 @@ public sealed class AgentRunner(
             Value = pendingAction is null
                 ? JsonSerializer.SerializeToElement(status, EventJson.Options)
                 : JsonSerializer.SerializeToElement(
-                    new { status, pending_action = pendingAction },
+                    // SPEC-44: client exige pending_action OBJETO
+                    // ({action_id, tool}) — string nunca disparava o
+                    // ConfirmationBanner (bug latente).
+                    new
+                    {
+                        status,
+                        pending_action = new
+                        {
+                            action_id = pendingAction,
+                            tool = pendingTool,
+                        },
+                    },
                     EventJson.Options),
         }, CancellationToken.None);
+
+        var kind = status switch
+        {
+            "waiting_for_confirmation" =>
+                attentionKind ?? Application.Conversations
+                    .AttentionKinds.Confirmation,
+            "waiting_for_question" =>
+                attentionKind ?? Application.Conversations
+                    .AttentionKinds.Question,
+            "error" or "stuck" =>
+                Application.Conversations.AttentionKinds.Failed,
+            _ => null,
+        };
+        var attentionChanged = conv.NeedsAttentionKind != kind;
+        var dirty = attentionChanged;
+        if (attentionChanged)
+        {
+            conv.NeedsAttentionKind = kind;
+            conv.NeedsAttentionAtTicks = kind is null
+                ? null : DateTimeOffset.UtcNow.UtcTicks;
+        }
+
         if (recordStatus is not null)
         {
             conv.ExecutionStatus = recordStatus.Value.ToString();
+            dirty = true;
+        }
+
+        if (dirty)
+        {
             conv.UpdatedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(CancellationToken.None);
+            if (attentionChanged)
+            {
+                services.GetService<Application.Conversations
+                    .IAttentionBus>()?.PublishChanged();
+            }
         }
     }
 

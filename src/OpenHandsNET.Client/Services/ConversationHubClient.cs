@@ -104,6 +104,25 @@ public sealed class ConversationHubClient : IAsyncDisposable
     public sealed record DeltaItem(
         string ItemId, long Seq, string Text, string Channel = "content");
 
+    /// <summary>
+    /// SPEC-44 RF-003: stream de ticks de invalidação de attention
+    /// (payload-free — refetch no endpoint aplica o scoping).
+    /// </summary>
+    public async IAsyncEnumerable<DateTimeOffset> AttentionChangesAsync(
+        [System.Runtime.CompilerServices.EnumeratorCancellation]
+        CancellationToken ct = default)
+    {
+        var channel = await _conn.StreamAsChannelAsync<DateTimeOffset>(
+            "AttentionChanges", ct);
+        while (await channel.WaitToReadAsync(ct))
+        {
+            while (channel.TryRead(out var tick))
+            {
+                yield return tick;
+            }
+        }
+    }
+
     /// <summary>stdout/stderr live do terminal do sandbox.</summary>
     public async IAsyncEnumerable<string> TerminalOutAsync(
         Guid conversationId,

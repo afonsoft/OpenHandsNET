@@ -46,4 +46,6 @@ public sealed record AppConversation(
     DateTimeOffset UpdatedAt,
     string? CreatedByUserId = null,
     bool ConfirmationMode = false,
-    string? SandboxProfile = null);
+    string? SandboxProfile = null,
+    // SPEC-44: projeção attention (null|confirmation|question|failed).
+    string? NeedsAttentionKind = null);

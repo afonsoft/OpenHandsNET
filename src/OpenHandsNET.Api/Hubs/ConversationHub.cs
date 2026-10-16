@@ -14,6 +14,7 @@ namespace OpenHandsNET.Api.Hubs;
 public sealed class ConversationHub(
     IEventService events, TerminalBridgeService terminals,
     IAgentActivityBus activity,
+    OpenHandsNET.Application.Conversations.IAttentionBus attention,
     OpenHandsNET.Application.Agent.IAgentRunnerHost runnerHost) : Hub
 {
     /// <summary>
@@ -69,6 +70,14 @@ public sealed class ConversationHub(
     public IAsyncEnumerable<DeltaFrame> Deltas(
         Guid conversationId, CancellationToken ct) =>
         activity.SubscribeAsync(conversationId, ct);
+
+    /// <summary>
+    /// SPEC-44 RF-003: stream de ticks de invalidação do inbox de
+    /// attention (payload-free — o client refaz o fetch com scoping).
+    /// </summary>
+    public IAsyncEnumerable<DateTimeOffset> AttentionChanges(
+        CancellationToken ct) =>
+        attention.SubscribeAsync(ct);
 
     /// <summary>Envia mensagem do usuário (aparece no stream como MessageEvent).</summary>
     public async Task SendUserMessage(

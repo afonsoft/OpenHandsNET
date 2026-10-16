@@ -15,6 +15,7 @@ builder.Services.AddScoped<MonacoInterop>();
 builder.Services.AddScoped(sp => new ConversationHubClient(
     new Uri(new Uri(builder.HostEnvironment.BaseAddress), "/hubs/conversations")));
 builder.Services.AddScoped<ConversationStateService>();
+builder.Services.AddScoped<AttentionInboxState>();
 // SPEC-26: theme / toasts / palette / markdown.
 builder.Services.AddScoped<ThemeService>();
 builder.Services.AddScoped<ToastService>();
