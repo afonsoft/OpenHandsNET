@@ -27,6 +27,10 @@ public sealed class DoctorCommand : AsyncCommand<DoctorCommand.Settings>
         /// <summary>SPEC-31 RF-002: install preflight (DNS/egress/disk/ports).</summary>
         [CommandOption("--preflight")]
         public bool Preflight { get; init; }
+
+        /// <summary>SPEC-37 §3: inclui probes de cluster/sysbox/storageclass.</summary>
+        [CommandOption("--k8s")]
+        public bool K8s { get; init; }
     }
 
     /// <inheritdoc />
@@ -40,7 +44,8 @@ public sealed class DoctorCommand : AsyncCommand<DoctorCommand.Settings>
         var svc = new DoctorService(new HttpClient());
         var report = settings.Preflight
             ? await svc.RunPreflightAsync(
-                url, settings.Workspace, CancellationToken.None)
+                url, settings.Workspace, CancellationToken.None,
+                k8s: settings.K8s)
             : await svc.RunAsync(
                 url, settings.Workspace, CancellationToken.None);
 

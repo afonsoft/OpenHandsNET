@@ -39,7 +39,8 @@ public sealed class DoctorService(HttpClient http)
     /// e portas livres. Falha rápida (gate de CI/install).
     /// </summary>
     public async Task<DoctorReport> RunPreflightAsync(
-        string serverUrl, string workspaceRoot, CancellationToken ct)
+        string serverUrl, string workspaceRoot, CancellationToken ct,
+        bool k8s = false)
     {
         var probes = new List<ProbeResult>
         {
@@ -52,7 +53,107 @@ public sealed class DoctorService(HttpClient http)
             ProbePortFree(8080),
             ProbePortFree(30000),
         };
+        // SPEC-37 §3: probes de cluster/sysobx quando --k8s ou provider=k8s.
+        if (k8s || string.Equals(
+                Environment.GetEnvironmentVariable("OPENHANDSNET_SANDBOX_PROVIDER")
+                    ?? Environment.GetEnvironmentVariable(
+                        "OPENHANDSNET_Sandbox__Provider"),
+                "k8s", StringComparison.OrdinalIgnoreCase))
+        {
+            probes.Add(await ProbeKubectlAsync(ct));
+            probes.Add(await ProbeSysboxAsync(ct));
+            probes.Add(await ProbeStorageClassAsync(ct));
+        }
+
         return new DoctorReport(probes, serverUrl);
+    }
+
+    /// <summary>kubectl presente + cluster alcançável (context atual).</summary>
+    private static async Task<ProbeResult> ProbeKubectlAsync(
+        CancellationToken ct)
+    {
+        var (code, output) = await TryRunAsync(
+            "kubectl", "version --client=true -o json", ct);
+        if (code < 0)
+        {
+            return new("k8s_cluster", false,
+                "kubectl not found in PATH");
+        }
+
+        var (ccode, cinfo) = await TryRunAsync(
+            "kubectl", "cluster-info --request-timeout=5s", ct);
+        return ccode == 0
+            ? new("k8s_cluster", true,
+                cinfo.Split('\n')[0].Trim())
+            : new("k8s_cluster", false,
+                $"cluster unreachable: {cinfo.Split('\n')[0].Trim()}");
+    }
+
+    /// <summary>RuntimeClass sysbox-runc — exigida p/ DinD sem privileged.</summary>
+    private static async Task<ProbeResult> ProbeSysboxAsync(
+        CancellationToken ct)
+    {
+        var (code, output) = await TryRunAsync("kubectl",
+            "get runtimeclass sysbox-runc --request-timeout=5s", ct);
+        if (code < 0)
+        {
+            return new("k8s_sysbox", false, "kubectl not found in PATH");
+        }
+
+        return code == 0
+            ? new("k8s_sysbox", true, "runtimeclass sysbox-runc present")
+            : new("k8s_sysbox", false,
+                "sysbox-runc RuntimeClass missing — install sysbox "
+                + "(ou rode com privileged em cluster dedicado)");
+    }
+
+    /// <summary>Ao menos uma StorageClass default que provisiona PVCs.</summary>
+    private static async Task<ProbeResult> ProbeStorageClassAsync(
+        CancellationToken ct)
+    {
+        var (code, output) = await TryRunAsync("kubectl",
+            "get storageclass --request-timeout=5s", ct);
+        if (code < 0)
+        {
+            return new("k8s_storageclass", false,
+                "kubectl not found in PATH");
+        }
+
+        if (code != 0)
+        {
+            return new("k8s_storageclass", false,
+                $"cannot list storageclasses: {output.Split('\n')[0].Trim()}");
+        }
+
+        var hasDefault = output.Contains("(default)", StringComparison.Ordinal);
+        return new("k8s_storageclass", hasDefault,
+            hasDefault ? "default StorageClass present"
+                : "no default StorageClass — set sandbox.workspaceStorageClass");
+    }
+
+    /// <summary>Roda um executável; devolve (exit_code, stdout+stderr) ou
+    /// (-1, erro) quando o binário não existe.</summary>
+    private static async Task<(int Code, string Output)> TryRunAsync(
+        string file, string args, CancellationToken ct)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo(file, args)
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            };
+            using var p = Process.Start(psi)!;
+            var stdout = await p.StandardOutput.ReadToEndAsync(ct);
+            var stderr = await p.StandardError.ReadToEndAsync(ct);
+            await p.WaitForExitAsync(ct);
+            return (p.ExitCode, stdout + stderr);
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception
+            or FileNotFoundException)
+        {
+            return (-1, ex.Message);
+        }
     }
 
     /// <summary>DNS do domínio público (quando configurado).</summary>
