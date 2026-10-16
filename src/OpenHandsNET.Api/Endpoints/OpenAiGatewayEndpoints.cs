@@ -94,6 +94,12 @@ public static class OpenAiGatewayEndpoints
             .CreateLinkedTokenSource(ct);
         deadline.CancelAfter(timeout);
 
+        // SPEC-40 RF-006: métricas do gateway (model+stream).
+        var metricModel = string.IsNullOrWhiteSpace(req.Model)
+            ? "default" : req.Model;
+        Infrastructure.Telemetry.OpenNetTelemetry.GatewayRequests
+            .WithLabels(metricModel).Inc();
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
             if (req.Stream)
@@ -117,6 +123,12 @@ public static class OpenAiGatewayEndpoints
                 await WriteErrorAsync(http, 504,
                     "completion timed out", "timeout", "deadline_exceeded");
             }
+        }
+        finally
+        {
+            Infrastructure.Telemetry.OpenNetTelemetry.GatewayLatency
+                .WithLabels(metricModel, req.Stream ? "true" : "false")
+                .Observe(sw.Elapsed.TotalSeconds);
         }
     }
 
