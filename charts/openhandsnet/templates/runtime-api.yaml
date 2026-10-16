@@ -1,0 +1,63 @@
+# SPEC-35/37 RF-004: Runtime-Api Deployment + Service — orquestra os
+# pods-sandbox no namespace dedicado via ServiceAccount scopada.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openhandsnet-runtime-api
+  labels:
+    app.kubernetes.io/name: openhandsnet
+    app.kubernetes.io/component: runtime-api
+spec:
+  replicas: {{ .Values.deployment.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: openhandsnet
+      app.kubernetes.io/component: runtime-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: openhandsnet
+        app.kubernetes.io/component: runtime-api
+    spec:
+      serviceAccountName: openhandsnet-runtime
+      containers:
+        - name: runtime-api
+          image: "{{ .Values.runtimeApi.repository }}:{{ .Values.runtimeApi.tag }}"
+          ports:
+            - name: http
+              containerPort: 8090
+          env:
+            - name: OPENHANDSNET_K8s__Namespace
+              value: "{{ .Values.sandbox.namespace }}"
+            - name: OPENHANDSNET_K8s__RuntimeClassName
+              value: "{{ .Values.sandbox.runtimeClassName }}"
+            - name: OPENHANDSNET_K8s__WorkspaceStorageClass
+              value: "{{ .Values.sandbox.workspaceStorageClass }}"
+            - name: OPENHANDSNET_K8s__WorkspacePvcSize
+              value: "{{ .Values.sandbox.workspacePvcSize }}"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openhandsnet-runtime-api
+spec:
+  selector:
+    app.kubernetes.io/name: openhandsnet
+    app.kubernetes.io/component: runtime-api
+  ports:
+    - name: http
+      port: 8090
+      targetPort: http

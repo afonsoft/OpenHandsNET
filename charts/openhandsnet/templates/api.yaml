@@ -1,0 +1,77 @@
+# SPEC-37 RF-004: Api Deployment + Service.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openhandsnet-api
+  labels:
+    app.kubernetes.io/name: openhandsnet
+    app.kubernetes.io/component: api
+spec:
+  replicas: {{ .Values.deployment.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: openhandsnet
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: openhandsnet
+        app.kubernetes.io/component: api
+    spec:
+      containers:
+        - name: api
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: OPENHANDSNET_Sandbox__Provider
+              value: "{{ .Values.sandbox.provider }}"
+            - name: OPENHANDSNET_Cache__Provider
+              value: "{{ .Values.cache.provider }}"
+            - name: OPENHANDSNET_Deployment__Replicas
+              value: "{{ .Values.deployment.replicas }}"
+            - name: OPENHANDSNET_RuntimeApi__BaseUrl
+              value: "http://openhandsnet-runtime-api:8090"
+            {{- if eq .Values.cache.provider "redis" }}
+            - name: OPENHANDSNET_Cache__Redis__ConnectionString
+              value: "openhandsnet-valkey:6379"
+            {{- end }}
+            {{- if .Values.apiEnv }}
+            {{- range .Values.apiEnv }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /api/v1/readiness
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/v1/healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openhandsnet-api
+spec:
+  selector:
+    app.kubernetes.io/name: openhandsnet
+    app.kubernetes.io/component: api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
