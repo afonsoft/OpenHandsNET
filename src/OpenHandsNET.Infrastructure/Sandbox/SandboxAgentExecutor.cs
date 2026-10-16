@@ -200,6 +200,28 @@ public sealed class SandboxAgentExecutor(
                 alive.UptimeS, alive.Sessions);
     }
 
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<AgentSurface>> SurfacesAsync(
+        DomainSandbox sandbox, CancellationToken ct)
+    {
+        var t = await ResolveAsync(sandbox, ct);
+        if (t is null || t.AgentVersion < 3)
+        {
+            return [];
+        }
+
+        try
+        {
+            return await t.SurfacesAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex,
+                "surfaces probe failed for sandbox {Id}", sandbox.Id);
+            return [];
+        }
+    }
+
     /// <summary>Agent version detected on this sandbox (null = legacy/none).</summary>
     internal async Task<int?> AgentVersionAsync(
         DomainSandbox sandbox, CancellationToken ct) =>
@@ -410,6 +432,24 @@ public sealed class SandboxAgentTransport(
         using var res = await SendAsync(req, CancellationToken.None);
     }
 
+    /// <summary><c>GET /surfaces</c> (SPEC-40 RF-002): surfaces ativas.</summary>
+    public async Task<IReadOnlyList<AgentSurface>> SurfacesAsync(
+        CancellationToken ct)
+    {
+        var res = await SendAsync(
+            NewRequest(HttpMethod.Get, "/surfaces"), ct);
+        if (!res.IsSuccessStatusCode)
+        {
+            return [];
+        }
+
+        var items = await res.Content.ReadFromJsonAsync<List<SurfaceItem>>(
+            Json, ct) ?? [];
+        return items
+            .Select(i => new AgentSurface(i.Name, i.Port, i.Protocol))
+            .ToList();
+    }
+
     private HttpRequestMessage NewRequest(HttpMethod method, string path)
     {
         var req = new HttpRequestMessage(method, new Uri(baseUrl, path));
@@ -425,4 +465,6 @@ public sealed class SandboxAgentTransport(
         int ExitCode, string? StdOut, string? StdErr, bool TimedOut);
 
     private sealed record AgentFileItem(string Path, bool IsDirectory, long Size);
+
+    private sealed record SurfaceItem(string Name, int Port, string Protocol);
 }

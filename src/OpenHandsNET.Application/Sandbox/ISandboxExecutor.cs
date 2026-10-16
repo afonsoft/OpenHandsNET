@@ -50,6 +50,15 @@ public interface ISandboxExecutor
     Task<SandboxAgentInfo?> AgentInfoAsync(
         Domain.Sandbox.Sandbox sandbox, CancellationToken ct) =>
         Task.FromResult<SandboxAgentInfo?>(null);
+
+    /// <summary>
+    /// SPEC-40 RF-002: surfaces ativas no sandbox (<c>GET /surfaces</c> do
+    /// agente — terminal ttyd etc.). Default: vazio — transports sem
+    /// agente não expõem surfaces.
+    /// </summary>
+    Task<IReadOnlyList<AgentSurface>> SurfacesAsync(
+        Domain.Sandbox.Sandbox sandbox, CancellationToken ct) =>
+        Task.FromResult<IReadOnlyList<AgentSurface>>([]);
 }
 
 /// <summary>Persistent bash inside the sandbox (stdin/stdout multiplexed).</summary>
@@ -81,6 +90,9 @@ public sealed record ExecCompleted(
 /// </summary>
 public sealed record SandboxAgentInfo(
     int AgentVersion, string State, long UptimeS, int Sessions);
+
+/// <summary>Surface exposta pelo agente (SPEC-40 RF-002).</summary>
+public sealed record AgentSurface(string Name, int Port, string Protocol);
 
 /// <summary>A workspace file entry.</summary>
 public sealed record FileEntry(string Path, bool IsDirectory, long Size);

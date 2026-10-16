@@ -52,6 +52,20 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
+# SPEC-40 RF-002: ttyd (pinned) — terminal web opt-in via
+# SANDBOX_TERMINAL=1; o sandbox-agent supervisiona o processo e expõe
+# /surfaces. Binário estático multi-arch do release oficial.
+ARG TTYD_VERSION=1.7.7
+RUN arch="$(dpkg --print-architecture)" \
+    && case "$arch" in \
+        amd64) ttyd_arch=x86_64 ;; \
+        arm64) ttyd_arch=aarch64 ;; \
+        *) echo "unsupported arch: $arch" >&2; exit 1 ;; \
+    esac \
+    && curl -fsSL "https://github.com/tsl0922/ttyd/releases/download/${TTYD_VERSION}/ttyd.${ttyd_arch}" \
+        -o /usr/local/bin/ttyd \
+    && chmod +x /usr/local/bin/ttyd
+
 # Usuário não-root + workspace. sudo restrito a apt/installers de SDK
 # (blueprint roda como openhands; installers conhecidos podem usar sudo).
 RUN useradd -m -u 10001 -s /bin/bash openhands \

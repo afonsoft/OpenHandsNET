@@ -25,6 +25,10 @@
         <AgentModeToggle Mode="@State.Conversation?.Mode"
                          OnSwitch="OnModeSwitch" />
         <span class="spacer"></span>
+        <button class="icon-btn" title="Terminal (nova aba)"
+                aria-label="Open terminal" @onclick="OpenTerminalAsync">
+            <Icon Name="terminal" Size="15" />
+        </button>
         <span class="tokens">@(State.PromptTokens + State.CompletionTokens) tok ·
             $@State.CostUsd.ToString("F4")</span>
         <span class="badge @BadgeClass(State.ExecutionStatus)">
@@ -137,6 +141,34 @@
         catch (HttpRequestException ex)
         {
             Toasts.Error($"troca de modo falhou: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// SPEC-40 RF-002: abre o terminal web (ttyd) em nova aba — URL
+    /// resolvida pela Api com preview token; indisponível quando a
+    /// surface está off ou o routing é internal.
+    /// </summary>
+    private async Task OpenTerminalAsync()
+    {
+        try
+        {
+            var surfaces = await Api.GetSurfacesAsync(Id);
+            var term = surfaces.FirstOrDefault(s =>
+                s.Name == "terminal" && s.Url is not null);
+            if (term?.Url is { } url)
+            {
+                await JS.InvokeVoidAsync("open", url, "_blank");
+            }
+            else
+            {
+                Toasts.Info("terminal indisponível — habilite " +
+                    "SANDBOX_TERMINAL=1 no blueprint");
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            Toasts.Error($"surfaces falhou: {ex.Message}");
         }
     }
 
