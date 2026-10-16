@@ -9,15 +9,31 @@
     }
     @foreach (var e in State.Events)
     {
-        <EventCard Event="e" />
+        <EventCard Event="e" Siblings="State.Events" />
     }
     @* SPEC-34: slots de delta efêmeros — removidos quando o evento durável
-       com o mesmo item_id chega (supersedes). Cursor ▍ via CSS .delta::after. *@
+       com o mesmo item_id chega (supersedes). Cursor ▍ via CSS .delta::after.
+       SPEC-41 RF-002: reasoning renderiza na ThinkingSection, auto-colapsa
+       quando o content do mesmo item_id começa. *@
+    @foreach (var r in State.LiveReasoning)
+    {
+        <ThinkingSection Reasoning="@r.Value" Streaming="true"
+                         ContentStarted="@State.LiveDeltas.ContainsKey(r.Key)" />
+    }
     @foreach (var delta in State.LiveDeltas)
     {
         <div class="ev-card msg delta" data-item-id="@delta.Key">
             <div class="ev-head"><span>assistant</span><em>streaming…</em></div>
             <pre>@delta.Value</pre>
+        </div>
+    }
+    @if (State.Stalled)
+    {
+        <div class="ev-card condense" role="status">
+            <div class="ev-head" style="justify-content:center">
+                <Icon Name="alert" Size="13" />
+                <span>sem sinal do agente há 45s+ — aguardando heartbeat…</span>
+            </div>
         </div>
     }
 </div>
@@ -44,9 +60,21 @@
     </button>
     @if (State.ExecutionStatus is "RUNNING")
     {
+        @* SPEC-41 RF-005: pause resumível ao lado do interrupt. *@
+        <button title="Pause run" aria-label="Pause run"
+                @onclick="() => State.PauseAsync()">
+            <Icon Name="pause" Size="14" />
+        </button>
         <button title="Interrupt run" aria-label="Interrupt run"
                 @onclick="() => State.InterruptAsync()">
             <Icon Name="stop" Size="14" />
+        </button>
+    }
+    @if (State.ExecutionStatus is "PAUSED")
+    {
+        <button title="Resume run" aria-label="Resume run"
+                @onclick="() => State.ResumeAsync()">
+            <Icon Name="play" Size="14" />
         </button>
     }
 </div>

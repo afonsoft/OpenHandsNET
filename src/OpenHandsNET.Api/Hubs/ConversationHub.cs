@@ -104,6 +104,10 @@ public sealed class ConversationHub(
     public async Task Pause(Guid conversationId, CancellationToken ct) =>
         await runnerHost.PauseAsync(conversationId, ct);
 
+    /// <summary>Retoma um run pausado — SPEC-41 RF-005.</summary>
+    public async Task Resume(Guid conversationId, CancellationToken ct) =>
+        await runnerHost.ResumeAsync(conversationId, ct);
+
     /// <summary>stdin do terminal interativo.</summary>
     public async Task TerminalIn(Guid conversationId, string data, CancellationToken ct) =>
         await terminals.WriteAsync(conversationId, data, ct);

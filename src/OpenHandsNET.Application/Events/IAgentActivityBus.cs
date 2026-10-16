@@ -6,7 +6,9 @@ namespace OpenHandsNET.Application.Events;
 /// only; the durable event sharing <see cref="ItemId"/> supersedes it.
 /// </summary>
 public sealed record DeltaFrame(
-    string ItemId, long Seq, string Text);
+    string ItemId, long Seq, string Text,
+    // SPEC-41 RF-001: "content" (default) ou "reasoning" — canais paralelos.
+    string Channel = "content");
 
 /// <summary>
 /// In-memory per-conversation pub/sub for ephemeral frames

@@ -1,0 +1,56 @@
+@using OpenHandsNET.Client.Components
+
+@* SPEC-41 RF-002: seção colapsável "Pensamento" — auto-expande enquanto o
+   reasoning strema, auto-colapsa quando o content começa, re-expansível
+   sempre. Corpo muted/mono com viewport cap + scroll interno. *@
+
+<div class="ev-card thinking">
+    <div class="ev-head" role="button" tabindex="0"
+         @onclick="Toggle" @onkeydown="OnKey"
+         aria-expanded="@Expanded" aria-label="Toggle thinking section">
+        <Icon Name="@(Expanded ? "chevron-down" : "chevron-right")" Size="13" />
+        <Icon Name="info" Size="14" />
+        <span>Pensamento</span>
+        @if (Streaming && !ContentStarted)
+        {
+            <em class="thinking-live">pensando…</em>
+        }
+    </div>
+    @if (Expanded)
+    {
+        <pre class="thinking-body">@Reasoning</pre>
+    }
+</div>
+
+@code {
+    /// <summary>Texto de reasoning acumulado (live ou persistido).</summary>
+    [Parameter, EditorRequired] public string Reasoning { get; set; } = "";
+
+    /// <summary>True enquanto o item ainda está em stream.</summary>
+    [Parameter] public bool Streaming { get; set; }
+
+    /// <summary>True quando o content do mesmo item_id começou a chegar.</summary>
+    [Parameter] public bool ContentStarted { get; set; }
+
+    /// <summary>Expande colapsado por padrão após o turno (persistido).</summary>
+    [Parameter] public bool InitiallyExpanded { get; set; }
+
+    private bool? _manual;
+
+    /// <summary>
+    /// Auto: expandido enquanto streaming sem content; colapsado depois.
+    /// Toggle manual sempre vence o auto.
+    /// </summary>
+    private bool Expanded => _manual
+        ?? (InitiallyExpanded || (Streaming && !ContentStarted));
+
+    private void Toggle() => _manual = !Expanded;
+
+    private void OnKey(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or " ")
+        {
+            Toggle();
+        }
+    }
+}

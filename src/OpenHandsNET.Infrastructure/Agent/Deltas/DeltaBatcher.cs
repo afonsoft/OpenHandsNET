@@ -15,15 +15,19 @@ public sealed class DeltaBatcher(
     private const int FlushBytes = 64;
     private static readonly TimeSpan FlushInterval = TimeSpan.FromMilliseconds(16);
 
-    private readonly StringBuilder _buf = new();
+    // SPEC-41 RF-001: buffers separados por canal (content/reasoning) —
+    // frames carregam o channel para o client acumular no slot certo.
+    private readonly StringBuilder _content = new();
+    private readonly StringBuilder _reasoning = new();
     private long _seq;
     private DateTimeOffset _lastFlush = DateTimeOffset.UtcNow;
 
     /// <summary>Buffers a delta; flushes on size/age thresholds.</summary>
-    public void Add(string text)
+    public void Add(string text, string channel = "content")
     {
-        _buf.Append(text);
-        if (_buf.Length >= FlushBytes
+        var buf = channel == "reasoning" ? _reasoning : _content;
+        buf.Append(text);
+        if (buf.Length >= FlushBytes
             || DateTimeOffset.UtcNow - _lastFlush >= FlushInterval)
         {
             Flush();
@@ -33,14 +37,20 @@ public sealed class DeltaBatcher(
     /// <summary>Publishes any pending text (call before the durable event).</summary>
     public void Flush()
     {
-        if (_buf.Length == 0)
+        FlushBuf(_content, "content");
+        FlushBuf(_reasoning, "reasoning");
+    }
+
+    private void FlushBuf(StringBuilder buf, string channel)
+    {
+        if (buf.Length == 0)
         {
             return;
         }
 
         bus.Publish(conversationId,
-            new DeltaFrame(itemId, _seq++, _buf.ToString()));
-        _buf.Clear();
+            new DeltaFrame(itemId, _seq++, buf.ToString(), channel));
+        buf.Clear();
         _lastFlush = DateTimeOffset.UtcNow;
     }
 }

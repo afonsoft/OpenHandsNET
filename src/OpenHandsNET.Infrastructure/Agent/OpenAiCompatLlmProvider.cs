@@ -235,6 +235,34 @@ public sealed class OpenAiCompatLlmProvider(
         var delta = choices[0].TryGetProperty("delta", out var d) ? d : default;
         if (delta.ValueKind == JsonValueKind.Object)
         {
+            // SPEC-41 RF-001: reasoning viaja em canal separado do content —
+            // reasoning_content (DeepSeek/OmniRoute), reasoning, e o array
+            // reasoning_details[{text}] (Responses-style).
+            if (delta.TryGetProperty("reasoning_content", out var rc)
+                && rc.ValueKind == JsonValueKind.String)
+            {
+                yield return new ReasoningDelta(rc.GetString()!);
+            }
+
+            if (delta.TryGetProperty("reasoning", out var r)
+                && r.ValueKind == JsonValueKind.String)
+            {
+                yield return new ReasoningDelta(r.GetString()!);
+            }
+
+            if (delta.TryGetProperty("reasoning_details", out var rd)
+                && rd.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in rd.EnumerateArray())
+                {
+                    if (item.TryGetProperty("text", out var t)
+                        && t.ValueKind == JsonValueKind.String)
+                    {
+                        yield return new ReasoningDelta(t.GetString()!);
+                    }
+                }
+            }
+
             if (delta.TryGetProperty("content", out var content)
                 && content.ValueKind == JsonValueKind.String)
             {

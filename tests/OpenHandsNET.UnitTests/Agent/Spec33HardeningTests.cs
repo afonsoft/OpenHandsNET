@@ -258,6 +258,8 @@ public sealed class Spec33HardeningTests
             Task.CompletedTask;
         public Task PauseAsync(Guid conversationId, CancellationToken ct) =>
             Task.CompletedTask;
+        public Task ResumeAsync(Guid conversationId, CancellationToken ct) =>
+            Task.CompletedTask;
         public bool IsRunning(Guid conversationId) => false;
     }
 
