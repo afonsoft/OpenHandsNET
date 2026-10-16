@@ -8,7 +8,7 @@
 | Type | `Feature` |
 | Stack | `.NET 10 · Api (Minimal API) · SandboxAgent · runtime image · Client WASM` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `In implementation` (fatiada: #87 RF-001 gateway **done**, #88 RF-002, #89 RF-003, #90 RF-004 preview tokens **done**, #91 RF-005, #92 RF-006) |
+| Status | `In implementation` (fatiada: #87 RF-001 gateway **done**, #88 RF-002 terminal **done**, #89 RF-003, #90 RF-004 preview tokens **done**, #91 RF-005, #92 RF-006) |
 | Ticket | `#81` |
 | Depends on | `03` (sandbox), `17` (runtime image), `24` (activity protocol), `38` (host routing), `34` (deltas), `04` (API), `08` (auth/RBAC) |
 | Touches | `src/OpenHandsNET.Api` (gateway + acp endpoints), `src/OpenHandsNET.SandboxAgent`, `runtime/` (imagem), `src/OpenHandsNET.Client`, `src/OpenHandsNET.Api/Routing/` |
