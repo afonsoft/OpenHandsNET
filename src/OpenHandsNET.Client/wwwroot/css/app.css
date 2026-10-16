@@ -654,3 +654,57 @@ details.ev-details summary { cursor: pointer; color: var(--ohn-fg-dim); font-siz
 .ide-scm-fb { padding: 4px 8px; font-size: 11.5px; color: var(--ohn-fg-dim); }
 .ide-scm, .ide-tests, .ide-explorer { padding-bottom: 8px; }
 .ide-tests { padding: 0 0 8px; }
+
+/* SPEC-43 — CheckpointList ------------------------------------------------- */
+.ckpt-list { border-top: 1px solid var(--ohn-border); margin-top: 8px; }
+.ckpt-head {
+    display: flex; align-items: center; gap: 4px; padding: 6px 8px;
+    font-size: 10.5px; letter-spacing: .08em; color: var(--ohn-fg-dim);
+}
+.ckpt-head span { flex: 1; }
+.ckpt-head button {
+    border: none; background: transparent; color: var(--ohn-fg-dim);
+    padding: 2px 4px; cursor: pointer; font-size: 11px;
+    display: inline-flex; align-items: center; gap: 3px;
+}
+.ckpt-head button:hover { color: var(--ohn-fg); }
+.ckpt-row {
+    display: flex; align-items: center;
+    border-top: 1px solid var(--ohn-border);
+}
+.ckpt-main {
+    flex: 1; display: flex; gap: 8px; align-items: baseline;
+    border: none; background: transparent; color: var(--ohn-fg);
+    padding: 5px 8px; font-size: 12px; cursor: pointer; text-align: left;
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.ckpt-main:hover { background: var(--ohn-hover); }
+.ckpt-main code { color: var(--ohn-accent); font-size: 11px; }
+.ckpt-stats { color: var(--ohn-fg-dim); font-size: 10.5px; }
+.ckpt-ts { color: var(--ohn-fg-dim); font-size: 10.5px; margin-left: auto; }
+.ckpt-revert {
+    border: none; background: transparent; color: var(--ohn-fg-dim);
+    padding: 4px 8px; cursor: pointer; font-size: 11px;
+    display: inline-flex; align-items: center; gap: 3px;
+}
+.ckpt-revert:hover { color: var(--ohn-warn, #f0a020); }
+.ckpt-detail {
+    padding: 4px 8px 6px 18px; font-size: 11.5px;
+    border-top: 1px dashed var(--ohn-border);
+}
+.ckpt-file { padding: 1px 0; color: var(--ohn-fg-dim); }
+.ckpt-warn { color: var(--ohn-warn, #f0a020); font-size: 12px; }
+.ckpt-note { color: var(--ohn-fg-dim); font-size: 11.5px; }
+.modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+}
+.modal-card {
+    background: var(--ohn-bg); border: 1px solid var(--ohn-border);
+    border-radius: 10px; padding: 16px; width: min(420px, 90vw);
+    box-shadow: 0 12px 40px rgba(0,0,0,.5);
+}
+.modal-card h3 { margin: 0 0 6px; font-size: 14px; }
+.modal-actions {
+    display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px;
+}

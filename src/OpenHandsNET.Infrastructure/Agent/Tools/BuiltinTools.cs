@@ -295,6 +295,45 @@ public static class BuiltinTools
         });
 
     /// <summary>
+    /// SPEC-43 RF-002: <c>checkpoint</c> — snapshot sob demanda do workdir
+    /// (git-dir separado); o agente usa antes de refactors arriscados.
+    /// </summary>
+    public static AgentTool Checkpoint() => new(
+        new ToolSchema("checkpoint",
+            "Snapshot the current workspace state (/workspace/repo) as a " +
+            "revertable checkpoint. Use before risky or large edits.",
+            Schema("""
+                {"type":"object","properties":{
+                  "label":{"type":"string",
+                    "description":"Short label for the snapshot (default: agent checkpoint)"}}}
+                """)),
+        Risky: false,
+        Handler: async (ctx, args, ct) =>
+        {
+            var ckpts = ctx.Services.GetService<
+                OpenHandsNET.Application.Checkpoints.ICheckpointService>();
+            if (ckpts is null
+                || !await ckpts.IsAvailableAsync(ctx.Sandbox, ct))
+            {
+                return ToolResult.Error(
+                    "checkpoints unavailable (no git repository)");
+            }
+
+            var label = args.TryGetProperty("label", out var l)
+                && l.GetString() is { Length: > 0 } s ? s
+                : "agent checkpoint";
+            var item = await ckpts.SnapshotAsync(
+                ctx.ConversationId, ctx.Sandbox, label, ct);
+            return ToolResult.Ok(new
+            {
+                hash = item.Hash,
+                files_changed = item.FilesChanged,
+                insertions = item.Insertions,
+                deletions = item.Deletions,
+            });
+        });
+
+    /// <summary>
     /// SPEC-30 RF-002: persistent memory — <c>project</c> scope writes
     /// <c>.openhands/memory/{slug}.md</c> + INDEX.md inside the workspace;
     /// <c>org</c> scope uses <see cref="Application.Memory.IMemoryService"/>

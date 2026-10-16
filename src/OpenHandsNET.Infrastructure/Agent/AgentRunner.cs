@@ -154,6 +154,14 @@ public sealed class AgentRunner(
                     ? ConversationExecutionStatus.Paused
                     : ConversationExecutionStatus.Running,
                 CancellationToken.None);
+            // SPEC-43 RF-002: pausa também fecha o turno com checkpoint
+            // (ct já cancelado aqui → token neutro).
+            if (_pauseRequested)
+            {
+                await AutoCheckpointAsync(services, sandbox,
+                    conversationId, "paused",
+                    CancellationToken.None);
+            }
         }
         finally
         {
@@ -914,6 +922,10 @@ public sealed class AgentRunner(
                         "completed", finalText, CancellationToken.None);
                     await SetStatusAsync(events, db, conv, "finished",
                         ConversationExecutionStatus.Finished, ct);
+                    // SPEC-43 RF-002: snapshot automático pós-turno
+                    // (Checkpoints:Auto) — melhor esforço, nunca falha a run.
+                    await AutoCheckpointAsync(services, sandbox,
+                        conversationId, $"turn {iteration}", ct);
                     if (hooks is not null)
                     {
                         await hooks.RunAsync(Domain.Hooks.HookEvent.OnFinish,
@@ -954,6 +966,47 @@ public sealed class AgentRunner(
             CancellationToken.None);
         await SetStatusAsync(events, db, conv, "stuck",
             ConversationExecutionStatus.Error, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// SPEC-43 RF-002: checkpoint automático pós-turno quando
+    /// <c>Checkpoints:Auto</c> (default) e há repo git. Melhor esforço —
+    /// falhas vão a <c>agent_diagnostic</c>, nunca derrubam a run.
+    /// </summary>
+    private async Task AutoCheckpointAsync(IServiceProvider services,
+        Domain.Sandbox.Sandbox sandbox, Guid conversationId,
+        string label, CancellationToken ct)
+    {
+        try
+        {
+            var opt = services.GetService<IOptions<
+                Application.Checkpoints.CheckpointOptions>>()?.Value;
+            var ckpts = services.GetService<
+                Application.Checkpoints.ICheckpointService>();
+            if (opt?.Auto is not true || ckpts is null
+                || !await ckpts.IsAvailableAsync(sandbox, ct))
+            {
+                return;
+            }
+
+            await ckpts.SnapshotAsync(
+                conversationId, sandbox, label, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            try
+            {
+                var events = services
+                    .GetRequiredService<Application.Events.IEventService>();
+                await events.AppendAsync(conversationId,
+                    new Domain.Events.AgentDiagnosticEvent
+                    {
+                        Severity = "warn", Code = "checkpoint_failed",
+                        Message = $"auto-checkpoint failed: {ex.Message}",
+                    }, CancellationToken.None);
+            }
+            catch { /* diagnóstico é melhor esforço também */ }
+        }
     }
 
     /// <summary>Interrupt/pause → status de saída; true = encerrar o loop.</summary>

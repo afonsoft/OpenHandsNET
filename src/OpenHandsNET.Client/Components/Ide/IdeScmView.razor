@@ -1,4 +1,5 @@
 @using OpenHandsNET.Client.Services
+@using OpenHandsNET.Client.Components.Conversation
 @inject OpenHandsNetApiClient Api
 
 @* SPEC-42 RF-005: SCM view — changes + diff (via callback p/ o editor) +
@@ -40,6 +41,11 @@
             </button>
         }
     }
+
+    @* SPEC-43 RF-004: checkpoints embutidos no painel SCM (soft-dep —
+       componente também standalone na aba commits). *@
+    <CheckpointList ConversationId="@ConversationId"
+                    OnChanged="@(async () => await LoadAsync())" />
 </div>
 
 @code {
