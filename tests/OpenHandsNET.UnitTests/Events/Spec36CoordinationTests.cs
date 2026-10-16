@@ -220,4 +220,61 @@ public class Spec36CoordinationTests
         globalA.ShouldBeEmpty();
         _ = collect;
     }
+
+    [Fact]
+    public async Task DistributedEventBus_Remote_OutOfOrder_Reorders_BySeq()
+    {
+        // Pub/sub pode invocar handlers fora de ordem/paralelo — o seq do
+        // publisher reordena: seq=1 chega primeiro, fica em buffer e só
+        // emite depois que seq=0 chega.
+        var coord = new InMemoryCoordinationBus(
+            NullLogger<InMemoryCoordinationBus>.Instance);
+        var conv = Guid.NewGuid();
+        var busA = new DistributedEventBus(new InMemoryEventBus(), coord,
+            NullLogger<DistributedEventBus>.Instance);
+
+        var e0 = new MessageEvent
+        {
+            LlmMessage = System.Text.Json.JsonSerializer.SerializeToElement(
+                new { role = "user", text = "first" }),
+        };
+        var e1 = new MessageEvent
+        {
+            LlmMessage = System.Text.Json.JsonSerializer.SerializeToElement(
+                new { role = "user", text = "second" }),
+        };
+
+        var received = new List<string>();
+        var tcs = new TaskCompletionSource();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var read = Task.Run(async () =>
+        {
+            await foreach (var e in busA.SubscribeAsync(conv, cts.Token))
+            {
+                received.Add(e.Id);
+                if (received.Count == 2)
+                {
+                    tcs.TrySetResult();
+                }
+            }
+        });
+        await Task.Delay(150); // garante subscribe+watch antes do publish
+
+        foreach (var (seq, e) in new[] { (1L, e1), (0L, e0) })
+        {
+            await coord.PublishAsync($"events:{conv}", new
+            {
+                origin = "remote-node",
+                conversationId = conv,
+                seq,
+                @event = System.Text.Json.JsonSerializer.Serialize(
+                    e, typeof(EventBase), EventJson.Options),
+            }, cts.Token);
+        }
+
+        var done = await Task.WhenAny(tcs.Task, Task.Delay(TimeSpan.FromSeconds(5)));
+        done.ShouldBe(tcs.Task, "reordered events never emitted");
+        received.ShouldBe([e0.Id, e1.Id]);
+        _ = read;
+    }
 }

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using OpenHandsNET.Application.Coordination;
 using OpenHandsNET.Application.Events;
 using OpenHandsNET.Domain.Events;
+using OpenHandsNET.Infrastructure.Cache;
 
 namespace OpenHandsNET.Infrastructure.Eventing;
 
@@ -15,6 +16,10 @@ namespace OpenHandsNET.Infrastructure.Eventing;
 /// canal local da conversa (<see cref="InMemoryEventBus.PublishLocalAsync"/>)
 /// — sem re-publicar ao bus (sem loop) e sem entrar no stream global
 /// (webhook/EventDispatcher continua single-fire no nó de origem).
+/// Ordem: o pub/sub pode invocar handlers em paralelo e fora de ordem,
+/// então o envelope carrega um <c>seq</c> monotônico por conversa e a
+/// injeção remota passa por <see cref="SeqReorderBuffer{T}"/> — sem isso
+/// dois eventos adjacentes podem chegar invertidos ao subscriber.
 /// </summary>
 public sealed class DistributedEventBus(
     InMemoryEventBus local,
@@ -27,6 +32,8 @@ public sealed class DistributedEventBus(
     private static readonly JsonSerializerOptions Envelope = new(
         JsonSerializerDefaults.Web);
     private readonly ConcurrentDictionary<Guid, byte> _watched = new();
+    private readonly ConcurrentDictionary<Guid, long> _seq = new();
+    private readonly ConcurrentDictionary<Guid, SeqReorderBuffer<EventBase>> _ingress = new();
     private readonly string _origin = Guid.NewGuid().ToString("N");
 
     /// <inheritdoc />
@@ -34,8 +41,9 @@ public sealed class DistributedEventBus(
         Guid conversationId, EventBase e, CancellationToken ct)
     {
         await local.PublishAsync(conversationId, e, ct);
+        var seq = _seq.AddOrUpdate(conversationId, 0L, static (_, s) => s + 1);
         await bus.PublishAsync($"events:{conversationId}", new Wire(
-            _origin, conversationId,
+            _origin, conversationId, seq,
             JsonSerializer.Serialize(e, typeof(EventBase), Json)), ct);
     }
 
@@ -65,35 +73,47 @@ public sealed class DistributedEventBus(
         }
 
         _ = bus.SubscribeAsync($"events:{conversationId}",
-            async (json, t) =>
-            {
-                try
-                {
-                    var wire = JsonSerializer.Deserialize<Wire>(json, Envelope);
-                    // Pub/sub ecoa p/ o próprio publisher — dedup por origin.
-                    if (wire is null || wire.Origin == _origin)
-                    {
-                        return;
-                    }
-
-                    if (wire.Event is { } payload)
-                    {
-                        var e = JsonSerializer.Deserialize<EventBase>(
-                            payload, Json);
-                        if (e is not null)
-                        {
-                            await local.PublishLocalAsync(
-                                wire.ConversationId, e, t);
-                        }
-                    }
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    logger.LogWarning(ex,
-                        "remote event on {Conv} dropped", conversationId);
-                }
-            }, ct);
+            (json, t) => OnRemoteAsync(conversationId, json, t), ct);
     }
 
-    private sealed record Wire(string Origin, Guid ConversationId, string Event);
+    private async Task OnRemoteAsync(
+        Guid conversationId, string json, CancellationToken t)
+    {
+        try
+        {
+            var wire = JsonSerializer.Deserialize<Wire>(json, Envelope);
+            // Pub/sub ecoa p/ o próprio publisher — dedup por origin.
+            if (wire is null || wire.Origin == _origin ||
+                wire.Event is not { } payload)
+            {
+                return;
+            }
+
+            var e = JsonSerializer.Deserialize<EventBase>(payload, Json);
+            if (e is null)
+            {
+                return;
+            }
+
+            if (wire.Seq is not { } seq)
+            {
+                // Réplica antiga (sem seq): entrega direta, sem reorder.
+                await local.PublishLocalAsync(wire.ConversationId, e, t);
+                return;
+            }
+
+            var ingress = _ingress.GetOrAdd(conversationId, id =>
+                new SeqReorderBuffer<EventBase>(
+                    (ev, t2) => local.PublishLocalAsync(id, ev, t2).AsTask()));
+            await ingress.EnqueueAsync(seq, e, t);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex,
+                "remote event on {Conv} dropped", conversationId);
+        }
+    }
+
+    private sealed record Wire(
+        string Origin, Guid ConversationId, long? Seq, string Event);
 }

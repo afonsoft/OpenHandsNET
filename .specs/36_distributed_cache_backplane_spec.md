@@ -8,7 +8,7 @@
 | Type | `Infra / Scale` |
 | Stack | `.NET 10 · StackExchange.Redis · IDistributedCache · SignalR` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `In implementation` (consumidores entregues: `DistributedEventBus`/`DistributedAgentActivityBus` fan-out, warm-pool leader lock, orphan-sweep lock, `ApiRateLimitMiddleware` global, `IUsageBuffer`+flush; falta verificação e2e 2-réplicas + Redis-down) |
+| Status | `Done` (DoD e2e verificado: `Spec36MultiReplicaTests` — fan-out A→B ordenado via `SeqReorderBuffer`, rate limit global entre réplicas, Redis-down → `cache: degraded` + fail-open) |
 | Ticket | #75 |
 | Depends on | `04` (SignalR/API), `13` (observability), `14` (ops), `34` (deltas bus) |
 | Touches | `DependencyInjection`, `ConversationHub`, `IAgentActivityBus`, `WarmPoolService`, rate limiting, plan/usage counters |
