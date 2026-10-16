@@ -267,6 +267,7 @@ app.MapSkillEndpoints();
 app.MapHookEndpoints();
 app.MapMcpEndpoints();
 app.MapOpenAiGatewayEndpoints();
+app.MapAcpEndpoints();
 app.MapHub<ConversationHub>("/hubs/conversations");
 app.MapHealthChecks("/api/v1/health");
 app.MapHealthChecks("/api/v1/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
