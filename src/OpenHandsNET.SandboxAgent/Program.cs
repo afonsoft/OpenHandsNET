@@ -927,7 +927,7 @@ public sealed class SurfaceSupervisor(
             }
 
             _proc = proc;
-            state.Record("surface_start", $"{Name}:{Port}");
+            state.Record("sandbox_surface", $"{Name}:{Port} started");
             try
             {
                 await proc.WaitForExitAsync();
@@ -939,8 +939,8 @@ public sealed class SurfaceSupervisor(
 
             _proc = null;
             restarts++;
-            state.Record("surface_exit",
-                $"{Name}:{Port} exit={proc.ExitCode} restart={restarts}");
+            state.Record("sandbox_surface",
+                $"{Name}:{Port} stopped exit={proc.ExitCode} restart={restarts}");
             proc.Dispose();
             if (_enabled)
             {
@@ -964,8 +964,8 @@ public sealed class SurfaceSupervisor(
             })!;
             await p.WaitForExitAsync()
                 .WaitAsync(TimeSpan.FromMinutes(5));
-            state.Record("surface_install",
-                $"{Name} exit={p.ExitCode}");
+            state.Record("sandbox_surface",
+                $"{Name} install exit={p.ExitCode}");
             return p.ExitCode == 0;
         }
         catch

@@ -63,6 +63,24 @@ public static class OpenNetTelemetry
             "Sandbox resumes from sleep",
             new CounterConfiguration { LabelNames = ["from"] });
 
+    /// <summary>SPEC-40 RF-006: requests do gateway OpenAI
+    /// (<c>/v1/chat/completions</c>) — label <c>model</c>.</summary>
+    public static readonly Prometheus.Counter GatewayRequests =
+        Metrics.CreateCounter("openhandsnet_gateway_requests",
+            "OpenAI gateway chat completions requests",
+            new CounterConfiguration { LabelNames = ["model"] });
+
+    /// <summary>SPEC-40 RF-006: latência do gateway até a resposta
+    /// terminal — labels <c>model</c> e <c>stream</c>.</summary>
+    public static readonly Prometheus.Histogram GatewayLatency =
+        Metrics.CreateHistogram("openhandsnet_gateway_request_seconds",
+            "OpenAI gateway completion latency",
+            new HistogramConfiguration
+            {
+                LabelNames = ["model", "stream"],
+                Buckets = Histogram.ExponentialBuckets(1, 2, 10),
+            });
+
     /// <summary>Starts a telemetry span with conversation correlation.</summary>
     public static Activity? StartSpan(
         string name, Guid? conversationId = null, string? sandboxId = null)
