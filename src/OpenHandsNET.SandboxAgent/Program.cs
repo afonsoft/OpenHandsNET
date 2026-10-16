@@ -17,18 +17,21 @@ builder.Services.ConfigureHttpJsonOptions(o =>
 var runtime = LoadState(builder.Configuration);
 var app = builder.Build();
 
-// SPEC-40 RF-002: terminal web (ttyd) opt-in — env do container ativa no
+// SPEC-40 RF-002/003: surfaces web opt-in — env do container ativa no
 // boot; env do blueprint/init ativa após /api/init. Sem flag → surface
 // ausente e nenhum processo extra roda no sandbox.
-var terminal = new TerminalSurface(runtime);
-if (FlagOn(builder.Configuration["SANDBOX_TERMINAL"]))
-{
-    terminal.Start();
-}
-
-static bool FlagOn(string? v) =>
-    string.Equals(v, "1", StringComparison.OrdinalIgnoreCase)
-    || string.Equals(v, "true", StringComparison.OrdinalIgnoreCase);
+var surfaces = new SurfaceRegistry(runtime);
+surfaces.Register("terminal", "SANDBOX_TERMINAL", 7681, "ws",
+    "ttyd",
+    s => ["--port", "7681", "--writable", "--cwd", s,
+        "-t", "disableLeaveAlert=true", "bash", "-l"],
+    installer: null);
+surfaces.Register("vscode", "SANDBOX_VSCODE", 8080, "http",
+    "/opt/ohn/bin/code-server",
+    s => ["--bind-addr", "0.0.0.0:8080", "--auth", "none",
+        "--disable-telemetry", "--disable-update-check", s],
+    installer: "/opt/ohn/sdks/code-server.sh");
+surfaces.StartEnabled(builder.Configuration);
 
 var ExecStreamJson = new JsonSerializerOptions
 {
@@ -112,13 +115,8 @@ app.MapPost("/api/init", (HttpContext http, InitRequest req) =>
 
         Directory.CreateDirectory(runtime.WorkspaceRoot);
         runtime.Status = "ready";
-        // SPEC-40 RF-002: terminal opt-in via env do blueprint/init.
-        if (FlagOn(req.Env is not null
-                && req.Env.TryGetValue("SANDBOX_TERMINAL", out var f)
-                ? f : null))
-        {
-            terminal.Start();
-        }
+        // SPEC-40 RF-002/003: surfaces opt-in via env do blueprint/init.
+        surfaces.StartEnabled(req.Env);
 
         return Results.Ok(new { state = runtime.Status });
     }
@@ -352,7 +350,7 @@ app.MapDelete("/exec/sessions/{id}", (string id, HttpContext http) =>
     return Results.NoContent();
 });
 
-// SPEC-40 RF-002: surfaces ativas — a Api publica cada porta via
+// SPEC-40 RF-002/003: surfaces ativas — a Api publica cada porta via
 // SandboxUrlBuilder (SPEC-38) + preview token (RF-004).
 app.MapGet("/surfaces", (HttpContext http) =>
 {
@@ -361,18 +359,10 @@ app.MapGet("/surfaces", (HttpContext http) =>
         return Results.Json(new { error = "unauthorized" }, statusCode: 401);
     }
 
-    var surfaces = new List<object>();
-    if (terminal.Running)
+    return Results.Ok(surfaces.Active().Select(s => new
     {
-        surfaces.Add(new
-        {
-            name = "terminal",
-            port = TerminalSurface.Port,
-            protocol = "ws",
-        });
-    }
-
-    return Results.Ok(surfaces);
+        name = s.Name, port = s.Port, protocol = s.Protocol,
+    }).ToList());
 });
 
 // ---- files (confinados ao workspace) ----
@@ -807,23 +797,88 @@ public sealed class BashSession : IDisposable
 }
 
 /// <summary>
-/// SPEC-40 RF-002: supervisor do ttyd — spawn <c>ttyd -p 7681 -W bash</c>
-/// (bind 0.0.0.0: o host-router entra pelo IP do container) e respawn com
-/// backoff enquanto habilitado. Sem credencial própria: a auth fica no
-/// preview token do SandboxHostRouter (RF-004) — a porta só é alcançável
-/// pela rede interna do sandbox.
+/// SPEC-40 RF-002/003: registry de surfaces — cada uma é um processo
+/// supervisionado opt-in por env flag. Sem credencial própria: a auth
+/// fica no preview token do SandboxHostRouter (RF-004) — as portas só
+/// são alcançáveis pela rede interna do sandbox.
 /// </summary>
-public sealed class TerminalSurface(AgentState state)
+public sealed class SurfaceRegistry(AgentState state)
 {
-    /// <summary>Porta fixa da surface terminal (paridade ttyd 7681).</summary>
-    public const int Port = 7681;
+    private readonly List<SurfaceSupervisor> _all = [];
 
+    /// <summary>Registra uma surface (bind 0.0.0.0 dentro do container).</summary>
+    public void Register(string name, string envFlag, int port,
+        string protocol, string binary, Func<string, string[]> args,
+        string? installer) =>
+        _all.Add(new SurfaceSupervisor(
+            state, name, envFlag, port, protocol, binary, args, installer));
+
+    /// <summary>Liga as surfaces cuja env flag está set (boot ou init).</summary>
+    public void StartEnabled(IConfiguration cfg)
+    {
+        foreach (var s in _all)
+        {
+            if (s.FlaggedOn(cfg[s.EnvFlag]))
+            {
+                s.Start();
+            }
+        }
+    }
+
+    /// <inheritdoc cref="StartEnabled(IConfiguration)"/>
+    public void StartEnabled(IReadOnlyDictionary<string, string>? env)
+    {
+        if (env is null)
+        {
+            return;
+        }
+
+        foreach (var s in _all)
+        {
+            if (env.TryGetValue(s.EnvFlag, out var v) && s.FlaggedOn(v))
+            {
+                s.Start();
+            }
+        }
+    }
+
+    /// <summary>Surfaces com processo vivo neste instante.</summary>
+    public IEnumerable<AgentSurfaceItem> Active() =>
+        _all.Where(s => s.Running)
+            .Select(s => new AgentSurfaceItem(s.Name, s.Port, s.Protocol));
+}
+
+/// <summary>Surface exposta por <c>GET /surfaces</c>.</summary>
+public sealed record AgentSurfaceItem(string Name, int Port, string Protocol);
+
+/// <summary>
+/// Supervisor de um processo-surface: spawn + respawn com backoff
+/// enquanto habilitado. Quando o binário falta da imagem e existe
+/// <paramref name="installer"/>, roda o instalador uma vez e tenta de
+/// novo; senão a surface fica indisponível sem crash do agente.
+/// </summary>
+public sealed class SurfaceSupervisor(
+    AgentState state, string name, string envFlag, int port,
+    string protocol, string binary, Func<string, string[]> args,
+    string? installer)
+{
     private const int MaxRestarts = 10;
     private Process? _proc;
     private bool _enabled;
+    private bool _installTried;
 
-    /// <summary>ttyd vivo agora.</summary>
+    public string Name { get; } = name;
+    public string EnvFlag { get; } = envFlag;
+    public int Port { get; } = port;
+    public string Protocol { get; } = protocol;
+
+    /// <summary>Processo vivo agora.</summary>
     public bool Running => _proc is { HasExited: false };
+
+    /// <summary>Flag env ("1"/"true") considerada ativa.</summary>
+    public bool FlaggedOn(string? v) =>
+        string.Equals(v, "1", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(v, "true", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Liga a surface e inicia o loop de supervisão.</summary>
     public void Start()
@@ -845,44 +900,47 @@ public sealed class TerminalSurface(AgentState state)
             Process proc;
             try
             {
-                proc = Process.Start(new ProcessStartInfo("ttyd")
+                var psi = new ProcessStartInfo(binary)
                 {
                     WorkingDirectory = state.WorkspaceRoot,
                     RedirectStandardOutput = false,
                     RedirectStandardError = false,
-                    ArgumentList =
-                    {
-                        "--port", Port.ToString(),
-                        "--writable",
-                        "--cwd", state.WorkspaceRoot,
-                        "-t", "disableLeaveAlert=true",
-                        "bash", "-l",
-                    },
-                })!;
+                };
+                foreach (var a in args(state.WorkspaceRoot))
+                {
+                    psi.ArgumentList.Add(a);
+                }
+
+                proc = Process.Start(psi)!;
             }
             catch (Exception)
             {
-                // ttyd ausente da imagem → surface indisponível, sem crash.
-                _enabled = false;
-                return;
+                // Binário ausente → tenta o instalador uma única vez.
+                if (installer is null || _installTried
+                    || !await RunInstallerAsync())
+                {
+                    _enabled = false;
+                    return;
+                }
+
+                continue;
             }
 
             _proc = proc;
-            state.Record("surface_start", $"terminal:{Port}");
+            state.Record("surface_start", $"{Name}:{Port}");
             try
             {
                 await proc.WaitForExitAsync();
             }
             catch
             {
-                // Agente encerrando — sai sem respawn.
-                return;
+                return; // agente encerrando — sai sem respawn.
             }
 
             _proc = null;
             restarts++;
             state.Record("surface_exit",
-                $"terminal:{Port} exit={proc.ExitCode} restart={restarts}");
+                $"{Name}:{Port} exit={proc.ExitCode} restart={restarts}");
             proc.Dispose();
             if (_enabled)
             {
@@ -891,6 +949,29 @@ public sealed class TerminalSurface(AgentState state)
         }
 
         _enabled = false;
+    }
+
+    private async Task<bool> RunInstallerAsync()
+    {
+        _installTried = true;
+        try
+        {
+            using var p = Process.Start(new ProcessStartInfo("bash")
+            {
+                ArgumentList = { installer! },
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            })!;
+            await p.WaitForExitAsync()
+                .WaitAsync(TimeSpan.FromMinutes(5));
+            state.Record("surface_install",
+                $"{Name} exit={p.ExitCode}");
+            return p.ExitCode == 0;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }
 
