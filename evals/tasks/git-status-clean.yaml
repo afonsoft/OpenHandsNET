@@ -1,0 +1,12 @@
+name: git-status-clean
+setup:
+  - "git init -q && git add -A && git -c user.email=eval@local -c user.name=eval commit -qm init"
+task: "Check git status of /workspace and tell me if the working tree is clean."
+timeout: 5m
+assert:
+  - type: exit_code
+    cmd: "git -C /workspace status --porcelain | wc -l | grep -q '^0'"
+    expect: 0
+  - type: output_contains
+    pattern: "clean"
+tags: [git_commit, smoke]

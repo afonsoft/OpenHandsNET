@@ -50,7 +50,8 @@ public sealed class CloudApiClient
     /// <summary>POST /app-conversations → start-task.</summary>
     public async Task<JsonElement> CreateConversationAsync(
         string? initialMessage, string? repository, bool run = true,
-        bool confirmationMode = false, CancellationToken ct = default)
+        bool confirmationMode = false, string? model = null,
+        CancellationToken ct = default)
     {
         object? initial = initialMessage is null ? null : new
         {
@@ -64,6 +65,7 @@ public sealed class CloudApiClient
                 initial_message = initial,
                 selected_repository = repository,
                 confirmation_mode = confirmationMode,
+                llm_model = model,
             }, ct);
         await EnsureAsync(resp, ct);
         return await resp.Content.ReadFromJsonAsync<JsonElement>(ct);

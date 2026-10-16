@@ -1,0 +1,9 @@
+name: nightly
+tasks:
+  - create-file
+  - list-workspace
+  - write-and-verify
+  - git-status-clean
+  - echo-marker
+  - run-tests
+  - search-and-edit

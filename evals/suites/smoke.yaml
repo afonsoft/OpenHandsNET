@@ -1,0 +1,7 @@
+name: smoke
+tasks:
+  - create-file
+  - list-workspace
+  - write-and-verify
+  - git-status-clean
+  - echo-marker

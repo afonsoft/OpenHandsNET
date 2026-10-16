@@ -7,6 +7,7 @@
     <Project Path="src/OpenHandsNET.Application/OpenHandsNET.Application.csproj" />
     <Project Path="src/OpenHandsNET.Client/OpenHandsNET.Client.csproj" />
     <Project Path="src/OpenHandsNET.Domain/OpenHandsNET.Domain.csproj" />
+    <Project Path="src/OpenHandsNET.Eval/OpenHandsNET.Eval.csproj" />
     <Project Path="src/OpenHandsNET.Infrastructure/OpenHandsNET.Infrastructure.csproj" />
     <Project Path="src/OpenHandsNET.SandboxAgent/OpenHandsNET.SandboxAgent.csproj" />
     <Project Path="src/OpenHandsNET.RuntimeApi/OpenHandsNET.RuntimeApi.csproj" />

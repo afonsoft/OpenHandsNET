@@ -8,7 +8,7 @@
 | Type | `Feature / Tooling (Quality)` |
 | Stack | `.NET 10 · CLI (Spectre) · headless runner · fixtures` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `In implementation` (PR #79 — comando `eval` básico ok; `run|report|list`, `--parallel`, `llm_judge`, asserts `exit_code`/`file_contains`, fixtures `evals/` e nightly pendentes) |
+| Status | `Done` (MVP: `eval run|report|list`, `--parallel`, asserts `exit_code`/`file_contains`/`output_contains`, `llm_judge` via juiz OpenAI-compat env, `evals/` smoke+nightly, `result.json`, `--gate` baseline, modo `recorded` por replay de evidências; workflow nightly = gate humano pendente) |
 | Ticket | #78 |
 | Depends on | `06`/`31` (CLI), `09` (agent engine), `24` (activity/events), `22` (context), `28` (subagents) |
 | Touches | `cli/OpenHandsNET.Cli` (`eval` command), `tests/` (fixtures), CI nightly |
@@ -96,6 +96,12 @@ nunca committar respostas com secrets — rubricas e outputs públicos).
 CLI consome só contratos públicos existentes (`/app-conversations`,
 events stream, sandbox exec). Nenhum endpoint novo no MVP;
 `eval report` é local (lê `result.json`).
+
+**Divergência (implementação):** o contrato "sandbox exec" presumido
+não existia — adicionado `POST /api/v1/app-conversations/{id}/exec`
+({command, timeout_s} → {exit_code, stdout, stderr, timed_out}, cwd
+`/workspace`, mesmo guard de sandbox-running do `GET /file`) para os
+asserts `exit_code`/`setup`.
 
 ## 4. Data model
 
