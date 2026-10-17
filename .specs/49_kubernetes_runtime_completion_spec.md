@@ -8,7 +8,7 @@
 | Type | `Feature / Infrastructure + Deploy` |
 | Stack | `.NET 10 · KubernetesClient · Helm · Sysbox` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `In implementation` |
+| Status | `Done` |
 | Ticket | [#115](https://github.com/afonsoft/OpenHandsNET/issues/115) |
 | Depends on | `37` (KubernetesSandboxEngine + chart esqueleto), `16` (sleep/wake lifecycle), `17` (warm pool + deferred-init), `35` (engine split), `36` (distributed cache) |
 | Reference | `OpenHands/OpenHands-Cloud` (Polyform — conceitos apenas): warm pools, idle cleanup, runtime URL pattern; docs enterprise: k0s+Replicated (conceitos) |
