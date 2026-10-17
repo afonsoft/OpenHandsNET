@@ -1,0 +1,97 @@
+# SPEC-49 RF-003: NetworkPolicy — default-deny ingress nos serviços
+# internos + allowlist api→deps. Sandbox egress (SPEC-19) fica no
+# namespace de sandboxes — documentado fallback Squid fora do cluster
+# quando o CNI não suporta NetworkPolicy egress.
+{{- if .Values.networkPolicy.enabled }}
+
+# Valkey: só aceita do api.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: openhandsnet-valkey-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: valkey
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: api
+      ports:
+        - port: 6379
+---
+# Runtime-api: só aceita do api.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: openhandsnet-runtime-api-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: runtime-api
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: api
+      ports:
+        - port: 8090
+---
+# Api: aceita do ingress controller (namespace label padrão) — genérico.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: openhandsnet-api-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: api
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector: {}   # ingress controller pode estar em
+                                  # outro ns — afina por label se quiser
+      ports:
+        - port: 8080
+---
+# Postgres dev: só aceita do api.
+{{- if and .Values.postgres.enabled .Values.postgres.dev.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: openhandsnet-postgres-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: postgres
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: api
+      ports:
+        - port: 5432
+{{- end }}
+---
+# Sandboxes: deny-ingress explícito no namespace dedicado — agentes não
+# servem tráfego externo (o Api fala via podIP direto).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: openhandsnet-sandbox-deny-ingress
+  namespace: {{ .Values.sandbox.namespace }}
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+      ports:
+        - port: 8000
+{{- end }}

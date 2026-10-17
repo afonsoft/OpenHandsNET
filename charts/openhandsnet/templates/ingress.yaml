@@ -1,0 +1,46 @@
+# SPEC-49 RF-003: Ingress — wildcard hosts
+# app|auth|llm-proxy|runtime.<baseDomain> para o Service do Api
+# (api roteia internamente por subdomínio, como o Caddyfile OSS).
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: openhandsnet
+  annotations:
+    {{- if .Values.ingress.certManagerIssuer }}
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.certManagerIssuer }}
+    {{- end }}
+    {{- if .Values.ingress.sessionAffinity }}
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/affinity-mode: "persistent"
+    {{- end }}
+    {{- range $k, $v := .Values.ingress.annotations }}
+    {{ $k }}: {{ $v | quote }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    - hosts:
+        - "app.{{ .Values.ingress.baseDomain }}"
+        - "auth.{{ .Values.ingress.baseDomain }}"
+        - "llm-proxy.{{ .Values.ingress.baseDomain }}"
+        - "runtime.{{ .Values.ingress.baseDomain }}"
+      {{- if .Values.ingress.tlsSecretName }}
+      secretName: {{ .Values.ingress.tlsSecretName }}
+      {{- end }}
+  {{- end }}
+  rules:
+    {{- range $sub := list "app" "auth" "llm-proxy" "runtime" }}
+    - host: "{{ $sub }}.{{ $.Values.ingress.baseDomain }}"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: openhandsnet-api
+                port:
+                  name: http
+    {{- end }}
+{{- end }}

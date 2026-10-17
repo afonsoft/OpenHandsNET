@@ -1,0 +1,22 @@
+# SPEC-49 RF-003: HPA do Api por CPU — SignalR é sticky via ingress
+# cookie affinity; o backplane (valkey) faz o fan-out entre réplicas.
+{{- if .Values.hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: openhandsnet-api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: openhandsnet-api
+  minReplicas: {{ .Values.hpa.minReplicas }}
+  maxReplicas: {{ .Values.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.hpa.targetCpuUtilization }}
+{{- end }}

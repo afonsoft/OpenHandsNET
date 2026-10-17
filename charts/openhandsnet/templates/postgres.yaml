@@ -1,0 +1,50 @@
+# SPEC-49 RF-003: Postgres DEV-ONLY (sem HA/backup — produção usa
+# postgres.externalSecretName apontando para a DSN do managed service).
+{{- if and .Values.postgres.enabled .Values.postgres.dev.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openhandsnet-postgres
+  labels:
+    app.kubernetes.io/component: postgres
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          env:
+            - name: POSTGRES_DB
+              value: openhandsnet
+            - name: POSTGRES_USER
+              value: openhandsnet
+            - name: POSTGRES_PASSWORD
+              value: "{{ .Values.postgres.dev.password }}"
+          ports:
+            - containerPort: 5432
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "openhandsnet"]
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.resources.postgresDev | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openhandsnet-postgres
+spec:
+  selector:
+    app.kubernetes.io/component: postgres
+  ports:
+    - port: 5432
+{{- end }}

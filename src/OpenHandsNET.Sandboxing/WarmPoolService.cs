@@ -34,7 +34,8 @@ public sealed class WarmPoolService(
     ISandboxEngine engine,
     IOptions<SandboxOptions> options,
     IDistributedLock distributedLock,
-    ILogger<WarmPoolService> logger) : BackgroundService
+    ILogger<WarmPoolService> logger,
+    IOptions<KubernetesOptions>? k8sOptions = null) : BackgroundService
 {
     private IDistributedLockHandle? _leader;
 
@@ -157,6 +158,22 @@ public sealed class WarmPoolService(
             }
         }
 
+        // SPEC-49 RF-001: provider k8s ganha targets próprios
+        // (<c>Sandbox:Kubernetes:WarmPoolImages</c> — img:count;…).
+        if (engine is KubernetesSandboxEngine)
+        {
+            foreach (var part in (k8sOptions?.Value.WarmPoolImages ?? "")
+                .Split(';', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var colon = part.LastIndexOf(':');
+                if (colon > 0 && int.TryParse(
+                        part[(colon + 1)..], out var n) && n > 0)
+                {
+                    map[part[..colon].Trim()] = n;
+                }
+            }
+        }
+
         return map;
     }
 
@@ -173,6 +190,7 @@ public sealed class WarmPoolService(
         }
 
         var free = await engine.ListPoolAsync(ct);
+        await PruneStaleWarmAsync(free, ct);
         foreach (var (image, target) in PoolTargets())
         {
             var have = free.Count(c => PoolKeyOf(c)
@@ -230,6 +248,42 @@ public sealed class WarmPoolService(
         logger.LogInformation(
             "warm pool container ready (image {Image}, dormant {Dormant})",
             image, isAgentImage);
+    }
+
+    /// <summary>
+    /// SPEC-49 RF-001: dormant warm pods que passam do TTL
+    /// (<c>Sandbox:Kubernetes:WarmPodTtlMinutes</c>) são prunados — cobre
+    /// excedentes que o reconciler não claimed. Engine-agnóstico (usa
+    /// <c>CreatedAt</c> do info; engines sem timestamp não prunam).
+    /// </summary>
+    private async Task PruneStaleWarmAsync(
+        IReadOnlyList<EngineSandboxInfo> free, CancellationToken ct)
+    {
+        var ttlMinutes = engine is KubernetesSandboxEngine
+            ? k8sOptions?.Value.WarmPodTtlMinutes ?? 30 : 30;
+        var cutoff = DateTimeOffset.UtcNow
+            .AddMinutes(-ttlMinutes);
+        foreach (var c in free)
+        {
+            if (c.CreatedAt is not { } created || created >= cutoff)
+            {
+                continue;
+            }
+
+            try
+            {
+                await engine.RemoveAsync(c.ContainerId, ct);
+                logger.LogInformation(
+                    "warm slot {Id} pruned (age > {Ttl}min)",
+                    c.ContainerId[..12], ttlMinutes);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                logger.LogDebug(e,
+                    "stale warm prune of {Id} skipped",
+                    c.ContainerId[..12]);
+            }
+        }
     }
 
     private async Task PrunePoolContainersAsync(CancellationToken ct)

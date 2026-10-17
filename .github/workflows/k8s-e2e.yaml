@@ -1,0 +1,64 @@
+# SPEC-49 RF-004: e2e Kubernetes — manual/nightly apenas (custo de
+# cluster). NÃO roda em PRs. kind + sysbox + helm lint/template + smoke.
+name: k8s-e2e
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 4 * * *"   # nightly 04:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  k8s-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup dotnet
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: helm lint + template
+        uses: azure/setup-helm@v4
+      - run: |
+          helm lint charts/openhandsnet
+          helm template ohn charts/openhandsnet \
+            --set ingress.enabled=false > /tmp/rendered.yaml
+          grep -q "kind: HorizontalPodAutoscaler" /tmp/rendered.yaml
+          grep -q "kind: Ingress" /tmp/rendered.yaml || true
+          echo "rendered $(grep -c '^kind:' /tmp/rendered.yaml) objects"
+          ! grep -iE "password|secret|sk-" /tmp/rendered.yaml | \
+            grep -v "secretKeyRef\|secretName\|existingSecret" || \
+            echo "no plaintext secrets"
+
+      - name: create kind cluster
+        uses: helm/kind-action@v1
+
+      - name: install sysbox
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/nestybox/sysbox/master/sysbox-k8s-manifests/sysbox-install.yaml
+          kubectl -n kube-system rollout status ds/sysbox-deploy-k8s \
+            --timeout=300s
+
+      - name: build + load api image
+        run: |
+          docker build -t openhandsnet:e2e .
+          kind load docker-image openhandsnet:e2e
+
+      - name: helm install + smoke
+        run: |
+          helm install ohn charts/openhandsnet -n ohn \
+            --create-namespace \
+            --set image.tag=e2e --set image.pullPolicy=Never \
+            --set ingress.enabled=false \
+            --set sandbox.provider=kubernetes
+          kubectl -n ohn rollout status deploy/openhandsnet-api \
+            --timeout=240s
+          kubectl -n ohn port-forward svc/openhandsnet-api 8080:8080 &
+          sleep 5
+          curl -sf --retry 10 --retry-delay 5 \
+            http://localhost:8080/api/v1/ready

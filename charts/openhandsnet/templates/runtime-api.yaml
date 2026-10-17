@@ -1,5 +1,7 @@
-# SPEC-35/37 RF-004: Runtime-Api Deployment + Service — orquestra os
-# pods-sandbox no namespace dedicado via ServiceAccount scopada.
+# SPEC-35/37/49: Runtime-Api Deployment + Service — modo split
+# (provider=remote): orquestra Docker remoto; em provider=kubernetes o
+# Api já fala com o apiserver direto — runtimeApi.enabled=false default.
+{{- if .Values.runtimeApi.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -8,7 +10,7 @@ metadata:
     app.kubernetes.io/name: openhandsnet
     app.kubernetes.io/component: runtime-api
 spec:
-  replicas: {{ .Values.deployment.replicas }}
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: openhandsnet
@@ -27,14 +29,8 @@ spec:
             - name: http
               containerPort: 8090
           env:
-            - name: OPENHANDSNET_K8s__Namespace
-              value: "{{ .Values.sandbox.namespace }}"
-            - name: OPENHANDSNET_K8s__RuntimeClassName
-              value: "{{ .Values.sandbox.runtimeClassName }}"
-            - name: OPENHANDSNET_K8s__WorkspaceStorageClass
-              value: "{{ .Values.sandbox.workspaceStorageClass }}"
-            - name: OPENHANDSNET_K8s__WorkspacePvcSize
-              value: "{{ .Values.sandbox.workspacePvcSize }}"
+            - name: OPENHANDSNET_Sandbox__Provider
+              value: "{{ .Values.sandbox.provider }}"
           readinessProbe:
             httpGet:
               path: /healthz
@@ -42,12 +38,7 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
           resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-            limits:
-              cpu: 500m
-              memory: 512Mi
+            {{- toYaml .Values.resources.runtimeApi | nindent 12 }}
 ---
 apiVersion: v1
 kind: Service
@@ -61,3 +52,4 @@ spec:
     - name: http
       port: 8090
       targetPort: http
+{{- end }}

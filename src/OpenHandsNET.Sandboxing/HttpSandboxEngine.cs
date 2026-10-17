@@ -30,6 +30,9 @@ public sealed class HttpSandboxEngine(
     /// <inheritdoc />
     public bool IsRemote => true;
 
+    /// <inheritdoc />
+    public bool SupportsPause => true;
+
     private HttpClient Client()
     {
         var http = httpFactory.CreateClient("runtime-api");
