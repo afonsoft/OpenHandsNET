@@ -107,3 +107,23 @@ Merge PR #106 → executar na ordem `41 → (42 ∥ 43 ∥ 44 ∥ 45 ∥ 46 ∥ 
 - Status wording fixed: SPECs 48–51 described as approved roadmap, not
   delivered (k8s engine exists but warm-pool/Helm completion is SPEC-49).
 - Next: implement SPECs in order — 48 first, then 49/50/51 in parallel.
+
+## SPEC-48 — merged (PR #119, 06cc540)
+
+security_policies por org (SQLite+Postgres migrations): presets
+permissive|balanced|strict + overrides por campo (analyzer_override
+pattern/llm/off, ask_mcp_tools, min_confirm_risk, resume_strict).
+ISecurityPolicyService + IDistributedCache 60s + invalidação.
+AgentRunner resolve policy 1× por run: analyzer override com fallback
+diagnostic `security_analyzer_fallback`, floor min_confirm_risk,
+mcp__* ask — `permissive` é opt-out explícito do piso MCP do guardrail.
+GET|PUT /api/v1/organizations/{id}/security-policy (member read,
+perm:edit_org_settings, PUT null = reset balanced, audit
+security_policy_updated). AgentLlm:ResumeEnforcement open|strict
+(alias legado StrictResume); org resume_strict vence global; strict =
+resume_drift error + run Error, tools aditivas OK. UI /admin/orgs +
+i18n 8 locales. Docs deployment/security pt-BR+en.
+Testes: 705 local verdes (2 flakes Docker passam isolados).
+CI: verde no rerun (2 flakes: Spec36 event bus cancel + SkillsHooks
+Docker timing — padrão conhecido).
+Próximo: SPEC-49 (k8s) ∥ SPEC-50 (BYOR) ∥ SPEC-51 (OpenAPI).
