@@ -92,3 +92,18 @@ Merge PR #106 → executar na ordem `41 → (42 ∥ 43 ∥ 44 ∥ 45 ∥ 46 ∥ 
 - UI: `/automations` + `/automations/{id}` + sidebar (icon clock);
   chaves i18n nos 8 locales (parity exige keyset ⊆ en-US).
 - bUnit: pages precisam L10nStub + ToastService + Api stub.
+
+## Docs/specs wave (PR #118, merged 860de66)
+
+- SPECs 48–51 created **Approved** on `feature/specs-48-51-docs` (issues
+  #114–#117): org security_policies + fail-closed resume; k8s warm-pool/
+  sleep + production Helm + kind/sysbox runbook; BYOR LiteLLM; published
+  OpenAPI + golden snapshot + Scalar. Build order `48 → (49 ∥ 50 ∥ 51)`.
+- README rewritten (pt-BR) + `README.en.md`: comparison table vs
+  OpenHands OSS/Cloud/Ent and Devin Web; legend "em SPEC-N" = approved.
+- `docs/README.md` + `docs/en/README.md` indexes; `docs/comparison.md`
+  + `docs/en/comparison.md`; pt-BR feature guides ×6 under
+  `docs/features/`; full EN mirror under `docs/en/` (21 files).
+- Status wording fixed: SPECs 48–51 described as approved roadmap, not
+  delivered (k8s engine exists but warm-pool/Helm completion is SPEC-49).
+- Next: implement SPECs in order — 48 first, then 49/50/51 in parallel.
