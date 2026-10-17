@@ -1,21 +1,22 @@
 @using OpenHandsNET.Client.Services
+@inject LocalizationService L
 
 <div class="usage-grid">
     <div class="usage-card">
         <div class="num">@State.PromptTokens.ToString("N0")</div>
-        <div class="lbl">prompt tokens</div>
+        <div class="lbl">@L["usage.prompt_tokens"]</div>
     </div>
     <div class="usage-card">
         <div class="num">@State.CompletionTokens.ToString("N0")</div>
-        <div class="lbl">completion tokens</div>
+        <div class="lbl">@L["usage.completion_tokens"]</div>
     </div>
     <div class="usage-card">
         <div class="num">$@State.CostUsd.ToString("F4")</div>
-        <div class="lbl">estimated cost</div>
+        <div class="lbl">@L["usage.estimated_cost"]</div>
     </div>
     <div class="usage-card">
         <div class="num">@State.Events.Count</div>
-        <div class="lbl">events</div>
+        <div class="lbl">@L["usage.events"]</div>
     </div>
 </div>
 

@@ -2,18 +2,19 @@
 @implements IAsyncDisposable
 @inject OpenHandsNetApiClient Api
 @inject MonacoInterop Monaco
+@inject LocalizationService L
 
 @* SPEC-42 RF-002: workbench IDE — activity bar (explorer/search/scm/tests),
    side panel, editor Monaco editável com tabs/dirty/Ctrl+S, quick-open
    Ctrl+P e status bar. *@
 
 <div class="ide-shell" @onkeydown="OnShellKey" tabindex="-1">
-    <div class="ide-activity" role="tablist" aria-label="IDE panels">
+    <div class="ide-activity" role="tablist" aria-label="@L["ide.panels"]">
         @foreach (var (panel, icon, tip) in _panels)
         {
             <button role="tab" aria-selected="@(_panel == panel)"
                     class="@(_panel == panel ? "active" : "")"
-                    title="@tip" @onclick="() => _panel = panel">
+                    title="@L[tip]" @onclick="() => _panel = panel">
                 <Icon Name="@icon" Size="16" />
             </button>
         }
@@ -56,7 +57,7 @@
                             class="ide-tab @(_active == idx ? "active" : "")"
                             @onclick="() => ActivateAsync(idx)">
                         @t.Name@(t.Dirty ? " ●" : "")
-                        <span class="ide-tab-close" title="Fechar"
+                        <span class="ide-tab-close" title="@L["common.close"]"
                               @onclick:stopPropagation
                               @onclick="() => CloseTab(idx)">×</span>
                     </button>
@@ -68,7 +69,7 @@
         {
             <div class="diff-meta">
                 @diff.Path — HEAD × workspace
-                <button style="float:right" @onclick="CloseDiff">× fechar diff</button>
+                <button style="float:right" @onclick="CloseDiff">× @L["ide.close_diff"]</button>
             </div>
             <div id="ide-diff" class="monaco-host"></div>
         }
@@ -77,14 +78,14 @@
             @if (_conflict)
             {
                 <div class="ide-conflict" role="alert">
-                    arquivo mudou no workspace —
-                    <button @onclick="() => SaveAsync(force: true)">forçar save</button>
-                    <button @onclick="() => ActivateAsync(_active)">recarregar</button>
+                    @L["ide.conflict"]
+                    <button @onclick="() => SaveAsync(force: true)">@L["ide.force_save"]</button>
+                    <button @onclick="() => ActivateAsync(_active)">@L["ide.reload"]</button>
                 </div>
             }
             @if (tab.Binary)
             {
-                <pre class="ide-binary">[binary file — base64 omitted]</pre>
+                <pre class="ide-binary">@L["ide.binary_omitted"]</pre>
             }
             else
             {
@@ -94,14 +95,14 @@
         else
         {
             <div class="empty-state">
-                explorer à esquerda · Ctrl+P abre arquivo
+                @L["ide.empty_hint"]
             </div>
         }
 
         @* SPEC-42 RF-009: status bar. *@
         <div class="ide-statusbar">
             <span>@_branch</span>
-            <span>@(_dirtyCount > 0 ? $"{_dirtyCount} altered" : "clean")</span>
+            <span>@(_dirtyCount > 0 ? L.T("ide.altered", ("count", _dirtyCount.ToString())) : L["ide.clean"])</span>
             <span class="grow"></span>
             <span>@(Active?.Name ?? "—")</span>
             <span>@(Active is null ? "" : MonacoInterop.LanguageFor(Active.Path))</span>
@@ -113,9 +114,9 @@
     @if (_quickOpen)
     {
         <div class="ide-quickopen" @onkeydown:stopPropagation>
-            <input @ref="_qoInput" placeholder="go to file…"
+            <input @ref="_qoInput" placeholder="@L["ide.quick_open"]"
                    @bind="_qoQuery" @bind:event="oninput"
-                   @onkeydown="OnQoKey" aria-label="Quick open file" />
+                   @onkeydown="OnQoKey" aria-label="@L["ide.quick_open_aria"]" />
             <div class="ide-quickopen-list">
                 @foreach (var p in QoMatches())
                 {
@@ -132,12 +133,13 @@
 
     private string ConvId => State.Conversation!.Id;
 
+    /// <summary>Tip é a chave i18n — resolvida com <c>L[tip]</c> no markup.</summary>
     private static readonly (string Panel, string Icon, string Tip)[] _panels =
     [
-        ("explorer", "folder", "Explorer"),
-        ("search", "search", "Search"),
-        ("scm", "git-branch", "Source control"),
-        ("tests", "play", "Tests"),
+        ("explorer", "folder", "ide.panel_explorer"),
+        ("search", "search", "ide.panel_search"),
+        ("scm", "git-branch", "ide.panel_scm"),
+        ("tests", "play", "ide.panel_tests"),
     ];
 
     private sealed class Tab

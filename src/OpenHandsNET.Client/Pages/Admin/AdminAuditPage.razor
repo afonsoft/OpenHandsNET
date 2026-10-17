@@ -3,7 +3,7 @@
 @using System.Text.Json
 @inherits AdminPageBase
 
-<PageTitle>admin · audit</PageTitle>
+<PageTitle>@L["admin.title"] · @L["admin.nav_audit"]</PageTitle>
 
 @if (Checking || !Allowed)
 {
@@ -12,22 +12,22 @@
 else
 {
     <div class="settings-wrap admin-wrap">
-        <h1>Audit <span class="sub">(@_total eventos)</span></h1>
+        <h1>@L["admin.audit_title"] <span class="sub">(@L.T("admin.events", ("count", _total.ToString())))</span></h1>
         <AdminNav />
         @if (Error is not null) { <p class="admin-error">@Error</p> }
 
         <div class="field admin-toolbar">
-            <input placeholder="user id…" @bind="_user" @bind:event="oninput" />
-            <input placeholder="action…" @bind="_action" @bind:event="oninput" />
-            <button @onclick="() => LoadPageAsync(1)">Filter</button>
+            <input placeholder="@L["admin.user_id"]" @bind="_user" @bind:event="oninput" />
+            <input placeholder="@L["admin.action"]" @bind="_action" @bind:event="oninput" />
+            <button @onclick="() => LoadPageAsync(1)">@L["common.filter"]</button>
             <a class="badge" download
                href="@AdminApiClient.AuditCsvUrl(_user, _action, _from, _to)">
                 ↓ csv
             </a>
         </div>
         <div class="field admin-toolbar">
-            <label>from <input type="date" @bind="_fromDate" /></label>
-            <label>to <input type="date" @bind="_toDate" /></label>
+            <label>@L["admin.from"] <input type="date" @bind="_fromDate" /></label>
+            <label>@L["admin.to"] <input type="date" @bind="_toDate" /></label>
         </div>
 
         @foreach (var e in _items)
@@ -41,15 +41,15 @@ else
         }
         @if (_items.Count == 0)
         {
-            <p class="empty-state">no audit events</p>
+            <p class="empty-state">@L["admin.no_audit"]</p>
         }
 
         <div class="admin-pager">
             <button disabled="@(_page <= 1)"
-                    @onclick="() => LoadPageAsync(_page - 1)">‹ prev</button>
-            <span>page @_page</span>
+                    @onclick="() => LoadPageAsync(_page - 1)">‹ @L["common.prev"]</button>
+            <span>@L.T("common.page", ("n", _page.ToString()))</span>
             <button disabled="@((_page * 100) >= _total)"
-                    @onclick="() => LoadPageAsync(_page + 1)">next ›</button>
+                    @onclick="() => LoadPageAsync(_page + 1)">@L["common.next"] ›</button>
         </div>
     </div>
 }

@@ -14,6 +14,11 @@ namespace OpenHandsNET.Client.Tests;
 /// </summary>
 public class Spec45ComposerTests : TestContext
 {
+    public Spec45ComposerTests()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        L10nStub.Register(this);
+    }
     private sealed class StubHandler(
         Func<HttpRequestMessage, HttpResponseMessage> fn)
         : HttpMessageHandler

@@ -3,7 +3,7 @@
 @using System.Text.Json
 @inherits AdminPageBase
 
-<PageTitle>admin · usage</PageTitle>
+<PageTitle>@L["admin.title"] · @L["admin.nav_usage"]</PageTitle>
 
 @if (Checking || !Allowed)
 {
@@ -12,13 +12,13 @@
 else
 {
     <div class="settings-wrap admin-wrap">
-        <h1>Usage</h1>
+        <h1>@L["admin.usage_title"]</h1>
         <AdminNav />
         @if (Error is not null) { <p class="admin-error">@Error</p> }
 
         <div class="field admin-toolbar">
             <select @bind="_orgId" @bind:after="LoadUsageAsync">
-                <option value="">select org…</option>
+                <option value="">@L["admin.select_org"]</option>
                 @foreach (var o in _orgs)
                 {
                     <option value="@Str(o, "id")">@Str(o, "name")</option>
@@ -31,30 +31,30 @@ else
             <div class="usage-grid">
                 <div class="usage-card">
                     <div class="num">@Num(u, "tokens_used")</div>
-                    <div class="lbl">tokens (@Str(u, "period"))</div>
+                    <div class="lbl">@L.T("admin.tokens_period", ("period", Str(u, "period") ?? ""))</div>
                 </div>
                 <div class="usage-card">
                     <div class="num">$@Num(u, "cost_usd")</div>
-                    <div class="lbl">cost</div>
+                    <div class="lbl">@L["admin.cost"]</div>
                 </div>
                 <div class="usage-card">
                     <div class="num">@Num(u, "runs")</div>
-                    <div class="lbl">runs</div>
+                    <div class="lbl">@L["admin.runs"]</div>
                 </div>
                 <div class="usage-card">
                     <div class="num">@Num(u, "sandbox_seconds")</div>
-                    <div class="lbl">sandbox seconds</div>
+                    <div class="lbl">@L["admin.sandbox_seconds"]</div>
                 </div>
                 <div class="usage-card">
                     <div class="num">@Num(u, "sandboxes_active")</div>
-                    <div class="lbl">active sandboxes</div>
+                    <div class="lbl">@L["admin.active_sandboxes"]</div>
                 </div>
             </div>
         }
 
         @if (_plan is { } pl)
         {
-            <h3>Effective plan</h3>
+            <h3>@L["admin.effective_plan"]</h3>
             <div class="secret-row">
                 <span class="name">@Str(pl, "name")</span>
                 <span>@Str(pl, "plan_id")</span>

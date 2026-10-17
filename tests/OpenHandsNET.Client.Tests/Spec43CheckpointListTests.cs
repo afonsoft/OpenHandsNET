@@ -11,6 +11,11 @@ namespace OpenHandsNET.Client.Tests;
 /// <summary>SPEC-43 RF-004: CheckpointList — render, expand, revert+409.</summary>
 public class Spec43CheckpointListTests : TestContext
 {
+    public Spec43CheckpointListTests()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        L10nStub.Register(this);
+    }
     private sealed class StubHandler(
         Func<HttpRequestMessage, HttpResponseMessage> fn)
         : HttpMessageHandler
@@ -78,7 +83,7 @@ public class Spec43CheckpointListTests : TestContext
     {
         var cut = Render(_ => Json("[]"));
         cut.WaitForAssertion(() =>
-            cut.Markup.ShouldContain("no checkpoints yet"));
+            cut.Markup.ShouldContain("nenhum checkpoint ainda"));
     }
 
     [Fact]
@@ -112,18 +117,18 @@ public class Spec43CheckpointListTests : TestContext
         // Click revert → modal abre (sem conflitos ainda).
         cut.Find(".ckpt-revert").Click();
         cut.WaitForAssertion(() =>
-            cut.Markup.ShouldContain("Revert to abc1234"));
+            cut.Markup.ShouldContain("Reverter para abc1234"));
 
         // Confirma → 409 drift → modal lista conflitos e oferece force.
         cut.Find(".modal-actions .primary").Click();
         cut.WaitForAssertion(() =>
         {
             cut.Markup.ShouldContain("src/a.cs");
-            cut.Markup.ShouldContain("revert (force)");
+            cut.Markup.ShouldContain("reverter (forçar)");
         });
 
         // Segunda confirmação (force) → revertido, modal fecha.
-        // ("Revert to" sempre existe nos aria-labels dos botões —
+        // ("Reverter para" sempre existe nos aria-labels dos botões —
         // assere o backdrop do modal.)
         reverted = true;
         cut.Find(".modal-actions .primary").Click();

@@ -1,4 +1,6 @@
 @using OpenHandsNET.Client.Components
+@using OpenHandsNET.Client.Services
+@inject LocalizationService L
 
 @* SPEC-41 RF-002: seção colapsável "Pensamento" — auto-expande enquanto o
    reasoning strema, auto-colapsa quando o content começa, re-expansível
@@ -7,13 +9,13 @@
 <div class="ev-card thinking">
     <div class="ev-head" role="button" tabindex="0"
          @onclick="Toggle" @onkeydown="OnKey"
-         aria-expanded="@Expanded" aria-label="Toggle thinking section">
+         aria-expanded="@Expanded" aria-label="@L["thinking.toggle"]">
         <Icon Name="@(Expanded ? "chevron-down" : "chevron-right")" Size="13" />
         <Icon Name="info" Size="14" />
-        <span>Pensamento</span>
+        <span>@L["thinking.title"]</span>
         @if (Streaming && !ContentStarted)
         {
-            <em class="thinking-live">pensando…</em>
+            <em class="thinking-live">@L["thinking.live"]</em>
         }
     </div>
     @if (Expanded)

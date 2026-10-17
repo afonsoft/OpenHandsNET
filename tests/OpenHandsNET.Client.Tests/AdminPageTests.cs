@@ -14,6 +14,11 @@ namespace OpenHandsNET.Client.Tests;
 /// </summary>
 public class AdminPageTests : TestContext
 {
+    public AdminPageTests()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        L10nStub.Register(this);
+    }
     private sealed class StubHandler(
         Func<HttpRequestMessage, HttpResponseMessage> responder)
         : HttpMessageHandler
@@ -144,7 +149,7 @@ public class AdminPageTests : TestContext
         cut.WaitForAssertion(() =>
             cut.Markup.ShouldContain("a@x.io"), TimeSpan.FromSeconds(5));
         cut.Markup.ShouldContain("b@x.io");
-        cut.Markup.ShouldContain("(2 total)");
+        cut.Markup.ShouldContain("(2 no total)");
     }
 
     [Fact]
@@ -179,7 +184,7 @@ public class AdminPageTests : TestContext
         Wire();
         var cut = RenderComponent<AdminIndexPage>();
         cut.WaitForAssertion(() =>
-            cut.Markup.ShouldContain("support bundle"),
+            cut.Markup.ShouldContain("pacote de suporte"),
             TimeSpan.FromSeconds(5));
         cut.Markup.ShouldContain("/api/v1/support-bundle");
     }

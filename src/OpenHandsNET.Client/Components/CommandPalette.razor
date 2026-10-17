@@ -1,6 +1,7 @@
 @* SPEC-26 RF-004: Ctrl+K ou "/" abre; ↑↓ navega, Enter executa, Esc fecha. *@
 @using OpenHandsNET.Client.Services
 @inject PaletteService Palette
+@inject LocalizationService L
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
@@ -8,11 +9,11 @@
 {
     <div class="palette-overlay" @onclick="Palette.Close" @onkeydown="OnKey">
         <div class="palette" @onclick:stopPropagation>
-            <input @ref="_input" placeholder="buscar comando ou conversa…"
+            <input @ref="_input" placeholder="@L["palette.placeholder"]"
                    value="@_query" @oninput="OnInput" autofocus />
             @if (Palette.Filtered.Count == 0)
             {
-                <div class="empty">sem resultados</div>
+                <div class="empty">@L["palette.empty"]</div>
             }
             else
             {

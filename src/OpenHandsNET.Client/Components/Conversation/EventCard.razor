@@ -3,6 +3,7 @@
 @using System.Text.Json
 @inject MarkdownService Md
 @inject IJSRuntime JS
+@inject LocalizationService L
 
 @* Renderiza um evento V1 conforme o kind — paridade visual com o Agent Canvas.
    SPEC-26: ícones SVG (Icon), markdown sanitizado nas mensagens, cards de
@@ -18,7 +19,7 @@
             {
                 <button class="icon-btn copy-btn"
                         @onclick="() => CopyAsync(Event.MessageText())"
-                        aria-label="Copy message" title="Copiar">
+                        aria-label="@L["event.copy_message"]" title="@L["common.copy"]">
                     <Icon Name="@(_copied ? "check" : "copy")" Size="12" />
                 </button>
             }
@@ -34,17 +35,17 @@
                 <span class="tool">@Event.ToolName()</span>
                 @if (LinkedObservation() is { } linked)
                 {
-                    <span class="chip done">done</span>
+                    <span class="chip done">@L["event.done"]</span>
                     <span class="dur">@DurationText(linked)</span>
                 }
                 else
                 {
-                    <span class="chip pending">pending</span>
+                    <span class="chip pending">@L["event.pending"]</span>
                 }
                 <span class="dur">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
                 <button class="icon-btn" style="margin-left:auto;width:22px;height:22px"
                         @onclick="() => _expanded = !_expanded"
-                        aria-label="Toggle arguments" aria-expanded="@_expanded">
+                        aria-label="@L["event.toggle_args"]" aria-expanded="@_expanded">
                     <Icon Name="@(_expanded ? "chevron-down" : "chevron-right")" Size="13" />
                 </button>
             </div>
@@ -71,16 +72,16 @@
         <div class="ev-card obs">
             <div class="ev-head">
                 <Icon Name="upload" Size="14" />
-                <span>observation · @Event.ToolName()</span>
+                <span>@L.T("event.observation", ("tool", Event.ToolName()))</span>
                 <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
                 <button class="icon-btn"
                         @onclick="() => CopyAsync(ObsText())"
-                        aria-label="Copy output" title="Copiar">
+                        aria-label="@L["event.copy_output"]" title="@L["common.copy"]">
                     <Icon Name="@(_copied ? "check" : "copy")" Size="12" />
                 </button>
                 <button class="icon-btn" style="width:22px;height:22px"
                         @onclick="() => _expanded = !_expanded"
-                        aria-label="Toggle output" aria-expanded="@_expanded">
+                        aria-label="@L["event.toggle_output"]" aria-expanded="@_expanded">
                     <Icon Name="@(_expanded ? "chevron-down" : "chevron-right")" Size="13" />
                 </button>
             </div>
@@ -98,7 +99,7 @@
     case "UserRejectObservation":
         <div class="ev-card error">
             <div class="ev-head">
-                <Icon Name="x" Size="14" /><span>action rejected</span>
+                <Icon Name="x" Size="14" /><span>@L["event.rejected"]</span>
             </div>
             @if (Event.Str("reason") is { } reason)
             {
@@ -123,7 +124,7 @@
     case "CondensationSummaryEvent":
         <div class="ev-card condense">
             <div class="ev-head" style="justify-content:center">
-                <Icon Name="refresh" Size="13" /><span>context condensed</span>
+                <Icon Name="refresh" Size="13" /><span>@L["event.condensed"]</span>
             </div>
         </div>
         break;
@@ -165,7 +166,7 @@
     case "files_changed":
         <div class="ev-card">
             <div class="ev-head">
-                <Icon Name="file" Size="14" /><span>files changed</span>
+                <Icon Name="file" Size="14" /><span>@L["event.files_changed"]</span>
                 <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
             </div>
             <div class="file-chips">
@@ -182,12 +183,14 @@
         @if (Event.Str("phase") != "heartbeat")
         {
             <div class="ev-card condense">
-                — iteration @Event.Get("iteration").GetInt32()/@Event.Get("max_iterations").GetInt32()
-                · @Event.Str("phase")
-                · @(Event.Get("tools_used").ValueKind == JsonValueKind.Number
-                    ? Event.Get("tools_used").GetInt32() : 0) tools
-                · @(Event.Get("files_touched").ValueKind == JsonValueKind.Number
-                    ? Event.Get("files_touched").GetInt32() : 0) files —
+                — @L.T("event.progress",
+                    ("i", Event.Get("iteration").GetInt32().ToString()),
+                    ("max", Event.Get("max_iterations").GetInt32().ToString()),
+                    ("phase", Event.Str("phase") ?? ""),
+                    ("tools", (Event.Get("tools_used").ValueKind == JsonValueKind.Number
+                        ? Event.Get("tools_used").GetInt32() : 0).ToString()),
+                    ("files", (Event.Get("files_touched").ValueKind == JsonValueKind.Number
+                        ? Event.Get("files_touched").GetInt32() : 0).ToString())) —
             </div>
         }
         break;
@@ -195,7 +198,7 @@
     case "PauseEvent":
         <div class="ev-card condense">
             <div class="ev-head" style="justify-content:center">
-                <Icon Name="pause" Size="13" /><span>run paused</span>
+                <Icon Name="pause" Size="13" /><span>@L["event.paused"]</span>
             </div>
         </div>
         break;
@@ -203,7 +206,7 @@
     case "InterruptEvent":
         <div class="ev-card condense">
             <div class="ev-head" style="justify-content:center">
-                <Icon Name="stop" Size="13" /><span>run interrupted</span>
+                <Icon Name="stop" Size="13" /><span>@L["event.interrupted"]</span>
             </div>
         </div>
         break;
@@ -211,7 +214,7 @@
     case "work_summary":
         <div class="ev-card summary">
             <div class="ev-head">
-                <Icon Name="check" Size="14" /><span>work summary</span>
+                <Icon Name="check" Size="14" /><span>@L["event.work_summary"]</span>
                 <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
             </div>
             <div class="md"><p>@Event.Str("summary")</p></div>
@@ -238,7 +241,7 @@
         <div class="ev-card">
             <div class="ev-head">
                 <Icon Name="zap" Size="14" />
-                <span>auto @(Event.Str("chosen") ?? "approve")</span>
+                <span>@L.T("event.auto", ("chosen", Event.Str("chosen") ?? "approve"))</span>
                 <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
             </div>
         </div>
@@ -359,8 +362,8 @@
     private string StateText()
     {
         var v = Event.Get("value");
-        return v.ValueKind == JsonValueKind.String ? v.GetString() ?? "state update"
-            : v.ValueKind == JsonValueKind.Object ? v.ToString() : "state update";
+        return v.ValueKind == JsonValueKind.String ? v.GetString() ?? L["event.state_update"]
+            : v.ValueKind == JsonValueKind.Object ? v.ToString() : L["event.state_update"];
     }
 
     private IEnumerable<(string path, string op)> FileChanges()

@@ -1,14 +1,15 @@
 @* SPEC-21: sub-navegação da área admin — visível só para super-admin (gate
-@using OpenHandsNET.Client.Services
    feito por cada página via AdminPageBase). *@
+@using OpenHandsNET.Client.Services
+@inject LocalizationService L
 <nav class="admin-nav">
-    <a href="/admin" class="@Active("/admin", exact: true)">overview</a>
-    <a href="/admin/users" class="@Active("/admin/users")">users</a>
-    <a href="/admin/admins" class="@Active("/admin/admins")">super admins</a>
-    <a href="/admin/audit" class="@Active("/admin/audit")">audit</a>
-    <a href="/admin/flags" class="@Active("/admin/flags")">feature flags</a>
-    <a href="/admin/plans" class="@Active("/admin/plans")">plans</a>
-    <a href="/admin/usage" class="@Active("/admin/usage")">usage</a>
+    <a href="/admin" class="@Active("/admin", exact: true)">@L["admin.nav_overview"]</a>
+    <a href="/admin/users" class="@Active("/admin/users")">@L["admin.nav_users"]</a>
+    <a href="/admin/admins" class="@Active("/admin/admins")">@L["admin.nav_admins"]</a>
+    <a href="/admin/audit" class="@Active("/admin/audit")">@L["admin.nav_audit"]</a>
+    <a href="/admin/flags" class="@Active("/admin/flags")">@L["admin.nav_flags"]</a>
+    <a href="/admin/plans" class="@Active("/admin/plans")">@L["admin.nav_plans"]</a>
+    <a href="/admin/usage" class="@Active("/admin/usage")">@L["admin.nav_usage"]</a>
 </nav>
 
 @code {

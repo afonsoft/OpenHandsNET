@@ -2,6 +2,7 @@
 @implements IAsyncDisposable
 @inject OpenHandsNetApiClient Api
 @inject MonacoInterop Monaco
+@inject LocalizationService L
 
 <div class="file-layout">
     <div class="file-tree">
@@ -18,7 +19,7 @@
     <div class="file-view">
         @if (_filePath is null)
         {
-            <div class="empty-state">select a file</div>
+            <div class="empty-state">@L["files.select_file"]</div>
         }
         else
         {

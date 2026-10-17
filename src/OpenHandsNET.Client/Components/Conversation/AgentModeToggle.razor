@@ -2,15 +2,16 @@
    plan = read-only (deny mutations); build = default. *@
 @using OpenHandsNET.Client.Services
 @inject ToastService Toasts
+@inject LocalizationService L
 
-<div class="mode-toggle" role="group" aria-label="Agent mode">
+<div class="mode-toggle" role="group" aria-label="@L["mode.aria"]">
     <button class="@(Mode == "plan" ? "sel" : "")"
-            title="Plan — somente leitura" aria-pressed="@(Mode == "plan")"
+            title="@L["mode.plan_title"]" aria-pressed="@(Mode == "plan")"
             @onclick='() => SwitchAsync("plan")'>
         <Icon Name="eye" Size="13" /> plan
     </button>
     <button class="@(Mode != "plan" ? "sel" : "")"
-            title="Build — acesso completo" aria-pressed="@(Mode != "plan")"
+            title="@L["mode.build_title"]" aria-pressed="@(Mode != "plan")"
             @onclick='() => SwitchAsync("build")'>
         <Icon Name="wrench" Size="13" /> build
     </button>

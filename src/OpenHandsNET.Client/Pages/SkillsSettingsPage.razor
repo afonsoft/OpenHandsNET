@@ -1,25 +1,26 @@
 @page "/settings/skills"
 @inject HttpClient Http
+@inject OpenHandsNET.Client.Services.LocalizationService L
 
-<PageTitle>Skills</PageTitle>
+<PageTitle>@L["skills.title"] · OpenHandsNET</PageTitle>
 
-<h1>Skills</h1>
+<h1>@L["skills.title"]</h1>
 
-<p>Reusable markdown skills injected into the agent context (SPEC-11).</p>
+<p>@L["skills.subtitle"]</p>
 
 @if (skills == null)
 {
-    <p><em>Loading...</em></p>
+    <p><em>@L["common.loading"]</em></p>
 }
 else
 {
     <table class="table">
         <thead>
             <tr>
-                <th>Name</th>
-                <th>Source</th>
-                <th>Description</th>
-                <th>Enabled</th>
+                <th>@L["skills.name"]</th>
+                <th>@L["skills.source"]</th>
+                <th>@L["skills.description"]</th>
+                <th>@L["skills.enabled"]</th>
             </tr>
         </thead>
         <tbody>
@@ -40,14 +41,14 @@ else
     </table>
 }
 
-<h2>New skill</h2>
+<h2>@L["skills.new"]</h2>
 <div>
-    <input placeholder="name (slug)" @bind="newName" />
-    <input placeholder="description" @bind="newDescription" />
-    <textarea placeholder="markdown content" @bind="newContent" rows="6"
+    <input placeholder="@L["skills.name_placeholder"]" @bind="newName" />
+    <input placeholder="@L["skills.desc_placeholder"]" @bind="newDescription" />
+    <textarea placeholder="@L["skills.content_placeholder"]" @bind="newContent" rows="6"
               style="width:100%"></textarea>
     <button @onclick="CreateAsync" disabled="@string.IsNullOrWhiteSpace(newName)">
-        Create
+        @L["common.create"]
     </button>
     @if (error is not null)
     {

@@ -2,7 +2,7 @@
 @using OpenHandsNET.Client.Services
 @inherits AdminPageBase
 
-<PageTitle>admin · OpenHandsNET</PageTitle>
+<PageTitle>@L["admin.title"] · OpenHandsNET</PageTitle>
 
 @if (Checking || !Allowed)
 {
@@ -11,32 +11,32 @@
 else
 {
     <div class="settings-wrap admin-wrap">
-        <h1>Admin</h1>
+        <h1>@L["admin.title"]</h1>
         <AdminNav />
         @if (Error is not null) { <p class="admin-error">@Error</p> }
 
         <div class="usage-grid">
             <div class="usage-card">
                 <div class="num">@(_userCount?.ToString() ?? "—")</div>
-                <div class="lbl">users</div>
+                <div class="lbl">@L["admin.nav_users"]</div>
             </div>
             <div class="usage-card">
                 <div class="num">@(_planCount?.ToString() ?? "—")</div>
-                <div class="lbl">plans</div>
+                <div class="lbl">@L["admin.nav_plans"]</div>
             </div>
             <div class="usage-card">
                 <div class="num">@(_flagCount?.ToString() ?? "—")</div>
-                <div class="lbl">feature flags</div>
+                <div class="lbl">@L["admin.nav_flags"]</div>
             </div>
             <div class="usage-card">
                 <div class="num">@(_auditTotal?.ToString() ?? "—")</div>
-                <div class="lbl">audit events</div>
+                <div class="lbl">@L["admin.audit_events"]</div>
             </div>
         </div>
 
         <p style="margin-top:20px">
             <a class="badge" href="@AdminApiClient.SupportBundleUrl" download>
-                ↓ support bundle (zip)
+                ↓ @L["admin.support_bundle"]
             </a>
         </p>
     </div>

@@ -8,7 +8,7 @@
 | Type | `Feature / Client` |
 | Stack | `Blazor WASM · JSON dictionaries` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `In review (PR #112)` |
 | Ticket | [#104](https://github.com/afonsoft/OpenHandsNET/issues/104) |
 | Depends on | `26` (prefs endpoint + settings) |
 | Reference | `afonsoft/open-webui` (MIT — port permitido): `LocalizationService`, `wwwroot/i18n/*.json` (8 locales), `tools/check-i18n-parity.py` |

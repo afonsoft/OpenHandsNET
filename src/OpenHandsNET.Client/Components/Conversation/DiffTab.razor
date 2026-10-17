@@ -1,4 +1,5 @@
 @using OpenHandsNET.Client.Services
+@inject LocalizationService L
 @implements IAsyncDisposable
 @inject OpenHandsNetApiClient Api
 @inject MonacoInterop Monaco
@@ -23,11 +24,11 @@
     <div style="flex:1;min-height:0;overflow:auto">
         @if (_loading)
         {
-            <div class="empty-state">loading…</div>
+            <div class="empty-state">@L["common.loading"]</div>
         }
         else if (_files.Count == 0)
         {
-            <div class="empty-state">no repository changes yet</div>
+            <div class="empty-state">@L["diff.empty"]</div>
         }
         else if (_monacoFailed)
         {

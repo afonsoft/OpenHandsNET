@@ -18,6 +18,7 @@ public class Spec41ChatUxTests : TestContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         Services.AddSingleton(new MarkdownService());
+        L10nStub.Register(this);
     }
 
     private static ClientEvent Ev(string json) => new()
@@ -190,12 +191,12 @@ public class Spec41ChatUxTests : TestContext
              "timestamp":"2026-01-01T00:00:00Z"}
             """);
         RenderComponent<EventCard>(p => p.Add(x => x.Event, pause))
-            .Markup.ShouldContain("run paused");
+            .Markup.ShouldContain("execução pausada");
         var intr = Ev("""
             {"id":"i1","kind":"InterruptEvent","source":"user",
              "timestamp":"2026-01-01T00:00:00Z"}
             """);
         RenderComponent<EventCard>(p => p.Add(x => x.Event, intr))
-            .Markup.ShouldContain("run interrupted");
+            .Markup.ShouldContain("execução interrompida");
     }
 }

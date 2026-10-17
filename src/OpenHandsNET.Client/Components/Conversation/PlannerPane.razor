@@ -1,9 +1,10 @@
 @using OpenHandsNET.Client.Services
+@inject LocalizationService L
 
 @if (State.Plan.Count > 0)
 {
     <div class="planner">
-        <h4>Plan</h4>
+        <h4>@L["plan.title"]</h4>
         <ul>
             @foreach (var item in State.Plan)
             {

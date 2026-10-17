@@ -3,7 +3,7 @@
 @using System.Text.Json
 @inherits AdminPageBase
 
-<PageTitle>admin · super admins</PageTitle>
+<PageTitle>@L["admin.title"] · @L["admin.nav_admins"]</PageTitle>
 
 @if (Checking || !Allowed)
 {
@@ -12,17 +12,17 @@
 else
 {
     <div class="settings-wrap admin-wrap">
-        <h1>Super admins</h1>
+        <h1>@L["admin.admins_title"]</h1>
         <AdminNav />
         @if (Error is not null) { <p class="admin-error">@Error</p> }
         @if (_notice is not null) { <p class="admin-notice">@_notice</p> }
 
         <div class="field admin-toolbar">
-            <input placeholder="grant by email…" @bind="_email"
+            <input placeholder="@L["admin.grant_email"]" @bind="_email"
                    @bind:event="oninput" />
             <button class="primary" @onclick="GrantAsync"
                     disabled="@(string.IsNullOrWhiteSpace(_email))">
-                grant
+                @L["admin.grant"]
             </button>
         </div>
 
@@ -32,13 +32,13 @@ else
             <div class="secret-row">
                 <span class="name">@Str(a, "email")</span>
                 <button class="danger" @onclick="() => RevokeAsync(uid)">
-                    revoke
+                    @L["admin.revoke"]
                 </button>
             </div>
         }
         @if (_admins.Count == 0)
         {
-            <p class="empty-state">no super admins</p>
+            <p class="empty-state">@L["admin.no_admins"]</p>
         }
     </div>
 }
@@ -56,14 +56,14 @@ else
         _notice = null;
         if (await Api.GrantSuperAdminAsync(_email!))
         {
-            _notice = $"granted: {_email}";
+            _notice = L.T("admin.granted", ("email", _email!));
             _email = null;
             Admin.Invalidate();
             await LoadAsync();
         }
         else
         {
-            _notice = "user not found";
+            _notice = L["admin.user_not_found"];
         }
     }
 
@@ -73,7 +73,7 @@ else
         var ok = await Api.RevokeSuperAdminAsync(uid, m => _notice = m);
         if (ok)
         {
-            _notice = "revoked";
+            _notice = L["admin.revoked"];
             Admin.Invalidate();
             await LoadAsync();
         }

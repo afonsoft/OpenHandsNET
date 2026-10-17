@@ -1,11 +1,12 @@
 @using OpenHandsNET.Client.Services
 @using OpenHandsNET.Client.Components
 @inject IJSRuntime JS
+@inject LocalizationService L
 
 <div class="chat-scroll" id="chat-scroll" @ref="_scroll">
     @if (State.LoadingBacklog)
     {
-        <div class="ev-card condense">loading history…</div>
+        <div class="ev-card condense">@L["chat.loading_history"]</div>
     }
     @foreach (var e in State.Events)
     {
@@ -15,8 +16,8 @@
             <EventCard Event="e" Siblings="State.Events" />
             @if (isLastUser && _composer is not null)
             {
-                <button class="ev-edit" title="Editar e reenviar"
-                        @onclick="EditLastUserAsync">editar</button>
+                <button class="ev-edit" title="@L["chat.edit_resend"]"
+                        @onclick="EditLastUserAsync">@L["chat.edit"]</button>
             }
         </div>
     }
@@ -32,7 +33,7 @@
     @foreach (var delta in State.LiveDeltas)
     {
         <div class="ev-card msg delta" data-item-id="@delta.Key">
-            <div class="ev-head"><span>assistant</span><em>streaming…</em></div>
+            <div class="ev-head"><span>assistant</span><em>@L["chat.streaming"]</em></div>
             <pre>@delta.Value</pre>
         </div>
     }
@@ -41,7 +42,7 @@
         <div class="ev-card condense" role="status">
             <div class="ev-head" style="justify-content:center">
                 <Icon Name="alert" Size="13" />
-                <span>sem sinal do agente há 45s+ — aguardando heartbeat…</span>
+                <span>@L["chat.stalled"]</span>
             </div>
         </div>
     }

@@ -1,21 +1,22 @@
 @using OpenHandsNET.Client.Services
 @inject OpenHandsNetApiClient Api
+@inject LocalizationService L
 
 @* SPEC-42 RF-003: explorer lazy + decorations git (M/A/D) + ações
    new file/folder/rename/delete via endpoints RF-001. *@
 
 <div class="ide-explorer">
     <div class="ide-panel-head">
-        <span>EXPLORER</span>
-        <button title="Novo arquivo" aria-label="New file"
+        <span>@L["ide.explorer_title"]</span>
+        <button title="@L["ide.new_file"]" aria-label="@L["ide.new_file"]"
                 @onclick="() => _newFile = !_newFile">
             <Icon Name="plus" Size="13" />
         </button>
-        <button title="Nova pasta" aria-label="New folder"
+        <button title="@L["ide.new_folder"]" aria-label="@L["ide.new_folder"]"
                 @onclick="() => _newDir = !_newDir">
             <Icon Name="folder" Size="13" />
         </button>
-        <button title="Refresh" aria-label="Refresh"
+        <button title="@L["common.refresh"]" aria-label="@L["common.refresh"]"
                 @onclick="LoadAsync">
             <Icon Name="refresh" Size="13" />
         </button>
@@ -27,7 +28,7 @@
             <input placeholder="@(_newFile ? "/workspace/repo/novo.cs"
                 : "/workspace/repo/nova-pasta")"
                    @bind="_newPath" @bind:event="oninput"
-                   @onkeydown="OnNewKey" aria-label="New path" />
+                   @onkeydown="OnNewKey" aria-label="@L["ide.new_path"]" />
         </div>
     }
 
@@ -44,11 +45,11 @@
                 }
             </span>
             <span class="ide-row-acts">
-                <button title="Renomear" aria-label="Rename"
+                <button title="@L["common.rename"]" aria-label="@L["common.rename"]"
                         @onclick="() => StartRename(entry)">
                     <Icon Name="file" Size="11" />
                 </button>
-                <button title="Excluir" aria-label="Delete"
+                <button title="@L["common.delete"]" aria-label="@L["common.delete"]"
                         @onclick="() => DeleteAsync(entry)">
                     <Icon Name="x" Size="11" />
                 </button>
@@ -58,7 +59,7 @@
         {
             <div class="ide-newrow" style="padding-left:@(6 + depth * 12)px">
                 <input @bind="_renameTo" @bind:event="oninput"
-                       @onkeydown="OnRenameKey" aria-label="Rename to" />
+                       @onkeydown="OnRenameKey" aria-label="@L["ide.rename_to"]" />
             </div>
         }
     }
