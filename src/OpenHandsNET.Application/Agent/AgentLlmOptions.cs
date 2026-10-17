@@ -112,6 +112,21 @@ public sealed class AgentLlmOptions
     /// </summary>
     public bool StrictResume { get; set; }
 
+    /// <summary>
+    /// SPEC-48 RF-004: <c>open</c> (default) | <c>strict</c> — enum form
+    /// of <see cref="StrictResume"/>; org <c>resume_strict</c> overrides
+    /// whichever global value applies.
+    /// </summary>
+    public string ResumeEnforcement { get; set; } = "open";
+
+    /// <summary>
+    /// Whether the global resume mode is strict — <c>StrictResume</c>
+    /// legacy flag or <c>ResumeEnforcement = strict</c>.
+    /// </summary>
+    public bool IsStrictResume =>
+        StrictResume || string.Equals(ResumeEnforcement, "strict",
+            StringComparison.OrdinalIgnoreCase);
+
     /// <summary>Subagent orchestration limits (SPEC-28).</summary>
     public SubagentOptions Subagents { get; set; } = new();
 

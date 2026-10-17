@@ -194,10 +194,20 @@ public sealed class AgentRunner(
             db, conv, opt, ct);
         var effectiveTools = ConversationPermissionResolver.Catalog(
             tools, permissions);
-        // SPEC-33 RF-004: fingerprint do toolset — detecta drift no resume
-        // (tools removidas silenciosamente entre runs).
-        await EmitAgentContractAsync(
-            events, conv, effectiveTools.All, opt, ct);
+        // SPEC-48 RF-001/002: política por org — resolvida UMA vez por run
+        // (cache TTL 60s); restart do run pega a policy nova.
+        var policyService = services.GetService<ISecurityPolicyService>();
+        var policy = policyService is not null
+            ? await policyService.GetAsync(conv.OrgId, ct)
+            : SecurityPolicy.Balanced;
+        // SPEC-33 RF-004 + SPEC-48 RF-004: fingerprint do toolset —
+        // drift com ResumeStrict/policy strict aborta o run (Error).
+        if (!await EmitAgentContractAsync(
+                events, db, conv, effectiveTools.All, opt, policy, ct))
+        {
+            return;
+        }
+
         var rebuilt = await builder.BuildAsync(
             conversationId, conv, effectiveTools, ct);
         var history = rebuilt.Messages;
@@ -207,7 +217,10 @@ public sealed class AgentRunner(
         var hooks = services.GetService<Application.Hooks.IHookService>();
         // SPEC-33 RF-001: analyzer por ação — High força confirmação
         // (mesmo com permission allow), diagnostic security_risk redacted.
-        var security = services.GetService<ISecurityAnalyzer>();
+        // SPEC-48 RF-002: AnalyzerOverride da policy troca o analyzer do run
+        // (off/pattern/llm com fallback + diagnostic).
+        var security = await ResolvePolicyAnalyzerAsync(
+            policy, services.GetService<ISecurityAnalyzer>(), events, ct);
         // SPEC-34 RF-001: bus de deltas efêmeros — runner publica,
         // hub repassa; nada disso toca o IEventService.
         var bus = services.GetService<IAgentActivityBus>();
@@ -749,6 +762,8 @@ public sealed class AgentRunner(
                     : await security.AnalyzeAsync(call.Name, act, ct);
                 if (risk >= SecurityRisk.Medium)
                 {
+                    // SPEC-48 RF-002: o diagnostic carrega preset + floor
+                    // aplicados (observabilidade da decisão por org).
                     await events.AppendAsync(conversationId,
                         new AgentDiagnosticEvent
                         {
@@ -756,20 +771,39 @@ public sealed class AgentRunner(
                                 ? "warning" : "info",
                             Code = "security_risk",
                             Message = $"tool {call.Name} scored {risk
-                                .ToString().ToLowerInvariant()} risk",
+                                .ToString().ToLowerInvariant()} risk"
+                                + $" (policy={policy.Preset}, min_confirm="
+                                + policy.MinConfirmRisk.ToString()
+                                    .ToLowerInvariant() + ")",
                             ParentId = actionEvent.Id,
                         }, ct);
                 }
 
-                // SPEC-15 RF-003 + SPEC-29 RF-002 + SPEC-33: confirmação
-                // exigida por regra ask, guardrail destrutivo, analyzer High,
+                // SPEC-15 RF-003 + SPEC-29 RF-002 + SPEC-33 + SPEC-48:
+                // confirmação exigida por regra ask, guardrail destrutivo,
+                // analyzer no floor da policy, ask de mcp__* (policy),
                 // ou default Risky+confirmation-mode. Allow explícito pula
-                // confirmação — exceto destrutiva/High (pisos).
-                var alwaysAsk = (tool.Risky &&
-                    AutonomyGuardrail.RequiresHumanApproval(
-                        call.Name, actionEvent.Action))
-                    || risk == SecurityRisk.High;
-                var needsConfirm = alwaysAsk
+                // confirmação — exceto destrutiva/floor (pisos).
+                var riskAsks = policy.MinConfirmRisk switch
+                {
+                    // low: qualquer tool Risky confirma, mesmo score baixo.
+                    SecurityRisk.Low => tool.Risky,
+                    SecurityRisk.Medium => risk >= SecurityRisk.Medium,
+                    _ => risk == SecurityRisk.High,
+                };
+                var mcpTool = call.Name.StartsWith("mcp__",
+                    StringComparison.Ordinal);
+                // SPEC-48 RF-002: AskMcpTools explícito (strict) OU o piso do
+                // guardrail — o preset `permissive` é o único que relaxa a
+                // fronteira de credenciais (opt-out consciente da org).
+                var mcpAsk = mcpTool
+                    && (policy.AskMcpTools || policy.Preset != "permissive");
+                var guardrailAsk = AutonomyGuardrail.RequiresHumanApproval(
+                    call.Name, actionEvent.Action)
+                    && !(mcpTool && policy.Preset == "permissive"
+                        && !policy.AskMcpTools);
+                var alwaysAsk = (tool.Risky && guardrailAsk) || riskAsks;
+                var needsConfirm = alwaysAsk || mcpAsk
                     || decision == Application.Agent.PermissionDecision.Ask
                     || (decision is null && tool.Risky && confirmationMode);
                 if (tool.Risky && !needsConfirm)
@@ -1285,15 +1319,62 @@ public sealed class AgentRunner(
     }
 
     /// <summary>
+    /// SPEC-48 RF-002: resolve o analyzer efetivo do run conforme o
+    /// <c>AnalyzerOverride</c> da policy de org — <c>off</c> desliga,
+    /// <c>pattern</c> força local, <c>llm</c> exige provider configurado
+    /// (fallback para o analyzer global + diagnostic warning quando
+    /// indisponível). <c>null</c> mantém o global.
+    /// </summary>
+    private async Task<ISecurityAnalyzer?> ResolvePolicyAnalyzerAsync(
+        SecurityPolicy policy, ISecurityAnalyzer? global,
+        IEventService events, CancellationToken ct)
+    {
+        switch (policy.AnalyzerOverride)
+        {
+            case null:
+                return global;
+            case "off":
+                return null;
+            case "pattern":
+                return new Security.PatternSecurityAnalyzer();
+            case "llm":
+            {
+                var llmProvider = services.GetService<IAgentLlmProvider>();
+                var mem = services.GetService<
+                    Microsoft.Extensions.Caching.Memory.IMemoryCache>();
+                if (llmProvider is not null && mem is not null)
+                {
+                    return new Security.LlmSecurityAnalyzer(llmProvider, mem);
+                }
+
+                await events.AppendAsync(conversationId,
+                    new AgentDiagnosticEvent
+                    {
+                        Severity = "warning",
+                        Code = "security_analyzer_fallback",
+                        Message = "org policy requests llm analyzer but no "
+                            + "provider is configured — falling back to "
+                            + "the global analyzer",
+                    }, ct);
+                return global;
+            }
+            default:
+                return global;
+        }
+    }
+
+    /// <summary>
     /// SPEC-33 RF-004: grava o <c>agent_contract</c> (agent_type + fingerprint
     /// do toolset efetivo) e compara com o contrato anterior do stream —
-    /// tools removidas entre runs emitem <c>resume_drift</c>; em
-    /// <c>AgentLlm:StrictResume</c> falham o run.
+    /// tools removidas entre runs emitem <c>resume_drift</c>. SPEC-48 RF-004:
+    /// fail-closed quando <c>AgentLlm:StrictResume</c> ou a policy de org
+    /// pede strict — o run termina com diagnostic <c>error</c> + status
+    /// <c>Error</c> (retorna <c>false</c> para abortar o loop).
     /// </summary>
-    private async Task EmitAgentContractAsync(
-        IEventService events, ConversationRecord conv,
+    private async Task<bool> EmitAgentContractAsync(
+        IEventService events, AppDbContext db, ConversationRecord conv,
         IReadOnlyList<AgentTool> effectiveTools, AgentLlmOptions opt,
-        CancellationToken ct)
+        SecurityPolicy? policy, CancellationToken ct)
     {
         var names = effectiveTools.Select(t => t.Schema.Name)
             .OrderBy(n => n, StringComparer.Ordinal).ToList();
@@ -1330,10 +1411,21 @@ public sealed class AgentRunner(
                 ", ", removed)}]"
                 + (priorAgent != conv.AgentType
                     ? $", agent_type {priorAgent} -> {conv.AgentType}" : "");
-            if (opt.StrictResume)
+            // SPEC-48 RF-004: strict = policy de org (override) → global.
+            var strict = policy?.ResumeStrict ?? opt.IsStrictResume;
+            if (strict)
             {
-                throw new InvalidOperationException(
-                    $"StrictResume: {msg}");
+                // Fail-closed nunca é silencioso: diagnostic error +
+                // status Error antes de abortar o run.
+                await events.AppendAsync(conversationId,
+                    new AgentDiagnosticEvent
+                    {
+                        Severity = "error", Code = "resume_drift",
+                        Message = msg,
+                    }, CancellationToken.None);
+                await SetStatusAsync(events, db, conv, "error",
+                    ConversationExecutionStatus.Error, CancellationToken.None);
+                return false;
             }
 
             await events.AppendAsync(conversationId,
@@ -1353,5 +1445,6 @@ public sealed class AgentRunner(
                     agent_type = conv.AgentType, tools = names, fingerprint,
                 }, EventJson.Options),
             }, ct);
+        return true;
     }
 }

@@ -1,0 +1,183 @@
+@page "/admin/orgs"
+@using OpenHandsNET.Client.Services
+@using System.Text.Json
+@inherits AdminPageBase
+@inject ToastService Toasts
+
+<PageTitle>@L["admin.title"] · @L["admin.nav_orgs"]</PageTitle>
+
+@if (Checking || !Allowed)
+{
+    <div class="settings-wrap"><p class="empty-state">…</p></div>
+}
+else
+{
+    <div class="settings-wrap admin-wrap">
+        <h1>@L["admin.orgs_title"]</h1>
+        <AdminNav />
+        @if (Error is not null) { <p class="admin-error">@Error</p> }
+
+        <div class="field admin-toolbar">
+            <select @bind="_orgId" @bind:after="LoadPolicyAsync">
+                <option value="">@L["admin.select_org"]</option>
+                @foreach (var o in _orgs)
+                {
+                    <option value="@Str(o, "id")">@Str(o, "name")</option>
+                }
+            </select>
+        </div>
+
+        @if (_loaded)
+        {
+            <h3>@L["admin.sec_policy_title"]</h3>
+            <p class="muted">@L["admin.sec_policy_hint"]</p>
+
+            <div class="field">
+                <label for="sp-preset">@L["admin.preset"]</label>
+                <select id="sp-preset" @bind="_preset">
+                    <option value="permissive">@L["admin.preset_permissive"]</option>
+                    <option value="balanced">@L["admin.preset_balanced"]</option>
+                    <option value="strict">@L["admin.preset_strict"]</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="sp-analyzer">@L["admin.analyzer_override"]</label>
+                <select id="sp-analyzer" @bind="_analyzer">
+                    <option value="">@L["admin.inherit"]</option>
+                    <option value="pattern">pattern</option>
+                    <option value="llm">llm</option>
+                    <option value="off">off</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="sp-mcp">@L["admin.ask_mcp"]</label>
+                <select id="sp-mcp" @bind="_askMcp">
+                    <option value="">@L["admin.inherit"]</option>
+                    <option value="true">@L["admin.yes"]</option>
+                    <option value="false">@L["admin.no"]</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="sp-risk">@L["admin.min_confirm_risk"]</label>
+                <select id="sp-risk" @bind="_minRisk">
+                    <option value="">@L["admin.inherit"]</option>
+                    <option value="low">low</option>
+                    <option value="medium">medium</option>
+                    <option value="high">high</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="sp-resume">@L["admin.resume_strict"]</label>
+                <select id="sp-resume" @bind="_resume">
+                    <option value="">@L["admin.inherit"]</option>
+                    <option value="true">@L["admin.yes"]</option>
+                    <option value="false">@L["admin.no"]</option>
+                </select>
+            </div>
+
+            <div class="composer-actions">
+                <button class="btn btn-primary" @onclick="SaveAsync"
+                        disabled="@_saving">
+                    @L["admin.save"]
+                </button>
+                <button class="btn" @onclick="ResetAsync" disabled="@_saving">
+                    @L["admin.reset"]
+                </button>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private IReadOnlyList<JsonElement> _orgs = [];
+    private string? _orgId;
+    private bool _loaded;
+    private bool _saving;
+    private string _preset = "balanced";
+    private string _analyzer = "";
+    private string _askMcp = "";
+    private string _minRisk = "";
+    private string _resume = "";
+
+    protected override async Task LoadAsync() =>
+        _orgs = await Api.ListOrgsAsync();
+
+    private async Task LoadPolicyAsync()
+    {
+        if (string.IsNullOrEmpty(_orgId)) { _loaded = false; return; }
+        Error = null;
+        var p = await Api.GetOrgSecurityPolicyAsync(_orgId);
+        _preset = Str(p, "preset") ?? "balanced";
+        _analyzer = Str(p, "analyzer_override") ?? "";
+        _askMcp = BoolStr(p, "ask_mcp_tools");
+        _minRisk = Str(p, "min_confirm_risk") ?? "";
+        _resume = Str(p, "resume_strict") ?? "";
+        _loaded = true;
+    }
+
+    private object BuildUpdate() => new
+    {
+        preset = _preset,
+        analyzer_override = _analyzer.Length > 0 ? _analyzer : null,
+        ask_mcp_tools = _askMcp.Length > 0
+            ? _askMcp == "true" : (bool?)null,
+        min_confirm_risk = _minRisk.Length > 0 ? _minRisk : null,
+        resume_strict = _resume.Length > 0
+            ? _resume == "true" : (bool?)null,
+    };
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrEmpty(_orgId)) { return; }
+        _saving = true;
+        try
+        {
+            var (ok, _, err) = await Api.PutOrgSecurityPolicyAsync(
+                _orgId, BuildUpdate());
+            if (ok)
+            {
+                Toasts.Success(L["admin.saved"]);
+                await LoadPolicyAsync();
+            }
+            else
+            {
+                Error = err;
+            }
+        }
+        finally { _saving = false; }
+    }
+
+    private async Task ResetAsync()
+    {
+        if (string.IsNullOrEmpty(_orgId)) { return; }
+        _saving = true;
+        try
+        {
+            var (ok, _, err) = await Api.PutOrgSecurityPolicyAsync(
+                _orgId, null);
+            if (ok)
+            {
+                Toasts.Success(L["admin.saved"]);
+                await LoadPolicyAsync();
+            }
+            else
+            {
+                Error = err;
+            }
+        }
+        finally { _saving = false; }
+    }
+
+    private static string? Str(JsonElement e, string prop) =>
+        e.TryGetProperty(prop, out var v) && v.ValueKind
+            is JsonValueKind.String ? v.GetString() : null;
+
+    private static string BoolStr(JsonElement e, string prop) =>
+        e.TryGetProperty(prop, out var v) && v.ValueKind
+            is JsonValueKind.True or JsonValueKind.False
+            ? (v.GetBoolean() ? "true" : "false") : "";
+}

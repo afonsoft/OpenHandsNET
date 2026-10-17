@@ -128,6 +128,10 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<OpenHandsNET.Infrastructure.Automations.AutomationRunRecord>
         AutomationRuns => Set<OpenHandsNET.Infrastructure.Automations.AutomationRunRecord>();
 
+    /// <summary>SPEC-48: org security policies.</summary>
+    public DbSet<OpenHandsNET.Infrastructure.Security.SecurityPolicyRecord>
+        SecurityPolicies => Set<OpenHandsNET.Infrastructure.Security.SecurityPolicyRecord>();
+
     /// <summary>Anonymous webhook triggers (token hash only).</summary>
     public DbSet<OpenHandsNET.Infrastructure.Automations.AutomationHookRecord>
         AutomationHooks => Set<OpenHandsNET.Infrastructure.Automations.AutomationHookRecord>();

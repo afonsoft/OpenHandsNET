@@ -169,7 +169,9 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
         Action<ConversationRecord>? configureConv = null,
         IAgentActivityBus? activityBus = null,
         OpenHandsNET.Application.Conversations.IAttentionBus?
-            attentionBus = null)
+            attentionBus = null,
+        ISecurityPolicyService? securityPolicy = null,
+        IToolRegistry? toolRegistry = null)
     {
         ConversationId = Guid.NewGuid();
         Events = new FakeEventService();
@@ -185,7 +187,18 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
         sc.AddSingleton<ISandboxExecutor>(Executor);
         sc.AddSingleton<ISandboxService>(new FakeSandboxService(SandboxId));
         sc.AddSingleton<ITaskTrackerService, InMemoryTaskTrackerService>();
-        sc.AddSingleton<IToolRegistry, ToolRegistry>();
+        if (toolRegistry is not null)
+        {
+            sc.AddSingleton<IToolRegistry>(toolRegistry);
+        }
+        else
+        {
+            sc.AddSingleton<IToolRegistry, ToolRegistry>();
+        }
+        if (securityPolicy is not null)
+        {
+            sc.AddSingleton<ISecurityPolicyService>(securityPolicy);
+        }
         sc.AddSingleton<ISubagentHost,
             OpenHandsNET.Infrastructure.Agent.Subagents.SubagentHost>();
         sc.AddSingleton(condenser ?? (ICondenser)new NoOpCondenser());

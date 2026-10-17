@@ -197,6 +197,71 @@ public static class OrgEndpoints
                 ? Results.NoContent() : Results.NotFound();
         }).RequireAuthorization("perm:edit_org_settings");
 
+        // SPEC-48 RF-003: security policy por org — GET membros admin+
+        // (view_org_settings), PUT edit_org_settings + audit diff.
+        g.MapGet("/{org_id:guid}/security-policy", async (
+            Guid org_id, ICurrentUserAccessor current,
+            IEffectiveOrgResolver resolver,
+            OpenHandsNET.Application.Agent.ISecurityPolicyService policies,
+            CancellationToken ct) =>
+        {
+            var user = current.User;
+            if (user is null)
+                return Results.Unauthorized();
+            if (!user.IsSuperAdmin
+                && !await resolver.IsMemberAsync(user.UserId, org_id, ct))
+                return Results.Forbid();
+            var p = await policies.GetAsync(org_id, ct);
+            return Results.Ok(new
+            {
+                preset = p.Preset,
+                analyzer_override = p.AnalyzerOverride,
+                ask_mcp_tools = p.AskMcpTools,
+                min_confirm_risk = p.MinConfirmRisk.ToString()
+                    .ToLowerInvariant(),
+                resume_strict = p.ResumeStrict,
+            });
+        }).RequireAuthorization("perm:view_org_settings");
+
+        g.MapPut("/{org_id:guid}/security-policy", async (
+            Guid org_id,
+            [FromBody] OpenHandsNET.Application.Agent.SecurityPolicyUpdate? req,
+            ICurrentUserAccessor current,
+            OpenHandsNET.Application.Agent.ISecurityPolicyService policies,
+            IAuditService audit, HttpContext http, CancellationToken ct) =>
+        {
+            var user = current.User;
+            if (user is null)
+                return Results.Unauthorized();
+            var old = await policies.GetAsync(org_id, ct);
+            OpenHandsNET.Application.Agent.SecurityPolicy saved;
+            try
+            {
+                saved = await policies.SetAsync(
+                    org_id, req, user.UserId, ct);
+            }
+            catch (ArgumentException e)
+            {
+                return Results.BadRequest(new { detail = e.Message });
+            }
+
+            await audit.RecordAsync(
+                "security_policy_updated", user.UserId.ToString(), org_id,
+                "security_policy", org_id.ToString(),
+                ip: http.Connection.RemoteIpAddress?.ToString(),
+                metadata: new { old, @new = saved },
+                cancellationToken: ct);
+            return Results.Ok(new
+            {
+                preset = saved.Preset,
+                analyzer_override = saved.AnalyzerOverride,
+                ask_mcp_tools = saved.AskMcpTools,
+                min_confirm_risk = saved.MinConfirmRisk.ToString()
+                    .ToLowerInvariant(),
+                resume_strict = saved.ResumeStrict,
+            });
+        }).RequireAuthorization("perm:edit_org_settings");
+
         // Quota — manage_org_quota is instance-level (super-role only).
         g.MapGet("/{org_id:guid}/quota", async (
             Guid org_id, ICurrentUserAccessor current, IQuotaService quotas,

@@ -221,6 +221,33 @@ public sealed class AdminApiClient(HttpClient http)
         await GetAsync<JsonElement>(
             $"/api/v1/organizations/{orgId}/plan", ct);
 
+    /// <summary>SPEC-48: política de segurança efetiva da org.</summary>
+    public async Task<JsonElement> GetOrgSecurityPolicyAsync(
+        string orgId, CancellationToken ct = default) =>
+        await GetAsync<JsonElement>(
+            $"/api/v1/organizations/{orgId}/security-policy", ct);
+
+    /// <summary>
+    /// SPEC-48: PUT da política — <paramref name="update"/> null reseta
+    /// para <c>balanced</c>. Retorna (ok, policy?, error?).
+    /// </summary>
+    public async Task<(bool Ok, JsonElement? Policy, string? Error)>
+        PutOrgSecurityPolicyAsync(
+            string orgId, object? update, CancellationToken ct = default)
+    {
+        var resp = Guard(await http.PutAsJsonAsync(
+            $"/api/v1/organizations/{orgId}/security-policy",
+            update, Json, ct));
+        if (!resp.IsSuccessStatusCode)
+        {
+            return (false, null, await DetailAsync(resp, ct));
+        }
+
+        return (true,
+            await resp.Content.ReadFromJsonAsync<JsonElement>(Json, ct),
+            null);
+    }
+
     // ---- plumbing --------------------------------------------------------
 
     private async Task<T?> GetAsync<T>(string url, CancellationToken ct) =>

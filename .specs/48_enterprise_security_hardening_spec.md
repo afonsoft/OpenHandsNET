@@ -8,7 +8,7 @@
 | Type | `Feature / Infrastructure + API + Client` |
 | Stack | `.NET 10 · EF Core (2 ctx) · Blazor WASM` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `In implementation` |
 | Ticket | [#114](https://github.com/afonsoft/OpenHandsNET/issues/114) |
 | Depends on | `08` (auth/RBAC/orgs), `09` (agent loop), `10` (persistence), `29` (tool permissions), `33` (security analyzer + secrets by-ref + resume_drift) |
 | Reference | `OpenHands/OpenHands` (MIT): `SecurityAnalyzer` policy presets; upstream enterprise docs (conceitos apenas — Polyform) |
