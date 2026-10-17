@@ -37,6 +37,8 @@ public sealed class ToolRegistry : IToolRegistry
             BuiltinTools.WebFetch(),
             // SPEC-30 RF-002: memória persistente (project + org).
             BuiltinTools.Memory(),
+            // SPEC-47 RF-005: routines do owner da conversa.
+            BuiltinTools.Routine(),
             BuiltinTools.InvokeSkill(),
             .. options.Value.Subagents.MaxDepth >= 1
                 // SPEC-28: task/task_status/task_result só no nível do pai

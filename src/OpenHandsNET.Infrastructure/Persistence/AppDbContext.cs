@@ -120,6 +120,18 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// <summary>Instance feature flags.</summary>
     public DbSet<FeatureFlagRecord> FeatureFlags => Set<FeatureFlagRecord>();
 
+    /// <summary>User schedules that fire conversations (SPEC-47).</summary>
+    public DbSet<OpenHandsNET.Infrastructure.Automations.AutomationRecord>
+        Automations => Set<OpenHandsNET.Infrastructure.Automations.AutomationRecord>();
+
+    /// <summary>Recorded automation executions.</summary>
+    public DbSet<OpenHandsNET.Infrastructure.Automations.AutomationRunRecord>
+        AutomationRuns => Set<OpenHandsNET.Infrastructure.Automations.AutomationRunRecord>();
+
+    /// <summary>Anonymous webhook triggers (token hash only).</summary>
+    public DbSet<OpenHandsNET.Infrastructure.Automations.AutomationHookRecord>
+        AutomationHooks => Set<OpenHandsNET.Infrastructure.Automations.AutomationHookRecord>();
+
     /// <summary>ASP.NET DataProtection keys (PersistKeysToDbContext).</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
@@ -165,6 +177,9 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
                 case AuditEventRecord a:
                     a.TimestampTicks = a.Timestamp.UtcTicks;
                     break;
+                case OpenHandsNET.Infrastructure.Automations.AutomationRecord a:
+                    a.NextRunAtTicks = a.NextRunAt?.UtcTicks;
+                    break;
             }
         }
         return base.SaveChangesAsync(ct);
@@ -180,6 +195,9 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
             .HasQueryFilter(r =>
                 !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
         modelBuilder.Entity<ApiKeyRecord>()
+            .HasQueryFilter(r =>
+                !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
+        modelBuilder.Entity<OpenHandsNET.Infrastructure.Automations.AutomationRecord>()
             .HasQueryFilter(r =>
                 !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
     }

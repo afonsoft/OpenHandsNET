@@ -1,3 +1,39 @@
+# Session Memory — 2026-10-16 — SPECs 41-47 (open-webui wave)
+
+## Scope
+7 SPECs da análise `afonsoft/open-webui` (MIT — port permitido) →
+OpenHandsNET, escritas, aprovadas e vinculadas a issues.
+
+## Key state
+- Branch/PR: `feature/spec-41-47-openwebui-fronts` → PR #106.
+- Issues: #99 SPEC-41, #100 SPEC-42, #101 SPEC-43, #102 SPEC-44,
+  #103 SPEC-45, #104 SPEC-46, #105 SPEC-47 (labels feature+todo).
+- SPECs: `.specs/41_stream_chat_ux` … `47_automations` (Status Approved).
+
+## Decisions (travadas c/ usuário)
+- IDE = Monaco editável (não CodeMirror/LSP — defer).
+- Chat = SignalR (não SSE do fork); reasoning via `DeltaFrame.channel`
+  + `ActionEvent.ThinkingBlocks` (campos Domain já existem, sem produtor).
+- Checkpoints = git-dir `/workspace/.ohn-checkpoints` + alternates via
+  `ExecAsync`; sem fallback manifesto; 409 run_active/drift.
+- Attention = projeção persistida (migration ×2) + push SignalR, sem poll.
+- Composer: anexos = upload `/workspace/uploads` + path ref; voice fora.
+- i18n = JSON LocalizationService (port), pt-BR default, parity=xUnit test.
+- Automations: exec = `POST /app-conversations`; calendar grid defer.
+
+## Facts úteis
+- Sandbox-agent já tem `PUT /files` + `/exec/stream`; Api só faz proxy GET.
+- `GitService.CommitAsync` existe mas sem endpoint (`POST /{id}/git/commit`
+  é da SPEC-42).
+- `ConversationRecord` não tem `pending_action` persistido (SPEC-44
+  adiciona `NeedsAttention*`).
+- `Pause` existe no hub; `Resume` não (SPEC-41 adiciona).
+- Migrations sempre gerar nos 2 contextos (SQLite + Postgres).
+
+## Next
+Merge PR #106 → executar na ordem `41 → (42 ∥ 43 ∥ 44 ∥ 45 ∥ 46 ∥ 47)`
+(45 usa superfícies de 41; 42 embebe CheckpointList de 43; 46 sweep por
+último). Via `execute-specs`/`tdd-spec` por issue.
 
 ## SPEC-45 (PR #111)
 - ChatComposer compartilhado Home/ChatPane; @mention varre workspace via
@@ -30,3 +66,29 @@
   asserts de texto migrados p/ pt-BR (default). Parity test cobre manifesto,
   keyset en=pt, sem chaves alienígenas e placeholders iguais.
 - Suite local: 659/659. Issue #104 → in_pullrequest.
+
+## SPEC-47 (automations) — branch `feature/spec47-automations`
+- `IAppConversationService.CreateForUserAsync(userId, orgId, req)` — caminho
+  de impersonação p/ triggers fora de HTTP (CreateCoreAsync compartilhado
+  mantém plan enforcement + MessageEvent inicial).
+- `AutomationSchedule.ComputeNextRun` puro: interval≥1 clamp, daily/weekly
+  HH:mm UTC, weekday clamp 0..6 (7→Saturday, NÃO wraparound), once esgota.
+- Records: `AutomationRecord` (IOrgScoped, NextRunAtTicks), `AutomationRunRecord`
+  (StartedAtTicks — SQLite não ordena DateTimeOffset, mesmo padrão de
+  NextRunAtTicks), `AutomationHookRecord` (sha256 token, exibido 1×,
+  prefixo `ohn_hook_`). Migrations nos 2 contextos.
+- `AutomationService`: CRUD owner-scoped, FireAsync (dedup running→skipped,
+  once→Enabled=false, agent_diagnostic `automation:{id}` no stream, audit
+  `automation_fired`/`automation_run_created`, quota→`error="quota: …"`),
+  TickAsync (due + reconcile com ExecutionStatus da conversa).
+- `AutomationScheduler` BackgroundService 30s + distributed lock
+  `automation-scheduler` (padrão OrphanSweepService).
+- Endpoints `/api/v1/automations` CRUD+run-now+runs+hooks;
+  `POST /api/v1/hooks/{token}` anônimo → 202/404; `HookRateLimiter`
+  in-memory (10/min token, 60/min IP, `Reset()` p/ testes).
+- Gotcha EF: DELETE cascade manual via ExecuteDeleteAsync (runs+hooks).
+- Tool `routine` builtin (Risky → gate confirmation-mode): list/create/
+  enable/disable/delete do owner da conversa via AppDbContext+svc.
+- UI: `/automations` + `/automations/{id}` + sidebar (icon clock);
+  chaves i18n nos 8 locales (parity exige keyset ⊆ en-US).
+- bUnit: pages precisam L10nStub + ToastService + Api stub.

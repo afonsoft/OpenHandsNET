@@ -1,0 +1,194 @@
+@page "/automations/{Id:guid}"
+@using OpenHandsNET.Client.Services
+@inject OpenHandsNET.Client.Services.OpenHandsNetApiClient Api
+@inject OpenHandsNET.Client.Services.LocalizationService L
+@inject OpenHandsNET.Client.Services.ToastService Toasts
+@inject NavigationManager Nav
+
+<PageTitle>@(_a?.Name ?? L["automations.title"]) · OpenHandsNET</PageTitle>
+
+@if (_a is null)
+{
+    <p><em>@L["common.loading"]</em></p>
+}
+else
+{
+    <h1>@_a.Name</h1>
+    <p><a href="/automations">← @L["automations.title"]</a></p>
+
+    <div>
+        <label>@L["automations.name"]<br /><input @bind="_fName" /></label><br />
+        <label>@L["automations.prompt"]<br />
+            <textarea @bind="_fPrompt" rows="5" style="width:100%"></textarea>
+        </label><br />
+        <label>@L["automations.model"]<br /><input @bind="_fModel" /></label><br />
+        <label>@L["automations.repository"]<br /><input @bind="_fRepo" /></label><br />
+        <label>@L["automations.schedule"]<br />
+            <select @bind="_fKind">
+                <option value="interval">@L["automations.kind_interval"]</option>
+                <option value="daily">@L["automations.kind_daily"]</option>
+                <option value="weekly">@L["automations.kind_weekly"]</option>
+                <option value="once">@L["automations.kind_once"]</option>
+            </select>
+        </label><br />
+        @if (_fKind == "interval")
+        {
+            <label>@L["automations.interval_minutes"]<br />
+                <input type="number" min="5" @bind="_fInterval" /></label><br />
+        }
+        @if (_fKind is "daily" or "weekly")
+        {
+            <label>@L["automations.time_utc"]<br />
+                <input placeholder="HH:mm" @bind="_fTime" /></label><br />
+        }
+        @if (_fKind == "weekly")
+        {
+            <label>@L["automations.weekday"]<br />
+                <input type="number" min="0" max="6" @bind="_fWeekday" /></label><br />
+        }
+        <label><input type="checkbox" @bind="_fEnabled" /> @L["automations.enabled"]</label><br />
+        <button @onclick="SaveAsync">@L["common.save"]</button>
+        <button @onclick="RunNowAsync">@L["automations.run_now"]</button>
+        <button @onclick="DeleteAsync">@L["common.delete"]</button>
+        @if (_error is not null)
+        {
+            <p class="text-danger">@_error</p>
+        }
+    </div>
+
+    <h2>@L["automations.webhook"]</h2>
+    <p>@L["automations.webhook_hint"]</p>
+    <button @onclick="CreateHookAsync">@L["automations.webhook_create"]</button>
+    @if (_token is not null)
+    {
+        <p>
+            <code>@_token</code>
+            <br /><em>@L["automations.webhook_once"]</em>
+            <br /><code>POST /api/v1/hooks/@_token</code>
+        </p>
+    }
+
+    <h2>@L["automations.runs"]</h2>
+    @if (_runs.Count == 0)
+    {
+        <p><em>@L["automations.no_runs"]</em></p>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>@L["automations.started"]</th>
+                    <th>@L["automations.status"]</th>
+                    <th>@L["automations.conversation"]</th>
+                    <th>@L["automations.error"]</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in _runs)
+                {
+                    <tr>
+                        <td>@r.StartedAt.LocalDateTime.ToString("g")</td>
+                        <td>@r.Status</td>
+                        <td>
+                            @if (r.ConversationId is { } cid)
+                            {
+                                <a href="/conversations/@cid">@cid.ToString()[..8]</a>
+                            }
+                            else
+                            {
+                                @("—")
+                            }
+                        </td>
+                        <td>@r.Error</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    /// <summary>Id da automation na rota.</summary>
+    [Parameter] public Guid Id { get; set; }
+
+    private AutomationItem? _a;
+    private List<AutomationRunItem> _runs = [];
+    private string? _error, _token;
+    private string? _fName, _fPrompt, _fModel, _fRepo, _fTime;
+    private string _fKind = "interval";
+    private int _fInterval = 60, _fWeekday = 1;
+    private bool _fEnabled = true;
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        _a = await Api.GetAutomationAsync(Id);
+        _runs = (await Api.ListAutomationRunsAsync(Id)).ToList();
+        if (_a is not null)
+        {
+            _fName = _a.Name; _fPrompt = _a.Prompt;
+            _fModel = _a.LlmModel; _fRepo = _a.SelectedRepository;
+            _fKind = _a.ScheduleKind; _fTime = _a.ScheduleTimeUtc;
+            _fInterval = _a.IntervalMinutes;
+            _fWeekday = _a.Weekday ?? 1; _fEnabled = _a.Enabled;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_a is null) { return; }
+        _error = null;
+        var updated = await Api.PatchAutomationAsync(_a.Id, new
+        {
+            name = _fName, prompt = _fPrompt,
+            llm_model = _fModel,
+            selected_repository = _fRepo,
+            schedule_kind = _fKind,
+            schedule_time_utc = _fTime,
+            interval_minutes = _fInterval,
+            weekday = _fKind == "weekly" ? _fWeekday : (int?)null,
+            enabled = _fEnabled,
+        });
+        if (updated is null)
+        {
+            _error = L["automations.update_failed"];
+        }
+        else
+        {
+            _a = updated;
+            Toasts.Success(L["common.saved"]);
+        }
+    }
+
+    private async Task RunNowAsync()
+    {
+        var run = await Api.RunAutomationNowAsync(Id);
+        if (run is null)
+        {
+            Toasts.Warn(L["automations.already_running"]);
+        }
+        else
+        {
+            Toasts.Success(L["automations.fired"]);
+            _runs = (await Api.ListAutomationRunsAsync(Id)).ToList();
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (await Api.DeleteAutomationAsync(Id))
+        {
+            Nav.NavigateTo("/automations");
+        }
+    }
+
+    private async Task CreateHookAsync()
+    {
+        _token = await Api.CreateAutomationHookAsync(Id);
+        if (_token is null)
+        {
+            Toasts.Error(L["automations.update_failed"]);
+        }
+    }
+}

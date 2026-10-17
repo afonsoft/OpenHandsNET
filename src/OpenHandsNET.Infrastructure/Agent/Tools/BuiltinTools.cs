@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Infrastructure.Agent.Subagents;
@@ -353,6 +354,134 @@ public static class BuiltinTools
                 insertions = item.Insertions,
                 deletions = item.Deletions,
             });
+        });
+
+    /// <summary>
+    /// SPEC-47 RF-005: <c>routine</c> — lista/cria/habilita/desabilita/
+    /// deleta automations do owner da conversa (thin adapter sobre
+    /// <see cref="Application.Automations.IAutomationService"/>). Mutações
+    /// são risky — confirmation-mode faz o gate de <c>ask</c>.
+    /// </summary>
+    public static AgentTool Routine() => new(
+        new ToolSchema("routine",
+            "Manage this user's scheduled automations (routines). " +
+            "action=list returns routines; create needs name+prompt+schedule " +
+            "(interval_minutes>=5, or daily/weekly with schedule_time_utc " +
+            "HH:mm, or once); enable/disable/delete need id.",
+            Schema("""
+                {"type":"object","properties":{
+                  "action":{"type":"string",
+                    "enum":["list","create","enable","disable","delete"]},
+                  "id":{"type":"string","description":"Routine id (enable/disable/delete)"},
+                  "name":{"type":"string"},
+                  "prompt":{"type":"string","description":"Initial message for each run"},
+                  "schedule_kind":{"type":"string",
+                    "enum":["interval","daily","weekly","once"]},
+                  "schedule_time_utc":{"type":"string","description":"HH:mm UTC (daily/weekly)"},
+                  "interval_minutes":{"type":"integer"},
+                  "weekday":{"type":"integer","description":"0=Sunday..6 (weekly)"},
+                  "selected_repository":{"type":"string"},
+                  "llm_model":{"type":"string"}},
+                 "required":["action"]}
+                """)),
+        Risky: true,
+        Handler: async (ctx, args, ct) =>
+        {
+            var db = ctx.Services.GetService<
+                OpenHandsNET.Infrastructure.Persistence.AppDbContext>();
+            var svc = ctx.Services.GetService<
+                OpenHandsNET.Application.Automations.IAutomationService>();
+            if (db is null || svc is null)
+            {
+                return ToolResult.Error("automations unavailable");
+            }
+
+            var conv = await db.Conversations.AsNoTracking()
+                .Where(c => c.Id == ctx.ConversationId)
+                .Select(c => new { c.CreatedByUserId, c.OrgId })
+                .FirstOrDefaultAsync(ct);
+            if (conv?.CreatedByUserId is not { } owner
+                || !Guid.TryParse(owner, out var ownerId))
+            {
+                return ToolResult.Error("conversation owner unresolved");
+            }
+
+            var action = args.GetProperty("action").GetString();
+            switch (action)
+            {
+                case "list":
+                {
+                    var items = await svc.ListAsync(ownerId, ct);
+                    return ToolResult.Ok(new
+                    {
+                        routines = items.Select(a => new
+                        {
+                            a.Id, a.Name, a.ScheduleKind, a.Enabled,
+                            a.NextRunAt, a.LastRunAt,
+                        }),
+                    });
+                }
+                case "create":
+                {
+                    var req = new OpenHandsNET.Application.Automations
+                        .AutomationUpsert(
+                            Str(args, "name"), Str(args, "prompt"),
+                            Str(args, "llm_model"),
+                            Str(args, "selected_repository"),
+                            Str(args, "schedule_kind"),
+                            Str(args, "schedule_time_utc"),
+                            Int(args, "interval_minutes"),
+                            Int(args, "weekday"),
+                            Enabled: true, NextRunAt: null);
+                    var (info, error) = await svc.CreateAsync(
+                        req, ownerId, conv.OrgId, ct);
+                    return info is null
+                        ? ToolResult.Error(error ?? "create failed")
+                        : ToolResult.Ok(new
+                        {
+                            info.Id, info.Name, info.NextRunAt,
+                        });
+                }
+                case "enable" or "disable" or "delete":
+                {
+                    if (!Guid.TryParse(Str(args, "id"), out var id))
+                    {
+                        return ToolResult.Error("id required");
+                    }
+
+                    if (action == "delete")
+                    {
+                        return await svc.DeleteAsync(id, ownerId, ct)
+                            ? ToolResult.Ok(new { deleted = id })
+                            : ToolResult.Error("routine not found");
+                    }
+
+                    var (info, error) = await svc.UpdateAsync(id,
+                        new OpenHandsNET.Application.Automations
+                            .AutomationUpsert(null, null, null, null,
+                                null, null, null, null,
+                                Enabled: action == "enable",
+                                NextRunAt: null),
+                        ownerId, ct);
+                    return info is null
+                        ? ToolResult.Error(error ?? "routine not found")
+                        : ToolResult.Ok(new
+                        {
+                            info.Id, info.Enabled, info.NextRunAt,
+                        });
+                }
+                default:
+                    return ToolResult.Error($"unknown action {action}");
+            }
+
+            static string? Str(JsonElement a, string n) =>
+                a.TryGetProperty(n, out var v)
+                && v.ValueKind == JsonValueKind.String
+                    ? v.GetString() : null;
+            static int? Int(JsonElement a, string n) =>
+                a.TryGetProperty(n, out var v)
+                && v.ValueKind == JsonValueKind.Number
+                    ? v.GetInt32() : null;
         });
 
     /// <summary>

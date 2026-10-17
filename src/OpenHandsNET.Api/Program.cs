@@ -266,6 +266,7 @@ app.MapGitEndpoints();
 app.MapCheckpointEndpoints();
 app.MapUploadEndpoints();
 app.MapSkillEndpoints();
+app.MapAutomationEndpoints();
 app.MapHookEndpoints();
 app.MapMcpEndpoints();
 app.MapOpenAiGatewayEndpoints();

@@ -78,6 +78,178 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                     b.ToTable("app_settings", (string)null);
                 });
 
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Automations.AutomationHookRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AutomationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("automation_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("token_hash");
+
+                    b.HasKey("Id")
+                        .HasName("pk_automation_hooks");
+
+                    b.HasIndex("AutomationId")
+                        .HasDatabaseName("ix_automation_hooks_automation_id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_automation_hooks_token_hash");
+
+                    b.ToTable("automation_hooks", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Automations.AutomationRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("enabled");
+
+                    b.Property<int>("IntervalMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("interval_minutes");
+
+                    b.Property<DateTimeOffset?>("LastRunAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_run_at");
+
+                    b.Property<string>("LlmModel")
+                        .HasColumnType("text")
+                        .HasColumnName("llm_model");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<DateTimeOffset?>("NextRunAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_run_at");
+
+                    b.Property<long?>("NextRunAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("next_run_at_ticks");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Prompt")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("prompt");
+
+                    b.Property<string>("ScheduleKind")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("schedule_kind");
+
+                    b.Property<string>("ScheduleTimeUtc")
+                        .HasColumnType("text")
+                        .HasColumnName("schedule_time_utc");
+
+                    b.Property<string>("SelectedRepository")
+                        .HasColumnType("text")
+                        .HasColumnName("selected_repository");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int?>("Weekday")
+                        .HasColumnType("integer")
+                        .HasColumnName("weekday");
+
+                    b.HasKey("Id")
+                        .HasName("pk_automations");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("ix_automations_created_by_user_id");
+
+                    b.HasIndex("Enabled", "NextRunAtTicks")
+                        .HasDatabaseName("ix_automations_enabled_next_run_at_ticks");
+
+                    b.ToTable("automations", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Automations.AutomationRunRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AutomationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("automation_id");
+
+                    b.Property<Guid?>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("text")
+                        .HasColumnName("error");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finished_at");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<long>("StartedAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("started_at_ticks");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_automation_runs");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_automation_runs_status");
+
+                    b.HasIndex("AutomationId", "StartedAtTicks")
+                        .HasDatabaseName("ix_automation_runs_automation_id_started_at_ticks");
+
+                    b.ToTable("automation_runs", (string)null);
+                });
+
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Conversations.ConversationRecord", b =>
                 {
                     b.Property<Guid>("Id")

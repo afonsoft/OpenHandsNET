@@ -127,6 +127,13 @@ public static class DependencyInjection
         services.AddHostedService<
             OpenHandsNET.Infrastructure.Conversations.ConversationStartWorker>();
 
+        // SPEC-47: automations — scheduler de usuário (start-task de
+        // conversa por agenda ou webhook trigger anônimo).
+        services.AddScoped<OpenHandsNET.Application.Automations.IAutomationService,
+            OpenHandsNET.Infrastructure.Automations.AutomationService>();
+        services.AddHostedService<
+            OpenHandsNET.Infrastructure.Automations.AutomationScheduler>();
+
         // Skills & hooks (SPEC-11): skill store + builtin seeder + hook runner.
         services.AddScoped<OpenHandsNET.Application.Skills.ISkillService,
             OpenHandsNET.Infrastructure.Skills.SkillService>();
