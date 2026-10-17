@@ -26,29 +26,57 @@ public sealed class KubernetesOptions
 
     /// <summary>Tamanho do PVC de workspace.</summary>
     public string WorkspacePvcSize { get; set; } = "4Gi";
+
+    /// <summary>
+    /// SPEC-49 RF-001: warm pool por imagem — formato
+    /// <c>imgA:2;imgB:1</c> (default vazio = desligado; o reconciler do
+    /// <see cref="WarmPoolService"/> mantém N pods dormant por imagem).
+    /// </summary>
+    public string WarmPoolImages { get; set; } = "";
+
+    /// <summary>TTL de pod warm não-claimed (orphan sweep; default 30min).</summary>
+    public int WarmPodTtlMinutes { get; set; } = 30;
 }
 
 /// <summary>
-/// SPEC-37: <see cref="ISandboxEngine"/> sobre Kubernetes — 1 pod por
-/// sandbox (Sysbox p/ DinD), PVC por workspace. Selecionado por
-/// <c>Sandbox:Provider=kubernetes</c>; também pode viver atrás do
-/// runtime-api (SPEC-35). Warm-pool fica fora de escopo no MVP k8s
-/// (claim devolve null → cold start).
+/// SPEC-37 + SPEC-49: <see cref="ISandboxEngine"/> sobre Kubernetes — 1 pod
+/// por sandbox (Sysbox p/ DinD), PVC por workspace.
+/// <para>
+/// SPEC-49 RF-002: pods não são pausáveis/restartáveis — sleep e stop
+/// fazem snapshot do <see cref="V1Pod"/> serializado num ConfigMap
+/// <c>ohn-sleep-{name}</c> e deletam o pod; o PVC de workspace
+/// (<c>ohn-ws-*</c>) é retido. Resume/start recria o pod a partir do
+/// snapshot montado sobre o mesmo PVC → workspace preservado.
+/// </para>
+/// <para>
+/// SPEC-49 RF-001: warm claim — pod names/volumes são imutáveis, então o
+/// claim deleta o pod warm e o recria sob <c>SandboxName</c> com as
+/// labels de claim e a PVC da conversa (imagem já puxada no node →
+/// claim em ~segundos, deferred-init via <c>/api/init</c> igual ao
+/// provider Docker).
+/// </para>
 /// </summary>
 public sealed class KubernetesSandboxEngine(
     IOptions<SandboxOptions> options,
     IOptions<KubernetesOptions> k8sOptions,
-    ILogger<KubernetesSandboxEngine> logger) : ISandboxEngine
+    ILogger<KubernetesSandboxEngine> logger,
+    IKubernetes? kubernetes = null) : ISandboxEngine
 {
-    private readonly IKubernetes _k8s = new Kubernetes(
+    private readonly IKubernetes _k8s = kubernetes ?? new Kubernetes(
         k8sOptions.Value.KubeconfigPath is { } kc
             ? KubernetesClientConfiguration.BuildConfigFromConfigFile(kc)
             : KubernetesClientConfiguration.InClusterConfig());
 
     private string Ns => k8sOptions.Value.Namespace;
 
+    private static string SleepConfigMapName(string podName) =>
+        $"ohn-sleep-{podName}";
+
     /// <inheritdoc />
     public bool IsRemote => false;
+
+    /// <inheritdoc />
+    public bool SupportsPause => true;
 
     /// <inheritdoc />
     public async Task<EngineSandboxInfo> CreateAndStartAsync(
@@ -102,20 +130,7 @@ public sealed class KubernetesSandboxEngine(
         {
             var pvc = $"ohn-ws-{convId:N}";
             await EnsurePvcAsync(pvc, ct);
-            pod.Spec.Volumes =
-            [
-                new V1Volume
-                {
-                    Name = "workspace",
-                    PersistentVolumeClaim =
-                        new V1PersistentVolumeClaimVolumeSource
-                        {
-                            ClaimName = pvc,
-                        },
-                },
-            ];
-            pod.Spec.Containers[0].VolumeMounts =
-                [new V1VolumeMount("/workspace", "workspace")];
+            AttachWorkspace(pod, pvc);
         }
 
         var created = await _k8s.CoreV1
@@ -123,15 +138,38 @@ public sealed class KubernetesSandboxEngine(
         return ToInfo(created);
     }
 
+    private static void AttachWorkspace(V1Pod pod, string pvc)
+    {
+        pod.Spec.Volumes =
+        [
+            new V1Volume
+            {
+                Name = "workspace",
+                PersistentVolumeClaim =
+                    new V1PersistentVolumeClaimVolumeSource
+                    {
+                        ClaimName = pvc,
+                    },
+            },
+        ];
+        pod.Spec.Containers[0].VolumeMounts =
+            [new V1VolumeMount("/workspace", "workspace")];
+    }
+
     /// <inheritdoc />
     public async Task<EngineSandboxInfo?> InspectAsync(
         string name, CancellationToken ct)
     {
+        var pod = await ReadPodAsync(name, ct);
+        return pod is null ? null : ToInfo(pod);
+    }
+
+    private async Task<V1Pod?> ReadPodAsync(string name, CancellationToken ct)
+    {
         try
         {
-            var pod = await _k8s.CoreV1.ReadNamespacedPodAsync(
+            return await _k8s.CoreV1.ReadNamespacedPodAsync(
                 name, Ns, cancellationToken: ct);
-            return ToInfo(pod);
         }
         catch (k8s.Autorest.HttpOperationException e)
             when (e.Response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -161,31 +199,296 @@ public sealed class KubernetesSandboxEngine(
             .Select(ToInfo).ToList();
 
     /// <inheritdoc />
-    public Task<EngineWarmClaim?> ClaimWarmAsync(
-        WarmClaimRequest request, CancellationToken ct) =>
-        // MVP k8s: sem warm pool — cold start sempre.
-        Task.FromResult<EngineWarmClaim?>(null);
+    public async Task<EngineWarmClaim?> ClaimWarmAsync(
+        WarmClaimRequest request, CancellationToken ct)
+    {
+        // Free slot: pod ohn-pool-* warm servindo a imagem pedida.
+        var pool = (await _k8s.CoreV1.ListNamespacedPodAsync(Ns,
+            labelSelector: $"{EngineLabels.Managed}=true"
+                + $",{EngineLabels.Pool}=warm"
+                + $",{EngineLabels.PoolKey}={request.Image}",
+            cancellationToken: ct)).Items;
+        var free = pool.FirstOrDefault(p => p.Spec is not null);
+        if (free is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var initKey = free.Metadata.Labels is { } l
+                && l.TryGetValue(EngineLabels.InitKey, out var k)
+                    ? k : null;
+
+            // Pod names/volumes são imutáveis → claim = recriar o pod sob
+            // o nome da sandbox com a PVC da conversa. Imagem já está no
+            // node (pod warm rodou ali) → claim ~segundos (SPEC-17 ≤5s).
+            await _k8s.CoreV1.DeleteNamespacedPodAsync(
+                free.Metadata.Name, Ns, cancellationToken: ct);
+
+            var labels = new Dictionary<string, string>(
+                free.Metadata.Labels ?? new Dictionary<string, string>())
+            {
+                [EngineLabels.Managed] = "true",
+                [EngineLabels.Owner] = options.Value.InstanceOwner,
+            };
+            labels.Remove(EngineLabels.Pool);
+            labels.Remove(EngineLabels.PoolKey);
+            if (request.WorkspaceConversationId is { } convId)
+            {
+                labels[EngineLabels.ConversationId] = convId.ToString();
+            }
+
+            var pod = new V1Pod
+            {
+                Metadata = new V1ObjectMeta
+                {
+                    Name = request.SandboxName,
+                    NamespaceProperty = Ns,
+                    Labels = labels,
+                },
+                Spec = free.Spec,
+            };
+            pod.Spec.NodeName = null; // libera scheduling livre
+            pod.Spec.Volumes = free.Spec.Volumes?
+                .Where(v => v.Name != "workspace").ToList();
+            pod.Spec.Containers[0].VolumeMounts =
+                free.Spec.Containers[0].VolumeMounts?
+                    .Where(m => m.Name != "workspace").ToList();
+
+            if (request.WorkspaceConversationId is { } ws)
+            {
+                var pvc = $"ohn-ws-{ws:N}";
+                await EnsurePvcAsync(pvc, ct);
+                AttachWorkspace(pod, pvc);
+            }
+
+            var created = await _k8s.CoreV1.CreateNamespacedPodAsync(
+                pod, Ns, cancellationToken: ct);
+
+            // Health: espera o podIP (≤5s — imagem warm no node).
+            var claimed = await WaitPodIpAsync(
+                created.Metadata.Name,
+                TimeSpan.FromSeconds(5), ct);
+            return new EngineWarmClaim(
+                created.Metadata.Name, initKey,
+                claimed?.Status?.PodIP is { } ip
+                    ? new Uri($"http://{ip}:8000") : null);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            logger.LogWarning(e,
+                "warm claim of {Pod} failed — pool self-heals",
+                free.Metadata.Name);
+            try
+            {
+                await _k8s.CoreV1.DeleteNamespacedPodAsync(
+                    free.Metadata.Name, Ns, cancellationToken: ct);
+            }
+            catch (Exception)
+            {
+                // best-effort; sweep cobre restos
+            }
+
+            return null;
+        }
+    }
+
+    private async Task<V1Pod?> WaitPodIpAsync(
+        string name, TimeSpan budget, CancellationToken ct)
+    {
+        var deadline = DateTimeOffset.UtcNow + budget;
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            var pod = await ReadPodAsync(name, ct);
+            if (pod?.Status?.PodIP is not null)
+            {
+                return pod;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(250), ct);
+        }
+
+        return await ReadPodAsync(name, ct);
+    }
 
     /// <inheritdoc />
-    public async Task PauseAsync(string name, CancellationToken ct) =>
-        // K8s não tem pause nativo — suspend via annotation é no-op aqui;
-        // SandboxService já tem fallback p/ stop.
-        throw new SandboxEngineException("pause unsupported on kubernetes");
+    public async Task PauseAsync(string name, CancellationToken ct)
+    {
+        // SPEC-49 RF-002: sem cgroup pause em pod — snapshot do spec no
+        // ConfigMap + delete; o PVC de workspace é retido (resume recria).
+        var pod = await ReadPodAsync(name, ct)
+            ?? throw new SandboxEngineException(
+                $"pod {name} not found", notFound: true);
+        await SaveSnapshotAsync(pod, ct);
+        await _k8s.CoreV1.DeleteNamespacedPodAsync(
+            name, Ns, gracePeriodSeconds: 5, cancellationToken: ct);
+        logger.LogInformation(
+            "pod {Pod} slept (snapshot {Cm}, PVC retained)", name,
+            SleepConfigMapName(name));
+    }
 
     /// <inheritdoc />
     public Task UnpauseAsync(string name, CancellationToken ct) =>
-        Task.CompletedTask;
+        RecreateFromSnapshotAsync(name, ct);
 
     /// <inheritdoc />
     public Task StartAsync(string name, CancellationToken ct) =>
-        // Pods são criados running; restart de um parado = falha do
-        // chamador para recriar (K8s pods não são restartáveis).
-        Task.CompletedTask;
+        RecreateFromSnapshotAsync(name, ct);
+
+    private async Task RecreateFromSnapshotAsync(
+        string name, CancellationToken ct)
+    {
+        // Já running → idempotente (service pode chamar unpause+start).
+        var existing = await ReadPodAsync(name, ct);
+        if (existing is not null)
+        {
+            return;
+        }
+
+        var cmName = SleepConfigMapName(name);
+        V1ConfigMap cm;
+        try
+        {
+            cm = await _k8s.CoreV1.ReadNamespacedConfigMapAsync(
+                cmName, Ns, cancellationToken: ct);
+        }
+        catch (k8s.Autorest.HttpOperationException e)
+            when (e.Response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            throw new SandboxEngineException(
+                $"pod {name} gone and no sleep snapshot", notFound: true);
+        }
+
+        if (!cm.Data.TryGetValue("pod.json", out var json))
+        {
+            throw new SandboxEngineException(
+                $"sleep snapshot {cmName} missing pod.json", notFound: true);
+        }
+
+        var pod = KubernetesJson.Deserialize<V1Pod>(json);
+        pod.Metadata.ResourceVersion = null;
+        pod.Metadata.Uid = null;
+        pod.Status = null;
+        pod.Spec.NodeName = null; // scheduling livre no wake
+        var created = await _k8s.CoreV1.CreateNamespacedPodAsync(
+            pod, Ns, cancellationToken: ct);
+        await _k8s.CoreV1.DeleteNamespacedConfigMapAsync(
+            cmName, Ns, cancellationToken: ct);
+
+        // Wake: espera Running (scheduling + imagem já no node ~segundos);
+        // service ResumeAsync inspeciona e espera state=running.
+        _ = await WaitRunningAsync(created.Metadata.Name,
+            TimeSpan.FromSeconds(60), ct);
+        logger.LogInformation("pod {Pod} woke from snapshot {Cm}",
+            name, cmName);
+    }
+
+    private async Task<V1Pod?> WaitRunningAsync(
+        string name, TimeSpan budget, CancellationToken ct)
+    {
+        var deadline = DateTimeOffset.UtcNow + budget;
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            var pod = await ReadPodAsync(name, ct);
+            if (pod?.Status?.Phase == "Running")
+            {
+                return pod;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(500), ct);
+        }
+
+        return await ReadPodAsync(name, ct);
+    }
+
+    private async Task SaveSnapshotAsync(V1Pod pod, CancellationToken ct)
+    {
+        var clean = new V1Pod
+        {
+            Metadata = new V1ObjectMeta
+            {
+                Name = pod.Metadata.Name,
+                NamespaceProperty = Ns,
+                Labels = pod.Metadata.Labels is null
+                    ? null : new Dictionary<string, string>(
+                        pod.Metadata.Labels),
+                Annotations = pod.Metadata.Annotations is null
+                    ? null : new Dictionary<string, string>(
+                        pod.Metadata.Annotations),
+            },
+            Spec = pod.Spec,
+        };
+        var cm = new V1ConfigMap
+        {
+            Metadata = new V1ObjectMeta
+            {
+                Name = SleepConfigMapName(pod.Metadata.Name),
+                NamespaceProperty = Ns,
+                Labels = new Dictionary<string, string>
+                {
+                    [EngineLabels.Managed] = "true",
+                    [EngineLabels.Role] = "sleep-snapshot",
+                },
+            },
+            Data = new Dictionary<string, string>
+            {
+                ["pod.json"] = KubernetesJson.Serialize(clean),
+            },
+        };
+        try
+        {
+            await _k8s.CoreV1.CreateNamespacedConfigMapAsync(
+                cm, Ns, cancellationToken: ct);
+        }
+        catch (k8s.Autorest.HttpOperationException e)
+            when (e.Response.StatusCode
+                == System.Net.HttpStatusCode.Conflict)
+        {
+            await _k8s.CoreV1.ReplaceNamespacedConfigMapAsync(
+                cm, cm.Metadata.Name, Ns, cancellationToken: ct);
+        }
+    }
 
     /// <inheritdoc />
-    public async Task StopAsync(string name, CancellationToken ct) =>
+    public async Task StopAsync(string name, CancellationToken ct)
+    {
+        var pod = await ReadPodAsync(name, ct);
+        if (pod is null)
+        {
+            // Sem pod e sem snapshot = gone de verdade (service marca
+            // Missing). Snapshot presente = já dormindo → idempotente.
+            var cm = await ReadConfigMapAsync(SleepConfigMapName(name), ct);
+            if (cm is not null)
+            {
+                return;
+            }
+
+            throw new SandboxEngineException(
+                $"pod {name} not found", notFound: true);
+        }
+
+        // Stop também preserva workspace: snapshot + delete (resume =
+        // StartAsync recria — paridade semântica com docker stop/start).
+        await SaveSnapshotAsync(pod, ct);
         await _k8s.CoreV1.DeleteNamespacedPodAsync(
             name, Ns, gracePeriodSeconds: 5, cancellationToken: ct);
+    }
+
+    private async Task<V1ConfigMap?> ReadConfigMapAsync(
+        string name, CancellationToken ct)
+    {
+        try
+        {
+            return await _k8s.CoreV1.ReadNamespacedConfigMapAsync(
+                name, Ns, cancellationToken: ct);
+        }
+        catch (k8s.Autorest.HttpOperationException e)
+            when (e.Response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
 
     /// <inheritdoc />
     public async Task RemoveAsync(string name, CancellationToken ct)
@@ -194,6 +497,17 @@ public sealed class KubernetesSandboxEngine(
         {
             await _k8s.CoreV1.DeleteNamespacedPodAsync(
                 name, Ns, cancellationToken: ct);
+        }
+        catch (k8s.Autorest.HttpOperationException e)
+            when (e.Response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            // idempotent
+        }
+
+        try
+        {
+            await _k8s.CoreV1.DeleteNamespacedConfigMapAsync(
+                SleepConfigMapName(name), Ns, cancellationToken: ct);
         }
         catch (k8s.Autorest.HttpOperationException e)
             when (e.Response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -260,6 +574,7 @@ public sealed class KubernetesSandboxEngine(
             pod.Metadata.Labels is null
                 ? new Dictionary<string, string>()
                 : new Dictionary<string, string>(pod.Metadata.Labels),
-            ip is null ? null : new Uri($"http://{ip}:8000"));
+            ip is null ? null : new Uri($"http://{ip}:8000"),
+            pod.Metadata.CreationTimestamp);
     }
 }

@@ -1,18 +1,85 @@
-# SPEC-37 defaults — minimal k8s deployment.
+# openhandsnet — production-grade defaults (SPEC-37 + SPEC-49).
+# Secrets NUNCA aqui — use secrets.existingSecret / postgres.externalSecret*.
+
 image:
   repository: openhandsnet
   tag: latest
+  pullPolicy: IfNotPresent
+
 runtimeApi:
   repository: openhandsnet-runtime-api
   tag: latest
+  # O runtime-api só é deployado em modo split (provider=remote, daemons
+  # Docker externos). Em provider=kubernetes o Api orquestra os pods
+  # in-cluster — runtime-api pode ficar desligado.
+  enabled: false
+
 sandbox:
-  provider: kubernetes
+  provider: kubernetes          # docker | kubernetes | remote
   namespace: openhandsnet-sandboxes
   runtimeClassName: sysbox-runc   # Sysbox p/ DinD nos pods-agente
   workspaceStorageClass: ""       # default do cluster
   workspacePvcSize: 4Gi
+  warmPoolImages: ""              # "img:2;outra:1" — dormant pods/imagem
+
 cache:
-  provider: memory                # redis quando replicas > 1
+  provider: memory              # redis quando deployment.replicas > 1
+
 deployment:
   replicas: 1
+
+# Ingress unificado: app|auth|llm-proxy|runtime.<baseDomain>.
+ingress:
+  enabled: true
+  className: nginx                # nginx | traefik | ...
+  baseDomain: example.com
+  tls: true
+  tlsSecretName: openhandsnet-tls # vazio = um secret por host gerado
+                                  # pelo controller/cert-manager
+  certManagerIssuer: ""           # ex.: letsencrypt-prod → annotation
+  annotations: {}                 # annotations extras do controller
+  sessionAffinity: true           # SignalR sticky (cookie affinity)
+
+# HPA do Api por CPU (sessão SignalR é sticky via ingress affinity).
+hpa:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 4
+  targetCpuUtilization: 70
+
+# Postgres: produção = externalSecret (DSN nunca em values);
+# dev = postgres.dev.enabled sobe um pod descartável.
+postgres:
+  enabled: false
+  # Produção: secret existente com a DSN completa.
+  externalSecretName: ""          # ex.: openhandsnet-postgres-dsn
+  externalSecretKey: "dsn"
+  dev:
+    enabled: false                # DEV ONLY — sem HA/backup
+    password: "openhandsnet-dev"  # dev only — trocar fora de dev
+
+# Secrets de aplicação (LLM keys, connection strings…): referência a
+# Secret gerenciado fora do chart — nada de secret em values.
+secrets:
+  existingSecret: ""              # envFrom secretRef quando setado
+
+# Resources por Deployment — override completo via values.
+resources:
+  api:
+    requests: { cpu: 250m, memory: 512Mi }
+    limits:   { cpu: "1",  memory: 1Gi }
+  runtimeApi:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+  valkey:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits:   { cpu: 250m, memory: 256Mi }
+  postgresDev:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 1Gi }
+
+networkPolicy:
+  enabled: true                   # default-deny ingress interno +
+                                  # allowlist api→deps (SPEC-49)
+
 apiEnv: []                        # env extra do Api: [{name, value}]

@@ -1,4 +1,4 @@
-# SPEC-37 RF-004: Api Deployment + Service.
+# SPEC-37/49: Api Deployment + Service — hosta o WASM + REST + SignalR.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -18,12 +18,21 @@ spec:
         app.kubernetes.io/name: openhandsnet
         app.kubernetes.io/component: api
     spec:
+      {{- if eq .Values.sandbox.provider "kubernetes" }}
+      serviceAccountName: openhandsnet-runtime
+      {{- end }}
       containers:
         - name: api
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
               containerPort: 8080
+          {{- if .Values.secrets.existingSecret }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.secrets.existingSecret }}
+          {{- end }}
           env:
             - name: OPENHANDSNET_Sandbox__Provider
               value: "{{ .Values.sandbox.provider }}"
@@ -33,9 +42,32 @@ spec:
               value: "{{ .Values.deployment.replicas }}"
             - name: OPENHANDSNET_RuntimeApi__BaseUrl
               value: "http://openhandsnet-runtime-api:8090"
+            {{- if eq .Values.sandbox.provider "kubernetes" }}
+            - name: OPENHANDSNET_Sandbox__Kubernetes__Namespace
+              value: "{{ .Values.sandbox.namespace }}"
+            - name: OPENHANDSNET_Sandbox__Kubernetes__RuntimeClassName
+              value: "{{ .Values.sandbox.runtimeClassName }}"
+            - name: OPENHANDSNET_Sandbox__Kubernetes__WorkspaceStorageClass
+              value: "{{ .Values.sandbox.workspaceStorageClass }}"
+            - name: OPENHANDSNET_Sandbox__Kubernetes__WorkspacePvcSize
+              value: "{{ .Values.sandbox.workspacePvcSize }}"
+            - name: OPENHANDSNET_Sandbox__Kubernetes__WarmPoolImages
+              value: "{{ .Values.sandbox.warmPoolImages }}"
+            {{- end }}
             {{- if eq .Values.cache.provider "redis" }}
             - name: OPENHANDSNET_Cache__Redis__ConnectionString
               value: "openhandsnet-valkey:6379"
+            {{- end }}
+            {{- if and .Values.postgres.enabled .Values.postgres.externalSecretName }}
+            # Produção: DSN via secretKeyRef — nunca em values/planejado.
+            - name: OPENHANDSNET_ConnectionStrings__Default
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.externalSecretName }}
+                  key: {{ .Values.postgres.externalSecretKey }}
+            {{- else if and .Values.postgres.enabled .Values.postgres.dev.enabled }}
+            - name: OPENHANDSNET_ConnectionStrings__Default
+              value: "Host=openhandsnet-postgres;Database=openhandsnet;Username=openhandsnet;Password={{ .Values.postgres.dev.password }}"
             {{- end }}
             {{- if .Values.apiEnv }}
             {{- range .Values.apiEnv }}
@@ -56,12 +88,7 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 20
           resources:
-            requests:
-              cpu: 250m
-              memory: 512Mi
-            limits:
-              cpu: "1"
-              memory: 1Gi
+            {{- toYaml .Values.resources.api | nindent 12 }}
 ---
 apiVersion: v1
 kind: Service

@@ -37,6 +37,13 @@ public interface ISandboxEngine
     /// </summary>
     Task<EngineWarmClaim?> ClaimWarmAsync(WarmClaimRequest request, CancellationToken ct);
 
+    /// <summary>
+    /// SPEC-49 RF-002: engine reports real pause/sleep support — Docker
+    /// (cgroup pause), Kubernetes (snapshot+recreate sobre PVC), remote
+    /// (delega ao engine do runtime-api).
+    /// </summary>
+    bool SupportsPause { get; }
+
     /// <summary>docker pause (memory-preserving).</summary>
     Task PauseAsync(string containerId, CancellationToken ct);
 
@@ -86,7 +93,9 @@ public sealed record EngineSandboxInfo(
     string? Error,
     IReadOnlyDictionary<string, string> Labels,
     // AgentUrl: reachable agent base URL when the image carries one.
-    Uri? AgentUrl);
+    Uri? AgentUrl,
+    // CreatedAt: container/pod creation time — warm-pool TTL (SPEC-49).
+    DateTimeOffset? CreatedAt = null);
 
 /// <summary>Warm-pool claim input.</summary>
 public sealed record WarmClaimRequest(

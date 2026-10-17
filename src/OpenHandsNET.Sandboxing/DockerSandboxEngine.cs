@@ -27,6 +27,9 @@ public sealed class DockerSandboxEngine(
     public bool IsRemote => false;
 
     /// <inheritdoc />
+    public bool SupportsPause => true;
+
+    /// <inheritdoc />
     public async Task<EngineSandboxInfo> CreateAndStartAsync(
         EngineCreateRequest request, CancellationToken ct)
     {
@@ -431,7 +434,8 @@ public sealed class DockerSandboxEngine(
         c.ID, c.State, null,
         c.Labels is null
             ? new Dictionary<string, string>()
-            : new Dictionary<string, string>(c.Labels), null);
+            : new Dictionary<string, string>(c.Labels), null,
+        c.Created == default ? null : c.Created);
 
     private static NetworkingConfig InternalNetworking(string net) => new()
     {
