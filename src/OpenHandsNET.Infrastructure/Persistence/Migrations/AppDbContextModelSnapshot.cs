@@ -1456,6 +1456,63 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
 
                     b.ToTable("sandbox_specs", (string)null);
                 });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Security.SecurityPolicyRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AnalyzerOverride")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("analyzer_override");
+
+                    b.Property<bool?>("AskMcpTools")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ask_mcp_tools");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("MinConfirmRisk")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("min_confirm_risk");
+
+                    b.Property<Guid>("OrgId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Preset")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("preset");
+
+                    b.Property<bool?>("ResumeStrict")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("resume_strict");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_by_user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_security_policies");
+
+                    b.HasIndex("OrgId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_security_policies_org_id");
+
+                    b.ToTable("security_policies", (string)null);
+                });
 #pragma warning restore 612, 618
         }
     }

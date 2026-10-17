@@ -38,3 +38,40 @@ effectively root on the host.
 - Logs carry `trace_id`, `conversation_id`, `service` — never
   credentials.
 - If needed, protect `/metrics` behind a reverse proxy with auth.
+
+## Per-org security policies (SPEC-48)
+
+Each organization has a `security_policy` (`security_policies` table,
+one row per org) governing the agent's confirmation gate:
+
+- **`preset`**: `permissive` | `balanced` (default) | `strict`.
+  - `balanced`: `pattern` analyzer, confirmation only on `high` risk,
+    `mcp__*` keeps the guardrail floor (credential boundary).
+  - `strict`: LLM analyzer (falls back to `pattern` + warning when no
+    provider is configured), confirmation on `medium`+, `mcp__*` always
+    asks.
+  - `permissive`: analyzer off, confirmation only on `high` —
+    **explicit opt-out** that also relaxes the MCP floor.
+- **Per-field overrides** (beat the preset): `analyzer_override`
+  (`pattern`/`llm`/`off`), `ask_mcp_tools`, `min_confirm_risk`
+  (`low`/`medium`/`high`), `resume_strict`.
+
+API: `GET|PUT /api/v1/organizations/{id}/security-policy` (members can
+read; writes require `perm:edit_org_settings`; `PUT` with a null body
+resets to `balanced`). Every write audits `security_policy_updated`.
+The policy is resolved once per run and cached for 60s via
+`IDistributedCache`.
+
+`security_risk` diagnostics carry `policy=<preset>, min_confirm=<…>`
+for decision observability.
+
+### Fail-closed resume
+
+- `AgentLlm:ResumeEnforcement` = `open` (default) | `strict`
+  (`AgentLlm:StrictResume=true` is the legacy alias), and/or
+  `resume_strict=true` in the org policy (org override beats global).
+- In `strict`: resuming a run whose tool contract lost tools emits an
+  `agent_diagnostic` `code=resume_drift`, `severity=error` and the run
+  ends `Error` — fail-closed. **Added** tools do not block.
+- In `open` (default): the same drift emits `resume_drift` with
+  `severity=warning` and continues (pre-SPEC-48 behaviour).

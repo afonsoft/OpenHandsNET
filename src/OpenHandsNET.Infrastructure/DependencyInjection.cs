@@ -302,6 +302,15 @@ public static class DependencyInjection
                         new OpenHandsNET.Infrastructure.Agent.Security
                             .PatternSecurityAnalyzer();
         });
+        // SPEC-48 RF-001: política de segurança por org — presets +
+        // overrides, cache distribuído (TTL 60s) com invalidação no write.
+        services.AddScoped<
+            OpenHandsNET.Application.Agent.ISecurityPolicyService>(sp =>
+            new OpenHandsNET.Infrastructure.Security.SecurityPolicyService(
+                sp.GetRequiredService<OpenHandsNET.Infrastructure.Persistence
+                    .AppDbContext>(),
+                sp.GetService<Microsoft.Extensions.Caching.Distributed
+                    .IDistributedCache>()));
         // SPEC-33 RF-003: secret store criptografado (DataProtection) —
         // valores resolvem só na borda do sandbox.
         services.AddScoped<OpenHandsNET.Application.Contracts.ISecretStore,
