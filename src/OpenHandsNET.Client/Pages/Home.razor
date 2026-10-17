@@ -1,6 +1,7 @@
 @page "/"
 @using OpenHandsNET.Client.Services
 @inject OpenHandsNetApiClient Api
+@inject LocalizationService L
 @inject NavigationManager Nav
 @implements IDisposable
 
@@ -8,19 +9,19 @@
 
 <div class="home-wrap">
     <h1>OpenHandsNET</h1>
-    <p class="sub">Agent-driven software development — cloud &amp; self-hosted.</p>
+    <p class="sub">@L["home.subtitle"]</p>
 
     <div class="new-conv">
-        <ChatComposer Placeholder="Descreva a tarefa para o agente…"
+        <ChatComposer Placeholder="@L["composer.placeholder_new"]"
                       DraftKey="new" OnSend="OnComposerSendAsync" />
         <div class="row">
-            <input placeholder="selected_repository (opcional — ex.: owner/repo ou https://…)"
+            <input placeholder="@L["home.repository_placeholder"]"
                    @bind="_repository" @bind:event="oninput" />
-            <label title="Pedir confirmação antes de executar ações">
-                <input type="checkbox" @bind="_confirmMode" /> confirmação
+            <label title="@L["home.confirm_title"]">
+                <input type="checkbox" @bind="_confirmMode" /> @L["home.confirmation"]
             </label>
             <button class="primary" @onclick="StartAsync" disabled="@_starting">
-                @(_starting ? "Iniciando…" : "Run")
+                @(_starting ? L["home.starting"] : L["home.run"])
             </button>
         </div>
         @if (_progress.Count > 0)
@@ -43,11 +44,11 @@
     <div class="conv-list">
         @if (_conversations is null)
         {
-            <p class="sub">Carregando…</p>
+            <p class="sub">@L["common.loading"]</p>
         }
         else if (_conversations.Count == 0)
         {
-            <p class="sub">Nenhuma conversa ainda — crie a primeira acima.</p>
+            <p class="sub">@L["home.empty"]</p>
         }
         else
         {
@@ -57,7 +58,7 @@
                     <span class="badge @BadgeClass(c.ExecutionStatus)">
                         <span class="dot"></span>@c.ExecutionStatus
                     </span>
-                    <span class="title">@(c.Title ?? "untitled")</span>
+                    <span class="title">@(c.Title ?? L["conversation.untitled"])</span>
                     <span class="meta">@(c.SelectedRepository ?? "")</span>
                     <span class="meta">@c.UpdatedAt.LocalDateTime.ToString("g")</span>
                 </a>
@@ -135,7 +136,7 @@
                 _poll?.Stop();
                 await InvokeAsync(() =>
                 {
-                    _error = t.Detail ?? "start task failed";
+                    _error = t.Detail ?? L["home.start_failed"];
                     _starting = false;
                     StateHasChanged();
                 });

@@ -3,7 +3,7 @@
 @using System.Text.Json
 @inherits AdminPageBase
 
-<PageTitle>admin · users</PageTitle>
+<PageTitle>@L["admin.title"] · @L["admin.nav_users"]</PageTitle>
 
 @if (Checking || !Allowed)
 {
@@ -12,15 +12,15 @@
 else
 {
     <div class="settings-wrap admin-wrap">
-        <h1>Users <span class="sub">(@_total total)</span></h1>
+        <h1>@L["admin.users_title"] <span class="sub">(@L.T("admin.total", ("count", _total.ToString())))</span></h1>
         <AdminNav />
         @if (Error is not null) { <p class="admin-error">@Error</p> }
         @if (_notice is not null) { <p class="admin-notice">@_notice</p> }
 
         <div class="field admin-toolbar">
-            <input placeholder="search email/name…" @bind="_q"
+            <input placeholder="@L["admin.search_users"]" @bind="_q"
                    @bind:event="oninput" @onkeydown="OnSearchKey" />
-            <button @onclick="() => LoadPageAsync(1)">Search</button>
+            <button @onclick="() => LoadPageAsync(1)">@L["common.search"]</button>
         </div>
 
         @foreach (var u in _users)
@@ -30,21 +30,21 @@ else
                 <span class="name">@Str(u, "email")</span>
                 <span>@Str(u, "display_name")</span>
                 <button class="danger" @onclick="() => DeleteAsync(uid)">
-                    delete
+                    @L["common.delete"]
                 </button>
             </div>
         }
         @if (_users.Count == 0)
         {
-            <p class="empty-state">no users</p>
+            <p class="empty-state">@L["admin.no_users"]</p>
         }
 
         <div class="admin-pager">
             <button disabled="@(_page <= 1)"
-                    @onclick="() => LoadPageAsync(_page - 1)">‹ prev</button>
-            <span>page @_page</span>
+                    @onclick="() => LoadPageAsync(_page - 1)">‹ @L["common.prev"]</button>
+            <span>@L.T("common.page", ("n", _page.ToString()))</span>
             <button disabled="@(_users.Count < PageSize)"
-                    @onclick="() => LoadPageAsync(_page + 1)">next ›</button>
+                    @onclick="() => LoadPageAsync(_page + 1)">@L["common.next"] ›</button>
         </div>
     </div>
 }
@@ -84,7 +84,7 @@ else
             uid, m => _notice = m);
         if (ok)
         {
-            _notice = "user deleted";
+            _notice = L["admin.user_deleted"];
             await LoadPageAsync(_page);
             _total = await Api.CountUsersAsync();
         }

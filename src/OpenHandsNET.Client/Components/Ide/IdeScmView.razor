@@ -1,26 +1,27 @@
 @using OpenHandsNET.Client.Services
 @using OpenHandsNET.Client.Components.Conversation
 @inject OpenHandsNetApiClient Api
+@inject LocalizationService L
 
 @* SPEC-42 RF-005: SCM view — changes + diff (via callback p/ o editor) +
    commit box → POST /git/commit. *@
 
 <div class="ide-scm">
     <div class="ide-panel-head">
-        <span>SOURCE CONTROL</span>
-        <button title="Refresh" aria-label="Refresh scm"
+        <span>@L["ide.scm_title"]</span>
+        <button title="@L["common.refresh"]" aria-label="@L["ide.scm_refresh"]"
                 @onclick="LoadAsync">
             <Icon Name="refresh" Size="13" />
         </button>
     </div>
 
     <div class="ide-commitbox">
-        <input placeholder="commit message…" @bind="_msg"
+        <input placeholder="@L["ide.commit_placeholder"]" @bind="_msg"
                @bind:event="oninput" @onkeydown="OnKey"
-               aria-label="Commit message" />
+               aria-label="@L["ide.commit_aria"]" />
         <button class="primary" disabled="@(_busy || _msg.Trim().Length == 0)"
-                @onclick="CommitAsync" aria-label="Commit">
-            <Icon Name="check" Size="13" /> Commit
+                @onclick="CommitAsync" aria-label="@L["ide.commit"]">
+            <Icon Name="check" Size="13" /> @L["ide.commit"]
         </button>
     </div>
     @if (_feedback is { } fb)
@@ -30,7 +31,7 @@
 
     @if (_files.Count == 0)
     {
-        <div class="empty-state">no changes</div>
+        <div class="empty-state">@L["ide.no_changes"]</div>
     }
     else
     {

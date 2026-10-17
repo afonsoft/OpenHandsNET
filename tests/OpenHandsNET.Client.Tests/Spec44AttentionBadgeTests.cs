@@ -15,6 +15,11 @@ namespace OpenHandsNET.Client.Tests;
 /// </summary>
 public class Spec44AttentionBadgeTests : TestContext
 {
+    public Spec44AttentionBadgeTests()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        L10nStub.Register(this);
+    }
     private sealed class StubHandler(
         Func<HttpRequestMessage, HttpResponseMessage> fn)
         : HttpMessageHandler
@@ -66,7 +71,7 @@ public class Spec44AttentionBadgeTests : TestContext
         var cut = RenderComponent<AttentionBadge>();
         cut.Find(".attention-count").TextContent.Trim().ShouldBe("2");
         cut.Find("button").GetAttribute("title")!
-            .ShouldContain("confirmation");
+            .ShouldContain("confirmação");
     }
 
     // AC: click dispara OnClick (toggle do filtro na sidebar).

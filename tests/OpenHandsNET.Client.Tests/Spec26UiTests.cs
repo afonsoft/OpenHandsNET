@@ -15,6 +15,7 @@ public class Spec26UiTests : TestContext
     public Spec26UiTests()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        L10nStub.Register(this);
     }
 
     // ---------- MarkdownService ----------

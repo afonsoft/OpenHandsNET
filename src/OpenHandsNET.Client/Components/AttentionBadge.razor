@@ -2,11 +2,12 @@
    no title. Click ativa o filtro "Aguardando você" (OnClick). *@
 @using OpenHandsNET.Client.Services
 @inject AttentionInboxState Inbox
+@inject LocalizationService L
 @implements IDisposable
 
 <button class="attention-badge @(Active ? "active" : "")"
         @onclick="OnClick" title="@Title"
-        aria-label="@($"Aguardando você: {Inbox.Count}")">
+        aria-label="@L.T("attention.badge", ("count", Inbox.Count.ToString()))">
     <Icon Name="bell" Size="16" />
     @if (Inbox.Count > 0)
     {
@@ -21,13 +22,15 @@
     [Parameter] public EventCallback OnClick { get; set; }
 
     private string Title => Inbox.Count == 0
-        ? "Aguardando você"
-        : $"Aguardando você: {Inbox.Count} " +
-          $"({Breakdown})";
+        ? L["attention.badge_empty"]
+        : L.T("attention.badge", ("count", Inbox.Count.ToString())) +
+          $" ({Breakdown})";
 
     private string Breakdown => string.Join(", ",
         Inbox.Items.GroupBy(i => i.Kind)
-            .Select(g => $"{g.Key}: {g.Count()}"));
+            .Select(g => $"{KindLabel(g.Key)}: {g.Count()}"));
+
+    private string KindLabel(string kind) => L[$"attention.kind_{kind}"];
 
     protected override void OnInitialized() =>
         Inbox.Changed += OnChanged;

@@ -21,5 +21,11 @@ builder.Services.AddScoped<ThemeService>();
 builder.Services.AddScoped<ToastService>();
 builder.Services.AddScoped<PaletteService>();
 builder.Services.AddScoped<MarkdownService>();
+// SPEC-46: dicionários JSON i18n/{lang}.json + fallback + Changed.
+builder.Services.AddScoped<LocalizationService>();
 
-await builder.Build().RunAsync();
+var host = builder.Build();
+// Carrega pt-BR/en-US + locale persistido antes do primeiro render.
+await host.Services.GetRequiredService<LocalizationService>()
+    .InitializeAsync();
+await host.RunAsync();

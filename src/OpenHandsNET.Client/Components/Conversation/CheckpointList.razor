@@ -1,18 +1,19 @@
 @using OpenHandsNET.Application.Checkpoints
 @using OpenHandsNET.Client.Services
 @inject OpenHandsNetApiClient Api
+@inject LocalizationService L
 
 @* SPEC-43 RF-004: lista de checkpoints + revert c/ confirmação.
    409 drift mostra conflitos e oferece force. *@
 
 <div class="ckpt-list">
     <div class="ckpt-head">
-        <span>CHECKPOINTS</span>
-        <button title="Snapshot agora" aria-label="Snapshot now"
+        <span>@L["ckpt.title"]</span>
+        <button title="@L["ckpt.snapshot"]" aria-label="@L["ckpt.snapshot"]"
                 disabled="@_busy" @onclick="SnapshotAsync">
             <Icon Name="plus" Size="13" /> snapshot
         </button>
-        <button title="Refresh" aria-label="Refresh checkpoints"
+        <button title="@L["common.refresh"]" aria-label="@L["ckpt.refresh"]"
                 @onclick="LoadAsync">
             <Icon Name="refresh" Size="13" />
         </button>
@@ -20,7 +21,7 @@
 
     @if (_items.Count == 0)
     {
-        <div class="empty-state">no checkpoints yet</div>
+        <div class="empty-state">@L["ckpt.empty"]</div>
     }
     else
     {
@@ -36,10 +37,10 @@
                     </span>
                     <span class="ckpt-ts">@FmtTs(c.Timestamp)</span>
                 </button>
-                <button class="ckpt-revert" title="Revert p/ este estado"
-                        aria-label="Revert to @c.Hash[..7]"
+                <button class="ckpt-revert" title="@L["ckpt.revert_title"]"
+                        aria-label="@L.T("ckpt.revert_to", ("hash", c.Hash[..7]))"
                         @onclick="() => AskRevert(c)">
-                    <Icon Name="refresh" Size="12" /> revert
+                    <Icon Name="refresh" Size="12" /> @L["ckpt.revert"]
                 </button>
             </div>
             @if (_expanded == c.Hash)
@@ -49,7 +50,7 @@
                     {
                         @if (d.Files.Count == 0)
                         {
-                            <div class="ckpt-file">(empty snapshot)</div>
+                            <div class="ckpt-file">@L["ckpt.empty_snapshot"]</div>
                         }
                         @foreach (var f in d.Files.Take(30))
                         {
@@ -61,13 +62,13 @@
                         @if (d.Files.Count > 30)
                         {
                             <div class="ckpt-file">
-                                … @(d.Files.Count - 30) more
+                                … @L.T("ckpt.more", ("count", (d.Files.Count - 30).ToString()))
                             </div>
                         }
                     }
                     else
                     {
-                        <div class="ckpt-file">loading…</div>
+                        <div class="ckpt-file">@L["common.loading"]</div>
                     }
                 </div>
             }
@@ -79,14 +80,13 @@
     {
         <div class="modal-backdrop" @onclick="CancelRevert">
             <div class="modal-card" @onclick:stopPropagation role="dialog"
-                 aria-label="Confirm revert">
-                <h3>Revert to @t.Hash[..7]?</h3>
+                 aria-label="@L["ckpt.confirm_revert"]">
+                <h3>@L.T("ckpt.revert_to_q", ("hash", t.Hash[..7]))</h3>
                 <p>@t.Label</p>
                 @if (_conflicts.Count > 0)
                 {
                     <p class="ckpt-warn">
-                        @_conflicts.Count arquivo(s) mudaram depois deste
-                        checkpoint — revert sobrescreve:
+                        @L.T("ckpt.conflicts", ("count", _conflicts.Count.ToString()))
                     </p>
                     <div class="ckpt-detail">
                         @foreach (var c in _conflicts.Take(20))
@@ -98,15 +98,15 @@
                 @if (_untracked.Count > 0)
                 {
                     <p class="ckpt-note">
-                        @_untracked.Count arquivo(s) novos serão preservados.
+                        @L.T("ckpt.untracked", ("count", _untracked.Count.ToString()))
                     </p>
                 }
                 <div class="modal-actions">
-                    <button @onclick="CancelRevert">cancelar</button>
+                    <button @onclick="CancelRevert">@L["common.cancel"]</button>
                     <button class="primary" disabled="@_busy"
                             @onclick="() =>
                                 DoRevertAsync(force: _conflicts.Count > 0)">
-                        @(_conflicts.Count > 0 ? "revert (force)" : "revert")
+                        @(_conflicts.Count > 0 ? L["ckpt.revert_force"] : L["ckpt.revert"])
                     </button>
                 </div>
             </div>

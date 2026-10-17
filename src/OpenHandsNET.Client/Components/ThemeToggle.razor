@@ -1,10 +1,11 @@
 @* SPEC-26 RF-001: cicla dark → light → system. Ícone reflete o tema ATUAL. *@
 @using OpenHandsNET.Client.Services
 @inject ThemeService Theme
+@inject LocalizationService L
 @implements IDisposable
 
 <button class="icon-btn" @onclick="CycleAsync"
-        title="Theme: @Theme.Theme" aria-label="Toggle theme">
+        title="@L.T("theme.title", ("theme", Theme.Theme))" aria-label="@L["theme.toggle"]">
     <Icon Name="@IconFor()" Size="16" />
 </button>
 

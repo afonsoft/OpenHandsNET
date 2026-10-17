@@ -3,20 +3,21 @@
 @using OpenHandsNET.Client.Services
 @using Microsoft.AspNetCore.SignalR.Client
 @inject ConversationHubClient Hub
+@inject LocalizationService L
 @implements IDisposable
 
 @if (_state is HubConnectionState.Reconnecting)
 {
     <div class="offline-banner" role="alert">
         <Icon Name="spin" Size="14" />
-        <span class="spin-label">reconectando…</span>
+        <span class="spin-label">@L["offline.reconnecting"]</span>
     </div>
 }
 else if (_state is HubConnectionState.Disconnected && _everConnected)
 {
     <div class="offline-banner" role="alert">
         <Icon Name="alert" Size="14" />
-        <span>conexão perdida — tentando reconectar</span>
+        <span>@L["offline.lost"]</span>
     </div>
 }
 

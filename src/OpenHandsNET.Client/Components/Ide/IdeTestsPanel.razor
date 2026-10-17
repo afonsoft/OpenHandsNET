@@ -1,23 +1,24 @@
 @using OpenHandsNET.Client.Services
 @inject OpenHandsNetApiClient Api
+@inject LocalizationService L
 
 @* SPEC-42 RF-008: runner de testes — comando configurável (heurística
    por marker file), exec via POST /exec, output + exit code. *@
 
 <div class="ide-tests">
-    <div class="ide-panel-head"><span>TESTS</span></div>
+    <div class="ide-panel-head"><span>@L["ide.tests_title"]</span></div>
     <div class="ide-commitbox">
         <input @bind="_cmd" @bind:event="oninput"
-               aria-label="Test command" />
+               aria-label="@L["ide.test_command"]" />
         <button class="primary" disabled="@_busy"
-                @onclick="RunAsync" aria-label="Run tests">
+                @onclick="RunAsync" aria-label="@L["ide.run_tests"]">
             <Icon Name="play" Size="13" /> Run
         </button>
     </div>
 
     @if (_busy)
     {
-        <div class="empty-state">running…</div>
+        <div class="empty-state">@L["ide.running"]</div>
     }
     else if (_result is { } r)
     {

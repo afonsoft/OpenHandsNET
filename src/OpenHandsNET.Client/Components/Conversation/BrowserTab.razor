@@ -1,14 +1,15 @@
 @using OpenHandsNET.Client.Services
+@inject LocalizationService L
 
 @if (State.Screenshots.Count == 0)
 {
-    <div class="empty-state">No browser activity yet — screenshots appear here when the agent browses.</div>
+    <div class="empty-state">@L["browser.empty"]</div>
 }
 else
 {
     <div class="browser-view">
         <div class="shot">
-            <img src="data:image/png;base64,@Selected" alt="browser screenshot" />
+            <img src="data:image/png;base64,@Selected" alt="@L["browser.shot_alt"]" />
         </div>
         @if (State.Screenshots.Count > 1)
         {

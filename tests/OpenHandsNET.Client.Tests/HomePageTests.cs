@@ -19,6 +19,7 @@ public class HomePageTests : TestContext
         // SPEC-45: Home renderiza ChatComposer (Toasts/JS; Api por teste).
         JSInterop.Mode = JSRuntimeMode.Loose;
         Services.AddSingleton(new ToastService());
+        L10nStub.Register(this);
     }
 
     private sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> fn)
@@ -51,7 +52,7 @@ public class HomePageTests : TestContext
         cut.WaitForAssertion(() =>
         {
             cut.Markup.ShouldContain("OpenHandsNET");
-            cut.Markup.ShouldContain("Run");
+            cut.Markup.ShouldContain("Executar");
         });
     }
 

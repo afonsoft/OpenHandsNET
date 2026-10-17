@@ -1,6 +1,7 @@
 @* SPEC-26 RF-004: host de toasts — canto inferior direito, dismiss manual. *@
 @using OpenHandsNET.Client.Services
 @inject ToastService Toasts
+@inject LocalizationService L
 @implements IDisposable
 
 <div class="toast-host" role="status" aria-live="polite">
@@ -10,7 +11,7 @@
         <div class="toast @cls" role="alert">
             <Icon Name="@IconFor(t.Severity)" Size="15" />
             <span class="msg">@t.Message</span>
-            <button class="x" aria-label="Dismiss"
+            <button class="x" aria-label="@L["common.dismiss"]"
                     @onclick="() => Toasts.Dismiss(t.Id)">
                 <Icon Name="x" Size="14" />
             </button>

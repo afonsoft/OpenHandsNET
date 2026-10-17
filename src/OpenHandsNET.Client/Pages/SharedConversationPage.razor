@@ -3,21 +3,22 @@
 @using OpenHandsNET.Client.Components.Conversation
 @using OpenHandsNET.Client.Components
 @inject OpenHandsNetApiClient Api
+@inject LocalizationService L
 
-<PageTitle>shared conversation · OpenHandsNET</PageTitle>
+<PageTitle>@L["shared.title"] · OpenHandsNET</PageTitle>
 
 <div class="conv-page">
     <div class="shared-banner">
-        <Icon Name="external" Size="13" /> Shared conversation — view only.
+        <Icon Name="external" Size="13" /> @L["shared.banner"]
     </div>
     <div class="chat-scroll" style="padding:16px">
         @if (_events is null)
         {
-            <div class="ev-card condense">loading…</div>
+            <div class="ev-card condense">@L["common.loading"]</div>
         }
         else if (_events.Count == 0)
         {
-            <div class="empty-state">conversation not found or empty</div>
+            <div class="empty-state">@L["shared.empty"]</div>
         }
         else
         {

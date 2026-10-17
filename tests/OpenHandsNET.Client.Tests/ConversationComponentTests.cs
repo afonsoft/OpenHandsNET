@@ -20,6 +20,7 @@ public class ConversationComponentTests : TestContext
         {
             BaseAddress = new Uri("http://localhost:8080"),
         }));
+        L10nStub.Register(this);
     }
 
     private static ClientEvent Ev(string json) => new()

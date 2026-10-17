@@ -19,6 +19,9 @@ public abstract class AdminPageBase : ComponentBase
     /// <summary>Navigation.</summary>
     [Inject] protected NavigationManager Nav { get; set; } = default!;
 
+    /// <summary>SPEC-46: localização compartilhada das páginas admin.</summary>
+    [Inject] protected LocalizationService L { get; set; } = default!;
+
     /// <summary>True até a checagem de admin terminar.</summary>
     protected bool Checking { get; private set; } = true;
 

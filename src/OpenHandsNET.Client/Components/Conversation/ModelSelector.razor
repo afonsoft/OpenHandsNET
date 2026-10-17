@@ -3,9 +3,10 @@
 @using OpenHandsNET.Client.Services
 @inject OpenHandsNetApiClient Api
 @inject ToastService Toasts
+@inject LocalizationService L
 
 <select class="model-sel" value="@Current" @onchange="OnChange"
-        aria-label="Model" title="Modelo do agente">
+        aria-label="@L["model.aria"]" title="@L["model.title"]">
     @if (_models.Count == 0)
     {
         <option value="@Current">@Current</option>

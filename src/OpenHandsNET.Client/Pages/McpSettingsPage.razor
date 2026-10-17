@@ -2,14 +2,14 @@
 @using OpenHandsNET.Client.Services
 @using System.Text.Json
 @inject OpenHandsNetApiClient Api
+@inject LocalizationService L
 
-<PageTitle>mcp · OpenHandsNET</PageTitle>
+<PageTitle>@L["mcp.title"] · OpenHandsNET</PageTitle>
 
 <div class="settings-wrap">
-    <h1>MCP Servers</h1>
+    <h1>@L["mcp.title"]</h1>
     <p class="sub" style="color:var(--ohn-fg-dim)">
-        Servidores Model Context Protocol — tools externas expostas ao agente
-        como <code>mcp__servidor__tool</code>.
+        @L["mcp.subtitle_pre"] <code>mcp__servidor__tool</code>.
     </p>
 
     @if (_error is not null)
@@ -19,18 +19,18 @@
 
     @if (_servers is null)
     {
-        <p>loading…</p>
+        <p>@L["common.loading"]</p>
     }
     else if (_servers.Count == 0)
     {
-        <p style="color:var(--ohn-fg-dim)">nenhum servidor configurado.</p>
+        <p style="color:var(--ohn-fg-dim)">@L["mcp.empty"]</p>
     }
     else
     {
         <table class="table">
             <thead>
-                <tr><th>name</th><th>transport</th><th>endpoint/command</th>
-                    <th>status</th><th></th></tr>
+                <tr><th>@L["mcp.col_name"]</th><th>@L["mcp.col_transport"]</th><th>@L["mcp.col_endpoint"]</th>
+                    <th>@L["mcp.col_status"]</th><th></th></tr>
             </thead>
             <tbody>
                 @foreach (var s in _servers)
@@ -55,13 +55,13 @@
                             @if (status == "auth_required")
                             {
                                 <a href="/api/v1/mcp/oauth/authorize?server=@name"
-                                   style="margin-left:8px">Authenticate</a>
+                                   style="margin-left:8px">@L["mcp.authenticate"]</a>
                             }
                         </td>
                         <td>
                             <button @onclick="() => ProbeAsync(name)"
-                                    title="probe /mcp/test">probe</button>
-                            <button @onclick="() => DeleteAsync(name)">delete</button>
+                                    title="@L["mcp.probe_title"]">@L["mcp.probe"]</button>
+                            <button @onclick="() => DeleteAsync(name)">@L["common.delete"]</button>
                         </td>
                     </tr>
                     @if (_probeResults.TryGetValue(name, out var pr))
@@ -74,13 +74,13 @@
         </table>
     }
 
-    <h2 style="margin-top:24px">Add server</h2>
+    <h2 style="margin-top:24px">@L["mcp.add_server"]</h2>
     <div class="field">
-        <label>name</label>
+        <label>@L["mcp.col_name"]</label>
         <input @bind="_newName" />
     </div>
     <div class="field">
-        <label>transport</label>
+        <label>@L["mcp.col_transport"]</label>
         <select @bind="_newTransport">
             <option value="stdio">stdio (no sandbox via docker exec)</option>
             <option value="http">streamable http</option>
@@ -90,39 +90,39 @@
     @if (_newTransport == "stdio")
     {
         <div class="field">
-            <label>command (ex.: npx)</label>
+            <label>@L["mcp.command_label"]</label>
             <input @bind="_newCommand" />
         </div>
         <div class="field">
-            <label>args (um por linha)</label>
+            <label>@L["mcp.args_label"]</label>
             <textarea @bind="_newArgs" rows="3" style="width:100%"></textarea>
         </div>
     }
     else
     {
         <div class="field">
-            <label>url (ex.: https://mcp.example.com/mcp)</label>
+            <label>@L["mcp.url_label"]</label>
             <input @bind="_newUrl" />
         </div>
         <div class="field">
-            <label>oauth authorize url (opcional)</label>
+            <label>@L["mcp.oauth_auth"]</label>
             <input @bind="_newOauthAuth" />
         </div>
         <div class="field">
-            <label>oauth token url (opcional)</label>
+            <label>@L["mcp.oauth_token"]</label>
             <input @bind="_newOauthToken" />
         </div>
         <div class="field">
-            <label>oauth client id (opcional)</label>
+            <label>@L["mcp.oauth_client"]</label>
             <input @bind="_newOauthClient" />
         </div>
     }
     <label style="display:flex;gap:6px;align-items:center;margin:8px 0">
         <input type="checkbox" @bind="_newRequireConfirm" />
-        require confirmation (tools passam pelo confirmation_mode)
+        @L["mcp.require_confirm"]
     </label>
     <button class="primary" @onclick="SaveAsync"
-            disabled="@string.IsNullOrWhiteSpace(_newName)">Save server</button>
+            disabled="@string.IsNullOrWhiteSpace(_newName)">@L["mcp.save_server"]</button>
 </div>
 
 @code {
@@ -215,14 +215,13 @@
                 .GetProperty("config");
             var r = await Api.ProbeMcpServerAsync(cfg);
             _probeResults[name] = r.GetProperty("ok").GetBoolean()
-                ? $"ok — {r.GetProperty("tools_count").GetInt32()} tools "
-                    + $"em {r.GetProperty("latency_ms").GetInt64()} ms"
+                ? L.T("mcp.probe_ok", ("count", r.GetProperty("tools_count").GetInt32().ToString()), ("ms", r.GetProperty("latency_ms").GetInt64().ToString()))
                 : $"erro: {(r.TryGetProperty("error", out var e)
-                    ? e.GetString() : "desconhecido")}";
+                    ? e.GetString() : L["mcp.probe_unknown"])}";
         }
         catch (Exception ex)
         {
-            _probeResults[name] = $"probe falhou: {ex.Message}";
+            _probeResults[name] = L.T("mcp.probe_failed", ("error", ex.Message));
         }
     }
 }

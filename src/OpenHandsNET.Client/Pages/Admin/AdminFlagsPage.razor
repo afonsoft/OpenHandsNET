@@ -3,7 +3,7 @@
 @using System.Text.Json
 @inherits AdminPageBase
 
-<PageTitle>admin · feature flags</PageTitle>
+<PageTitle>@L["admin.title"] · @L["admin.nav_flags"]</PageTitle>
 
 @if (Checking || !Allowed)
 {
@@ -12,17 +12,17 @@
 else
 {
     <div class="settings-wrap admin-wrap">
-        <h1>Feature flags</h1>
+        <h1>@L["admin.flags_title"]</h1>
         <AdminNav />
         @if (Error is not null) { <p class="admin-error">@Error</p> }
         @if (_notice is not null) { <p class="admin-notice">@_notice</p> }
 
         <div class="field admin-toolbar">
-            <input placeholder="new flag name…" @bind="_newName"
+            <input placeholder="@L["admin.flag_name"]" @bind="_newName"
                    @bind:event="oninput" />
             <button class="primary" @onclick="CreateAsync"
                     disabled="@(string.IsNullOrWhiteSpace(_newName))">
-                create
+                @L["common.create"]
             </button>
         </div>
 
@@ -35,16 +35,16 @@ else
                 <span class="name">@name</span>
                 <span>@Str(f, "description")</span>
                 <button @onclick="() => ToggleAsync(f, name, !enabled)">
-                    @(enabled ? "on" : "off")
+                    @(enabled ? L["common.on"] : L["common.off"])
                 </button>
                 <button class="danger" @onclick="() => DeleteAsync(name)">
-                    delete
+                    @L["common.delete"]
                 </button>
             </div>
         }
         @if (_flags.Count == 0)
         {
-            <p class="empty-state">no feature flags</p>
+            <p class="empty-state">@L["admin.no_flags"]</p>
         }
     </div>
 }

@@ -1,5 +1,6 @@
 @using OpenHandsNET.Client.Services
 @inject OpenHandsNetApiClient Api
+@inject LocalizationService L
 
 @* SPEC-43 RF-004: checkpoints embutidos acima do git log (fallback
    standalone — na aba IDE vivem dentro do painel SCM). *@
@@ -8,11 +9,11 @@
 <div class="commit-list">
     @if (_commits is null)
     {
-        <div class="empty-state">loading…</div>
+        <div class="empty-state">@L["common.loading"]</div>
     }
     else if (_commits.Count == 0)
     {
-        <div class="empty-state">no commits yet — the agent's git_commit calls appear here</div>
+        <div class="empty-state">@L["commits.empty"]</div>
     }
     else
     {

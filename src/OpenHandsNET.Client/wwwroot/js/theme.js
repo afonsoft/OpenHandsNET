@@ -82,6 +82,11 @@ window.ohnChat = {
     }
 };
 
+// SPEC-46: <html lang> acompanha o idioma ativo (a11y/leitores de tela).
+window.ohnI18n = {
+    setLang(code) { document.documentElement.lang = code || 'pt-BR'; }
+};
+
 // SPEC-45: composer — auto-grow até ~10 linhas + helpers de caret.
 window.ohnComposer = {
     grow(el) {

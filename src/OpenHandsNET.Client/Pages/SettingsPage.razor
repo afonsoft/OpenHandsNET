@@ -4,35 +4,48 @@
 @inject OpenHandsNetApiClient Api
 @inject ThemeService Theme
 @inject ToastService Toasts
+@inject LocalizationService L
 
-<PageTitle>settings · OpenHandsNET</PageTitle>
+<PageTitle>@L["settings.title"] · OpenHandsNET</PageTitle>
 
 <div class="settings-wrap">
-    <h1>Settings</h1>
+    <h1>@L["settings.title"]</h1>
 
     @* SPEC-26 RF-001: aparência — tema persiste local + /users/me/preferences. *@
-    <h3>Appearance</h3>
+    <h3>@L["settings.appearance"]</h3>
     <div class="field">
-        <label>theme</label>
+        <label>@L["settings.theme"]</label>
         <select value="@Theme.Theme" @onchange="OnThemeChange"
-                aria-label="Theme">
-            <option value="dark">dark</option>
-            <option value="light">light</option>
-            <option value="system">system (prefers-color-scheme)</option>
+                aria-label="@L["settings.theme"]">
+            <option value="dark">@L["settings.theme_dark"]</option>
+            <option value="light">@L["settings.theme_light"]</option>
+            <option value="system">@L["settings.theme_system"]</option>
+        </select>
+    </div>
+    @* SPEC-46 RF-004: idioma — aplica imediato + localStorage +
+       merge em /users/me/preferences {locale}. *@
+    <div class="field">
+        <label>@L["settings.language"]</label>
+        <select value="@L.Language" @onchange="OnLanguageChange"
+                aria-label="@(L["settings.language"])">
+            @foreach (var (lang, name) in L.Languages)
+            {
+                <option value="@lang">@(string.IsNullOrEmpty(name) ? lang : name)</option>
+            }
         </select>
     </div>
 
-    <h3>Agent / LLM</h3>
+    <h3>@L["settings.agent_llm"]</h3>
     <div class="field">
-        <label>llm model (ex.: gpt-4o, claude-sonnet-4, litellm_proxy/…)</label>
+        <label>@L["settings.llm_model"]</label>
         <input @bind="_model" @bind:event="oninput" />
     </div>
     <div class="field">
-        <label>llm api key secret name (referencia /api/v1/secrets)</label>
+        <label>@L["settings.llm_secret"]</label>
         <input @bind="_apiKeySecret" @bind:event="oninput" />
     </div>
     <div class="field">
-        <label>agent type</label>
+        <label>@L["settings.agent_type"]</label>
         <select @bind="_agentType">
             <option value="default">default</option>
             <option value="plan">plan</option>
@@ -40,37 +53,37 @@
         </select>
     </div>
     <button class="primary" @onclick="SaveSettingsAsync" disabled="@_saving">
-        @(_saving ? "saving…" : "Save settings")
+        @(_saving ? L["settings.saving"] : L["settings.save"])
     </button>
     @if (_saved)
     {
-        <span style="color:var(--ohn-green);margin-left:10px">saved ✓</span>
+        <span style="color:var(--ohn-green);margin-left:10px">@L["settings.saved"] ✓</span>
     }
 
-    <h3 style="margin-top:32px">Secrets</h3>
+    <h3 style="margin-top:32px">@L["settings.secrets"]</h3>
     <p class="sub" style="color:var(--ohn-fg-dim)">
-        Valores são cifrados no servidor (DataProtection) — só o nome volta.
+        @L["settings.secrets_hint"]
     </p>
     <div class="row" style="display:flex;gap:8px;margin-bottom:12px">
-        <input placeholder="name (ex.: llm_api_key)" @bind="_secretName"
+        <input placeholder="@L["settings.secret_name"]" @bind="_secretName"
                style="flex:1" />
-        <input placeholder="value" type="password" @bind="_secretValue"
+        <input placeholder="@L["settings.secret_value"]" type="password" @bind="_secretValue"
                style="flex:2" />
         <button @onclick="AddSecretAsync"
                 disabled="@(string.IsNullOrWhiteSpace(_secretName) || string.IsNullOrWhiteSpace(_secretValue))">
-            Add
+            @L["common.add"]
         </button>
     </div>
     @foreach (var name in _secrets)
     {
         <div class="secret-row">
             <span class="name">@name</span>
-            <button class="danger" @onclick="() => DeleteSecretAsync(name)">delete</button>
+            <button class="danger" @onclick="() => DeleteSecretAsync(name)">@L["common.delete"]</button>
         </div>
     }
 
     <h3 style="margin-top:32px">
-        <a href="/settings/skills" style="color:var(--ohn-fg)">Skills →</a>
+        <a href="/settings/skills" style="color:var(--ohn-fg)">@L["skills.title"] →</a>
     </h3>
 </div>
 
@@ -139,6 +152,21 @@
     private async Task OnThemeChange(ChangeEventArgs e)
     {
         await Theme.SetAsync(e.Value?.ToString() ?? ThemeService.Dark);
-        Toasts.Success($"tema: {Theme.Theme}");
+        Toasts.Success(L.T("settings.theme_toast", ("theme", Theme.Theme)));
+    }
+
+    /// <summary>SPEC-46 RF-004: idioma — L.SetLanguageAsync aplica sem
+    /// reload (Changed → MainLayout re-renderiza); persistência remota
+    /// best-effort no dict de preferences.</summary>
+    private async Task OnLanguageChange(ChangeEventArgs e)
+    {
+        var code = e.Value?.ToString() ?? LocalizationService.DefaultLanguage;
+        await L.SetLanguageAsync(code);
+        try
+        {
+            await Api.PutPreferencesAsync(
+                new Dictionary<string, string> { ["locale"] = code });
+        }
+        catch { /* remoto best-effort — localStorage já persistiu */ }
     }
 }

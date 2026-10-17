@@ -7,6 +7,7 @@
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @inject ToastService Toasts
+@inject LocalizationService L
 
 <div class="composer">
     @if (_attachments.Count > 0 || MentionTokens().Any())
@@ -20,7 +21,7 @@
             {
                 <span class="chip attach" title="@a.Path">
                     <Icon Name="file" Size="12" /> @a.Name
-                    <button class="chip-x" aria-label="Remover anexo"
+                    <button class="chip-x" aria-label="@L["composer.remove_attachment"]"
                             @onclick="() => _attachments.Remove(a)">×</button>
                 </span>
             }
@@ -29,16 +30,16 @@
     <div class="composer-row">
         @if (ConversationId is not null)
         {
-            <label class="icon-btn attach-btn" title="Anexar arquivo">
+            <label class="icon-btn attach-btn" title="@L["composer.attach"]">
                 <Icon Name="plus" Size="16" />
                 <InputFile OnChange="OnFileAsync" style="display:none"
-                           aria-label="Anexar arquivo" />
+                           aria-label="@L["composer.attach"]" />
             </label>
         }
         <div class="composer-field">
             @if (_mentionOpen && _mentionItems.Count > 0)
             {
-                <div class="popup" role="listbox" aria-label="Arquivos">
+                <div class="popup" role="listbox" aria-label="@L["composer.files"]">
                     @for (var i = 0; i < _mentionItems.Count; i++)
                     {
                         var p = _mentionItems[i];
@@ -51,7 +52,7 @@
             }
             @if (_slashOpen && _slashItems.Count > 0)
             {
-                <div class="popup" role="listbox" aria-label="Comandos">
+                <div class="popup" role="listbox" aria-label="@L["composer.commands"]">
                     @for (var i = 0; i < _slashItems.Count; i++)
                     {
                         var c = _slashItems[i];
@@ -63,41 +64,40 @@
                     }
                 </div>
             }
-            <textarea @ref="_ta" rows="1" placeholder="@Placeholder"
+            <textarea @ref="_ta" rows="1" placeholder="@(Placeholder ?? L["composer.placeholder"])"
                       @bind="_text" @bind:event="oninput"
                       @bind:after="OnTextChanged"
                       @onkeydown="OnKey" disabled="@Sending"
-                      aria-label="Message" class="composer-ta"></textarea>
+                      aria-label="@L["composer.message"]" class="composer-ta"></textarea>
         </div>
         <button class="primary send-btn" @onclick="SendAsync"
                 disabled="@(Sending || string.IsNullOrWhiteSpace(_text))"
-                aria-label="Send message">
+                aria-label="@L["composer.send"]">
             <Icon Name="send" Size="14" />
         </button>
         @if (Busy)
         {
-            <button title="Pause run" aria-label="Pause run"
+            <button title="@L["composer.pause"]" aria-label="@L["composer.pause"]"
                     @onclick="OnPause"><Icon Name="pause" Size="14" /></button>
-            <button title="Interrupt run" aria-label="Interrupt run"
+            <button title="@L["composer.interrupt"]" aria-label="@L["composer.interrupt"]"
                     @onclick="OnInterrupt"><Icon Name="stop" Size="14" /></button>
         }
         @if (Paused)
         {
-            <button title="Resume run" aria-label="Resume run"
+            <button title="@L["composer.resume"]" aria-label="@L["composer.resume"]"
                     @onclick="OnResume"><Icon Name="play" Size="14" /></button>
         }
     </div>
     <div class="composer-foot">
         <span class="char-count">@_text.Length</span>
-        @if (Sending) { <span class="sending">enviando…</span> }
+        @if (Sending) { <span class="sending">@L["composer.sending"]</span> }
     </div>
 </div>
 
 @code {
     /// <summary>Conversa alvo — null na Home (mention/attach off).</summary>
     [Parameter] public string? ConversationId { get; set; }
-    [Parameter] public string Placeholder { get; set; }
-        = "Envie uma mensagem ao agente…";
+    [Parameter] public string? Placeholder { get; set; }
     /// <summary>Run ativo → mostra pause/interrupt.</summary>
     [Parameter] public bool Busy { get; set; }
     /// <summary>Run pausado → mostra resume.</summary>
@@ -327,14 +327,14 @@
                 if (ConversationId is not null)
                 {
                     await Api.SetModeAsync(ConversationId, cmd.Name);
-                    Toasts.Success($"modo {cmd.Name}");
+                    Toasts.Success(L.T("composer.toast_mode", ("mode", cmd.Name)));
                 }
                 break;
             case ComposerSlash.CommandKind.Compact:
                 if (ConversationId is not null)
                 {
                     await Api.CompactContextAsync(ConversationId);
-                    Toasts.Success("contexto compactado");
+                    Toasts.Success(L["composer.toast_compacted"]);
                 }
                 break;
             case ComposerSlash.CommandKind.New:
@@ -364,7 +364,7 @@
         var f = e.File;
         if (f.Size > 10 * 1024 * 1024)
         {
-            Toasts.Warn("arquivo >10MB");
+            Toasts.Warn(L["composer.toast_too_big"]);
             return;
         }
 
@@ -384,7 +384,7 @@
                 ConversationId, f.Name, bytes, f.ContentType);
             if (path is null)
             {
-                Toasts.Error("upload recusado");
+                Toasts.Error(L["composer.toast_upload_rejected"]);
                 return;
             }
 
@@ -392,7 +392,7 @@
         }
         catch (Exception ex)
         {
-            Toasts.Error($"upload falhou: {ex.Message}");
+            Toasts.Error(L.T("composer.toast_upload_failed", ("error", ex.Message)));
         }
     }
 
@@ -415,7 +415,7 @@
 
         foreach (var a in _attachments)
         {
-            text += $"\n\n[anexo: {a.Path}]";
+            text += "\n\n" + L.T("composer.attachment_tag", ("path", a.Path));
         }
 
         Sending = true;

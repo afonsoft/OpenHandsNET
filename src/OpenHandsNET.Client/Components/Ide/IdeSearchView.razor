@@ -1,25 +1,26 @@
 @using OpenHandsNET.Client.Services
 @inject OpenHandsNetApiClient Api
+@inject LocalizationService L
 
 @* SPEC-42 RF-006: busca global — debounce 400ms, resultados agrupados
    por arquivo, click abre na linha. *@
 
 <div class="ide-search">
-    <div class="ide-panel-head"><span>SEARCH</span></div>
-    <input placeholder="search in workspace…" @bind="_q"
+    <div class="ide-panel-head"><span>@L["ide.search_title"]</span></div>
+    <input placeholder="@L["ide.search_placeholder"]" @bind="_q"
            @bind:event="oninput" @bind:after="QueueSearch"
-           aria-label="Search workspace" />
-    <input placeholder="glob (ex.: *.cs)" @bind="_glob"
+           aria-label="@L["ide.search_aria"]" />
+    <input placeholder="@L["ide.glob_placeholder"]" @bind="_glob"
            @bind:event="oninput" @bind:after="QueueSearch"
-           aria-label="File glob" style="margin-top:4px" />
+           aria-label="@L["ide.glob_aria"]" style="margin-top:4px" />
 
     @if (_busy)
     {
-        <div class="empty-state">searching…</div>
+        <div class="empty-state">@L["ide.searching"]</div>
     }
     else if (_q.Length > 0 && _results.Count == 0)
     {
-        <div class="empty-state">no results</div>
+        <div class="empty-state">@L["common.no_results"]</div>
     }
     else
     {
