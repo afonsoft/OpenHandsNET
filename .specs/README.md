@@ -69,6 +69,10 @@ SPECs (Spec-Driven Development) do port do ecossistema **OpenHands** para
 | `45_composer_spec.md` | Composer rico: @menções workspace, /slash (skills+builtins), drafts, histórico, uploads→path, edit-resend | 04, 12, 25 | #103 |
 | `46_i18n_spec.md` | `LocalizationService` JSON (port open-webui), en-US+pt-BR completos + 6 best-effort, parity test | 26 | #104 |
 | `47_automations_spec.md` | Schedules (interval/daily/weekly/once)→start-task, run history, run-now, hook triggers, tool `routine` | 04, 08, 10, 20, 25 | #105 |
+| `48_enterprise_security_hardening_spec.md` | `security_policies` por org (permissive/balanced/strict), analyzer override, `mcp__*` ask, resume fail-closed | 08, 09, 10, 29, 33 | #114 |
+| `49_kubernetes_runtime_completion_spec.md` | Warm pool k8s (`ClaimWarmAsync`), sleep/wake via PVC, Helm production (ingress/postgres/limits/HPA), kind+sysbox runbook | 16, 17, 35, 36, 37 | #115 |
+| `50_byor_llm_spec.md` | BYOR LiteLLM: virtual keys, permitted models, rotate, `byor_keys`, OmniRoute integration | 08, 20, 23 | #116 |
+| `51_openapi_contract_spec.md` | `/openapi/v1.json` gerado + golden snapshot drift guard + Scalar explorer opt-in | 04 | #117 |
 
 
 Build order: `01 → (02 ∥ 03 ∥ 10 ∥ 13) → (04 ∥ 09 ∥ 11 ∥ 12) → (05 ∥ 06 ∥ 08) → 07 → 14 → 15 → 16 → 17 → (18 ∥ 19 ∥ 20) → 21 → (22 → 23 ∥ 24) → 25 → (26 ∥ 27) → (29 → (28 ∥ 33) ∥ 30 ∥ 31 ∥ 34)`.
@@ -80,7 +84,12 @@ surfaces user-facing do agent-server.
 Open-WebUI wave (análise `afonsoft/open-webui` → port, MIT): `41 →
 (42 ∥ 43 ∥ 44 ∥ 45 ∥ 46 ∥ 47)` — 45 consome superfícies de 41; 42
 embebe CheckpointList de 43 (soft); 46 faz sweep de strings após as
-demais.
+demais. **Todas mergeadas (#107–#113).**
+
+Enterprise-closing wave (gaps finais do `.specs/32` + débitos de 37):
+`48 → (49 ∥ 50 ∥ 51)` — 48 fecha a camada de política org (analyzer já
+existe global); 49 completa o caminho k8s; 50 implementa BYOR LiteLLM;
+51 publica o contrato OpenAPI.
 
 ## Fluxo
 
