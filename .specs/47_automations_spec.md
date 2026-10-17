@@ -8,7 +8,7 @@
 | Type | `Feature / Infrastructure + API + Client` |
 | Stack | `.NET 10 · EF Core (2 ctx) · BackgroundService · Blazor WASM` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `In review (PR #113)` |
 | Ticket | [#105](https://github.com/afonsoft/OpenHandsNET/issues/105) |
 | Depends on | `04` (start-task), `08` (auth/RBAC), `10` (persistence), `20` (plan quotas), `25` (tool catalog) |
 | Reference | `afonsoft/open-webui` (MIT — port permitido): `AutomationService`/`AutomationScheduler`, `AutomationEndpoints` + `AutomationHookEndpoints`, `Pages/Automations.razor`, `RoutineBuiltinTools` |

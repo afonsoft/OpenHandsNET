@@ -1,0 +1,170 @@
+@page "/automations"
+@using OpenHandsNET.Client.Services
+@inject OpenHandsNET.Client.Services.OpenHandsNetApiClient Api
+@inject OpenHandsNET.Client.Services.LocalizationService L
+@inject OpenHandsNET.Client.Services.ToastService Toasts
+@inject NavigationManager Nav
+
+<PageTitle>@L["automations.title"] · OpenHandsNET</PageTitle>
+
+<h1>@L["automations.title"]</h1>
+<p>@L["automations.subtitle"]</p>
+
+@if (_items is null)
+{
+    <p><em>@L["common.loading"]</em></p>
+}
+else
+{
+    @if (_upcoming.Count > 0)
+    {
+        <p>@L["automations.upcoming"]</p>
+        <ul>
+            @foreach (var u in _upcoming)
+            {
+                <li><a href="/automations/@u.Id">@u.Name</a> — @u.NextRunAt?.LocalDateTime.ToString("g")</li>
+            }
+        </ul>
+    }
+    <table class="table">
+        <thead>
+            <tr>
+                <th>@L["automations.name"]</th>
+                <th>@L["automations.schedule"]</th>
+                <th>@L["automations.next_run"]</th>
+                <th>@L["automations.last_run"]</th>
+                <th>@L["automations.enabled"]</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var a in _items)
+            {
+                <tr>
+                    <td><a href="/automations/@a.Id">@a.Name</a></td>
+                    <td>@ScheduleLabel(a)</td>
+                    <td>@(a.NextRunAt?.LocalDateTime.ToString("g") ?? "—")</td>
+                    <td>@(a.LastRunAt?.LocalDateTime.ToString("g") ?? "—")</td>
+                    <td>
+                        <input type="checkbox" checked="@a.Enabled"
+                               aria-label="@(L["automations.enabled"])"
+                               @onchange="_ => ToggleAsync(a)" />
+                    </td>
+                    <td>
+                        <button @onclick="() => RunNowAsync(a)">
+                            @L["automations.run_now"]
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<h2>@L["automations.new"]</h2>
+<div>
+    <input placeholder="@L["automations.name_placeholder"]" @bind="_name" />
+    <textarea placeholder="@L["automations.prompt_placeholder"]"
+              @bind="_prompt" rows="3" style="width:100%"></textarea>
+    <select @bind="_kind" aria-label="@(L["automations.schedule"])">
+        <option value="interval">@L["automations.kind_interval"]</option>
+        <option value="daily">@L["automations.kind_daily"]</option>
+        <option value="weekly">@L["automations.kind_weekly"]</option>
+        <option value="once">@L["automations.kind_once"]</option>
+    </select>
+    @if (_kind == "interval")
+    {
+        <input type="number" min="5" @bind="_interval"
+               aria-label="@(L["automations.interval_minutes"])" />
+    }
+    @if (_kind is "daily" or "weekly")
+    {
+        <input placeholder="HH:mm" @bind="_time"
+               aria-label="@(L["automations.time_utc"])" />
+    }
+    @if (_kind == "weekly")
+    {
+        <input type="number" min="0" max="6" @bind="_weekday"
+               aria-label="@(L["automations.weekday"])" />
+    }
+    <button @onclick="CreateAsync"
+            disabled="@string.IsNullOrWhiteSpace(_name)">
+        @L["common.create"]
+    </button>
+    @if (_error is not null)
+    {
+        <p class="text-danger">@_error</p>
+    }
+</div>
+
+@code {
+    private List<AutomationItem>? _items;
+    private List<AutomationItem> _upcoming = [];
+    private string? _name, _prompt, _time, _error;
+    private string _kind = "interval";
+    private int _interval = 60, _weekday = 1;
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload()
+    {
+        _items = (await Api.ListAutomationsAsync()).ToList();
+        _upcoming = _items
+            .Where(a => a.Enabled && a.NextRunAt is not null)
+            .OrderBy(a => a.NextRunAt).Take(10).ToList();
+    }
+
+    private string ScheduleLabel(AutomationItem a) => a.ScheduleKind switch
+    {
+        "interval" => L.T("automations.every_minutes",
+            ("minutes", a.IntervalMinutes.ToString())),
+        "daily" => $"{L["automations.kind_daily"]} {a.ScheduleTimeUtc} UTC",
+        "weekly" => $"{L["automations.kind_weekly"]} {a.ScheduleTimeUtc} UTC",
+        "once" => L["automations.kind_once"],
+        _ => a.ScheduleKind,
+    };
+
+    private async Task ToggleAsync(AutomationItem a)
+    {
+        var updated = await Api.PatchAutomationAsync(
+            a.Id, new { enabled = !a.Enabled });
+        if (updated is null) { Toasts.Error(L["automations.update_failed"]); }
+        await Reload();
+    }
+
+    private async Task RunNowAsync(AutomationItem a)
+    {
+        var run = await Api.RunAutomationNowAsync(a.Id);
+        if (run is null)
+        {
+            Toasts.Warn(L["automations.already_running"]);
+        }
+        else
+        {
+            Toasts.Success(L["automations.fired"]);
+            await Reload();
+        }
+    }
+
+    private async Task CreateAsync()
+    {
+        _error = null;
+        try
+        {
+            var created = await Api.CreateAutomationAsync(new
+            {
+                name = _name, prompt = _prompt,
+                schedule_kind = _kind,
+                schedule_time_utc = _time,
+                interval_minutes = _kind == "interval" ? _interval : (int?)null,
+                weekday = _kind == "weekly" ? _weekday : (int?)null,
+            });
+            Nav.NavigateTo($"/automations/{created.Id}");
+        }
+        catch (HttpRequestException ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

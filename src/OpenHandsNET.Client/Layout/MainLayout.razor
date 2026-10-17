@@ -53,6 +53,11 @@
                 </a>
             }
             <div class="sb-label">@L["sidebar.general"]</div>
+            <a class="sb-item @(IsActive("/automations") ? "active" : "")"
+               href="/automations" title="@L["sidebar.automations"]">
+                <Icon Name="clock" Size="16" />
+                <span class="txt">@L["sidebar.automations"]</span>
+            </a>
             <a class="sb-item @(IsActive("/settings") ? "active" : "")"
                href="/settings" title="@L["sidebar.settings"]">
                 <Icon Name="settings" Size="16" />

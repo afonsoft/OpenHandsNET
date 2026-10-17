@@ -162,3 +162,17 @@ public sealed class FileSearchMatch
 /// <summary>SPEC-42: resultado de <c>POST /exec</c> one-shot.</summary>
 public sealed record ExecResult(
     int ExitCode, string Stdout, string Stderr, bool TimedOut);
+
+/// <summary>SPEC-47: automation (routine) do usuário.</summary>
+public sealed record AutomationItem(
+    Guid Id, Guid? OrgId, string Name, string Prompt,
+    string? LlmModel, string? SelectedRepository, string ScheduleKind,
+    string? ScheduleTimeUtc, int IntervalMinutes, int? Weekday,
+    bool Enabled, DateTimeOffset? NextRunAt, DateTimeOffset? LastRunAt,
+    DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
+
+/// <summary>SPEC-47: execução registrada de uma automation.</summary>
+public sealed record AutomationRunItem(
+    Guid Id, Guid AutomationId, DateTimeOffset StartedAt,
+    DateTimeOffset? FinishedAt, string Status, Guid? ConversationId,
+    string? Error);

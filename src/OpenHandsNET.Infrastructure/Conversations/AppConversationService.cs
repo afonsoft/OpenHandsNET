@@ -41,7 +41,23 @@ public sealed class AppConversationService(
             orgId = (await orgResolver.ResolveAsync(user, null, ct))?.OrgId;
         }
 
-        // SPEC-20 RF-003: enforcement de plano no create (403 → endpoint).
+        return await CreateCoreAsync(orgId, user?.UserId, request, ct);
+    }
+
+    /// <inheritdoc />
+    public Task<AppConversationStartTask> CreateForUserAsync(
+        Guid userId, Guid? orgId, CreateConversationRequest request,
+        CancellationToken ct) =>
+        // SPEC-47: disparo de automation roda fora de request HTTP —
+        // o owner vem do registro, não do accessor.
+        CreateCoreAsync(orgId, userId, request, ct);
+
+    private async Task<AppConversationStartTask> CreateCoreAsync(
+        Guid? orgId, Guid? ownerUserId,
+        CreateConversationRequest request, CancellationToken ct)
+    {
+        // SPEC-20 RF-003: enforcement de plano no create (403 → endpoint;
+        // nos disparos de automation → run failed com error=quota).
         if (enforcement is not null
             && await enforcement.CheckConversationCreateAsync(orgId, ct)
                 is { } limitError)
@@ -55,7 +71,7 @@ public sealed class AppConversationService(
         {
             Id = Guid.NewGuid(),
             OrgId = orgId,
-            CreatedByUserId = user?.UserId.ToString(),
+            CreatedByUserId = ownerUserId?.ToString(),
             Title = Truncate(request.InitialMessage is null
                 ? null : Flatten(request.InitialMessage), 80),
             SelectedRepository = request.SelectedRepository,

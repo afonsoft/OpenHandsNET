@@ -653,4 +653,90 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
         return resp.IsSuccessStatusCode
             ? await resp.Content.ReadFromJsonAsync<T>(Json, ct) : default;
     }
+
+    // ---- automations (SPEC-47) ------------------------------------------
+
+    /// <summary>Lista as automations do usuário corrente.</summary>
+    public async Task<IReadOnlyList<AutomationItem>> ListAutomationsAsync(
+        CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<AutomationItem>>(
+            "/api/v1/automations", Json, ct) ?? [];
+
+    /// <summary>Detalhe de uma automation (null se 404).</summary>
+    public Task<AutomationItem?> GetAutomationAsync(
+        Guid id, CancellationToken ct = default) =>
+        GetOrNull<AutomationItem>($"/api/v1/automations/{id}", ct);
+
+    /// <summary>Cria automation; erro de validação → exception com detalhe.</summary>
+    public async Task<AutomationItem> CreateAutomationAsync(
+        object body, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync(
+            "/api/v1/automations", body, Json, ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException(
+                await resp.Content.ReadAsStringAsync(ct));
+        }
+        return (await resp.Content
+            .ReadFromJsonAsync<AutomationItem>(Json, ct))!;
+    }
+
+    /// <summary>PATCH parcial (ex.: {enabled=false}).</summary>
+    public async Task<AutomationItem?> PatchAutomationAsync(
+        Guid id, object patch, CancellationToken ct = default)
+    {
+        var resp = await http.PatchAsJsonAsync(
+            $"/api/v1/automations/{id}", patch, Json, ct);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<AutomationItem>(Json, ct)
+            : null;
+    }
+
+    /// <summary>DELETE → true se removeu.</summary>
+    public async Task<bool> DeleteAutomationAsync(
+        Guid id, CancellationToken ct = default) =>
+        (await http.DeleteAsync($"/api/v1/automations/{id}", ct))
+            .IsSuccessStatusCode;
+
+    /// <summary>Dispara imediato; 409 → null (já running).</summary>
+    public async Task<AutomationRunItem?> RunAutomationNowAsync(
+        Guid id, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsync(
+            $"/api/v1/automations/{id}/run-now", null, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            return null;
+        }
+        resp.EnsureSuccessStatusCode();
+        var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(Json, ct);
+        return new AutomationRunItem(
+            doc.GetProperty("run_id").GetGuid(), id,
+            DateTimeOffset.UtcNow, null,
+            doc.GetProperty("status").GetString() ?? "running",
+            doc.TryGetProperty("conversation_id", out var c)
+            && c.ValueKind == JsonValueKind.String
+                ? c.GetGuid() : null, null);
+    }
+
+    /// <summary>Histórico de runs de uma automation.</summary>
+    public async Task<IReadOnlyList<AutomationRunItem>> ListAutomationRunsAsync(
+        Guid id, int take = 50, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<AutomationRunItem>>(
+            $"/api/v1/automations/{id}/runs?take={take}", Json, ct) ?? [];
+
+    /// <summary>Cria webhook hook → token exibido uma única vez.</summary>
+    public async Task<string?> CreateAutomationHookAsync(
+        Guid id, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsync(
+            $"/api/v1/automations/{id}/hooks", null, ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            return null;
+        }
+        var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(Json, ct);
+        return doc.GetProperty("token").GetString();
+    }
 }

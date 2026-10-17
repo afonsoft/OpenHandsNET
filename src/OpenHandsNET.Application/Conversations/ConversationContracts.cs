@@ -43,6 +43,14 @@ public interface IAppConversationService
     Task<AppConversationStartTask> CreateAsync(
         CreateConversationRequest request, CancellationToken ct);
 
+    /// <summary>
+    /// SPEC-47: creates the conversation as an explicit owner — used by
+    /// automation firing outside an HTTP request (same plan enforcement).
+    /// </summary>
+    Task<AppConversationStartTask> CreateForUserAsync(
+        Guid userId, Guid? orgId, CreateConversationRequest request,
+        CancellationToken ct);
+
     Task<ConversationPage> SearchAsync(ConversationQuery query, CancellationToken ct);
 
     Task<long> CountAsync(ConversationQuery query, CancellationToken ct);
