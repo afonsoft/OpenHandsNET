@@ -8,7 +8,7 @@
 | Type | `Feature / API + Tooling` |
 | Stack | `.NET 10 · Microsoft.AspNetCore.OpenApi · golden snapshot` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `In implementation` |
 | Ticket | [#117](https://github.com/afonsoft/OpenHandsNET/issues/117) |
 | Depends on | `04` (API surface — toda a superfície até 47) |
 | Reference | upstream `docs.openhands.dev` OpenAPI (search-events extract já em `docs/reference/openhands-upstream/`) |

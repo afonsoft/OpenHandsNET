@@ -7,6 +7,7 @@ using OpenHandsNET.Infrastructure.Persistence;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using Prometheus;
+using Scalar.AspNetCore;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -100,6 +101,28 @@ if (OpenHandsNET.Infrastructure.Cache.CacheRegistration
 builder.Services.AddSingleton<TerminalBridgeService>();
 builder.Services.AddSingleton<OpenHandsNET.Api.Routing.PreviewTokenService>();
 builder.Services.AddProblemDetails();
+// SPEC-51 RF-001: contrato OpenAPI público — documento `v1` gerado dos
+// endpoints vivos (MapHub e ExcludeFromDescription ficam de fora).
+// O transformer garante o mínimo da SPEC: summary 1-linha em toda
+// operação que ainda não tem um explícito.
+builder.Services.AddOpenApi("v1", o =>
+{
+    o.AddDocumentTransformer((doc, _, _) =>
+    {
+        doc.Info.Title = "OpenHandsNET API";
+        doc.Info.Version = "v1";
+        doc.Info.Description =
+            "Public REST surface (/api/v1, /api/acp, /v1 OpenAI-compat " +
+            "gateway). Auth: cookie session or `Authorization: Bearer sk-*`.";
+        return Task.CompletedTask;
+    });
+    o.AddOperationTransformer((op, ctx, _) =>
+    {
+        op.Summary ??= $"{ctx.Description.HttpMethod} " +
+            $"/{ctx.Description.RelativePath}";
+        return Task.CompletedTask;
+    });
+});
 // SPEC-36 RF-002: rate limit global (IDistributedCounter; off por default).
 builder.Services.Configure<OpenHandsNET.Api.Middleware.ApiRateLimitOptions>(
     builder.Configuration.GetSection(
@@ -278,6 +301,17 @@ app.MapHealthChecks("/api/v1/ready", new Microsoft.AspNetCore.Diagnostics.Health
     Predicate = check => check.Tags.Contains("ready"),
 });
 app.MapReadinessEndpoints();
+
+// SPEC-51 RF-002: documento vivo em /openapi/v1.json — o golden
+// snapshot em tests/ detecta drift de contrato em PR.
+app.MapOpenApi("/openapi/{documentName}.json");
+// SPEC-51 RF-003: explorer opt-in — default on em Development, off em
+// produção (Api:OpenApiExplorer=true para habilitar explicitamente).
+if (builder.Configuration.GetValue<bool?>("Api:OpenApiExplorer")
+    ?? app.Environment.IsDevelopment())
+{
+    app.MapScalarApiReference();
+}
 
 // Prometheus scrape endpoint (SPEC-13 RF-004): openhandsnet_* counters.
 app.UseMetricServer("/metrics");
