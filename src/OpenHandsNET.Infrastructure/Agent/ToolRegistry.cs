@@ -27,6 +27,8 @@ public sealed class ToolRegistry : IToolRegistry
             BuiltinTools.Think(),
             BuiltinTools.TaskTracker(tracker),
             BuiltinTools.GitCommit(bashTimeout),
+            // SPEC-52 RF-003: PR a partir do workspace (push + provider).
+            BuiltinTools.CreatePullRequest(),
             // SPEC-43 RF-002: snapshot sob demanda (pre-refactor etc.).
             BuiltinTools.Checkpoint(),
             // SPEC-44 RF-001: pergunta ao usuário (interceptada no runner).

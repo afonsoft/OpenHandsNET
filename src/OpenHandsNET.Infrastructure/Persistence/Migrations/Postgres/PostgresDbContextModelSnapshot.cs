@@ -321,6 +321,22 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("boolean")
                         .HasColumnName("pinned");
 
+                    b.Property<string>("PullRequestHeadSha")
+                        .HasColumnType("text")
+                        .HasColumnName("pull_request_head_sha");
+
+                    b.Property<int?>("PullRequestNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("pull_request_number");
+
+                    b.Property<string>("PullRequestState")
+                        .HasColumnType("text")
+                        .HasColumnName("pull_request_state");
+
+                    b.Property<string>("PullRequestUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("pull_request_url");
+
                     b.Property<Guid?>("SandboxId")
                         .HasColumnType("uuid")
                         .HasColumnName("sandbox_id");
@@ -1534,6 +1550,113 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasName("pk_sandbox_specs");
 
                     b.ToTable("sandbox_specs", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Scm.ScmConnectionRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AppId")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("app_id");
+
+                    b.Property<string>("AppSlug")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("app_slug");
+
+                    b.Property<string>("ClientSecretRef")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("client_secret_ref");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("InstallationId")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("installation_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("PemSecretRef")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("pem_secret_ref");
+
+                    b.Property<string>("ReposJson")
+                        .HasColumnType("text")
+                        .HasColumnName("repos_json");
+
+                    b.Property<string>("WebhookSecretRef")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("webhook_secret_ref");
+
+                    b.HasKey("Id")
+                        .HasName("pk_scm_connections");
+
+                    b.HasIndex("OrgId", "Kind")
+                        .HasDatabaseName("ix_scm_connections_org_id_kind");
+
+                    b.ToTable("scm_connections", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Scm.WebhookDeliveryRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("DeliveryId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("delivery_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("PayloadSha")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("payload_sha");
+
+                    b.Property<DateTimeOffset>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_webhook_deliveries");
+
+                    b.HasIndex("Kind", "DeliveryId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_webhook_deliveries_kind_delivery_id");
+
+                    b.ToTable("webhook_deliveries", (string)null);
                 });
 
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Security.SecurityPolicyRecord", b =>

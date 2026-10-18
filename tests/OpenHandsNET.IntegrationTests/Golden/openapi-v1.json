@@ -1031,6 +1031,119 @@
         ],
         "type": "object"
       },
+      "ScmConnectionRequest": {
+        "description": "Manual connection registration (BYO app).",
+        "properties": {
+          "app_id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "app_slug": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "installation_id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "kind": {
+            "type": "string"
+          },
+          "pem_secret_ref": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "repos": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "webhook_secret_ref": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "type": "object"
+      },
+      "ScmManifestRequest": {
+        "description": "Manifest-flow request.",
+        "properties": {
+          "app_name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "redirect_uri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "redirect_uri",
+          "app_name"
+        ],
+        "type": "object"
+      },
+      "ScmPrRequest": {
+        "description": "Pull-request request body.",
+        "properties": {
+          "base": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "body": {
+            "type": "string"
+          },
+          "draft": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "head": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reviewers": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "body"
+        ],
+        "type": "object"
+      },
       "SecretSetRequest": {
         "description": "PUT body \u2014 plaintext travels once over TLS, stored encrypted.",
         "properties": {
@@ -3085,6 +3198,40 @@
         ]
       }
     },
+    "/api/v1/app-conversations/{id}/pull-request": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScmPrRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/app-conversations/{id:guid}/pull-request",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
     "/api/v1/app-conversations/{id}/resume": {
       "post": {
         "parameters": [
@@ -5094,6 +5241,95 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_id}/scm-connections": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/orgs/{org_id:guid}/scm-connections/",
+        "tags": [
+          "SCM"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScmConnectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/orgs/{org_id:guid}/scm-connections/",
+        "tags": [
+          "SCM"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/scm-connections/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "DELETE /api/v1/orgs/{org_id:guid}/scm-connections/{id:guid}",
+        "tags": [
+          "SCM"
+        ]
+      }
+    },
     "/api/v1/pending-messages": {
       "get": {
         "parameters": [
@@ -5498,6 +5734,61 @@
         "summary": "GET /api/v1/sandboxes/{id:guid}/settings/secrets/{name}",
         "tags": [
           "Sandboxes"
+        ]
+      }
+    },
+    "/api/v1/scm/github/callback": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/scm/github/callback",
+        "tags": [
+          "SCM"
+        ]
+      }
+    },
+    "/api/v1/scm/github/manifest": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScmManifestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/scm/github/manifest",
+        "tags": [
+          "SCM"
         ]
       }
     },
@@ -5931,6 +6222,19 @@
         ]
       }
     },
+    "/api/v1/webhooks/scm/github": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/webhooks/scm/github",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
     "/api/v1/webhooks/secrets": {
       "get": {
         "responses": {
@@ -6222,6 +6526,9 @@
     },
     {
       "name": "Sharing"
+    },
+    {
+      "name": "SCM"
     }
   ]
 }

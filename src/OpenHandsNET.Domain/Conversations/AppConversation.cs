@@ -48,4 +48,8 @@ public sealed record AppConversation(
     bool ConfirmationMode = false,
     string? SandboxProfile = null,
     // SPEC-44: projeção attention (null|confirmation|question|failed).
-    string? NeedsAttentionKind = null);
+    string? NeedsAttentionKind = null,
+    // SPEC-52: PR aberto pela conversa (null = nenhum).
+    string? PullRequestUrl = null,
+    int? PullRequestNumber = null,
+    string? PullRequestState = null);

@@ -207,6 +207,45 @@ public sealed class GitService(
     }
 
     /// <inheritdoc />
+    public async Task<GitPushResult> PushAsync(
+        DomainSandbox sandbox, string head, string? remoteBranch,
+        bool forceWithLease, string? ownerId, CancellationToken ct)
+    {
+        if (!await HasRepositoryAsync(sandbox, ct))
+        {
+            return new GitPushResult(false, null, "no git repository");
+        }
+
+        // Garante credencial gh/askpass quando disponível (SPEC-15 RF-004).
+        await ProvisionGhAuthAsync(sandbox, ownerId, ct);
+
+        var dest = remoteBranch ?? head;
+        var force = forceWithLease ? " --force-with-lease" : "";
+        var r = await executor.ExecAsync(sandbox,
+            $"cd '{Repo}' && git push -u origin " +
+            $"'{Escape(head)}:{Escape(dest)}'{force} && git rev-parse HEAD",
+            TimeSpan.FromMinutes(5), ct);
+        if (r.ExitCode != 0)
+        {
+            return new GitPushResult(false, null,
+                SecretRedactor.Redact(r.StdErr.Trim()));
+        }
+
+        return new GitPushResult(true, r.StdOut.Trim().Split('\n').Last(), null);
+    }
+
+    /// <inheritdoc />
+    public async Task<string?> GetCurrentBranchAsync(
+        DomainSandbox sandbox, CancellationToken ct)
+    {
+        var r = await executor.ExecAsync(sandbox,
+            $"git -C '{Repo}' rev-parse --abbrev-ref HEAD",
+            TimeSpan.FromSeconds(15), ct);
+        var name = r.StdOut.Trim();
+        return r.ExitCode == 0 && name is not "" and not "HEAD" ? name : null;
+    }
+
+    /// <inheritdoc />
     public async Task<string?> GetFileAtRefAsync(
         DomainSandbox sandbox, string path, string gitRef,
         CancellationToken ct)

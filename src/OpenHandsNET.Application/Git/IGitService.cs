@@ -55,4 +55,18 @@ public interface IGitService
     Task<GitCommitResult> CommitAsync(
         DomainSandbox sandbox, string message,
         IReadOnlyList<string>? files, CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-52 RF-003: pushes <paramref name="head"/> to <c>origin</c>
+    /// (<paramref name="remoteBranch"/> default = head). Credentials come
+    /// from the provisioned <c>gh</c>/askpass helpers — never embedded in
+    /// URLs. Returns the head SHA on success.
+    /// </summary>
+    Task<GitPushResult> PushAsync(
+        DomainSandbox sandbox, string head, string? remoteBranch,
+        bool forceWithLease, string? ownerId, CancellationToken ct);
+
+    /// <summary>Current work branch name (null = detached/no repo).</summary>
+    Task<string?> GetCurrentBranchAsync(
+        DomainSandbox sandbox, CancellationToken ct);
 }

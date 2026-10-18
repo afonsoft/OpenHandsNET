@@ -59,6 +59,18 @@ public sealed class ConversationRecord : IOrgScoped
     /// <summary>Ticks UTC de quando a attention foi marcada.</summary>
     public long? NeedsAttentionAtTicks { get; set; }
 
+    /// <summary>SPEC-52 RF-003: PR aberto pela conversa (url completa).</summary>
+    public string? PullRequestUrl { get; set; }
+
+    /// <summary>SPEC-52: número do PR no repo.</summary>
+    public int? PullRequestNumber { get; set; }
+
+    /// <summary>SPEC-52: estado do PR (open|closed|merged) — atualizado por webhook/status.</summary>
+    public string? PullRequestState { get; set; }
+
+    /// <summary>SPEC-52 RF-005: head SHA reportado no último commit status.</summary>
+    public string? PullRequestHeadSha { get; set; }
+
     /// <summary>
     /// Espelho numérico de <see cref="CreatedAt"/> (UtcTicks) — SQLite não
     /// ordena DateTimeOffset; sincronizado no SaveChanges (ver AppDbContext).
@@ -73,7 +85,8 @@ public sealed class ConversationRecord : IOrgScoped
             ? []
             : System.Text.Json.JsonSerializer.Deserialize<List<string>>(TagsJson) ?? [],
         Pinned, CreatedAt, UpdatedAt, CreatedByUserId, ConfirmationMode,
-        SandboxProfile, NeedsAttentionKind);
+        SandboxProfile, NeedsAttentionKind,
+        PullRequestUrl, PullRequestNumber, PullRequestState);
 }
 
 /// <summary>Persisted start-task row.</summary>

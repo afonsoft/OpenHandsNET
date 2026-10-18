@@ -144,6 +144,16 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
         ConversationShares =>
             Set<OpenHandsNET.Infrastructure.Sharing.ConversationShareRecord>();
 
+    /// <summary>Org SCM connections — secrets by-ref (SPEC-52).</summary>
+    public DbSet<OpenHandsNET.Infrastructure.Scm.ScmConnectionRecord>
+        ScmConnections =>
+            Set<OpenHandsNET.Infrastructure.Scm.ScmConnectionRecord>();
+
+    /// <summary>Processed webhook deliveries — idempotency (SPEC-52).</summary>
+    public DbSet<OpenHandsNET.Infrastructure.Scm.WebhookDeliveryRecord>
+        WebhookDeliveries =>
+            Set<OpenHandsNET.Infrastructure.Scm.WebhookDeliveryRecord>();
+
     /// <summary>ASP.NET DataProtection keys (PersistKeysToDbContext).</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
@@ -214,6 +224,9 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
             .HasQueryFilter(r =>
                 !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
         modelBuilder.Entity<OpenHandsNET.Infrastructure.Automations.AutomationRecord>()
+            .HasQueryFilter(r =>
+                !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
+        modelBuilder.Entity<OpenHandsNET.Infrastructure.Scm.ScmConnectionRecord>()
             .HasQueryFilter(r =>
                 !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
     }

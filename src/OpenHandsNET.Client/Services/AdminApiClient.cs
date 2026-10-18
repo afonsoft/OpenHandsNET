@@ -248,6 +248,23 @@ public sealed class AdminApiClient(HttpClient http)
             null);
     }
 
+    // ---- scm (SPEC-52) -----------------------------------------------------
+
+    /// <summary>Conexões SCM da org.</summary>
+    public async Task<IReadOnlyList<JsonElement>> ListScmConnectionsAsync(
+        string orgId, CancellationToken ct = default) =>
+        await GetAsync<List<JsonElement>>(
+            $"/api/v1/orgs/{orgId}/scm-connections", ct) ?? [];
+
+    /// <summary>Remove uma conexão SCM.</summary>
+    public async Task<bool> DeleteScmConnectionAsync(
+        string orgId, string id, CancellationToken ct = default)
+    {
+        var resp = Guard(await http.DeleteAsync(
+            $"/api/v1/orgs/{orgId}/scm-connections/{id}", ct));
+        return resp.IsSuccessStatusCode;
+    }
+
     // ---- plumbing --------------------------------------------------------
 
     private async Task<T?> GetAsync<T>(string url, CancellationToken ct) =>

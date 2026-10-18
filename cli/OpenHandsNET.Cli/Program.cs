@@ -52,6 +52,12 @@ app.Configure(config =>
         b.AddCommand<ConversationsDeleteCommand>("delete");
         b.AddCommand<ResumeCommand>("resume");
     });
+    config.AddBranch("scm", b =>
+    {
+        b.AddCommand<ScmStatusCommand>("status");
+        b.AddCommand<ScmConnectCommand>("connect");
+        b.AddBranch("pr", pb => pb.AddCommand<ScmPrCreateCommand>("create"));
+    });
 });
 
 return args.Length == 0

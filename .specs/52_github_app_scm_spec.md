@@ -8,7 +8,7 @@
 | Type | `Feature / Integration` |
 | Stack | `.NET 10 · Octokit (net) · webhooks · EF Core` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Delivered` |
 | Ticket | `TBD` |
 | Depends on | `04` (API), `12` (git_scm), `47` (automations/webhooks), `10` (EF) |
 | Reference | `migration-plan/research/competitive-analysis-devin-openhands-cloud.md` (G1); docs.devin.ai `/integrations/gh`; docs.openhands.dev `cloud/github-installation` |
@@ -153,3 +153,29 @@ run; base `IScmProvider` pronta p/ SPEC-53.
   contexto correto.
 - `pull-request` endpoint abre PR real (integração mock) e grava evento.
 - Migration ambos providers; suite verde; golden OpenAPI atualizado.
+
+## 11. Delivered
+
+- `src/OpenHandsNET.Application/Scm/ScmContracts.cs` — `IScmProvider`,
+  `IScmProviderRegistry`, `IScmConnectionService`, `IScmWebhookService`,
+  `IScmPullRequestService`, `IScmStatusReporter`, `ScmKind`.
+- `src/OpenHandsNET.Infrastructure/Scm/` — `GitHubScmProvider` (Octokit 14;
+  JWT do app assinado manualmente — helpers removidos do pacote),
+  `GitHubAppClientFactory` (installation token em `IDistributedCache`,
+  50 min), `ScmConnectionService` (manifest flow + CRUD),
+  `GitHubWebhookService` (HMAC `sha256=`, `X-GitHub-Delivery` idempotente,
+  `@openhandsnet` → `CreateForUserAsync`), `ScmPullRequestService` +
+  `ScmStatusReporter` (`openhandsnet/run`).
+- `ScmEndpoints` — manifest/callback/webhook/`scm-connections` +
+  `POST /app-conversations/{id}/pull-request`; payload webhook ≤256 KB.
+- `webhook_deliveries` (`{kind,delivery_id}` único) +
+  `conversations.pull_request_*` — migrations SQLite + Postgres.
+- `PullRequestCreatedEvent` (`pull_request_created`) no stream V1.
+- Tool do agente `create_pull_request` + commit status no fim do run.
+- Admin `/admin/scm` (lista/remove conexões por org) +
+  CLI `openhandsnet scm status|connect|pr create`.
+- `docs/features/scm.md`; golden OpenAPI regenerado.
+
+Evidência: `Spec52ScmTests` (7 testes — assinatura inválida, replay
+idempotente, menção→start-task, manifest, CRUD, PR+persist+evento);
+suite unit verde; `Spec51OpenApiContractTests` com golden atualizado.
