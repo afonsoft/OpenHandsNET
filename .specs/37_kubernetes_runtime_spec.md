@@ -8,7 +8,7 @@
 | Type | `Infra / Enterprise` |
 | Stack | `.NET 10 · KubernetesClient · Helm · Sysbox` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `In implementation` (PR #79 engine + workloads Deployments/Services/`valkey` condicional + RBAC (`pods`/`pvc`/`pods/exec`/`networkpolicies`) + `doctor --preflight --k8s` probes cluster/sysbox/storageclass ok; faltam: validação em cluster kind+sysbox real e warm-pool MVP — `ClaimWarmAsync` retorna null / `PauseAsync` not-supported por design, documentado no engine) |
+| Status | `Done (PR #79 engine + PR #120 warm pool/sleep-wake/Helm — completion)` |
 | Ticket | #76 |
 | Depends on | `03` (sandbox), `14` (ops/sizing), `16` (lifecycle), `17` (image), `35` (runtime-api split) |
 | Touches | `ISandboxService` provider, deploy/ (Helm), docs |
