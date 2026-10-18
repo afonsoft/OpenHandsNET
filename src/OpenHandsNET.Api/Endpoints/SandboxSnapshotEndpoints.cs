@@ -13,7 +13,8 @@ public static class SandboxSnapshotEndpoints
         this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/app-conversations/{id:guid}/sandbox-snapshots")
-            .WithTags("SandboxSnapshots");
+            .WithTags("SandboxSnapshots")
+            .ExcludeFromDescription();
 
         group.MapGet("/", ListSnapshotsAsync);
         group.MapPost("/", CreateSnapshotAsync);
