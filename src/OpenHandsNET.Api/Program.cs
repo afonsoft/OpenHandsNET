@@ -229,6 +229,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<OpenHandsNET.Application.Common.Interfaces.IOutputCompactorService, OpenHandsNET.Infrastructure.Agent.OutputCompactorService>();
 builder.Services.AddSingleton<OpenHandsNET.Application.Sandbox.ISandboxSnapshotProvider, OpenHandsNET.Infrastructure.Sandbox.FileSystemSandboxSnapshotProvider>();
 builder.Services.AddScoped<OpenHandsNET.Application.Identity.ICurrentUserAccessor,
+    OpenHandsNET.Api.Auth.HttpCurrentUserAccessor>();
 
 var app = builder.Build();
 
