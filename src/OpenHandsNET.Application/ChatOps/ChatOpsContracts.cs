@@ -68,6 +68,9 @@ public enum ChatOpsResult
 
     /// <summary>200 — nada a fazer (bot message, canal não configurado).</summary>
     Ignored,
+
+    /// <summary>200 — bloqueado pelo input guard (SPEC-59).</summary>
+    Blocked,
 }
 
 /// <summary>

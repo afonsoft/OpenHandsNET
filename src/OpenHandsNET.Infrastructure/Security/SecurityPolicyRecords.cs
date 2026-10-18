@@ -27,6 +27,13 @@ public sealed class SecurityPolicyRecord
     /// <summary>Fail-closed resume on toolset drift; null = preset/global.</summary>
     public bool? ResumeStrict { get; set; }
 
+    /// <summary>SPEC-59: <c>off</c> | <c>pattern</c> | <c>llm</c>;
+    /// null = <c>pattern</c>.</summary>
+    public string? InputGuardMode { get; set; }
+
+    /// <summary>SPEC-59: role OmniRoute p/ guard LLM (opcional).</summary>
+    public string? InputGuardLlmRole { get; set; }
+
     /// <summary>Last actor that wrote the policy.</summary>
     public Guid? UpdatedByUserId { get; set; }
 

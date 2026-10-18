@@ -99,6 +99,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<IdpGroupMappingRecord> IdpGroupMappings => Set<IdpGroupMappingRecord>();
     public DbSet<UsageTierRecord> UsageTiers => Set<UsageTierRecord>();
     public DbSet<UserUsageOverrideRecord> UserUsageOverrides => Set<UserUsageOverrideRecord>();
+    public DbSet<IpAccessRuleRecord> IpAccessRules => Set<IpAccessRuleRecord>();
 
     /// <summary>Org-scoped memory entries (SPEC-30).</summary>
     public DbSet<MemoryRecord> MemoryRecords => Set<MemoryRecord>();
@@ -290,6 +291,8 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
             .HasIndex(k => new { k.OrgId, k.IdpGroup });
         modelBuilder.Entity<UserUsageOverrideRecord>()
             .HasIndex(k => new { k.OrgId, k.UserId });
+        modelBuilder.Entity<IpAccessRuleRecord>()
+            .HasIndex(k => k.Scope);
     }
 }
 

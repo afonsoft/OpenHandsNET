@@ -465,6 +465,49 @@ public sealed class AdminApiClient(HttpClient http)
         return resp.IsSuccessStatusCode;
     }
 
+    // ---- SPEC-59: edge (ip rules + check) --------------------------------
+
+    public async Task<IReadOnlyList<JsonElement>> ListIpRulesAsync(
+        string? orgId, CancellationToken ct = default)
+    {
+        var url = orgId is null
+            ? "/api/v1/ip-rules"
+            : $"/api/v1/orgs/{orgId}/ip-rules";
+        var el = await GetAsync<JsonElement>(url, ct);
+        return el.TryGetProperty("rules", out var arr)
+            ? arr.EnumerateArray().ToList() : [];
+    }
+
+    public async Task<bool> CreateIpRuleAsync(
+        string? orgId, string cidr, string action, int priority,
+        CancellationToken ct = default)
+    {
+        var url = orgId is null
+            ? "/api/v1/ip-rules"
+            : $"/api/v1/orgs/{orgId}/ip-rules";
+        var resp = Guard(await http.PostAsJsonAsync(
+            url, new { cidr, action, priority }, Json, ct));
+        return resp.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> DeleteIpRuleAsync(
+        string? orgId, string id, CancellationToken ct = default)
+    {
+        var url = orgId is null
+            ? $"/api/v1/ip-rules/{id}"
+            : $"/api/v1/orgs/{orgId}/ip-rules/{id}";
+        var resp = Guard(await http.DeleteAsync(url, ct));
+        return resp.IsSuccessStatusCode;
+    }
+
+    public async Task<JsonElement> EdgeCheckAsync(
+        string? ip, string? message, CancellationToken ct = default)
+    {
+        var resp = Guard(await http.PostAsJsonAsync(
+            "/api/v1/edge/check", new { ip, message }, Json, ct));
+        return await resp.Content.ReadFromJsonAsync<JsonElement>(Json, ct);
+    }
+
     // ---- plumbing --------------------------------------------------------
 
     private async Task<T?> GetAsync<T>(string url, CancellationToken ct) =>

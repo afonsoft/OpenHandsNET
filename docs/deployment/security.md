@@ -73,3 +73,48 @@ para observabilidade da decisão.
   termina `Error` — fail-closed. Tools **adicionadas** não bloqueiam.
 - Em `open` (default): o mesmo drift emite `resume_drift` com
   `severity=warning` e segue (comportamento pré-SPEC-48).
+
+## Edge security (SPEC-59)
+
+### IP access rules (`ip_access_rules`)
+
+`EdgeAccessMiddleware` é o primeiro middleware do pipeline. Regras com
+`scope` `global` ou `org:{id}` (extraído de `/api/v1/orgs/{id}/...`),
+`cidr` IPv4/IPv6, `action` `allow|deny`, `priority`. Avaliação:
+deny vence sempre; se existir ao menos uma regra `allow` para o escopo,
+o IP precisa casar; caso contrário, allow por default. Cache de 30s
+(`IMemoryCache`). `X-Forwarded-For` só é honrado com
+`Proxy:TrustForwardedHeaders=true`. Rotas em `Edge:ExemptPaths`
+(default `/api/v1/health`, `/api/v1/ready`, `/scim/v2`) ignoram.
+
+Admin: `GET|POST|DELETE /api/v1/ip-rules` (`perm:manage_super_admins`)
+e `/api/v1/orgs/{org}/ip-rules` (`perm:edit_org_settings`), ou
+Settings → Security (`/admin/security`).
+
+### Input guard (`IInputGuard`)
+
+Todo texto que vira prompt passa por `ScoreAsync(text, channel, orgId)`:
+`send-message`, `initial_message` de `POST /app-conversations` e
+webhooks de chat/tickets/SCM. `PatternInputGuard` (sempre on) cobre
+prompt-injection (`ignore previous`, `system prompt`, markup de controle
+`<|im_start|>`, `<<SYS>>`, `[INST]`), exfiltração (`reveal secrets`,
+`curl/wget` exfil) e act-as/base64 longo (warn). Veredito `block` →
+403 `input_blocked` + resposta educada no canal + audit
+`guard.input_blocked` (só categorias + hash do texto — nunca conteúdo)
++ evento `input_blocked`. Modo por org via `security_policies.
+input_guard` = `off|pattern|llm`; `llm` usa `InputGuard:LlmEndpoint`
+(OmniRoute), timeout 2s, `InputGuard:FailMode=closed` torna fail-closed.
+
+Diagnóstico: `POST /api/v1/edge/check` `{ip?, message?}` →
+`{ip: allow|block, guard: {verdict, categories}}` sem efeitos.
+
+### Rate limit por ator
+
+Chave `ratelimit:{actor_kind}:{actor_id}:{bucket}:{minuto}` —
+`actor_kind`/`actor_id` vêm dos claims de auth (service user `svc_*`,
+key-hash ou IP como fallback). Buckets por rota:
+`read` (GET), `write` (POST/PUT/PATCH/DELETE), `webhook`
+(`/chatops/`, `/scm/webhooks/`, `/tickets/webhooks/`), `expensive`
+(`/app-conversations`, `send-message`, `/sandboxes`). Limite excedido →
+429 + `Retry-After` + `X-RateLimit-Limit/Remaining/Reset`. Limites:
+`RateLimit:Read/Write/Webhook/ExpensivePerMinute`.

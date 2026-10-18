@@ -423,5 +423,16 @@
   "admin.ident_no_tier": "(no tier)",
   "admin.ident_tiers": "Usage tiers",
   "admin.ident_limits": "Limits JSON",
-  "admin.once_hint": "shown once — copy now"
+  "admin.once_hint": "shown once — copy now",
+  "admin.nav_security": "Security",
+  "admin.sec_title": "Edge security",
+  "admin.sec_ip_rules": "IP access rules",
+  "admin.sec_ip_hint": "deny wins; with any allow rule, IP must match.",
+  "admin.sec_global": "(global)",
+  "admin.refresh": "Refresh",
+  "admin.sec_action": "Action",
+  "admin.sec_priority": "Priority",
+  "admin.sec_check": "Edge check (simulate)",
+  "admin.sec_message": "message (optional)",
+  "admin.sec_run": "Run"
 }

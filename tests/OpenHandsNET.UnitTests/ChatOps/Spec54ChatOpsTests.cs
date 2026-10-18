@@ -51,7 +51,8 @@ public sealed class Spec54ChatOpsTests : IAsyncDisposable
             .GetRequiredService<IServiceScopeFactory>();
         _svc = new SlackChatOpsService(_db, _secrets, _connections,
             _conversations, _events, new FakeRunnerHost(), _sink, _audit,
-            scopeFactory, NullLogger<SlackChatOpsService>.Instance);
+            scopeFactory, new AllowAllGuard(),
+            NullLogger<SlackChatOpsService>.Instance);
         _db.OrgMembers.Add(new OrgMemberRecord
         {
             OrgId = _orgId, UserId = _ownerId, Role = "owner",
@@ -247,6 +248,18 @@ public sealed class Spec54ChatOpsTests : IAsyncDisposable
             CancellationToken ct) => Task.CompletedTask;
         public Task<bool> DeleteAsync(string s, string o, string n,
             CancellationToken ct) => Task.FromResult(true);
+    }
+
+    private sealed class AllowAllGuard
+        : OpenHandsNET.Application.Security.IInputGuard
+    {
+        public Task<OpenHandsNET.Application.Security.InputGuardResult>
+            ScoreAsync(string t, string c, Guid? o,
+                CancellationToken ct) =>
+            Task.FromResult(new OpenHandsNET.Application.Security
+                .InputGuardResult(
+                    OpenHandsNET.Application.Security.InputGuardVerdict
+                        .Allow, [], "ok"));
     }
 
     private sealed class FakeAudit : IAuditService

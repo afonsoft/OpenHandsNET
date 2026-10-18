@@ -8,7 +8,7 @@
 | Type | `Feature / Security` |
 | Stack | `.NET 10 · middleware · LLM-lite screening` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Delivered` |
 | Ticket | `TBD` |
 | Depends on | `08` (auth), `33` (ISecurityAnalyzer), `57` (actors) |
 | Reference | competitive-analysis §3.7 (G13/G20); docs.devin.ai
@@ -133,3 +133,30 @@ por ator com headers padrão — três controles de borda auditáveis.
 - 60 req/min excedidas → 429 c/ headers corretos por ator.
 - Testes unit do matcher CIDR + integração do guard. Suite verde;
   golden OpenAPI atualizado.
+
+
+## 10. Delivered — evidências
+
+- RF-001 `ip_access_rules` + `EdgeAccessMiddleware` (deny-wins,
+  allow-required-if-any, cache 30s, `Proxy:TrustForwardedHeaders`,
+  `Edge:ExemptPaths`) + admin endpoints
+  `/api/v1/{orgs/{o}/}ip-rules`. Migrations SQLite+Postgres.
+- RF-002 `IInputGuard` + `PatternInputGuard` (regex GeneratedRegex:
+  injection/exfil/markup/act-as/base64) + `InputGuardService`
+  (modo por org via `security_policies.input_guard`, LLM via
+  `InputGuard:LlmEndpoint`, `FailMode` open|closed). Wired em
+  send-message, initial_message e SlackChatOps (canal `webhook:slack`,
+  `ChatOpsResult.Blocked`). Block → 403 `input_blocked` + audit
+  `guard.input_blocked` (categorias + sha256:12, sem conteúdo).
+- RF-003 `ApiRateLimitMiddleware` reescrito: key
+  `{actor_kind}:{actor_id}:{bucket}:{minuto}`, buckets
+  read/write/webhook/expensive, 429 + Retry-After + X-RateLimit-*.
+- RF-004 página `/admin/security` (regras por escopo + edge/check),
+  `POST /api/v1/edge/check`, esta seção no security.md.
+- Divergências: cache de regras em `IMemoryCache` (spec dizia
+  IDistributedCache — [A DEFINIR] para multi-instância); webhooks
+  ticket/scm herdam o guard via canal `webhook:*` no send do prompt
+  (SCM/ticket webhooks não geram prompt de usuário — cobertura via
+  SlackChatOps e send-message).
+- Testes: `Spec59EdgeTests` (24 casos: CIDR IPv4/6, patterns,
+  classificação de bucket) — verdes.

@@ -267,9 +267,12 @@ app.Use(async (ctx, next) =>
     await next();
 });
 
+// SPEC-59 RF-001: IP access lists — 1º do pipeline (antes do auth).
+app.UseMiddleware<OpenHandsNET.Api.Middleware.EdgeAccessMiddleware>();
+
 app.UseAuthentication();
 app.UseAuthorization();
-// SPEC-36 RF-002: janela global — depois do auth p/ chavear por identidade.
+// SPEC-36/59: rate limit por ator+bucket — depois do auth p/ claims.
 app.UseMiddleware<OpenHandsNET.Api.Middleware.ApiRateLimitMiddleware>();
 // SPEC-38: sandbox host/path router (no-op em RoutingMode=internal).
 app.UseMiddleware<OpenHandsNET.Api.Routing.SandboxHostRouter>();
@@ -313,6 +316,7 @@ app.MapChatOpsEndpoints();
 app.MapTicketEndpoints();
 app.MapServiceUserEndpoints();
 app.MapScimEndpoints();
+app.MapEdgeEndpoints();
 app.MapHub<ConversationHub>("/hubs/conversations");
 app.MapHealthChecks("/api/v1/health");
 app.MapHealthChecks("/api/v1/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
