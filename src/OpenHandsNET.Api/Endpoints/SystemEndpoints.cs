@@ -56,6 +56,7 @@ public static class SystemEndpoints
             return Results.Ok(bundle);
         })
         .WithTags("System")
+        .ExcludeFromDescription()
         .RequireAuthorization();
 
         return app;

@@ -279,5 +279,15 @@
     "severity": "warn",
     "code": "model_fallback",
     "message": "gpt-5 falhou (429) — usando claude-opus"
+  },
+  {
+    "kind": "HumanIntervenedObservation",
+    "id": "01J5Y0H3AHUMANINTERVENE01",
+    "timestamp": "2026-01-01T10:00:25+00:00",
+    "source": "user",
+    "parent_id": null,
+    "surface": "terminal",
+    "summary": "Intervenção manual no terminal pelo usuário afonso",
+    "commands_executed": ["ls -la", "dotnet --version"]
   }
 ]
