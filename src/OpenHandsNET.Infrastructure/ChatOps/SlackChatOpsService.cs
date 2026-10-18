@@ -75,13 +75,18 @@ public sealed class SlackChatOpsService(
         {
             return false;
         }
-        var exists = await db.WebhookDeliveries.IgnoreQueryFilters()
+        // contexto próprio: chamadas concorrentes (vários eventos no
+        // mesmo service) não podem compartilhar `db`.
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var scoped = scope.ServiceProvider
+            .GetRequiredService<AppDbContext>();
+        var exists = await scoped.WebhookDeliveries.IgnoreQueryFilters()
             .AnyAsync(d => d.Kind == "slack" && d.DeliveryId == eventId, ct);
         if (exists)
         {
             return true;
         }
-        db.WebhookDeliveries.Add(new WebhookDeliveryRecord
+        scoped.WebhookDeliveries.Add(new WebhookDeliveryRecord
         {
             Id = Guid.NewGuid(), Kind = "slack",
             DeliveryId = eventId,
@@ -89,7 +94,7 @@ public sealed class SlackChatOpsService(
         });
         try
         {
-            await db.SaveChangesAsync(ct);
+            await scoped.SaveChangesAsync(ct);
             return false;
         }
         catch (DbUpdateException)
