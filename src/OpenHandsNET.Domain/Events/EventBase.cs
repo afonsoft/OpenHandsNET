@@ -22,6 +22,7 @@ public static class EventTree
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "kind",
     UnknownDerivedTypeHandling = JsonUnknownDerivedTypeHandling.FallBackToBaseType)]
+[JsonDerivedType(typeof(HumanIntervenedObservation), "HumanIntervenedObservation")]
 [JsonDerivedType(typeof(ActionEvent), "ActionEvent")]
 [JsonDerivedType(typeof(MessageEvent), "MessageEvent")]
 [JsonDerivedType(typeof(ObservationEvent), "ObservationEvent")]

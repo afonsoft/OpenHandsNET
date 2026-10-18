@@ -226,8 +226,9 @@ builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationH
 builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationMiddlewareResultHandler,
     OpenHandsNET.Api.Policies.PermissionResultHandler>();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<OpenHandsNET.Application.Common.Interfaces.IOutputCompactorService, OpenHandsNET.Infrastructure.Agent.OutputCompactorService>();
+builder.Services.AddSingleton<OpenHandsNET.Application.Sandbox.ISandboxSnapshotProvider, OpenHandsNET.Infrastructure.Sandbox.FileSystemSandboxSnapshotProvider>();
 builder.Services.AddScoped<OpenHandsNET.Application.Identity.ICurrentUserAccessor,
-    OpenHandsNET.Api.Auth.HttpCurrentUserAccessor>();
 
 var app = builder.Build();
 
@@ -303,6 +304,7 @@ app.MapUserEndpoints();
 app.MapWebhookEndpoints();
 app.MapGitEndpoints();
 app.MapCheckpointEndpoints();
+app.MapSandboxSnapshotEndpoints();
 app.MapUploadEndpoints();
 app.MapSkillEndpoints();
 app.MapAutomationEndpoints();

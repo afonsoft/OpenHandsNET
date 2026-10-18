@@ -1276,13 +1276,32 @@ public sealed class AgentRunner(
         ToolResult result, Domain.Sandbox.Sandbox? sandbox,
         ISandboxExecutor? executor, CancellationToken ct)
     {
-        var policy = services.GetService<Tools.OutputPolicy>();
-        var payload = policy is null
-            ? result.Observation
-            : await policy.ApplyAsync(action.ToolName ?? "", action.Id,
-                result.Observation, sandbox, executor, conversationId,
-                services.GetService<
-                    Application.Artifacts.IArtifactStore>(), ct);
+        var compactor = services.GetService<OpenHandsNET.Application.Common.Interfaces.IOutputCompactorService>();
+        
+        JsonElement payload = result.Observation;
+
+        if (compactor != null && payload.ValueKind == JsonValueKind.String)
+        {
+            var originalText = payload.GetString() ?? string.Empty;
+            var compactionResult = await compactor.CompactAsync(originalText, action.ToolName ?? "unknown", ct);
+            
+            payload = JsonDocument.Parse(JsonSerializer.Serialize(new 
+            {
+                content = compactionResult.CompactContent,
+                artifact_ref = compactionResult.ArtifactId
+            })).RootElement;
+        }
+        else
+        {
+            var policy = services.GetService<Tools.OutputPolicy>();
+            payload = policy is null
+                ? result.Observation
+                : await policy.ApplyAsync(action.ToolName ?? "", action.Id,
+                    result.Observation, sandbox, executor, conversationId,
+                    services.GetService<
+                        Application.Artifacts.IArtifactStore>(), ct);
+        }
+
         var obs = new ObservationEvent
         {
             ParentId = action.Id,
