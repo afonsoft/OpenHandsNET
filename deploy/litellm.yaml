@@ -1,9 +1,41 @@
-# LiteLLM gateway mínimo — ajuste model_list para seus providers.
+# SPEC-50: configuração do proxy LiteLLM para BYOR (bring-your-own-router).
+# Referência: https://docs.litellm.ai/docs/proxy/configs
+#
+# Secrets via env — NUNCA commite chaves reais:
+#   LITELLM_MASTER_KEY      — chave admin do proxy (LlmProxy:MasterKey)
+#   OPENAI_API_KEY          — provider upstream (exemplo abaixo)
+#   ANTHROPIC_API_KEY       — idem
+#   LITELLM_DATABASE_URL    — postgresql://litellm:***@postgres:5432/litellm
+
 model_list:
+  # Modelos permitidos = lista anunciada em GET /models — o serviço BYOR
+  # cacheia isso por 60s e usa como allowlist em mode=byor.
   - model_name: gpt-4o-mini
     litellm_params:
       model: openai/gpt-4o-mini
       api_key: os.environ/OPENAI_API_KEY
+  - model_name: gpt-4o
+    litellm_params:
+      model: openai/gpt-4o
+      api_key: os.environ/OPENAI_API_KEY
+  - model_name: claude-sonnet-4
+    litellm_params:
+      model: anthropic/claude-sonnet-4-20250514
+      api_key: os.environ/ANTHROPIC_API_KEY
 
 general_settings:
+  # Master key: só por env/secret — o mesmo valor vai em
+  # LlmProxy:MasterKey na API (nunca em appsettings).
   master_key: os.environ/LITELLM_MASTER_KEY
+  # Persistência de virtual keys/budgets — exige Postgres.
+  database_url: os.environ/LITELLM_DATABASE_URL
+  # Budget default para virtual keys criadas sem budget explícito —
+  # o OpenHandsNET sempre envia max_budget no /key/generate; isto é o
+  # fallback do próprio proxy.
+  default_max_budget: 50.0
+
+litellm_settings:
+  # Telemetria interna do LiteLLM desligada por padrão.
+  telemetry: false
+  # Falha de provider → erro (sem fallback silencioso entre modelos).
+  fallbacks: []

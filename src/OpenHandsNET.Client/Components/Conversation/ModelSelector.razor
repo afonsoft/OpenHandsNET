@@ -35,6 +35,14 @@
         {
             var (ids, def) = await Api.GetModelsAsync();
             _models = ids.Where(i => i.Length > 0).ToList();
+            // SPEC-50 RF-003/RF-005: BYOR ativo → só os modelos que o
+            // proxy permite (a enforcement real é no runner — fail-closed).
+            var permitted = await Api.GetByorPermittedModelsAsync();
+            if (permitted is { Count: > 0 })
+            {
+                _models = _models.Where(permitted.Contains).ToList();
+            }
+
             if (Current is null && def is not null)
             {
                 Current = def;

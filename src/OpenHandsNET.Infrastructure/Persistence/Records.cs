@@ -255,3 +255,35 @@ public sealed class UsageRecord
     public decimal? CostUsd { get; set; }
     public DateTimeOffset RecordedAt { get; set; }
 }
+
+/// <summary>
+/// SPEC-50: BYOR LiteLLM virtual key — metadata + ciphertext only; the
+/// plaintext key is returned once at refresh and never persisted in
+/// cleartext (<see cref="KeyCiphertext"/> is DataProtection-protected
+/// with <see cref="Nonce"/>).
+/// </summary>
+public sealed class ByorKeyRecord
+{
+    public required Guid Id { get; set; }
+    /// <summary>Owner (dev-login user id / subject).</summary>
+    public required string UserId { get; set; }
+    /// <summary>Optional org binding for budget grouping.</summary>
+    public Guid? OrgId { get; set; }
+    /// <summary>LiteLLM key id (send as <c>X-LiteLLM-Key</c> tracking).</summary>
+    public required string KeyId { get; set; }
+    /// <summary>Display prefix (e.g. <c>sk-litellm-ab12</c>).</summary>
+    public required string KeyPrefix { get; set; }
+    /// <summary>DataProtection ciphertext of the virtual key.</summary>
+    public required string KeyCiphertext { get; set; }
+    /// <summary>Protector nonce (purpose separation, secret-store style).</summary>
+    public required string Nonce { get; set; }
+    /// <summary>Max budget in USD enforced at the proxy.</summary>
+    public decimal BudgetUsd { get; set; }
+    /// <summary>JSON array of permitted model ids (null = proxy default).</summary>
+    public string? ModelsJson { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    /// <summary>Companion column for DB ordering (SQLite-safe).</summary>
+    public long CreatedAtTicks { get; set; }
+    /// <summary>Set when revoked — at most one row per user with null.</summary>
+    public DateTimeOffset? RevokedAt { get; set; }
+}

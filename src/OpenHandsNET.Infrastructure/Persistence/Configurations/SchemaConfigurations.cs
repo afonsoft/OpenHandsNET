@@ -231,3 +231,18 @@ public sealed class UsageRecordConfiguration : IEntityTypeConfiguration<UsageRec
         b.HasIndex(e => new { e.OrgId, e.Period });
     }
 }
+
+/// <inheritdoc />
+public sealed class ByorKeyConfiguration : IEntityTypeConfiguration<ByorKeyRecord>
+{
+    /// <inheritdoc />
+    public void Configure(EntityTypeBuilder<ByorKeyRecord> b)
+    {
+        b.ToTable("byor_keys");
+        b.HasKey(e => e.Id);
+        b.HasIndex(e => e.UserId)
+            .IsUnique()
+            .HasFilter("revoked_at IS NULL");
+        b.HasIndex(e => e.KeyId);
+    }
+}

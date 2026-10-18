@@ -311,6 +311,29 @@ public static class DependencyInjection
                     .AppDbContext>(),
                 sp.GetService<Microsoft.Extensions.Caching.Distributed
                     .IDistributedCache>()));
+        // SPEC-50 RF-001/002: BYOR LiteLLM — admin client tipado +
+        // lifecycle de virtual keys (ciphertext DataProtection, uma
+        // ativa por usuário). Off por default (LlmProxy:Mode=off).
+        services.Configure<OpenHandsNET.Application.Agent.LlmProxyOptions>(
+            configuration.GetSection("LlmProxy"));
+        services.AddHttpClient("litellm");
+        services.AddSingleton<
+            OpenHandsNET.Application.Agent.ILiteLlmAdminClient,
+            OpenHandsNET.Infrastructure.Agent.Routing.LiteLlmAdminClient>();
+        services.AddScoped<
+            OpenHandsNET.Application.Agent.IByorKeyService>(sp =>
+            new OpenHandsNET.Infrastructure.Agent.Routing.ByorKeyService(
+                sp.GetRequiredService<OpenHandsNET.Infrastructure.Persistence
+                    .AppDbContext>(),
+                sp.GetRequiredService<OpenHandsNET.Application.Agent
+                    .ILiteLlmAdminClient>(),
+                sp.GetRequiredService<Microsoft.Extensions.Options
+                    .IOptions<OpenHandsNET.Application.Agent
+                        .LlmProxyOptions>>(),
+                sp.GetRequiredService<Microsoft.AspNetCore.DataProtection
+                    .IDataProtectionProvider>(),
+                sp.GetService<Microsoft.Extensions.Caching.Distributed
+                    .IDistributedCache>()));
         // SPEC-33 RF-003: secret store criptografado (DataProtection) —
         // valores resolvem só na borda do sandbox.
         services.AddScoped<OpenHandsNET.Application.Contracts.ISecretStore,
