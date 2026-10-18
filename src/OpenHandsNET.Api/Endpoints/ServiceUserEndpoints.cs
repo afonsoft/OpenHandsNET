@@ -135,24 +135,6 @@ public static class ServiceUserEndpoints
             .RequireAuthorization("perm:manage_api_keys")
             .RequireScope(ApiScopes.AdminServiceUsers);
 
-        // SPEC-57 RF-004: identidade do ator autenticado.
-        app.MapGet("/api/v1/keys/current", (
-            ICurrentUserAccessor current) =>
-        {
-            var user = current.User;
-            if (user is null)
-                return Results.Unauthorized();
-            return Results.Ok(new
-            {
-                actor_kind = user.ActorKind == ActorKind.ServiceUser
-                    ? "service_user" : "user",
-                scopes = user.Scopes,
-                role = user.Role,
-                org_id = user.BoundOrgId ?? (
-                    Guid.TryParse(user.CurrentOrgId, out var o) ? o : null),
-            });
-        }).RequireAuthorization();
-
         return app;
     }
 }
