@@ -73,3 +73,18 @@ openhandsnet scm pr create <conv> --title "fix" --body "…"
   `scm:gh:install-token:{installationId}`, TTL 50 min.
 
 SPEC-53 estende o registro com GitLab/Bitbucket/Azure DevOps.
+
+## Providers adicionais (SPEC-53)
+
+| Provider | `kind` | Auth | Webhook | Verificação |
+|---|---|---|---|---|
+| GitHub | `github` | GitHub App (installation token) | `/webhooks/scm/github` | HMAC `X-Hub-Signature-256` |
+| GitLab | `gitlab` | PAT (`PRIVATE-TOKEN`) | `/webhooks/scm/gitlab` | `X-Gitlab-Token` |
+| Bitbucket | `bitbucket` | app password (`Basic`) | `/webhooks/scm/bitbucket` | HMAC `X-Hub-Signature` |
+| Azure DevOps | `azuredevops` | PAT (`Basic`) | `/webhooks/scm/azuredevops` | shared secret (`X-OpenHandsNet-Secret` ou `?secret=`) |
+
+- `api_url` por connection habilita self-managed/DC (`https://gitlab.exemplo.com`, `https://dev.azure.com/{org}`).
+- `auth_kind` ∈ `pat|app|oauth|entra_sp`; `meta_json` guarda extras do provider.
+- Diagnóstico: `POST /api/v1/scm/connections/{id}/test` → `{ok, user, server_version, repo_count, detail}`.
+- Eventos de menção por provider: GitLab `Note Hook` (issue/MR), Bitbucket `pullrequest:comment_created`/`issue:comment_created`, AzDO `ms.vss-code.git-pullrequest-comment-event` — todos com `@openhandsnet` → start-task.
+- `http` em `api_url` só para labs internos via `AllowInsecureScm` (não implementado por default — https exigido).

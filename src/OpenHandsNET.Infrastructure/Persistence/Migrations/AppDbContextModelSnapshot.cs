@@ -1550,6 +1550,11 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("id");
 
+                    b.Property<string>("ApiUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("api_url");
+
                     b.Property<string>("AppId")
                         .HasMaxLength(40)
                         .HasColumnType("TEXT")
@@ -1559,6 +1564,11 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT")
                         .HasColumnName("app_slug");
+
+                    b.Property<string>("AuthKind")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("auth_kind");
 
                     b.Property<string>("ClientSecretRef")
                         .HasMaxLength(200)
@@ -1584,6 +1594,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("TEXT")
                         .HasColumnName("kind");
+
+                    b.Property<string>("MetaJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("meta_json");
 
                     b.Property<Guid?>("OrgId")
                         .HasColumnType("TEXT")

@@ -78,6 +78,12 @@ public sealed class ScmConnectCommand : AsyncCommand<ScmConnectCommand.Settings>
 
         [CommandOption("--app-name <NAME>")]
         public string? AppName { get; init; }
+
+        [CommandOption("--kind <KIND>")]
+        public string Kind { get; init; } = "github";
+
+        [CommandOption("--url <URL>")]
+        public string? ApiUrl { get; init; }
     }
 
     public override async Task<int> ExecuteAsync(
@@ -86,15 +92,32 @@ public sealed class ScmConnectCommand : AsyncCommand<ScmConnectCommand.Settings>
         var ct = CancellationToken.None;
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(), ct: ct);
-        var redirect = settings.RedirectUri
-            ?? $"{api.BaseUrl}/api/v1/scm/github/callback";
-        var manifest = await api.BuildScmManifestAsync(
-            redirect, settings.AppName, ct);
+        if (settings.Kind == "github")
+        {
+            var redirect = settings.RedirectUri
+                ?? $"{api.BaseUrl}/api/v1/scm/github/callback";
+            var manifest = await api.BuildScmManifestAsync(
+                redirect, settings.AppName, ct);
+            AnsiConsole.MarkupLine(
+                "[bold]GitHub App manifest[/] — crie o app em " +
+                "<https://github.com/settings/apps/new> (método manifest) e " +
+                "conclua o callback:\n");
+            AnsiConsole.WriteLine(manifest.GetRawText());
+            return 0;
+        }
+
+        // SPEC-53: gitlab/bitbucket/azuredevops — registra via
+        // POST /orgs/{org}/scm-connections (PAT/token como secret ref).
         AnsiConsole.MarkupLine(
-            "[bold]GitHub App manifest[/] — crie o app em " +
-            "<https://github.com/settings/apps/new> (método manifest) e " +
-            "conclua o callback:\n");
-        AnsiConsole.WriteLine(manifest.GetRawText());
+            $"[bold]{settings.Kind}[/] — registre a connection via API:\n" +
+            "  POST /api/v1/orgs/{org_id}/scm-connections\n" +
+            "  { \"kind\": \"" + settings.Kind + "\",\n" +
+            "    \"api_url\": \"" + (settings.ApiUrl ?? "<base-url>") + "\",\n" +
+            "    \"pem_secret_ref\": \"<secret-ref-do-token>\",\n" +
+            "    \"webhook_secret_ref\": \"<secret-ref-do-hook>\",\n" +
+            "    \"repos\": [\"group/repo\"] }\n" +
+            "Webhook: POST /api/v1/webhooks/scm/" + settings.Kind + "\n" +
+            "Diagnóstico: POST /api/v1/scm/connections/{id}/test");
         return 0;
     }
 }

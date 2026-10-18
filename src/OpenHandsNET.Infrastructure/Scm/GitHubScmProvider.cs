@@ -143,6 +143,24 @@ public sealed class GitHubScmProvider(
         };
         await client.Repository.Status.Create(owner, name, sha, status);
     }
+
+    /// <inheritdoc />
+    public async Task<ScmConnectionDiagnostic> TestConnectionAsync(
+        ScmConnection connection, CancellationToken ct)
+    {
+        try
+        {
+            var client = await clients.ForConnectionAsync(connection, ct);
+            var user = await client.User.Current();
+            return new ScmConnectionDiagnostic(
+                true, user.Login, null, null, "ok");
+        }
+        catch (Exception e)
+        {
+            return new ScmConnectionDiagnostic(
+                false, null, null, null, e.Message);
+        }
+    }
 }
 
 /// <summary>

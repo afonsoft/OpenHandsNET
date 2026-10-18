@@ -1559,6 +1559,11 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("ApiUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("api_url");
+
                     b.Property<string>("AppId")
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)")
@@ -1568,6 +1573,11 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("app_slug");
+
+                    b.Property<string>("AuthKind")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("auth_kind");
 
                     b.Property<string>("ClientSecretRef")
                         .HasMaxLength(200)
@@ -1593,6 +1603,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("kind");
+
+                    b.Property<string>("MetaJson")
+                        .HasColumnType("text")
+                        .HasColumnName("meta_json");
 
                     b.Property<Guid?>("OrgId")
                         .HasColumnType("uuid")

@@ -134,6 +134,44 @@ public static class DependencyInjection
                 f, log);
         });
 
+        // SPEC-53: providers REST (GitLab/Bitbucket/Azure DevOps) — mesmo
+        // IScmProvider, registrados por kind.
+        services.AddScoped<
+            OpenHandsNET.Application.Scm.IScmProvider>(sp =>
+        {
+            var hf = sp.GetRequiredService<IHttpClientFactory>();
+            var sc = sp.GetRequiredService<
+                OpenHandsNET.Application.Contracts.ISecretStore>();
+            var log = sp.GetRequiredService<Microsoft.Extensions.Logging
+                .ILogger<OpenHandsNET.Infrastructure.Scm.GitLabScmProvider>>();
+            return new OpenHandsNET.Infrastructure.Scm.GitLabScmProvider(
+                hf, sc, log);
+        });
+        services.AddScoped<
+            OpenHandsNET.Application.Scm.IScmProvider>(sp =>
+        {
+            var hf = sp.GetRequiredService<IHttpClientFactory>();
+            var sc = sp.GetRequiredService<
+                OpenHandsNET.Application.Contracts.ISecretStore>();
+            var log = sp.GetRequiredService<Microsoft.Extensions.Logging
+                .ILogger<OpenHandsNET.Infrastructure.Scm
+                    .BitbucketScmProvider>>();
+            return new OpenHandsNET.Infrastructure.Scm.BitbucketScmProvider(
+                hf, sc, log);
+        });
+        services.AddScoped<
+            OpenHandsNET.Application.Scm.IScmProvider>(sp =>
+        {
+            var hf = sp.GetRequiredService<IHttpClientFactory>();
+            var sc = sp.GetRequiredService<
+                OpenHandsNET.Application.Contracts.ISecretStore>();
+            var log = sp.GetRequiredService<Microsoft.Extensions.Logging
+                .ILogger<OpenHandsNET.Infrastructure.Scm
+                    .AzureDevOpsScmProvider>>();
+            return new OpenHandsNET.Infrastructure.Scm
+                .AzureDevOpsScmProvider(hf, sc, log);
+        });
+
         // Checkpoints (SPEC-43): git-dir separado no sandbox, snapshots
         // pós-turno/manuais, revert com drift guard.
         services.Configure<OpenHandsNET.Application.Checkpoints.CheckpointOptions>(

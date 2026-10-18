@@ -20,6 +20,7 @@ public sealed class ScmConnectionService(
     ISecretStore secrets,
     IAuditService audit,
     IHttpClientFactory httpFactory,
+    IScmProviderRegistry providers,
     ILogger<ScmConnectionService> logger) : IScmConnectionService
 {
     private const string GitHubManifestConversionUrl =
@@ -112,7 +113,9 @@ public sealed class ScmConnectionService(
         Guid orgId, ScmKind kind, string? installationId,
         string? pemSecretRef, string? webhookSecretRef,
         IReadOnlyList<string>? repos, string? appId, string? appSlug,
-        string? createdByUserId, CancellationToken ct)
+        string? createdByUserId, CancellationToken ct,
+        string? apiUrl = null, string? authKind = null,
+        string? metaJson = null)
     {
         var record = new ScmConnectionRecord
         {
@@ -125,6 +128,9 @@ public sealed class ScmConnectionService(
             ReposJson = repos is null ? null : JsonSerializer.Serialize(repos),
             AppId = appId,
             AppSlug = appSlug,
+            ApiUrl = apiUrl,
+            AuthKind = authKind,
+            MetaJson = metaJson,
             CreatedByUserId = createdByUserId,
             CreatedAt = DateTimeOffset.UtcNow,
         };
@@ -168,6 +174,35 @@ public sealed class ScmConnectionService(
     }
 
     /// <inheritdoc />
+    public async Task<ScmConnectionDiagnostic> TestAsync(
+        Guid id, CancellationToken ct)
+    {
+        var conn = await GetAsync(id, ct);
+        if (conn is null)
+        {
+            return new ScmConnectionDiagnostic(
+                false, null, null, null, "connection not found");
+        }
+        var provider = providers.Get(conn.Kind);
+        if (provider is null)
+        {
+            return new ScmConnectionDiagnostic(
+                false, null, null, null,
+                $"provider '{conn.Kind.ToWire()}' not registered");
+        }
+        try
+        {
+            return await provider.TestConnectionAsync(conn, ct);
+        }
+        catch (Exception e)
+        {
+            logger.LogWarning(e, "scm test failed (conn {Id})", id);
+            return new ScmConnectionDiagnostic(
+                false, null, null, null, e.Message);
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
     {
         var record = await db.ScmConnections.IgnoreQueryFilters()
@@ -186,5 +221,6 @@ public sealed class ScmConnectionService(
             r.ReposJson is null
                 ? []
                 : JsonSerializer.Deserialize<List<string>>(r.ReposJson) ?? [],
-            r.AppId, r.AppSlug, r.CreatedByUserId, r.CreatedAt);
+            r.AppId, r.AppSlug, r.CreatedByUserId, r.CreatedAt,
+            r.ApiUrl, r.AuthKind, r.MetaJson);
 }

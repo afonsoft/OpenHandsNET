@@ -53,7 +53,7 @@ public sealed class GitHubWebhookService(
                     ? fn.GetString() : null;
 
             var connection = await FindConnectionAsync(
-                installationId, repository, ct);
+                ScmKind.GitHub, installationId, repository, ct);
             if (connection is null)
             {
                 return ScmWebhookResult.NoConnection;
@@ -69,7 +69,8 @@ public sealed class GitHubWebhookService(
                 return ScmWebhookResult.InvalidSignature;
             }
 
-            if (await IsDuplicateAsync(deliveryId, payload, ct))
+            if (await IsDuplicateAsync(
+                    ScmKind.GitHub, deliveryId, payload, ct))
             {
                 return ScmWebhookResult.Duplicate;
             }
@@ -115,10 +116,11 @@ public sealed class GitHubWebhookService(
     }
 
     private async Task<ScmConnection?> FindConnectionAsync(
-        string? installationId, string? repository, CancellationToken ct)
+        ScmKind kind, string? installationId, string? repository,
+        CancellationToken ct)
     {
         var query = db.ScmConnections.IgnoreQueryFilters()
-            .Where(c => c.Kind == "github");
+            .Where(c => c.Kind == kind.ToWire());
         if (installationId is not null)
         {
             var byInstall = await query
@@ -167,15 +169,16 @@ public sealed class GitHubWebhookService(
     }
 
     private async Task<bool> IsDuplicateAsync(
-        string? deliveryId, byte[] payload, CancellationToken ct)
+        ScmKind kind, string? deliveryId, byte[] payload, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(deliveryId))
         {
             return false;
         }
 
+        var wire = kind.ToWire();
         var exists = await db.WebhookDeliveries.IgnoreQueryFilters()
-            .AnyAsync(d => d.Kind == "github" && d.DeliveryId == deliveryId, ct);
+            .AnyAsync(d => d.Kind == wire && d.DeliveryId == deliveryId, ct);
         if (exists)
         {
             return true;
@@ -184,7 +187,7 @@ public sealed class GitHubWebhookService(
         db.WebhookDeliveries.Add(new WebhookDeliveryRecord
         {
             Id = Guid.NewGuid(),
-            Kind = "github",
+            Kind = wire,
             DeliveryId = deliveryId,
             PayloadSha = Convert.ToHexStringLower(
                 SHA256.HashData(payload)),
@@ -302,6 +305,251 @@ public sealed class GitHubWebhookService(
         return new ScmMentionContext(
             ScmKind.GitHub, repository, branch, prUrl, prNumber,
             author, body, inReplyTo, installationId);
+    }
+
+    /// <inheritdoc />
+    public async Task<ScmWebhookResult> HandleAsync(
+        ScmKind kind, string? signatureOrToken, string? eventType,
+        string? deliveryId, byte[] payload, CancellationToken ct)
+    {
+        if (kind == ScmKind.GitHub)
+        {
+            return await HandleGitHubAsync(
+                signatureOrToken, eventType ?? "", deliveryId, payload, ct);
+        }
+
+        JsonDocument doc;
+        try
+        {
+            doc = JsonDocument.Parse(payload);
+        }
+        catch (JsonException)
+        {
+            return ScmWebhookResult.InvalidSignature;
+        }
+
+        using (doc)
+        {
+            var root = doc.RootElement;
+            var repository = ExtractRepository(kind, root);
+            var connection = await FindConnectionAsync(
+                kind, null, repository, ct);
+            if (connection is null)
+            {
+                return ScmWebhookResult.NoConnection;
+            }
+
+            if (!await VerifyByKindAsync(
+                    kind, connection, signatureOrToken, payload, ct))
+            {
+                await audit.RecordAsync("scm.webhook_rejected", orgId: null,
+                    targetType: "scm_connection",
+                    targetId: connection.Id.ToString(),
+                    metadata: new
+                    {
+                        reason = "bad_signature",
+                        eventType,
+                        kind = kind.ToWire(),
+                    },
+                    cancellationToken: ct);
+                return ScmWebhookResult.InvalidSignature;
+            }
+
+            if (await IsDuplicateAsync(kind, deliveryId, payload, ct))
+            {
+                return ScmWebhookResult.Duplicate;
+            }
+
+            var mention = ParseMentionByKind(kind, eventType, root);
+            if (mention is null)
+            {
+                return ScmWebhookResult.Ignored;
+            }
+
+            var ownerUserId = await ResolveOwnerUserIdAsync(connection, ct);
+            if (ownerUserId is null)
+            {
+                return ScmWebhookResult.Ignored;
+            }
+
+            var prompt = BuildPrompt(mention, root);
+            var task = await conversations.CreateForUserAsync(
+                ownerUserId.Value, connection.OrgId,
+                new CreateConversationRequest(
+                    new InitialMessage("user", [prompt], Run: true),
+                    mention.Repository,
+                    AgentType: null, LlmModel: null, SandboxSpecId: null),
+                ct);
+
+            await audit.RecordAsync("scm.webhook_triggered",
+                actorUserId: ownerUserId.Value.ToString(),
+                orgId: connection.OrgId,
+                targetType: "app_conversation",
+                targetId: task.AppConversationId?.ToString(),
+                metadata: new
+                {
+                    event_type = eventType,
+                    kind = kind.ToWire(),
+                    repository = mention.Repository,
+                    pr = mention.PullRequestNumber,
+                },
+                cancellationToken: ct);
+            return ScmWebhookResult.Processed;
+        }
+    }
+
+    /// <summary>SPEC-53: verificação por kind (token | HMAC | shared secret).</summary>
+    private async Task<bool> VerifyByKindAsync(
+        ScmKind kind, ScmConnection connection, string? signatureOrToken,
+        byte[] payload, CancellationToken ct)
+    {
+        if (kind == ScmKind.Bitbucket)
+        {
+            // X-Hub-Signature "sha256=<hmac>" — mesmo esquema do GitHub.
+            return await VerifySignatureAsync(
+                connection, signatureOrToken, payload, ct);
+        }
+
+        if (connection.WebhookSecretRef is null || signatureOrToken is null)
+        {
+            return false;
+        }
+        var secret = await secrets.ResolveAsync(
+            "org", connection.OrgId?.ToString() ?? "",
+            connection.WebhookSecretRef, ct);
+        if (secret is null)
+        {
+            return false;
+        }
+        // GitLab X-Gitlab-Token / AzDO shared secret: igualdade em tempo fixo.
+        return CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(secret),
+            Encoding.UTF8.GetBytes(signatureOrToken));
+    }
+
+    /// <summary>SPEC-53: extrai "owner/repo" do payload por provider.</summary>
+    private static string? ExtractRepository(ScmKind kind, JsonElement root)
+    {
+        switch (kind)
+        {
+            case ScmKind.GitLab:
+                return root.TryGetProperty("project", out var p)
+                    && p.TryGetProperty("path_with_namespace", out var pn)
+                        ? pn.GetString() : null;
+            case ScmKind.Bitbucket:
+                return root.TryGetProperty("repository", out var r)
+                    && r.TryGetProperty("full_name", out var fn)
+                        ? fn.GetString() : null;
+            case ScmKind.AzureDevOps:
+                return root.TryGetProperty("resource", out var res)
+                    && res.TryGetProperty("repository", out var rr)
+                    && rr.TryGetProperty("name", out var rn)
+                        ? rn.GetString() : null;
+            default:
+                return null;
+        }
+    }
+
+    /// <summary>SPEC-53: parse da menção por provider (note/comment events).</summary>
+    private static ScmMentionContext? ParseMentionByKind(
+        ScmKind kind, string? eventType, JsonElement root)
+    {
+        var repository = ExtractRepository(kind, root);
+        if (repository is null)
+        {
+            return null;
+        }
+
+        string? body = null;
+        string? author = null;
+        int? prNumber = null;
+        string? prUrl = null;
+        string? branch = null;
+
+        switch (kind)
+        {
+            case ScmKind.GitLab:
+                if (eventType != "Note Hook"
+                    || !root.TryGetProperty("object_attributes", out var oa))
+                {
+                    return null;
+                }
+                body = oa.TryGetProperty("note", out var n)
+                    ? n.GetString() : null;
+                author = root.TryGetProperty("user", out var gu)
+                    && gu.TryGetProperty("username", out var un)
+                        ? un.GetString() : null;
+                if (oa.TryGetProperty("noteable_type", out var nt)
+                    && nt.GetString() == "MergeRequest"
+                    && root.TryGetProperty("merge_request", out var glmr))
+                {
+                    prNumber = glmr.TryGetProperty("iid", out var ii)
+                        ? ii.GetInt32() : null;
+                    prUrl = glmr.TryGetProperty("url", out var gu2)
+                        ? gu2.GetString() : null;
+                    branch = glmr.TryGetProperty("source_branch", out var sb)
+                        ? sb.GetString() : null;
+                }
+                break;
+
+            case ScmKind.Bitbucket:
+                if (eventType != "pullrequest:comment_created"
+                    && eventType != "issue:comment_created")
+                {
+                    return null;
+                }
+                if (root.TryGetProperty("comment", out var bc)
+                    && bc.TryGetProperty("content", out var bco))
+                {
+                    body = bco.TryGetProperty("raw", out var raw)
+                        ? raw.GetString() : null;
+                }
+                author = root.TryGetProperty("comment", out var bcc)
+                    && bcc.TryGetProperty("user", out var bu)
+                    && bu.TryGetProperty("nickname", out var bn)
+                        ? bn.GetString() : null;
+                if (root.TryGetProperty("pullrequest", out var bbpr))
+                {
+                    prNumber = bbpr.TryGetProperty("id", out var bid)
+                        ? bid.GetInt32() : null;
+                    prUrl = bbpr.TryGetProperty("links", out var bl)
+                        && bl.TryGetProperty("html", out var bh)
+                        && bh.TryGetProperty("href", out var bh2)
+                            ? bh2.GetString() : null;
+                }
+                break;
+
+            case ScmKind.AzureDevOps:
+                if (!root.TryGetProperty("resource", out var res))
+                {
+                    return null;
+                }
+                // ms.vss-code.git-pullrequest-comment-event
+                if (!res.TryGetProperty("comment", out var ac))
+                {
+                    return null;
+                }
+                body = ac.TryGetProperty("content", out var aco)
+                    ? aco.GetString() : null;
+                author = ac.TryGetProperty("author", out var aa)
+                    && aa.TryGetProperty("displayName", out var an)
+                        ? an.GetString() : null;
+                prNumber = res.TryGetProperty("pullRequest", out var apr)
+                    && apr.TryGetProperty("pullRequestId", out var aid)
+                        ? aid.GetInt32() : null;
+                break;
+
+            default:
+                return null;
+        }
+
+        if (body is null || !body.Contains(Mention, StringComparison.Ordinal))
+        {
+            return null;
+        }
+        return new ScmMentionContext(
+            kind, repository, branch, prUrl, prNumber,
+            author, body, null, null);
     }
 
     private async Task<Guid?> ResolveOwnerUserIdAsync(

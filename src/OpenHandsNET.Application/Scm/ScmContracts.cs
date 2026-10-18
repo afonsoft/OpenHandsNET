@@ -40,7 +40,12 @@ public static class ScmKindExtensions
     };
 }
 
-/// <summary>Org-level SCM connection (resolved entity — secrets by-ref only).</summary>
+/// <summary>
+/// Org-level SCM connection (resolved entity — secrets by-ref only).
+/// SPEC-53: ApiUrl = base do provider (self-managed/gitlab.com, bitbucket
+/// cloud|DC, dev.azure.com/{org}); AuthKind = pat|app|oauth|entra_sp;
+/// MetaJson = project keys/workspace/collection extras.
+/// </summary>
 public sealed record ScmConnection(
     Guid Id,
     Guid? OrgId,
@@ -52,7 +57,10 @@ public sealed record ScmConnection(
     string? AppId,
     string? AppSlug,
     string? CreatedByUserId,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    string? ApiUrl = null,
+    string? AuthKind = null,
+    string? MetaJson = null);
 
 /// <summary>PR metadata returned by providers.</summary>
 public sealed record ScmPullRequest(
@@ -121,7 +129,23 @@ public interface IScmProvider
         ScmConnection connection, string repository, string sha,
         string state, string context, string? targetUrl,
         string? description, CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-53 RF-004: valida credenciais + escopo da connection e devolve
+    /// diagnóstico (usuário, versão do servidor, repos acessíveis). Nunca ecoa
+    /// segredos.
+    /// </summary>
+    Task<ScmConnectionDiagnostic> TestConnectionAsync(
+        ScmConnection connection, CancellationToken ct);
 }
+
+/// <summary>Saída de <c>POST /scm/connections/{id}/test</c> (SPEC-53).</summary>
+public sealed record ScmConnectionDiagnostic(
+    bool Ok,
+    string? User,
+    string? ServerVersion,
+    int? RepoCount,
+    string? Detail);
 
 /// <summary>Keyed provider lookup (SPEC-52 RF-001).</summary>
 public interface IScmProviderRegistry
@@ -148,7 +172,12 @@ public interface IScmConnectionService
         Guid orgId, ScmKind kind, string? installationId,
         string? pemSecretRef, string? webhookSecretRef,
         IReadOnlyList<string>? repos, string? appId, string? appSlug,
-        string? createdByUserId, CancellationToken ct);
+        string? createdByUserId, CancellationToken ct,
+        string? apiUrl = null, string? authKind = null,
+        string? metaJson = null);
+
+    /// <summary>SPEC-53 RF-004: diagnóstico <c>POST /scm/connections/{id}/test</c>.</summary>
+    Task<ScmConnectionDiagnostic> TestAsync(Guid id, CancellationToken ct);
 
     /// <summary>Lists connections of the org.</summary>
     Task<IReadOnlyList<ScmConnection>> ListAsync(Guid orgId, CancellationToken ct);
@@ -193,6 +222,15 @@ public interface IScmWebhookService
     Task<ScmWebhookResult> HandleGitHubAsync(
         string? signature256, string eventType, string? deliveryId,
         byte[] payload, CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-53 RF-004: pipeline genérico — verificação por kind
+    /// (GitLab <c>X-Gitlab-Token</c>, Bitbucket HMAC <c>X-Hub-Signature</c>,
+    /// AzDO shared secret) → idempotência → menção → start-task.
+    /// </summary>
+    Task<ScmWebhookResult> HandleAsync(
+        ScmKind kind, string? signatureOrToken, string? eventType,
+        string? deliveryId, byte[] payload, CancellationToken ct);
 }
 
 /// <summary>Outcome of <see cref="IScmPullRequestService.CreateAsync"/>.</summary>

@@ -1032,8 +1032,14 @@
         "type": "object"
       },
       "ScmConnectionRequest": {
-        "description": "Manual connection registration (BYO app).",
+        "description": "Manual connection registration (BYO app; SPEC-53 fields).",
         "properties": {
+          "api_url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "app_id": {
             "type": [
               "null",
@@ -1041,6 +1047,12 @@
             ]
           },
           "app_slug": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "auth_kind": {
             "type": [
               "null",
               "string"
@@ -1054,6 +1066,12 @@
           },
           "kind": {
             "type": "string"
+          },
+          "meta_json": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "pem_secret_ref": {
             "type": [
@@ -5737,6 +5755,30 @@
         ]
       }
     },
+    "/api/v1/scm/connections/{id}/test": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/scm/connections/{id:guid}/test",
+        "tags": [
+          "SCM"
+        ]
+      }
+    },
     "/api/v1/scm/github/callback": {
       "get": {
         "parameters": [
@@ -6222,14 +6264,24 @@
         ]
       }
     },
-    "/api/v1/webhooks/scm/github": {
+    "/api/v1/webhooks/scm/{kind}": {
       "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK"
           }
         },
-        "summary": "POST /api/v1/webhooks/scm/github",
+        "summary": "POST /api/v1/webhooks/scm/{kind}",
         "tags": [
           "OpenHandsNET.Api"
         ]

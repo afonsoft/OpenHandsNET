@@ -8,7 +8,7 @@
 | Type | `Feature / Integration` |
 | Stack | `.NET 10 · IScmProvider (SPEC-52) · REST clients tipados` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Delivered` |
 | Ticket | `TBD` |
 | Depends on | `52` (IScmProvider, connections, webhook pipeline) |
 | Reference | competitive-analysis §6.1; docs.devin.ai `/integrations/gitlab`,
@@ -130,3 +130,28 @@ workspace, collection). Migration leve (colunas nullable).
 - `test` endpoint reporta auth ok/fail com detalhe seguro.
 - Migrations verdes; OpenAPI golden atualizado; docs
   `docs/features/scm.md` com tabela por provider.
+
+## 11. Delivered (evidência)
+
+- `RestScmProvider` base + `GitLabScmProvider` /
+  `BitbucketScmProvider` / `AzureDevOpsScmProvider` em
+  `src/OpenHandsNET.Infrastructure/Scm/RestScmProviders.cs` — MR/PR,
+  comentários, replies, commit statuses e `TestConnectionAsync`
+  por provider; token sempre por-referência via `ISecretStore`.
+- `scm_connections` + `ApiUrl` / `AuthKind` / `MetaJson`
+  (migration `spec53_scm_providers` SQLite + Postgres).
+- Webhook roteado por kind em `POST /api/v1/webhooks/scm/{kind}`
+  (`ScmEndpoints`): GitLab `X-Gitlab-Token` + `Note Hook`,
+  Bitbucket `X-Hub-Signature` HMAC + `pullrequest:comment_created`,
+  AzDO shared secret (header `X-OpenHandsNet-Secret` ou query
+  `?secret=`) + `ms.vss-code.git-pullrequest-comment-event`;
+  idempotência por delivery id compartilhada.
+- `POST /api/v1/scm/connections/{id}/test` → diagnóstico
+  (`ScmConnectionDiagnostic`: ok/user/server_version/repo_count/
+  detail — sem ecoar segredos).
+- CLI `openhandsnet scm connect --kind gitlab|bitbucket|azuredevops
+  [--url]` imprime o payload de registro + instruções.
+- Testes: `tests/OpenHandsNET.UnitTests/Scm/Spec53ScmProvidersTests.cs`
+  — 8 verdes (token errado → 401, menção por kind → start-task,
+  registry resolve os 4 kinds, `TestAsync` diag).
+- Golden OpenAPI regenerado (novas rotas `{kind}` + `/test`).

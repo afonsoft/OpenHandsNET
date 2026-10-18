@@ -38,6 +38,15 @@ public sealed class ScmConnectionRecord : IOrgScoped
     /// <summary>Nome do secret que guarda o client_secret do App (manifest flow).</summary>
     public string? ClientSecretRef { get; set; }
 
+    /// <summary>SPEC-53: base URL do provider (self-managed); null = default.</summary>
+    public string? ApiUrl { get; set; }
+
+    /// <summary>SPEC-53: <c>pat|app|oauth|entra_sp</c>.</summary>
+    public string? AuthKind { get; set; }
+
+    /// <summary>SPEC-53: extras do provider (project keys, workspace, collection).</summary>
+    public string? MetaJson { get; set; }
+
     /// <summary>Usuário que registrou a conexão (atribuição de triggers).</summary>
     public string? CreatedByUserId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
@@ -78,6 +87,8 @@ public sealed class ScmConnectionRecordConfiguration
         builder.Property(e => e.AppId).HasMaxLength(40);
         builder.Property(e => e.AppSlug).HasMaxLength(200);
         builder.Property(e => e.ClientSecretRef).HasMaxLength(200);
+        builder.Property(e => e.ApiUrl).HasMaxLength(500);
+        builder.Property(e => e.AuthKind).HasMaxLength(20);
         builder.Property(e => e.CreatedByUserId).HasMaxLength(200);
         builder.HasIndex(e => new { e.OrgId, e.Kind });
     }

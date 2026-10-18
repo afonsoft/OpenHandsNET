@@ -47,7 +47,7 @@ public sealed class Spec52ScmTests : IAsyncDisposable
         _webhook = new GitHubWebhookService(_db, _secrets, _conversations,
             _audit, NullLogger<GitHubWebhookService>.Instance);
         _connections = new ScmConnectionService(_db, _secrets, _audit,
-            new FakeHttpFactory(),
+            new FakeHttpFactory(), new FakeRegistry(),
             NullLogger<ScmConnectionService>.Instance);
         _db.ScmConnections.Add(new ScmConnectionRecord
         {
@@ -450,6 +450,11 @@ public sealed class Spec52ScmTests : IAsyncDisposable
             CancellationToken ct) => throw new NotImplementedException();
     }
 
+    private sealed class FakeRegistry : IScmProviderRegistry
+    {
+        public IScmProvider? Get(ScmKind kind) => new FakeProvider();
+    }
+
     private sealed class FakeProvider : IScmProvider
     {
         public ScmKind Kind => ScmKind.GitHub;
@@ -469,6 +474,11 @@ public sealed class Spec52ScmTests : IAsyncDisposable
         public Task<long> CreateIssueCommentAsync(ScmConnection connection,
             string repository, int issueNumber, string body,
             CancellationToken ct) => Task.FromResult(1L);
+
+        public Task<ScmConnectionDiagnostic> TestConnectionAsync(
+            ScmConnection connection, CancellationToken ct) =>
+            Task.FromResult(new ScmConnectionDiagnostic(
+                true, "fake-user", "20.0", 3, "ok"));
 
         public Task<long> ReplyToReviewCommentAsync(ScmConnection connection,
             string repository, int pullRequestNumber,
