@@ -4342,6 +4342,19 @@
         ]
       }
     },
+    "/api/v1/edge/check": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/edge/check",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
     "/api/v1/git/credentials": {
       "get": {
         "responses": {
@@ -4519,6 +4532,54 @@
         "summary": "POST /api/v1/hooks/{token}",
         "tags": [
           "Automations"
+        ]
+      }
+    },
+    "/api/v1/ip-rules": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/ip-rules/",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/ip-rules/",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/ip-rules/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "DELETE /api/v1/ip-rules/{id:guid}",
+        "tags": [
+          "OpenHandsNET.Api"
         ]
       }
     },
@@ -5736,6 +5797,85 @@
           }
         },
         "summary": "DELETE /api/v1/orgs/{org_id:guid}/idp-mappings/{id:guid}",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/ip-rules": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/orgs/{org_id:guid}/ip-rules/",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/orgs/{org_id:guid}/ip-rules/",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/ip-rules/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "DELETE /api/v1/orgs/{org_id:guid}/ip-rules/{id:guid}",
         "tags": [
           "OpenHandsNET.Api"
         ]
