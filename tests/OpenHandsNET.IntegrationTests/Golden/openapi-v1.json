@@ -5662,6 +5662,164 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_id}/idp-mappings": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/orgs/{org_id:guid}/idp-mappings",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/orgs/{org_id:guid}/idp-mappings",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/idp-mappings/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "DELETE /api/v1/orgs/{org_id:guid}/idp-mappings/{id:guid}",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/scim-tokens": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/orgs/{org_id:guid}/scim-tokens",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/orgs/{org_id:guid}/scim-tokens",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/scim-tokens/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "DELETE /api/v1/orgs/{org_id:guid}/scim-tokens/{id:guid}",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_id}/scm-connections": {
       "get": {
         "parameters": [
@@ -6128,6 +6286,116 @@
           }
         },
         "summary": "POST /api/v1/orgs/{org_id:guid}/ticket-connections/{id:guid}/projects",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/usage-tiers": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/orgs/{org_id:guid}/usage-tiers",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/orgs/{org_id:guid}/usage-tiers",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/usage-tiers/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "DELETE /api/v1/orgs/{org_id:guid}/usage-tiers/{id:guid}",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "PATCH /api/v1/orgs/{org_id:guid}/usage-tiers/{id:guid}",
         "tags": [
           "OpenHandsNET.Api"
         ]
@@ -7078,6 +7346,52 @@
         ]
       }
     },
+    "/api/v1/users/{id}/usage-override": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "DELETE /api/v1/users/{id:guid}/usage-override",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/users/{id:guid}/usage-override",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
     "/api/v1/webhooks/chat/slack/commands": {
       "post": {
         "responses": {
@@ -7442,6 +7756,216 @@
           }
         },
         "summary": "GET /oauth/oidc/offline/callback",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/scim/v2/Groups": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /scim/v2/Groups",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /scim/v2/Groups",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/scim/v2/Groups/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "DELETE /scim/v2/Groups/{id:guid}",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      },
+      "put": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "PUT /scim/v2/Groups/{id:guid}",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/scim/v2/ResourceTypes": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /scim/v2/ResourceTypes",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/scim/v2/Schemas": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /scim/v2/Schemas",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/scim/v2/ServiceProviderConfig": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /scim/v2/ServiceProviderConfig",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/scim/v2/Users": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "filter",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /scim/v2/Users",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /scim/v2/Users",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/scim/v2/Users/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "DELETE /scim/v2/Users/{id:guid}",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      },
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /scim/v2/Users/{id:guid}",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "PATCH /scim/v2/Users/{id:guid}",
         "tags": [
           "OpenHandsNET.Api"
         ]

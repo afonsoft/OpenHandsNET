@@ -8,7 +8,7 @@
 | Type | `Feature / Enterprise security` |
 | Stack | `.NET 10 · OIDC claims · EF Core` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Delivered` |
 | Ticket | `TBD` |
 | Depends on | `08` (OIDC/orgs/RBAC), `20` (quotas) |
 | Reference | competitive-analysis §3.7 (G7/G21); docs.devin.ai
@@ -128,3 +128,33 @@ grupo→org/role/tier; overrides por usuário; audit completo.
   remoção do grupo revoga no próximo login.
 - Efetivo = override > idp tier > org default (teste).
 - IdP `filter` inválido → 400 SCIM. Suite verde; golden atualizado.
+
+
+## 9. Entrega — evidência (2026-10-18)
+
+- Records: `ScimTokenRecord`, `IdpGroupMappingRecord`, `UsageTierRecord`,
+  `UserUsageOverrideRecord`; `OrgMemberRecord` + `Source`
+  (`manual|idp`) + `UsageTierId`. Migrations SQLite + Postgres.
+- `IdentityAdminService` — tokens `scim_*` (prefixo+SHA-256, 1×
+  plaintext, revoke), CRUD mappings/tiers, overrides, IdP sync.
+- SCIM subset em `/scim/v2`: ServiceProviderConfig/ResourceTypes/
+  Schemas; Users GET(filter)/POST/PATCH/DELETE; Groups GET/POST/PUT/
+  DELETE (displayName→mapping, members→memberships idp-sourced);
+  `application/scim+json` + erro SCIM padrão (invalidFilter/invalid
+  Syntax/uniqueness).
+- Login-time enforcement no `POST /api/v1/authenticate`: claims
+  `groups`/`group`/WS-groups → `ApplyOnLoginAsync` (idempotente,
+  best-effort); revoga memberships `source=idp` órfãs.
+- `GetEffectiveLimitsAsync(org,user)` no `PlanEnforcementService`:
+  override > tier da membership > plano; checks ganharam sobrecarga
+  com `userId` — create passa `ownerUserId`, run-start passa
+  `CreatedByUserId` (quota do ator/alvo na impersonation).
+- Admin UI `/admin/identity` (tokens/mappings/tiers) + i18n en/pt;
+  admin API `/orgs/{o}/scim-tokens|idp-mappings|usage-tiers` +
+  `/users/{id}/usage-override` (perm-based; scim-tokens também com
+  scope `admin:service_users`).
+- Divergência documentada: tokens SCIM sob `/orgs/{o}/scim-tokens`
+  (consistente com o resto do admin) em vez de `/api/v1/scim/tokens`.
+- Testes: `Spec58ScimIdpTests` 5/5 (mint/validate/revoke, sync
+  create+revoke, manual-preserva-role+ganha-tier, ordem de resolução
+  override→tier→plano, CRUD admin).

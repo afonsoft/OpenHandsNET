@@ -407,5 +407,21 @@
   "admin.svc_issue_key": "Emitir chave svc_*",
   "admin.svc_issue_btn": "Emitir chave",
   "admin.svc_issue_fail": "Falha ao emitir chave (verifique scopes)",
-  "admin.svc_key_once": "Chave exibida uma única vez — guarde agora."
+  "admin.svc_key_once": "Chave exibida uma única vez — guarde agora.",
+  "admin.nav_identity": "Identidade (SCIM)",
+  "admin.ident_title": "Identidade — SCIM e grupos do IdP",
+  "admin.ident_scim": "Tokens SCIM",
+  "admin.ident_scim_hint": "Tokens bearer scim_* para o IdP (Okta/Entra) chamar /scim/v2.",
+  "admin.ident_prefix": "Prefixo",
+  "admin.ident_name": "Nome",
+  "admin.ident_token_name": "nome do token",
+  "admin.ident_mint": "Emitir token",
+  "admin.ident_mappings": "Mapeamentos de grupo do IdP",
+  "admin.ident_mappings_hint": "Claim de grupo → role/tier da org aplicados no login.",
+  "admin.ident_group": "Grupo do IdP",
+  "admin.ident_tier": "Tier de uso",
+  "admin.ident_no_tier": "(sem tier)",
+  "admin.ident_tiers": "Tiers de uso",
+  "admin.ident_limits": "JSON de limites",
+  "admin.once_hint": "exibido uma única vez — copie agora"
 }

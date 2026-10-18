@@ -63,7 +63,9 @@ public sealed class ConversationStartWorker(
         // concurrent runs, tokens/mês e sandbox-seconds/mês.
         var planError = await scope.ServiceProvider
             .GetRequiredService<Application.Identity.IPlanEnforcementService>()
-            .CheckRunStartAsync(conv.OrgId, ct);
+            .CheckRunStartAsync(conv.OrgId,
+                Guid.TryParse(conv.CreatedByUserId, out var uid) ? uid : null,
+                ct);
         if (planError is not null)
         {
             await FailAsync(taskId,

@@ -407,5 +407,21 @@
   "admin.svc_issue_key": "Issue svc_* key",
   "admin.svc_issue_btn": "Issue key",
   "admin.svc_issue_fail": "Failed to issue key (check scopes)",
-  "admin.svc_key_once": "Key shown once — store it now."
+  "admin.svc_key_once": "Key shown once — store it now.",
+  "admin.nav_identity": "Identity (SCIM)",
+  "admin.ident_title": "Identity — SCIM & IdP groups",
+  "admin.ident_scim": "SCIM tokens",
+  "admin.ident_scim_hint": "Bearer scim_* tokens for the IdP (Okta/Entra) to call /scim/v2.",
+  "admin.ident_prefix": "Prefix",
+  "admin.ident_name": "Name",
+  "admin.ident_token_name": "token name",
+  "admin.ident_mint": "Issue token",
+  "admin.ident_mappings": "IdP group mappings",
+  "admin.ident_mappings_hint": "Group claim → org role/tier applied on login.",
+  "admin.ident_group": "IdP group",
+  "admin.ident_tier": "Usage tier",
+  "admin.ident_no_tier": "(no tier)",
+  "admin.ident_tiers": "Usage tiers",
+  "admin.ident_limits": "Limits JSON",
+  "admin.once_hint": "shown once — copy now"
 }

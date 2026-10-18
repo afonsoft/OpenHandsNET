@@ -377,6 +377,94 @@ public sealed class AdminApiClient(HttpClient http)
             ? k.GetString() : null;
     }
 
+    // ---- SPEC-58: identity (scim tokens / mappings / tiers) -------------
+
+    public async Task<IReadOnlyList<JsonElement>> ListScimTokensAsync(
+        string orgId, CancellationToken ct = default)
+    {
+        var el = await GetAsync<JsonElement>(
+            $"/api/v1/orgs/{orgId}/scim-tokens", ct);
+        return el.TryGetProperty("tokens", out var arr)
+            ? arr.EnumerateArray().ToList() : [];
+    }
+
+    public async Task<string?> CreateScimTokenAsync(
+        string orgId, string name, CancellationToken ct = default)
+    {
+        var resp = Guard(await http.PostAsJsonAsync(
+            $"/api/v1/orgs/{orgId}/scim-tokens",
+            new { name }, Json, ct));
+        if (!resp.IsSuccessStatusCode)
+            return null;
+        var body = await resp.Content
+            .ReadFromJsonAsync<JsonElement>(Json, ct);
+        return body.TryGetProperty("token", out var t)
+            ? t.GetString() : null;
+    }
+
+    public async Task<bool> DeleteScimTokenAsync(
+        string orgId, string id, CancellationToken ct = default)
+    {
+        var resp = Guard(await http.DeleteAsync(
+            $"/api/v1/orgs/{orgId}/scim-tokens/{id}", ct));
+        return resp.IsSuccessStatusCode;
+    }
+
+    public async Task<IReadOnlyList<JsonElement>> ListIdpMappingsAsync(
+        string orgId, CancellationToken ct = default)
+    {
+        var el = await GetAsync<JsonElement>(
+            $"/api/v1/orgs/{orgId}/idp-mappings", ct);
+        return el.TryGetProperty("mappings", out var arr)
+            ? arr.EnumerateArray().ToList() : [];
+    }
+
+    public async Task<bool> CreateIdpMappingAsync(
+        string orgId, string idpGroup, string role, string? tierId,
+        CancellationToken ct = default)
+    {
+        var resp = Guard(await http.PostAsJsonAsync(
+            $"/api/v1/orgs/{orgId}/idp-mappings",
+            new { idp_group = idpGroup, role, usage_tier_id = tierId },
+            Json, ct));
+        return resp.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> DeleteIdpMappingAsync(
+        string orgId, string id, CancellationToken ct = default)
+    {
+        var resp = Guard(await http.DeleteAsync(
+            $"/api/v1/orgs/{orgId}/idp-mappings/{id}", ct));
+        return resp.IsSuccessStatusCode;
+    }
+
+    public async Task<IReadOnlyList<JsonElement>> ListUsageTiersAsync(
+        string orgId, CancellationToken ct = default)
+    {
+        var el = await GetAsync<JsonElement>(
+            $"/api/v1/orgs/{orgId}/usage-tiers", ct);
+        return el.TryGetProperty("tiers", out var arr)
+            ? arr.EnumerateArray().ToList() : [];
+    }
+
+    public async Task<bool> CreateUsageTierAsync(
+        string orgId, string name, string? limitsJson,
+        CancellationToken ct = default)
+    {
+        var resp = Guard(await http.PostAsJsonAsync(
+            $"/api/v1/orgs/{orgId}/usage-tiers",
+            new { name, limits_json = limitsJson }, Json, ct));
+        return resp.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> DeleteUsageTierAsync(
+        string orgId, string id, CancellationToken ct = default)
+    {
+        var resp = Guard(await http.DeleteAsync(
+            $"/api/v1/orgs/{orgId}/usage-tiers/{id}", ct));
+        return resp.IsSuccessStatusCode;
+    }
+
     // ---- plumbing --------------------------------------------------------
 
     private async Task<T?> GetAsync<T>(string url, CancellationToken ct) =>

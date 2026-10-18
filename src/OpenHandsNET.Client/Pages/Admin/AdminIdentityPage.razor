@@ -1,0 +1,206 @@
+@page "/admin/identity"
+@using OpenHandsNET.Client.Services
+@using System.Text.Json
+@inherits AdminPageBase
+@inject ToastService Toasts
+
+<PageTitle>@L["admin.title"] · @L["admin.nav_identity"]</PageTitle>
+
+@if (Checking || !Allowed)
+{
+    <div class="settings-wrap"><p class="empty-state">…</p></div>
+}
+else
+{
+    <div class="settings-wrap admin-wrap">
+        <h1>@L["admin.ident_title"]</h1>
+        <AdminNav />
+        @if (Error is not null) { <p class="admin-error">@Error</p> }
+
+        <div class="field admin-toolbar">
+            <select @bind="_orgId" @bind:after="LoadAll">
+                <option value="">@L["admin.select_org"]</option>
+                @foreach (var o in _orgs)
+                {
+                    <option value="@Str(o, "id")">@Str(o, "name")</option>
+                }
+            </select>
+        </div>
+
+        @if (_loaded)
+        {
+            <h2>@L["admin.ident_scim"]</h2>
+            <p class="muted">@L["admin.ident_scim_hint"]</p>
+            <table class="admin-table">
+                <thead><tr>
+                    <th>@L["admin.ident_prefix"]</th>
+                    <th>@L["admin.ident_name"]</th><th></th>
+                </tr></thead>
+                <tbody>
+                    @foreach (var t in _tokens)
+                    {
+                        <tr>
+                            <td><code>@Str(t, "prefix")</code></td>
+                            <td>@Str(t, "name")</td>
+                            <td><button class="btn btn-sm"
+                                @onclick='() => DeleteToken(Str(t, "id")!)'>
+                                @L["admin.delete"]</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <div class="admin-form">
+                <input placeholder="@L["admin.ident_token_name"]" @bind="_tokName" />
+                <button class="btn btn-primary" @onclick="MintToken">
+                    @L["admin.ident_mint"]</button>
+            </div>
+            @if (_newToken is not null)
+            {
+                <p class="admin-once">
+                    <code>@_newToken</code>
+                    <span class="muted">@L["admin.once_hint"]</span>
+                </p>
+            }
+
+            <h2>@L["admin.ident_mappings"]</h2>
+            <p class="muted">@L["admin.ident_mappings_hint"]</p>
+            <table class="admin-table">
+                <thead><tr>
+                    <th>@L["admin.ident_group"]</th>
+                    <th>@L["admin.svc_role"]</th>
+                    <th>@L["admin.ident_tier"]</th><th></th>
+                </tr></thead>
+                <tbody>
+                    @foreach (var m in _mappings)
+                    {
+                        <tr>
+                            <td>@Str(m, "idp_group")</td>
+                            <td>@Str(m, "role")</td>
+                            <td>@Str(m, "usage_tier_id")</td>
+                            <td><button class="btn btn-sm"
+                                @onclick='() => DeleteMapping(Str(m, "id")!)'>
+                                @L["admin.delete"]</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <div class="admin-form">
+                <input placeholder="@L["admin.ident_group"]" @bind="_mapGroup" />
+                <select @bind="_mapRole">
+                    <option value="member">member</option>
+                    <option value="admin">admin</option>
+                    <option value="owner">owner</option>
+                </select>
+                <select @bind="_mapTier">
+                    <option value="">@L["admin.ident_no_tier"]</option>
+                    @foreach (var t in _tiers)
+                    {
+                        <option value="@Str(t, "id")">@Str(t, "name")</option>
+                    }
+                </select>
+                <button class="btn btn-primary" @onclick="CreateMapping">
+                    @L["admin.create"]</button>
+            </div>
+
+            <h2>@L["admin.ident_tiers"]</h2>
+            <table class="admin-table">
+                <thead><tr>
+                    <th>@L["admin.ident_name"]</th>
+                    <th>@L["admin.ident_limits"]</th><th></th>
+                </tr></thead>
+                <tbody>
+                    @foreach (var t in _tiers)
+                    {
+                        <tr>
+                            <td>@Str(t, "name")</td>
+                            <td><code>@Str(t, "limits_json")</code></td>
+                            <td><button class="btn btn-sm"
+                                @onclick='() => DeleteTier(Str(t, "id")!)'>
+                                @L["admin.delete"]</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <div class="admin-form">
+                <input placeholder="@L["admin.ident_name"]" @bind="_tierName" />
+                <input placeholder='{"max_conversations_per_day": 20}'
+                    @bind="_tierLimits" />
+                <button class="btn btn-primary" @onclick="CreateTier">
+                    @L["admin.create"]</button>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private string _orgId = "";
+    private bool _loaded;
+    private IReadOnlyList<JsonElement> _orgs = [];
+    private IReadOnlyList<JsonElement> _tokens = [];
+    private IReadOnlyList<JsonElement> _mappings = [];
+    private IReadOnlyList<JsonElement> _tiers = [];
+    private string? _newToken;
+    private string _tokName = "", _mapGroup = "", _mapRole = "member";
+    private string _mapTier = "", _tierName = "", _tierLimits = "";
+
+    protected override async Task LoadAsync()
+    {
+        _orgs = await Api.ListOrgsAsync();
+        _loaded = true;
+    }
+
+    private async Task LoadAll()
+    {
+        _newToken = null;
+        _tokens = await Api.ListScimTokensAsync(_orgId);
+        _mappings = await Api.ListIdpMappingsAsync(_orgId);
+        _tiers = await Api.ListUsageTiersAsync(_orgId);
+    }
+
+    private async Task MintToken()
+    {
+        _newToken = await Api.CreateScimTokenAsync(
+            _orgId, string.IsNullOrWhiteSpace(_tokName) ? "scim" : _tokName);
+        await LoadAll();
+    }
+
+    private async Task DeleteToken(string id)
+    {
+        await Api.DeleteScimTokenAsync(_orgId, id);
+        await LoadAll();
+    }
+
+    private async Task CreateMapping()
+    {
+        if (string.IsNullOrWhiteSpace(_mapGroup)) return;
+        await Api.CreateIdpMappingAsync(_orgId, _mapGroup, _mapRole,
+            string.IsNullOrWhiteSpace(_mapTier) ? null : _mapTier);
+        _mapGroup = "";
+        await LoadAll();
+    }
+
+    private async Task DeleteMapping(string id)
+    {
+        await Api.DeleteIdpMappingAsync(_orgId, id);
+        await LoadAll();
+    }
+
+    private async Task CreateTier()
+    {
+        if (string.IsNullOrWhiteSpace(_tierName)) return;
+        await Api.CreateUsageTierAsync(_orgId, _tierName,
+            string.IsNullOrWhiteSpace(_tierLimits) ? null : _tierLimits);
+        _tierName = _tierLimits = "";
+        await LoadAll();
+    }
+
+    private async Task DeleteTier(string id)
+    {
+        await Api.DeleteUsageTierAsync(_orgId, id);
+        await LoadAll();
+    }
+
+    private static string? Str(JsonElement e, string prop) =>
+        e.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.String
+            ? v.GetString() : null;
+}
