@@ -355,3 +355,18 @@ public sealed class UserUsageOverrideRecord : IOrgScoped
     public required Guid CreatedBy { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }
+
+/// <summary>SPEC-59 RF-001: IP access rule — <c>Scope</c> = <c>global</c>
+/// ou <c>org:{guid}</c>; deny vence; se houver allow no escopo, precisa
+/// casar; default allow.</summary>
+public sealed class IpAccessRuleRecord
+{
+    public required Guid Id { get; set; }
+    public required string Scope { get; set; }
+    public required string Cidr { get; set; }
+    /// <summary><c>allow</c> | <c>deny</c>.</summary>
+    public required string Action { get; set; }
+    public int Priority { get; set; }
+    public required Guid CreatedBy { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}

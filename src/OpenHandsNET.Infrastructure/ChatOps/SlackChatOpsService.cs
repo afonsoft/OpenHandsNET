@@ -32,6 +32,7 @@ public sealed class SlackChatOpsService(
     IAuditService audit,
     Microsoft.Extensions.DependencyInjection.IServiceScopeFactory
         scopeFactory,
+    OpenHandsNET.Application.Security.IInputGuard inputGuard,
     ILogger<SlackChatOpsService> logger) : IChatOpsService
 {
     private const int TimestampToleranceSeconds = 300;
@@ -205,6 +206,30 @@ public sealed class SlackChatOpsService(
             if (ownerUserId is null)
             {
                 return (ChatOpsResult.Ignored, null);
+            }
+
+            // SPEC-59 RF-002: screening do texto do webhook antes de
+            // virar prompt — block → resposta educada + audit (sem o
+            // conteúdo, só categorias).
+            var verdict = await inputGuard.ScoreAsync(
+                text, "webhook:slack", connection.OrgId, ct);
+            if (verdict.Verdict
+                == Application.Security.InputGuardVerdict.Block)
+            {
+                await sink.PostMessageAsync(
+                    connection, channelId, threadTs,
+                    "Mensagem bloqueada pela política de segurança da "
+                        + "org — reformule e tente de novo.",
+                    ct);
+                await audit.RecordAsync(
+                    "guard.input_blocked", null, connection.OrgId,
+                    "channel", channelId,
+                    metadata: new
+                    {
+                        channel = "webhook:slack",
+                        categories = verdict.Categories,
+                    });
+                return (ChatOpsResult.Blocked, null);
             }
 
             var prompt = BuildPrompt(text, isTriage, channelId);

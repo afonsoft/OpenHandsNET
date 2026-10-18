@@ -423,5 +423,16 @@
   "admin.ident_no_tier": "(sem tier)",
   "admin.ident_tiers": "Tiers de uso",
   "admin.ident_limits": "JSON de limites",
-  "admin.once_hint": "exibido uma única vez — copie agora"
+  "admin.once_hint": "exibido uma única vez — copie agora",
+  "admin.nav_security": "Segurança",
+  "admin.sec_title": "Segurança de borda",
+  "admin.sec_ip_rules": "Regras de acesso por IP",
+  "admin.sec_ip_hint": "deny vence; se houver regra allow, o IP precisa casar.",
+  "admin.sec_global": "(global)",
+  "admin.refresh": "Atualizar",
+  "admin.sec_action": "Ação",
+  "admin.sec_priority": "Prioridade",
+  "admin.sec_check": "Simulação de borda",
+  "admin.sec_message": "mensagem (opcional)",
+  "admin.sec_run": "Testar"
 }

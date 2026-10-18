@@ -552,10 +552,33 @@ public static class AppConversationEndpoints
         ICurrentUserAccessor current,
         IEffectiveOrgResolver orgResolver,
         IAuditService audit,
+        OpenHandsNET.Application.Security.IInputGuard inputGuard,
         Infrastructure.Persistence.AppDbContext db,
         HttpContext http, CancellationToken ct)
     {
         var user = current.User;
+
+        // SPEC-59 RF-002: screening do initial_message.
+        if (body.InitialMessage is { } im)
+        {
+            var text = string.Join(' ',
+                im.Content.Select(c => c.ToString() ?? ""));
+            var org2 = user is { } u3
+                ? await orgResolver.ResolveAsync(u3, null, ct) : null;
+            var verdict = await inputGuard.ScoreAsync(
+                text, "ui", org2?.OrgId, ct);
+            if (verdict.Verdict
+                == Application.Security.InputGuardVerdict.Block)
+            {
+                await audit.RecordAsync(
+                    "guard.input_blocked",
+                    user?.UserId.ToString(), org2?.OrgId,
+                    "app_conversation", null,
+                    metadata: new { categories = verdict.Categories });
+                return OpenHandsNetProblemFactory.Create(
+                    http, 403, "input_blocked");
+            }
+        }
 
         // SPEC-57 RF-003: impersonation — scope sessions:impersonate +
         // alvo membro da mesma org; usage/quota atribuída ao alvo.
@@ -675,8 +698,31 @@ public static class AppConversationEndpoints
         Guid id, SendMessageRequest body,
         IAppConversationService svc, IEventService events,
         OpenHandsNET.Application.Agent.IAgentRunnerHost runnerHost,
+        OpenHandsNET.Application.Security.IInputGuard inputGuard,
+        ICurrentUserAccessor current, IEffectiveOrgResolver orgs,
+        IAuditService audit,
         HttpContext http, CancellationToken ct)
     {
+        // SPEC-59 RF-002: screening do texto antes de entrar no stream.
+        var text = string.Join(' ', body.Content
+            .Select(c => c.ToString() ?? "")
+            .Where(t => t.Length > 0));
+        var org = current.User is { } u2
+            ? await orgs.ResolveAsync(u2, null, ct) : null;
+        var verdict = await inputGuard.ScoreAsync(
+            text, "ui", org?.OrgId, ct);
+        if (verdict.Verdict
+            == Application.Security.InputGuardVerdict.Block)
+        {
+            await audit.RecordAsync(
+                "guard.input_blocked",
+                current.User?.UserId.ToString(), org?.OrgId,
+                "app_conversation", id.ToString(),
+                metadata: new { categories = verdict.Categories });
+            return OpenHandsNetProblemFactory.Create(
+                http, 403, "input_blocked");
+        }
+
         var error = await svc.ValidateSendMessageAsync(id, ct);
         if (error is not null)
         {

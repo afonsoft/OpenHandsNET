@@ -1065,6 +1065,49 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                     b.ToTable("idp_group_mappings", (string)null);
                 });
 
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.IpAccessRuleRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("action");
+
+                    b.Property<string>("Cidr")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("cidr");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer")
+                        .HasColumnName("priority");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("scope");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ip_access_rules");
+
+                    b.HasIndex("Scope")
+                        .HasDatabaseName("ix_ip_access_rules_scope");
+
+                    b.ToTable("ip_access_rules", (string)null);
+                });
+
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.McpServerRecord", b =>
                 {
                     b.Property<string>("OwnerId")
@@ -2078,6 +2121,14 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<string>("InputGuardLlmRole")
+                        .HasColumnType("text")
+                        .HasColumnName("input_guard_llm_role");
+
+                    b.Property<string>("InputGuardMode")
+                        .HasColumnType("text")
+                        .HasColumnName("input_guard_mode");
 
                     b.Property<string>("MinConfirmRisk")
                         .HasMaxLength(16)

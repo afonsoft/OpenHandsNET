@@ -1056,6 +1056,49 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                     b.ToTable("idp_group_mappings", (string)null);
                 });
 
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.IpAccessRuleRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("action");
+
+                    b.Property<string>("Cidr")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("cidr");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("priority");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("scope");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ip_access_rules");
+
+                    b.HasIndex("Scope")
+                        .HasDatabaseName("ix_ip_access_rules_scope");
+
+                    b.ToTable("ip_access_rules", (string)null);
+                });
+
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.McpServerRecord", b =>
                 {
                     b.Property<string>("OwnerId")
@@ -2069,6 +2112,14 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("created_at");
+
+                    b.Property<string>("InputGuardLlmRole")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("input_guard_llm_role");
+
+                    b.Property<string>("InputGuardMode")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("input_guard_mode");
 
                     b.Property<string>("MinConfirmRisk")
                         .HasMaxLength(16)
