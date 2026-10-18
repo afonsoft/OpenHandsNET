@@ -1,0 +1,122 @@
+@page "/admin/scm"
+@using OpenHandsNET.Client.Services
+@using System.Text.Json
+@inherits AdminPageBase
+@inject ToastService Toasts
+
+<PageTitle>@L["admin.title"] · @L["admin.nav_scm"]</PageTitle>
+
+@if (Checking || !Allowed)
+{
+    <div class="settings-wrap"><p class="empty-state">…</p></div>
+}
+else
+{
+    <div class="settings-wrap admin-wrap">
+        <h1>@L["admin.scm_title"]</h1>
+        <AdminNav />
+        @if (Error is not null) { <p class="admin-error">@Error</p> }
+
+        <div class="field admin-toolbar">
+            <select @bind="_orgId" @bind:after="LoadConnectionsAsync">
+                <option value="">@L["admin.select_org"]</option>
+                @foreach (var o in _orgs)
+                {
+                    <option value="@Str(o, "id")">@Str(o, "name")</option>
+                }
+            </select>
+        </div>
+
+        @if (_loaded)
+        {
+            <p class="muted">@L["admin.scm_hint"]</p>
+
+            @if (_connections.Count == 0)
+            {
+                <p class="empty-state">@L["admin.scm_empty"]</p>
+            }
+            else
+            {
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>@L["admin.scm_kind"]</th>
+                            <th>@L["admin.scm_app"]</th>
+                            <th>@L["admin.scm_installation"]</th>
+                            <th>@L["admin.scm_repos"]</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in _connections)
+                        {
+                            <tr>
+                                <td>@Str(c, "kind")</td>
+                                <td>@Str(c, "app_slug")</td>
+                                <td>@Str(c, "installation_id")</td>
+                                <td>@ReposOf(c)</td>
+                                <td>
+                                    <button class="btn danger"
+                                        @onclick="() => DeleteAsync(c)">
+                                        @L["admin.scm_delete"]
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+
+            <h3>@L["admin.scm_connect_title"]</h3>
+            <p class="muted">
+                @L["admin.scm_connect_hint"]
+                <code>openhandsnet scm connect --server-url @Nav.BaseUri.TrimEnd('/')</code>
+            </p>
+        }
+    </div>
+}
+
+@code {
+    private string _orgId = "";
+    private IReadOnlyList<JsonElement> _orgs = [];
+    private IReadOnlyList<JsonElement> _connections = [];
+    private bool _loaded;
+
+    protected override async Task LoadAsync()
+    {
+        _orgs = await Api.ListOrgsAsync();
+    }
+
+    private async Task LoadConnectionsAsync()
+    {
+        if (string.IsNullOrEmpty(_orgId))
+        {
+            _loaded = false;
+            return;
+        }
+        _connections = await Api.ListScmConnectionsAsync(_orgId);
+        _loaded = true;
+    }
+
+    private async Task DeleteAsync(JsonElement c)
+    {
+        var id = Str(c, "id")!;
+        await Api.DeleteScmConnectionAsync(_orgId, id);
+        Toasts.Success(L["admin.scm_deleted"]);
+        await LoadConnectionsAsync();
+    }
+
+    private static string ReposOf(JsonElement c) =>
+        c.TryGetProperty("repos", out var r)
+            && r.ValueKind == JsonValueKind.Array
+            ? string.Join(", ", r.EnumerateArray()
+                .Select(x => x.GetString()))
+            : "";
+
+    private static string? Str(JsonElement e, string prop) =>
+        e.TryGetProperty(prop, out var v)
+            && v.ValueKind == JsonValueKind.String
+            ? v.GetString()
+            : v.ValueKind is JsonValueKind.Number
+                ? v.GetRawText() : null;
+}

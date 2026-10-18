@@ -12,12 +12,12 @@ public enum TaskComplexity
 
 public interface IAdaptiveCostRouter
 {
-    string RouteModel(TaskComplexity complexity, string preferredModel = default);
+    string RouteModel(TaskComplexity complexity, string? preferredModel = null);
 }
 
 public class AdaptiveCostRouter : IAdaptiveCostRouter
 {
-    public string RouteModel(TaskComplexity complexity, string preferredModel = null)
+    public string RouteModel(TaskComplexity complexity, string? preferredModel = null)
     {
         if (!string.IsNullOrEmpty(preferredModel))
         {

@@ -1021,6 +1021,14 @@ public sealed class AgentRunner(
                         "completed", finalText, CancellationToken.None);
                     await SetStatusAsync(events, db, conv, "finished",
                         ConversationExecutionStatus.Finished, ct);
+                    // SPEC-52 RF-005: commit status no head SHA do PR
+                    // (fire-and-forget — nunca falha a run).
+                    _ = Task.Run(() => services
+                            .GetService<Application.Scm.IScmStatusReporter>()?
+                            .ReportRunFinishedAsync(
+                                conversationId, success: true,
+                                CancellationToken.None)
+                        ?? Task.CompletedTask, CancellationToken.None);
                     // SPEC-43 RF-002: snapshot automático pós-turno
                     // (Checkpoints:Auto) — melhor esforço, nunca falha a run.
                     await AutoCheckpointAsync(services, sandbox,

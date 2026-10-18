@@ -48,6 +48,7 @@ public static class EventTree
 [JsonDerivedType(typeof(RunProgressEvent), "run_progress")]
 [JsonDerivedType(typeof(WorkSummaryEvent), "work_summary")]
 [JsonDerivedType(typeof(AgentDiagnosticEvent), "agent_diagnostic")]
+[JsonDerivedType(typeof(PullRequestCreatedEvent), "pull_request_created")]
 public abstract record EventBase
 {
     /// <summary>Unique event id — ULID/UUID7 string (lexicographic == temporal order).</summary>

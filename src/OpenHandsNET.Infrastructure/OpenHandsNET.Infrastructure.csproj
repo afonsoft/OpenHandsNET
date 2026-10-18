@@ -19,6 +19,8 @@
     <PackageReference Include="YamlDotNet" />
     <PackageReference Include="prometheus-net.AspNetCore" />
     <PackageReference Include="ModelContextProtocol" />
+    <!-- SPEC-52: GitHub App client (pinned ≥7d release) -->
+    <PackageReference Include="Octokit" />
     <PackageReference Include="Microsoft.Playwright" />
     <!-- SPEC-36: Redis/Valkey backplane (gated por Cache:Provider=redis) -->
     <PackageReference Include="StackExchange.Redis" />

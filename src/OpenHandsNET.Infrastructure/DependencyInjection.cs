@@ -103,6 +103,36 @@ public static class DependencyInjection
         services.AddScoped<OpenHandsNET.Infrastructure.Git.GitCredentialProvider>();
         services.AddScoped<OpenHandsNET.Application.Git.IGitService,
             OpenHandsNET.Infrastructure.Git.GitService>();
+        // SPEC-52: SCM (GitHub App + webhooks + PR).
+        services.AddHttpClient("scm-github-app");
+        services.AddScoped<
+            OpenHandsNET.Application.Scm.IScmProviderRegistry,
+            OpenHandsNET.Infrastructure.Scm.ScmProviderRegistry>();
+        services.AddScoped<
+            OpenHandsNET.Application.Scm.IScmConnectionService,
+            OpenHandsNET.Infrastructure.Scm.ScmConnectionService>();
+        services.AddScoped<
+            OpenHandsNET.Application.Scm.IScmWebhookService,
+            OpenHandsNET.Infrastructure.Scm.GitHubWebhookService>();
+        services.AddScoped<
+            OpenHandsNET.Application.Scm.IScmPullRequestService,
+            OpenHandsNET.Infrastructure.Scm.ScmPullRequestService>();
+        services.AddScoped<
+            OpenHandsNET.Application.Scm.IScmStatusReporter,
+            OpenHandsNET.Infrastructure.Scm.ScmStatusReporter>();
+        services.AddScoped<
+            OpenHandsNET.Infrastructure.Scm.IGitHubClientFactory,
+            OpenHandsNET.Infrastructure.Scm.GitHubAppClientFactory>();
+        services.AddScoped<
+            OpenHandsNET.Application.Scm.IScmProvider>(sp =>
+        {
+            var f = sp.GetRequiredService<OpenHandsNET.Infrastructure.Scm
+                .IGitHubClientFactory>();
+            var log = sp.GetRequiredService<Microsoft.Extensions.Logging
+                .ILogger<OpenHandsNET.Infrastructure.Scm.GitHubScmProvider>>();
+            return new OpenHandsNET.Infrastructure.Scm.GitHubScmProvider(
+                f, log);
+        });
 
         // Checkpoints (SPEC-43): git-dir separado no sandbox, snapshots
         // pós-turno/manuais, revert com drift guard.

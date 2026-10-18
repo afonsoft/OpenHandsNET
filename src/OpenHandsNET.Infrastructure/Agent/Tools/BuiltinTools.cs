@@ -318,6 +318,56 @@ public static class BuiltinTools
                 "ask_user is handled by the agent runner")));
 
     /// <summary>
+    /// SPEC-52 RF-003: <c>create_pull_request</c> — push do work branch +
+    /// PR no provider SCM da org (GitHub App). Falha limpa sem conexão.
+    /// </summary>
+    public static AgentTool CreatePullRequest() => new(
+        new ToolSchema("create_pull_request",
+            "Push the workspace work branch and open a pull request in the " +
+            "repository's SCM provider (requires an org scm connection).",
+            Schema("""
+                {"type":"object","properties":{
+                  "title":{"type":"string","description":"PR title"},
+                  "body":{"type":"string","description":"PR body (markdown)"},
+                  "base":{"type":"string",
+                    "description":"Base branch (default: repo default)"},
+                  "draft":{"type":"boolean",
+                    "description":"Open as draft (default false)"}},
+                 "required":["title"]}
+                """)),
+        Risky: true,
+        Handler: async (ctx, args, ct) =>
+        {
+            var svc = ctx.Services.GetService<
+                OpenHandsNET.Application.Scm.IScmPullRequestService>();
+            if (svc is null)
+            {
+                return ToolResult.Error("scm pull request service unavailable");
+            }
+
+            var result = await svc.CreateAsync(
+                ctx.ConversationId,
+                new OpenHandsNET.Application.Scm.ScmPrCreateRequest(
+                    args.GetProperty("title").GetString()!,
+                    args.TryGetProperty("body", out var b)
+                        ? b.GetString() ?? "" : "",
+                    args.TryGetProperty("base", out var bs)
+                        ? bs.GetString() : null,
+                    Head: "",
+                    args.TryGetProperty("draft", out var d)
+                        && d.GetBoolean(),
+                    Reviewers: null),
+                actorUserId: null, ct);
+            return result.PullRequest is { } pr
+                ? ToolResult.Ok(new
+                {
+                    ok = true, url = pr.Url, number = pr.Number,
+                    state = pr.State,
+                })
+                : ToolResult.Error($"create_pull_request failed: {result.Error}");
+        });
+
+    /// <summary>
     /// SPEC-43 RF-002: <c>checkpoint</c> — snapshot sob demanda do workdir
     /// (git-dir separado); o agente usa antes de refactors arriscados.
     /// </summary>

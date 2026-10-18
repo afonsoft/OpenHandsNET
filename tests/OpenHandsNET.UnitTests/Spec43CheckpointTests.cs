@@ -73,6 +73,11 @@ public sealed class Spec43CheckpointServiceTests
         public Task<GitCommitResult> CommitAsync(DomainSandbox s, string m,
             IReadOnlyList<string>? f, CancellationToken ct) =>
             throw new NotSupportedException();
+        public Task<GitPushResult> PushAsync(DomainSandbox s, string h,
+            string? rb, bool fwl, string? o, CancellationToken ct) =>
+            throw new NotSupportedException();
+        public Task<string?> GetCurrentBranchAsync(DomainSandbox s,
+            CancellationToken ct) => throw new NotSupportedException();
     }
 
     private static CheckpointService New(ScriptExecutor exec,

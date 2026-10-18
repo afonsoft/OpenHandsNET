@@ -217,6 +217,43 @@ public sealed class CloudApiClient
         return resp;
     }
 
+    /// <summary>SPEC-52: lista scm-connections de uma org.</summary>
+    public async Task<JsonElement> ListScmConnectionsAsync(
+        string orgId, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync(
+            $"{BaseUrl}/api/v1/orgs/{orgId}/scm-connections", ct);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<JsonElement>(ct)
+            : default;
+    }
+
+    /// <summary>SPEC-52: gera o manifest do GitHub App (passo 1 do fluxo).</summary>
+    public async Task<JsonElement> BuildScmManifestAsync(
+        string redirectUri, string? appName, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsJsonAsync(
+            $"{BaseUrl}/api/v1/scm/github/manifest",
+            new { redirect_uri = redirectUri, app_name = appName }, Json, ct);
+        await EnsureAsync(resp, ct);
+        return await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
+    }
+
+    /// <summary>SPEC-52: abre PR a partir do workspace da conversa.</summary>
+    public async Task<JsonElement> CreatePullRequestAsync(
+        string conversationId, string title, string body,
+        string? baseBranch, bool draft, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsJsonAsync(
+            $"{BaseUrl}/api/v1/app-conversations/{conversationId}/pull-request",
+            new
+            {
+                title, body, @base = baseBranch, draft,
+            }, Json, ct);
+        await EnsureAsync(resp, ct);
+        return await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
+    }
+
     private static async Task EnsureAsync(
         HttpResponseMessage resp, CancellationToken ct)
     {

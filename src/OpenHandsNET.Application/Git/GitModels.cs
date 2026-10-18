@@ -31,6 +31,10 @@ public sealed record GitLogEntry(
 public sealed record GitCommitResult(
     bool Success, string? Hash, string Output, string? Error);
 
+/// <summary>Result of a workspace push (SPEC-52).</summary>
+public sealed record GitPushResult(
+    bool Success, string? HeadSha, string? Error);
+
 /// <summary>Stored credential metadata (value lives encrypted in secrets).</summary>
 public sealed record GitCredentialMeta(
     string Host, string Kind, string Owner, DateTimeOffset CreatedAt);
