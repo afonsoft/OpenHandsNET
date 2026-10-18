@@ -342,5 +342,10 @@
   "admin.saved": "Saved",
   "admin.reset": "Reset to balanced",
   "admin.yes": "Yes",
-  "admin.no": "No"
+  "admin.no": "No",
+  "common.load_more": "load more",
+  "conv.share": "share link",
+  "conv.download": "download trajectory",
+  "conv.share_copied": "public link copied to clipboard",
+  "conv.share_failed": "could not create share link: {{error}}"
 }

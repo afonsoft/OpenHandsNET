@@ -275,6 +275,118 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
         string Name, string Protocol, int Port,
         string? Url, DateTimeOffset? ExpiresAt);
 
+    // ---- sharing (SPEC-56) --------------------------------------------
+
+    /// <summary>
+    /// POST /app-conversations/{id}/share → link público. O token bruto
+    /// vem só na criação (null quando o link já existia).
+    /// </summary>
+    public sealed record ShareLinkDto(string Url, string? Token,
+        DateTimeOffset? ExpiresAt);
+
+    /// <summary>Estado de compartilhamento da conversa.</summary>
+    public sealed record ShareStatusDto(
+        bool Shared, string? Url, DateTimeOffset? ExpiresAt);
+
+    public async Task<ShareLinkDto?> CreateShareAsync(
+        string conversationId, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsync(
+            $"/api/v1/app-conversations/{conversationId}/share",
+            content: null, ct);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<ShareLinkDto>(Json, ct)
+            : null;
+    }
+
+    public Task<ShareStatusDto?> GetShareStatusAsync(
+        string conversationId, CancellationToken ct = default) =>
+        GetOrNull<ShareStatusDto>(
+            $"/api/v1/app-conversations/{conversationId}/share", ct);
+
+    public async Task<bool> RevokeShareAsync(
+        string conversationId, CancellationToken ct = default)
+    {
+        var resp = await http.DeleteAsync(
+            $"/api/v1/app-conversations/{conversationId}/share", ct);
+        return resp.IsSuccessStatusCode;
+    }
+
+    /// <summary>URL do zip de trajetória (download direto).</summary>
+    public static string DownloadUrl(string conversationId) =>
+        $"/api/v1/app-conversations/{conversationId}/download";
+
+    /// <summary>
+    /// GET /shared/{token} — payload público (metadados + 1ª página de
+    /// eventos filtrados). Sem auth.
+    /// </summary>
+    public async Task<SharedConversationDto?> GetSharedConversationAsync(
+        string token, CancellationToken ct = default)
+    {
+        var resp = await http.GetAsync($"/api/v1/shared/{token}", ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(Json, ct);
+        var items = new List<ClientEvent>();
+        if (doc.TryGetProperty("items", out var arr))
+        {
+            foreach (var el in arr.EnumerateArray())
+            {
+                items.Add(new ClientEvent { Raw = el.Clone() });
+            }
+        }
+
+        return new SharedConversationDto(
+            Title: doc.TryGetProperty("title", out var t)
+                ? t.GetString() ?? "" : "",
+            SelectedRepository: doc.TryGetProperty(
+                "selected_repository", out var r) ? r.GetString() : null,
+            Items: items,
+            NextPageId: doc.TryGetProperty("next_page_id", out var n)
+                && n.ValueKind == JsonValueKind.String
+                    ? n.GetString() : null);
+    }
+
+    /// <summary>Próxima página de eventos públicos.</summary>
+    public async Task<(IReadOnlyList<ClientEvent> Items, string? Next)>
+        GetSharedEventsAsync(
+            string token, string pageId, CancellationToken ct = default)
+    {
+        var resp = await http.GetAsync(
+            $"/api/v1/shared/{token}/events"
+            + $"?page_id={Uri.EscapeDataString(pageId)}", ct);
+        var items = new List<ClientEvent>();
+        string? next = null;
+        if (resp.IsSuccessStatusCode)
+        {
+            var doc = await resp.Content
+                .ReadFromJsonAsync<JsonElement>(Json, ct);
+            if (doc.TryGetProperty("items", out var arr))
+            {
+                foreach (var el in arr.EnumerateArray())
+                {
+                    items.Add(new ClientEvent { Raw = el.Clone() });
+                }
+            }
+
+            if (doc.TryGetProperty("next_page_id", out var n)
+                && n.ValueKind == JsonValueKind.String)
+            {
+                next = n.GetString();
+            }
+        }
+
+        return (items, next);
+    }
+
+    /// <summary>Payload da página pública de conversa compartilhada.</summary>
+    public sealed record SharedConversationDto(
+        string Title, string? SelectedRepository,
+        IReadOnlyList<ClientEvent> Items, string? NextPageId);
+
     // ---- events --------------------------------------------------------
 
     /// <summary>GET /conversation/{id}/events/search → eventos crus.</summary>

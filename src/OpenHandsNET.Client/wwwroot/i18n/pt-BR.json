@@ -342,5 +342,10 @@
   "admin.saved": "Salvo",
   "admin.reset": "Resetar para balanced",
   "admin.yes": "Sim",
-  "admin.no": "Não"
+  "admin.no": "Não",
+  "common.load_more": "carregar mais",
+  "conv.share": "compartilhar",
+  "conv.download": "baixar trajetória",
+  "conv.share_copied": "link público copiado",
+  "conv.share_failed": "não foi possível criar o link: {{error}}"
 }

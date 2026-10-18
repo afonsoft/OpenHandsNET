@@ -2474,6 +2474,30 @@
         ]
       }
     },
+    "/api/v1/app-conversations/{id}/download": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/app-conversations/{id:guid}/download",
+        "tags": [
+          "Sharing"
+        ]
+      }
+    },
     "/api/v1/app-conversations/{id}/exec": {
       "post": {
         "parameters": [
@@ -3116,6 +3140,74 @@
         "summary": "POST /api/v1/app-conversations/{id:guid}/send-message",
         "tags": [
           "Conversations"
+        ]
+      }
+    },
+    "/api/v1/app-conversations/{id}/share": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "DELETE /api/v1/app-conversations/{id:guid}/share",
+        "tags": [
+          "Sharing"
+        ]
+      },
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/app-conversations/{id:guid}/share",
+        "tags": [
+          "Sharing"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/app-conversations/{id:guid}/share",
+        "tags": [
+          "Sharing"
         ]
       }
     },
@@ -5531,6 +5623,72 @@
         ]
       }
     },
+    "/api/v1/shared/{token}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/shared/{token}",
+        "tags": [
+          "Sharing"
+        ]
+      }
+    },
+    "/api/v1/shared/{token}/events": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/shared/{token}/events",
+        "tags": [
+          "Sharing"
+        ]
+      }
+    },
     "/api/v1/skills": {
       "get": {
         "responses": {
@@ -6061,6 +6219,9 @@
     },
     {
       "name": "ACP"
+    },
+    {
+      "name": "Sharing"
     }
   ]
 }

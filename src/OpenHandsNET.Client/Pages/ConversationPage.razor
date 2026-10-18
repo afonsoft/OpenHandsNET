@@ -42,6 +42,14 @@
                 <Icon Name="code" Size="15" />
             </button>
         }
+        <button class="icon-btn" title="@L["conv.share"]"
+                aria-label="@L["conv.share"]" @onclick="OnShareAsync">
+            <Icon Name="external" Size="15" />
+        </button>
+        <button class="icon-btn" title="@L["conv.download"]"
+                aria-label="@L["conv.download"]" @onclick="OnDownloadAsync">
+            <Icon Name="download" Size="15" />
+        </button>
         <span class="tokens">@(State.PromptTokens + State.CompletionTokens) tok ·
             $@State.CostUsd.ToString("F4")</span>
         <span class="badge @BadgeClass(State.ExecutionStatus)">
@@ -203,6 +211,41 @@
         {
             Toasts.Error(L.T("conv.mode_failed", ("error", ex.Message)));
         }
+    }
+
+    /// <summary>
+    /// SPEC-56: cria/reusa link público e copia para o clipboard. Se a
+    /// conversa já estava compartilhada (token não retornado), copia a
+    /// URL relativa — o token só é exibido na criação.
+    /// </summary>
+    private async Task OnShareAsync()
+    {
+        try
+        {
+            var link = await Api.CreateShareAsync(Id);
+            if (link is null)
+            {
+                Toasts.Error(L.T("conv.share_failed"));
+                return;
+            }
+
+            var url = link.Token is { Length: > 0 }
+                ? $"{Nav.BaseUri.TrimEnd('/')}/share/{link.Token}"
+                : link.Url;
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", url);
+            Toasts.Success(L.T("conv.share_copied"));
+        }
+        catch (Exception ex)
+        {
+            Toasts.Error(L.T("conv.share_failed", ("error", ex.Message)));
+        }
+    }
+
+    /// <summary>SPEC-56 RF-004: abre o download do zip de trajetória.</summary>
+    private async Task OnDownloadAsync()
+    {
+        await JS.InvokeVoidAsync(
+            "open", OpenHandsNetApiClient.DownloadUrl(Id), "_blank");
     }
 
     private static string BadgeClass(string status) =>

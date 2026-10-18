@@ -202,6 +202,21 @@ public sealed class CloudApiClient
         while (cursor is not null);
     }
 
+    /// <summary>
+    /// SPEC-56 RF-004: GET /app-conversations/{id}/download → stream do
+    /// zip de trajetória (events.jsonl + metadata + diff + summary).
+    /// Caller dispõe da response (o stream do body vive junto).
+    /// </summary>
+    public async Task<HttpResponseMessage> DownloadTrajectoryAsync(
+        string conversationId, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync(
+            $"{BaseUrl}/api/v1/app-conversations/{conversationId}/download",
+            HttpCompletionOption.ResponseHeadersRead, ct);
+        await EnsureAsync(resp, ct);
+        return resp;
+    }
+
     private static async Task EnsureAsync(
         HttpResponseMessage resp, CancellationToken ct)
     {
