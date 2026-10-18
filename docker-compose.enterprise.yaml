@@ -11,6 +11,13 @@ services:
       - OPENHANDSNET_Auth__Provider=oidc
       - OPENHANDSNET_Auth__Authority=http://keycloak:8080/realms/openhandsnet
       - OPENHANDSNET_AgentLlm__BaseUrl=http://litellm:4000
+      # SPEC-50: BYOR — admin API do LiteLLM. Mode: off|hybrid|byor
+      # (hybrid mantém o catálogo OmniRoute local; byor restringe à
+      # lista permitted do proxy). MasterKey só por env — nunca commitada.
+      - OPENHANDSNET_LlmProxy__BaseUrl=http://litellm:4000
+      - OPENHANDSNET_LlmProxy__MasterKey=${LITELLM_MASTER_KEY:?set LITELLM_MASTER_KEY}
+      - OPENHANDSNET_LlmProxy__Mode=${LITELLM_MODE:-hybrid}
+      - OPENHANDSNET_LlmProxy__DefaultBudgetUsd=${LITELLM_DEFAULT_BUDGET_USD:-50}
       # SPEC-36: backplane/coordenação via Valkey (multi-réplica pronto).
       - OPENHANDSNET_Cache__Provider=redis
       - OPENHANDSNET_Cache__Redis__ConnectionString=valkey:6379
@@ -22,6 +29,8 @@ services:
         condition: service_started
       valkey:
         condition: service_healthy
+      litellm:
+        condition: service_started
 
   postgres:
     image: postgres:17-alpine
@@ -32,6 +41,8 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
     volumes:
       - openhandsnet-pgdata:/var/lib/postgresql/data
+      # SPEC-50: cria o db `litellm` para o proxy persistir virtual keys.
+      - ./deploy/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U openhandsnet -d openhandsnet"]
       interval: 10s
@@ -69,13 +80,20 @@ services:
     restart: unless-stopped
 
   litellm:
+    # SPEC-50: proxy BYOR — admin API (/key/generate, /key/delete,
+    # /models) consumida pela API; /chat/completions recebe as chamadas
+    # do agente com Authorization: Bearer <virtual-key>.
     image: ghcr.io/berriai/litellm:main-v1.55.8
     container_name: openhandsnet-litellm
     command: ["--config", "/etc/litellm/config.yaml", "--port", "4000"]
     volumes:
       - ./deploy/litellm.yaml:/etc/litellm/config.yaml:ro
     environment:
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:?set LITELLM_MASTER_KEY}
+      - LITELLM_DATABASE_URL=postgresql://openhandsnet:${POSTGRES_PASSWORD}@postgres:5432/litellm
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - STORE_MODEL_IN_DB=True
     ports:
       - "4000:4000"
     restart: unless-stopped

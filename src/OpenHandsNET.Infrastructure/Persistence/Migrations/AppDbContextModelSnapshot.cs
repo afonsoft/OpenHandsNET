@@ -587,6 +587,76 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                     b.ToTable("audit_events", (string)null);
                 });
 
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.ByorKeyRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("BudgetUsd")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("budget_usd");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("CreatedAtTicks")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("created_at_ticks");
+
+                    b.Property<string>("KeyCiphertext")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("key_ciphertext");
+
+                    b.Property<string>("KeyId")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("key_id");
+
+                    b.Property<string>("KeyPrefix")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("key_prefix");
+
+                    b.Property<string>("ModelsJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("models_json");
+
+                    b.Property<string>("Nonce")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("nonce");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("org_id");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_byor_keys");
+
+                    b.HasIndex("KeyId")
+                        .HasDatabaseName("ix_byor_keys_key_id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_byor_keys_user_id")
+                        .HasFilter("revoked_at IS NULL");
+
+                    b.ToTable("byor_keys", (string)null);
+                });
+
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.ConversationSkillRecord", b =>
                 {
                     b.Property<Guid>("ConversationId")

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Application.Identity;
 
 namespace OpenHandsNET.Api.Endpoints;
@@ -75,14 +76,132 @@ public static class KeysEndpoints
             CurrentAsync(current, resolver, ctx, ct))
             .RequireAuthorization();
 
-        // BYOR reserved contract — 403 until LiteLLM is configured.
-        g.MapGet("/llm/byor", () => Results.Forbid()).RequireAuthorization();
-        g.MapPost("/llm/byor/refresh", () => Results.Forbid()).RequireAuthorization();
-        g.MapGet("/llm/byor/permitted", () => Results.Forbid()).RequireAuthorization();
-        g.MapDelete("/llm/byor", () => Results.Forbid()).RequireAuthorization();
+        // SPEC-50 RF-002: BYOR LiteLLM — fail-closed: proxy não
+        // configurado/indisponível → 503 litellm_unavailable (nunca
+        // cai para providers locais). A chave sai em claro SÓ no refresh.
+        g.MapGet("/llm/byor", async (
+            ICurrentUserAccessor current, IByorKeyService byor,
+            CancellationToken ct) =>
+        {
+            var user = current.User;
+            if (user is null)
+                return Results.Unauthorized();
+            if (!byor.Enabled)
+                return ProxyUnavailable();
+            try
+            {
+                var info = await byor.GetActiveAsync(
+                    user.UserId.ToString(), ct);
+                return Results.Ok(new
+                {
+                    configured = info is not null,
+                    key_prefix = info?.KeyPrefix,
+                    key_id = info?.KeyId,
+                    budget = info?.BudgetUsd,
+                    models = info?.Models ?? [],
+                    created_at = info?.CreatedAt,
+                });
+            }
+            catch (LiteLlmUnavailableException)
+            {
+                return ProxyUnavailable();
+            }
+        }).RequireAuthorization();
+
+        g.MapPost("/llm/byor/refresh", async (
+            [FromBody] ByorRefreshRequest? req,
+            ICurrentUserAccessor current, IByorKeyService byor,
+            IEffectiveOrgResolver resolver, IAuditService audit,
+            HttpContext ctx, CancellationToken ct) =>
+        {
+            var user = current.User;
+            if (user is null)
+                return Results.Unauthorized();
+            if (!byor.Enabled)
+                return ProxyUnavailable();
+            try
+            {
+                var effective = await resolver.ResolveAsync(
+                    user, ctx.Request.Headers["X-Org-Id"].ToString(), ct);
+                var (key, info) = await byor.RefreshAsync(
+                    user.UserId.ToString(), effective?.OrgId.ToString(),
+                    req?.Budget, ct);
+                await audit.RecordAsync(
+                    "byor_key.refresh", user.UserId.ToString(),
+                    effective?.OrgId, "byor_key", info.Id.ToString(),
+                    cancellationToken: ct);
+                // Plaintext retorna exatamente uma vez.
+                return Results.Ok(new
+                {
+                    key,
+                    key_id = info.KeyId,
+                    key_prefix = info.KeyPrefix,
+                    budget = info.BudgetUsd,
+                    models = info.Models,
+                });
+            }
+            catch (LiteLlmUnavailableException)
+            {
+                return ProxyUnavailable();
+            }
+        }).RequireAuthorization();
+
+        g.MapGet("/llm/byor/permitted", async (
+            ICurrentUserAccessor current, IByorKeyService byor,
+            CancellationToken ct) =>
+        {
+            var user = current.User;
+            if (user is null)
+                return Results.Unauthorized();
+            if (!byor.Enabled)
+                return ProxyUnavailable();
+            try
+            {
+                return Results.Ok(new
+                {
+                    models = await byor.PermittedModelsAsync(ct),
+                });
+            }
+            catch (LiteLlmUnavailableException)
+            {
+                return ProxyUnavailable();
+            }
+        }).RequireAuthorization();
+
+        g.MapDelete("/llm/byor", async (
+            ICurrentUserAccessor current, IByorKeyService byor,
+            IAuditService audit, CancellationToken ct) =>
+        {
+            var user = current.User;
+            if (user is null)
+                return Results.Unauthorized();
+            if (!byor.Enabled)
+                return ProxyUnavailable();
+            try
+            {
+                if (!await byor.RevokeAsync(user.UserId.ToString(), ct))
+                    return Results.NotFound();
+                await audit.RecordAsync(
+                    "byor_key.delete", user.UserId.ToString(), null,
+                    "byor_key", null, cancellationToken: ct);
+                return Results.NoContent();
+            }
+            catch (LiteLlmUnavailableException)
+            {
+                return ProxyUnavailable();
+            }
+        }).RequireAuthorization();
 
         return app;
     }
+
+    private static IResult ProxyUnavailable() => Results.Problem(
+        statusCode: 503, title: "litellm_unavailable",
+        detail: "LiteLLM proxy is not configured or unreachable",
+        extensions: new Dictionary<string, object?>
+        {
+            ["code"] = "litellm_unavailable",
+        });
 
     private static async Task<IResult> CurrentAsync(
         ICurrentUserAccessor current, IEffectiveOrgResolver resolver,
@@ -105,4 +224,7 @@ public static class KeysEndpoints
     public sealed record ApiKeyCreateRequest(
         string? Name, DateTimeOffset? NotBefore,
         DateTimeOffset? ExpiresAt, Guid? OrgId);
+
+    /// <summary>BYOR refresh body (SPEC-50) — budget override opcional.</summary>
+    public sealed record ByorRefreshRequest(decimal? Budget);
 }

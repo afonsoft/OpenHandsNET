@@ -8,7 +8,8 @@ already brings the dependencies up.
 
 ```bash
 cp .env.exemplo .env
-# .env: POSTGRES_PASSWORD, KEYCLOAK_ADMIN_PASSWORD, OPENAI_API_KEY (LiteLLM)
+# .env: POSTGRES_PASSWORD, KEYCLOAK_ADMIN_PASSWORD, LITELLM_MASTER_KEY,
+#       OPENAI_API_KEY / ANTHROPIC_API_KEY (LiteLLM providers)
 docker compose -f docker-compose.yaml -f docker-compose.enterprise.yaml up -d --build
 ```
 
@@ -41,3 +42,21 @@ docker compose \
 ```
 
 Grafana at `:3000`, Prometheus at `:9090`, OTLP gRPC at `:4317`.
+
+## BYOR — LiteLLM (SPEC-50)
+
+Each user may hold a **proxy virtual key** with its own budget:
+
+- `LlmProxy:Mode=hybrid` (compose default): the local OmniRoute catalog
+  stays active; users with an active key route through the proxy.
+- `LlmProxy:Mode=byor`: strict — only models from the proxy `GET
+  /models`; a selection outside the list → `byor_model_rejected`
+  diagnostic + run `Error`.
+- Env: `LITELLM_MODE`, `LITELLM_DEFAULT_BUDGET_USD` (default 50).
+- Proxy config at `deploy/litellm.yaml` (the example `model_list` is
+  the permitted list); secrets `LITELLM_MASTER_KEY`/`OPENAI_API_KEY`/
+  `ANTHROPIC_API_KEY` via env only.
+- The `litellm` database is created by
+  `deploy/postgres-init/00-litellm-db.sh` on the postgres volume's
+  first boot.
+- API/security details: `billing.md` (BYOR section).

@@ -67,6 +67,9 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// <summary>Encrypted secrets (ciphertext at rest).</summary>
     public DbSet<SecretRecord> Secrets => Set<SecretRecord>();
 
+    /// <summary>BYOR LiteLLM virtual keys (SPEC-50 — ciphertext at rest).</summary>
+    public DbSet<ByorKeyRecord> ByorKeys => Set<ByorKeyRecord>();
+
     /// <summary>MCP server registrations.</summary>
     public DbSet<McpServerRecord> McpServers => Set<McpServerRecord>();
 

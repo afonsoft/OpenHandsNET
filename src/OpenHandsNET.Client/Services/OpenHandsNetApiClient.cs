@@ -164,6 +164,52 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
             $"/api/v1/app-conversations/{conversationId}/switch_acp_model",
             new { model }, Json, ct)).EnsureSuccessStatusCode();
 
+    /// <summary>
+    /// SPEC-50: modelos permitidos pelo proxy LiteLLM quando o usuário
+    /// tem virtual key BYOR ativa; <c>null</c> = BYOR inativo
+    /// (503/not configured) → o catálogo segue sem filtro.
+    /// </summary>
+    public async Task<IReadOnlyList<string>?> GetByorPermittedModelsAsync(
+        CancellationToken ct = default)
+    {
+        var status = await http.GetAsync("/api/v1/keys/llm/byor", ct);
+        if (!status.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var info = await status.Content.ReadFromJsonAsync<JsonElement>(
+            Json, ct);
+        if (!info.TryGetProperty("configured", out var cfg)
+            || !cfg.GetBoolean())
+        {
+            return null;
+        }
+
+        var permitted = await http.GetAsync(
+            "/api/v1/keys/llm/byor/permitted", ct);
+        if (!permitted.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var doc = await permitted.Content.ReadFromJsonAsync<JsonElement>(
+            Json, ct);
+        var ids = new List<string>();
+        if (doc.TryGetProperty("models", out var arr))
+        {
+            foreach (var m in arr.EnumerateArray())
+            {
+                if (m.GetString() is { Length: > 0 } id)
+                {
+                    ids.Add(id);
+                }
+            }
+        }
+
+        return ids;
+    }
+
     /// <summary>SPEC-26/29: POST /{id}/mode — overlay plan|build.</summary>
     public async Task SetModeAsync(
         string conversationId, string mode, CancellationToken ct = default) =>

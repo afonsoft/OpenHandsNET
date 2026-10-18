@@ -57,11 +57,16 @@ public sealed record CompletionEnd(
 /// <summary>Token accounting for one completion.</summary>
 public sealed record LlmUsage(int PromptTokens, int CompletionTokens, decimal? CostUsd);
 
-/// <summary>Per-request generation options.</summary>
+/// <summary>
+/// Per-request generation options. <paramref name="Byor"/> (SPEC-50)
+/// overrides endpoint/credential for a single call — the virtual key is
+/// in-memory only, never logged or persisted in cleartext.
+/// </summary>
 public sealed record LlmOptions(
     string? Model = null,
     double? Temperature = null,
-    int? MaxTokens = null);
+    int? MaxTokens = null,
+    ByorCallContext? Byor = null);
 
 /// <summary>Tool schema advertised to the model (JSON Schema input).</summary>
 public sealed record ToolSchema(

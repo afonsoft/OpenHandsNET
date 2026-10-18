@@ -237,6 +237,47 @@ public sealed class AgentRunner(
             model = selection.Model;
         }
 
+        // SPEC-50 RF-003: BYOR — resolvido uma vez por run (mesmo padrão
+        // da security policy). byor=strict exige que o modelo esteja na
+        // lista permitted do proxy; violação → diagnostic + run Error
+        // (fail-closed, nunca cai para o provider local).
+        var byor = services.GetService<IByorKeyService>();
+        var proxyOpt = services.GetService<IOptions<LlmProxyOptions>>()?.Value;
+        ByorCallContext? byorCtx = null;
+        if (byor is { Enabled: true } && conv.CreatedByUserId is { } byorUser)
+        {
+            byorCtx = await byor.ResolveCallContextAsync(byorUser, ct);
+            var permitted = await byor.PermittedModelsAsync(ct);
+            var mode = proxyOpt?.Mode ?? "off";
+            string? rejection = (mode, byorCtx, permitted) switch
+            {
+                ("byor", null, _) =>
+                    "byor_key_missing: strict BYOR mode requires an "
+                        + "active virtual key for the conversation owner",
+                ("byor", _, var p) when !p.Contains(model) =>
+                    $"byor_model_rejected: model '{model}' not in "
+                        + $"LiteLLM permitted list (mode={mode})",
+                (_, not null, { Count: > 0 } p) when !p.Contains(model) =>
+                    $"byor_model_rejected: model '{model}' not in "
+                        + $"LiteLLM permitted list (mode={mode})",
+                _ => null,
+            };
+            if (rejection is not null)
+            {
+                var sep = rejection.IndexOf(':');
+                await events.AppendAsync(conversationId,
+                    new AgentDiagnosticEvent
+                    {
+                        Severity = "error",
+                        Code = rejection[..sep],
+                        Message = rejection[(sep + 2)..],
+                    }, CancellationToken.None);
+                await SetStatusAsync(events, db, conv, "error",
+                    ConversationExecutionStatus.Error, CancellationToken.None);
+                return;
+            }
+        }
+
         var routeWait = System.Diagnostics.Stopwatch.StartNew();
         var overflowRetried = false;
         var promoted = false;
@@ -392,7 +433,8 @@ public sealed class AgentRunner(
                     "llm_call", conversationId, sandbox.Id.ToString());
                 llmSpan?.SetTag("model", model);
                 await foreach (var chunk in llm.ChatStreamAsync(
-                    request, toolSchemas, new LlmOptions(Model: model), ct))
+                    request, toolSchemas,
+                    new LlmOptions(Model: model, Byor: byorCtx), ct))
                 {
                     switch (chunk)
                     {

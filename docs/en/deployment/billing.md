@@ -48,3 +48,58 @@ after each run.
 Org-managed LLM credentials (bring-your-own-route) land in **SPEC-50**:
 `byor_keys` persistence, virtual keys, permitted-models and rotation,
 surfaced through `/api/v1/keys/llm/byor*` (403 stubs today).
+
+## BYOR — LiteLLM proxy (SPEC-50)
+
+BYOR (bring-your-own-router) gives each user a **LiteLLM virtual key**
+with its own budget — per-user billing lives at the proxy while the
+internal metering (`usage_records`) stays active.
+
+### Configuration
+
+```bash
+OPENHANDSNET_LlmProxy__BaseUrl=http://litellm:4000
+OPENHANDSNET_LlmProxy__MasterKey=<secret — never in appsettings>
+OPENHANDSNET_LlmProxy__Mode=hybrid      # off | hybrid | byor
+OPENHANDSNET_LlmProxy__DefaultBudgetUsd=50
+```
+
+- `off` (default): BYOR disabled — zero behavior change.
+- `hybrid`: local OmniRoute catalog stays available; users with an
+  active key route calls through the proxy.
+- `byor`: **strict** — only proxy `permitted` models; a model outside
+  the list → `agent_diagnostic` `byor_model_rejected` + run `Error`.
+
+### Endpoints (`/api/v1/keys/llm/byor*`)
+
+| Endpoint | Behavior |
+|---|---|
+| `GET /llm/byor` | `configured`, `key_prefix`, `budget_usd`, `models`, `created_at` — **never** the key |
+| `POST /llm/byor/refresh` | Revokes the previous key + creates a new one — returns the cleartext key **exactly once** |
+| `GET /llm/byor/permitted` | Models advertised by the proxy (`GET /models`, 60s cache) |
+| `DELETE /llm/byor` | Revokes immediately (proxy + local) |
+
+**Fail-closed**: unconfigured or unreachable proxy → **503**
+`litellm_unavailable` (problem details) on all four endpoints — never a
+silent fallback to local providers.
+
+### Security
+
+- `byor_keys` stores **metadata + ciphertext only** (DataProtection +
+  nonce, same pattern as the secret store): `user_id`, `org_id`,
+  `key_id`, `key_prefix`, `budget_usd`, `models`, `created_at`,
+  `revoked_at`.
+- One active key per user — `refresh` revokes the previous first.
+- The LLM call hits the proxy with `Authorization: Bearer <virtual-key>`
+  (in-memory, decrypted only at the edge) and `X-LiteLLM-Key: <key_id>`
+  for spend tracking — the `key_id` is **not** the key.
+- Audit: `byor_key.refresh` / `byor_key.delete`.
+- Master key via env/secret only; `LITELLM_MASTER_KEY` in the
+  enterprise compose (same value as `LlmProxy:MasterKey`).
+
+### Deploy
+
+`docker-compose.enterprise.yaml` brings up `litellm`
+(`ghcr.io/berriai/litellm`) with `deploy/litellm.yaml` (example model
+list + env-based `master_key`/`database_url`) and a `litellm` database
+created by `deploy/postgres-init/`. See `enterprise.md`.

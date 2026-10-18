@@ -171,7 +171,8 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
         OpenHandsNET.Application.Conversations.IAttentionBus?
             attentionBus = null,
         ISecurityPolicyService? securityPolicy = null,
-        IToolRegistry? toolRegistry = null)
+        IToolRegistry? toolRegistry = null,
+        IByorKeyService? byor = null, LlmProxyOptions? proxyOptions = null)
     {
         ConversationId = Guid.NewGuid();
         Events = new FakeEventService();
@@ -198,6 +199,12 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
         if (securityPolicy is not null)
         {
             sc.AddSingleton<ISecurityPolicyService>(securityPolicy);
+        }
+        if (byor is not null)
+        {
+            sc.AddSingleton(byor);
+            sc.AddSingleton(Options.Create(
+                proxyOptions ?? new LlmProxyOptions()));
         }
         sc.AddSingleton<ISubagentHost,
             OpenHandsNET.Infrastructure.Agent.Subagents.SubagentHost>();
