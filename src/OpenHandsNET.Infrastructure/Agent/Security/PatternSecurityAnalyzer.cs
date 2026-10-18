@@ -18,6 +18,7 @@ public sealed partial class PatternSecurityAnalyzer : ISecurityAnalyzer
     [
         RmRecursiveSystemRx(), RmNoPreserveRx(), BlockDeviceRx(),
         ForkBombRx(), MkfsRx(), PipeToShellRx(), ChmodRx(), ForcePushRx(),
+        HostDockerSocketEscapeRx(),
     ];
 
     // Comandos de risco médio — anotados na observation.
@@ -106,6 +107,10 @@ public sealed partial class PatternSecurityAnalyzer : ISecurityAnalyzer
     [GeneratedRegex(@"(curl|wget)\b[^|]*\|\s*(sudo\s+)?(ba)?sh\b",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex PipeToShellRx();
+
+    [GeneratedRegex(@"\b(docker|podman)\b.*-v\s+.*(/var/run/docker\.sock|/run/user/\d+/docker\.sock|/run/podman/podman\.sock)",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex HostDockerSocketEscapeRx();
 
     [GeneratedRegex(@"\bchmod\b\s+-\w*[rR]\w*\s+7[67]7\s+(/|~)",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]

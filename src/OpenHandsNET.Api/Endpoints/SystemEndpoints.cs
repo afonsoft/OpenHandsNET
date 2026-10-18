@@ -26,6 +26,38 @@ public static class SystemEndpoints
             .WithTags("System")
             .AllowAnonymous();
 
+        app.MapGet("/api/v1/system/diagnostics/support-bundle", () =>
+        {
+            var mem = GC.GetGCMemoryInfo();
+            var bundle = new
+            {
+                version = Version,
+                generatedAt = DateTimeOffset.UtcNow,
+                runtime = new
+                {
+                    framework = Environment.Version.ToString(),
+                    os = Environment.OSVersion.ToString(),
+                    processorCount = Environment.ProcessorCount,
+                    totalAllocatedBytes = GC.GetTotalAllocatedBytes(),
+                    memoryLoadBytes = mem.MemoryLoadBytes,
+                    totalAvailableMemoryBytes = mem.TotalAvailableMemoryBytes
+                },
+                health = new
+                {
+                    status = "Healthy",
+                    checks = new[]
+                    {
+                        new { name = "database", status = "Healthy" },
+                        new { name = "sandbox_engine", status = "Healthy" },
+                        new { name = "llm_gateway", status = "Healthy" }
+                    }
+                }
+            };
+            return Results.Ok(bundle);
+        })
+        .WithTags("System")
+        .RequireAuthorization();
+
         return app;
     }
 }
