@@ -169,6 +169,16 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
         ChatChannelConfigs =>
             Set<OpenHandsNET.Infrastructure.ChatOps.ChatChannelConfigRecord>();
 
+    /// <summary>Conexões Linear/Jira — tokens by-ref (SPEC-55).</summary>
+    public DbSet<OpenHandsNET.Infrastructure.Tickets.TicketConnectionRecord>
+        TicketConnections =>
+            Set<OpenHandsNET.Infrastructure.Tickets.TicketConnectionRecord>();
+
+    /// <summary>Projeto → repo/branch (SPEC-55 RF-003).</summary>
+    public DbSet<OpenHandsNET.Infrastructure.Tickets.TicketProjectConfigRecord>
+        TicketProjectConfigs =>
+            Set<OpenHandsNET.Infrastructure.Tickets.TicketProjectConfigRecord>();
+
     /// <summary>ASP.NET DataProtection keys (PersistKeysToDbContext).</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
@@ -245,6 +255,9 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
             .HasQueryFilter(r =>
                 !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
         modelBuilder.Entity<OpenHandsNET.Infrastructure.ChatOps.ChatConnectionRecord>()
+            .HasQueryFilter(r =>
+                !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
+        modelBuilder.Entity<OpenHandsNET.Infrastructure.Tickets.TicketConnectionRecord>()
             .HasQueryFilter(r =>
                 !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
     }

@@ -262,6 +262,41 @@ public sealed class CloudApiClient
             : default;
     }
 
+    /// <summary>SPEC-55: lista ticket-connections de uma org.</summary>
+    public async Task<JsonElement> ListTicketConnectionsAsync(
+        string orgId, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync(
+            $"{BaseUrl}/api/v1/orgs/{orgId}/ticket-connections", ct);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<JsonElement>(ct)
+            : default;
+    }
+
+    /// <summary>SPEC-55: diagnóstico da ticket connection.</summary>
+    public async Task<JsonElement> TestTicketConnectionAsync(
+        string connectionId, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsync(
+            $"{BaseUrl}/api/v1/tickets/connections/{connectionId}/test",
+            null, ct);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<JsonElement>(ct)
+            : default;
+    }
+
+    /// <summary>SPEC-55: dispara run manual por issue.</summary>
+    public async Task<JsonElement> RunTicketAsync(
+        string connectionId, string issueKey, CancellationToken ct)
+    {
+        var resp = await _http.PostAsJsonAsync(
+            $"{BaseUrl}/api/v1/tickets/connections/{connectionId}/run",
+            new { issue_key = issueKey }, Json, ct);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<JsonElement>(ct)
+            : default;
+    }
+
     /// <summary>SPEC-52: abre PR a partir do workspace da conversa.</summary>
     public async Task<JsonElement> CreatePullRequestAsync(
         string conversationId, string title, string body,

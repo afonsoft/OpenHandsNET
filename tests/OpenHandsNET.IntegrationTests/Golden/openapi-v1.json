@@ -1361,6 +1361,104 @@
         },
         "type": "object"
       },
+      "TicketCommentRequest": {
+        "description": "POST coment\u00E1rio manual.",
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "body",
+          "workspace_id"
+        ],
+        "type": "object"
+      },
+      "TicketConnectionRequest": {
+        "description": "POST ticket-connections.",
+        "properties": {
+          "api_url": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "token_secret_ref": {
+            "type": "string"
+          },
+          "trigger_config_json": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "webhook_secret_ref": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "workspace_id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "api_url",
+          "token_secret_ref",
+          "webhook_secret_ref",
+          "workspace_id",
+          "trigger_config_json"
+        ],
+        "type": "object"
+      },
+      "TicketProjectConfigRequest": {
+        "description": "POST project config.",
+        "properties": {
+          "project_key": {
+            "type": "string"
+          },
+          "selected_branch": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "selected_repository": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "project_key",
+          "selected_repository",
+          "selected_branch"
+        ],
+        "type": "object"
+      },
+      "TicketRunRequest": {
+        "description": "POST run manual.",
+        "properties": {
+          "issue_key": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "issue_key"
+        ],
+        "type": "object"
+      },
       "ToolCallRequest": {
         "properties": {
           "arguments": {
@@ -5570,6 +5668,142 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_id}/ticket-connections": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/orgs/{org_id:guid}/ticket-connections/",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketConnectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/orgs/{org_id:guid}/ticket-connections/",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/ticket-connections/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "DELETE /api/v1/orgs/{org_id:guid}/ticket-connections/{id:guid}",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/ticket-connections/{id}/projects": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/orgs/{org_id:guid}/ticket-connections/{id:guid}/projects",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketProjectConfigRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/orgs/{org_id:guid}/ticket-connections/{id:guid}/projects",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
     "/api/v1/pending-messages": {
       "get": {
         "parameters": [
@@ -6369,6 +6603,105 @@
         ]
       }
     },
+    "/api/v1/tickets/connections/{id}/run": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/tickets/connections/{id:guid}/run",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/tickets/connections/{id}/test": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/tickets/connections/{id:guid}/test",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/tickets/{kind}/{issue_key}/comment": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "issue_key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketCommentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/tickets/{kind}/{issue_key}/comment",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
     "/api/v1/user": {
       "get": {
         "responses": {
@@ -6558,6 +6891,32 @@
         "summary": "GET /api/v1/webhooks/secrets",
         "tags": [
           "Webhooks"
+        ]
+      }
+    },
+    "/api/v1/webhooks/tickets/jira": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/webhooks/tickets/jira",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/webhooks/tickets/linear": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/webhooks/tickets/linear",
+        "tags": [
+          "OpenHandsNET.Api"
         ]
       }
     },

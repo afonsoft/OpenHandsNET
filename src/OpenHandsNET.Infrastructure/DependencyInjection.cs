@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using OpenHandsNET.Application.Events;
 using OpenHandsNET.Infrastructure.Cache;
 using OpenHandsNET.Infrastructure.Eventing;
@@ -185,6 +186,47 @@ public static class DependencyInjection
         services.AddScoped<
             OpenHandsNET.Application.ChatOps.IChatOpsReporter,
             OpenHandsNET.Infrastructure.ChatOps.ChatOpsReporter>();
+
+        // SPEC-55 Tickets: Linear/Jira connections, providers,
+        // trigger pipeline e write-back.
+        services.AddScoped<
+            OpenHandsNET.Application.Tickets.ITicketConnectionService,
+            OpenHandsNET.Infrastructure.Tickets.TicketConnectionService>();
+        services.AddScoped<
+            OpenHandsNET.Application.Tickets.ITicketTriggerService,
+            OpenHandsNET.Infrastructure.Tickets.TicketTriggerService>();
+        services.AddScoped<
+            OpenHandsNET.Application.Tickets.ITicketReporter,
+            OpenHandsNET.Infrastructure.Tickets.TicketReporter>();
+        services.AddScoped<
+            IReadOnlyDictionary<
+                OpenHandsNET.Application.Tickets.TicketKind,
+                OpenHandsNET.Application.Tickets.ITicketProvider>>(sp =>
+            new Dictionary<
+                OpenHandsNET.Application.Tickets.TicketKind,
+                OpenHandsNET.Application.Tickets.ITicketProvider>
+            {
+                [OpenHandsNET.Application.Tickets.TicketKind.Linear] =
+                    new OpenHandsNET.Infrastructure.Tickets
+                        .LinearTicketProvider(
+                            sp.GetRequiredService<IHttpClientFactory>(),
+                            sp.GetRequiredService<
+                                OpenHandsNET.Application.Contracts
+                                    .ISecretStore>(),
+                            sp.GetRequiredService<ILogger<
+                                OpenHandsNET.Infrastructure.Tickets
+                                    .LinearTicketProvider>>()),
+                [OpenHandsNET.Application.Tickets.TicketKind.Jira] =
+                    new OpenHandsNET.Infrastructure.Tickets
+                        .JiraTicketProvider(
+                            sp.GetRequiredService<IHttpClientFactory>(),
+                            sp.GetRequiredService<
+                                OpenHandsNET.Application.Contracts
+                                    .ISecretStore>(),
+                            sp.GetRequiredService<ILogger<
+                                OpenHandsNET.Infrastructure.Tickets
+                                    .JiraTicketProvider>>()),
+            });
 
         // Checkpoints (SPEC-43): git-dir separado no sandbox, snapshots
         // pós-turno/manuais, revert com drift guard.

@@ -518,6 +518,18 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("text")
                         .HasColumnName("tags_json");
 
+                    b.Property<string>("TicketId")
+                        .HasColumnType("text")
+                        .HasColumnName("ticket_id");
+
+                    b.Property<string>("TicketKind")
+                        .HasColumnType("text")
+                        .HasColumnName("ticket_kind");
+
+                    b.Property<string>("TicketUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("ticket_url");
+
                     b.Property<string>("Title")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
@@ -1944,6 +1956,103 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasDatabaseName("ix_conversation_shares_token_hash");
 
                     b.ToTable("conversation_shares", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Tickets.TicketConnectionRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ApiUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("api_url");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("TokenSecretRef")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("token_secret_ref");
+
+                    b.Property<string>("TriggerConfigJson")
+                        .HasColumnType("text")
+                        .HasColumnName("trigger_config_json");
+
+                    b.Property<string>("WebhookSecretRef")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("webhook_secret_ref");
+
+                    b.Property<string>("WorkspaceId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ticket_connections");
+
+                    b.HasIndex("Kind", "WorkspaceId")
+                        .HasDatabaseName("ix_ticket_connections_kind_workspace_id");
+
+                    b.ToTable("ticket_connections", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Tickets.TicketProjectConfigRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("connection_id");
+
+                    b.Property<string>("ProjectKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("project_key");
+
+                    b.Property<string>("SelectedBranch")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("selected_branch");
+
+                    b.Property<string>("SelectedRepository")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("selected_repository");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ticket_project_configs");
+
+                    b.HasIndex("ConnectionId", "ProjectKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ticket_project_configs_connection_id_project_key");
+
+                    b.ToTable("ticket_project_configs", (string)null);
                 });
 #pragma warning restore 612, 618
         }

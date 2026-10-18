@@ -373,5 +373,19 @@
   "admin.chat_delete": "Excluir",
   "admin.chat_deleted": "Conexão removida",
   "admin.chat_connect_title": "Conectar o Slack",
-  "admin.chat_connect_hint": "Crie um Slack app, salve bot token + signing secret em Secrets, registre via POST /api/v1/orgs/{org}/chat-connections e aponte estas Request URLs para o servidor:"
+  "admin.chat_connect_hint": "Crie um Slack app, salve bot token + signing secret em Secrets, registre via POST /api/v1/orgs/{org}/chat-connections e aponte estas Request URLs para o servidor:",
+  "admin.nav_tickets": "Tickets",
+  "admin.tickets_title": "Conexões de tickets",
+  "admin.tickets_hint": "Conexões Linear/Jira: triggers de ticket (label/assignee/state/@menção) disparam conversas; resultados voltam como comentário + transição.",
+  "admin.tickets_empty": "Nenhuma conexão de ticket para esta org ainda.",
+  "admin.tickets_kind": "Tipo",
+  "admin.tickets_url": "URL da API",
+  "admin.tickets_workspace": "Workspace",
+  "admin.tickets_test": "Testar",
+  "admin.tickets_test_ok": "Conexão alcançou o tracker",
+  "admin.tickets_test_fail": "Falha no teste da conexão",
+  "admin.tickets_delete": "Excluir",
+  "admin.tickets_deleted": "Conexão removida",
+  "admin.tickets_connect_title": "Conectar um tracker",
+  "admin.tickets_connect_hint": "Registre uma conexão via"
 }

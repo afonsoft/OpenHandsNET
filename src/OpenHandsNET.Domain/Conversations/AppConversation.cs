@@ -52,4 +52,8 @@ public sealed record AppConversation(
     // SPEC-52: PR aberto pela conversa (null = nenhum).
     string? PullRequestUrl = null,
     int? PullRequestNumber = null,
-    string? PullRequestState = null);
+    string? PullRequestState = null,
+    // SPEC-55: ticket que originou a conversa (Linear/Jira).
+    string? TicketKind = null,
+    string? TicketId = null,
+    string? TicketUrl = null);
