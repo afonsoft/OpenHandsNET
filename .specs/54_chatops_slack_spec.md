@@ -8,7 +8,7 @@
 | Type | `Feature / Integration` |
 | Stack | `.NET 10 · Slack Web API + Events API · SignalR · EF Core` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Delivered` |
 | Ticket | `TBD` |
 | Depends on | `04` (API/SignalR), `47` (automations), `52` recomendado
   (postar PR de volta) |
@@ -157,3 +157,27 @@ auto-triage por canal opt-in.
   thread injeta `send-message`.
 - Slash command responde em ≤3 s (ack) e encaminha run.
 - Migrations verdes; testes unit do verifier + integração do binding.
+
+
+## 11. Delivered (evidência)
+
+- `Application/ChatOps/ChatOpsContracts.cs` — `ChatConnection`,
+  `ChatChannelConfig`, `ChatOpsResult`, `IChatOpsService`,
+  `IChatSink`, `IChatConnectionService`, `IChatOpsReporter`.
+- `Infrastructure/ChatOps/` — `ChatConnectionService` (CRUD +
+  channel configs), `SlackChatSink` (chat.postMessage/update/
+  reactions.add/setStatus via Bearer), `SlackChatOpsService`
+  (verify v0 ±300s fixed-time, url_verification challenge,
+  event dedup em `webhook_deliveries`, mention/IM/auto-triage →
+  start-task, thread binding → send-message), `ChatOpsReporter`
+  (postback ✅/❌ + resumo redacted no thread).
+- `Api/Endpoints/ChatOpsEndpoints.cs` — webhooks públicos
+  `events|commands|interactions`, CRUD `/orgs/{org}/chat-connections`,
+  `/chat/channels/{id}/config`, `/chat/connections/{id}/test`.
+- EF `chat_connections`/`chat_thread_bindings`/`chat_channel_configs`
+  (migrations SQLite + Postgres).
+- AgentRunner: `IChatOpsReporter.ReportRunFinishedAsync` fire-and-forget.
+- `/admin/chat` (AdminChatPage) + CLI `chat status|test` + i18n.
+- Docs: `docs/features/chatops.md`.
+- Testes: `Spec54ChatOpsTests` — 8/8 verdes (signature, challenge,
+  mention→binding, dedup, thread reply→send, auto-triage, slash).

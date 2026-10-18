@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using OpenHandsNET.Api.ProblemDetails;
 using OpenHandsNET.Application.Identity;
@@ -115,8 +116,21 @@ public static class ScmEndpoints
             var conn = await svc.CreateAsync(
                 org_id, kind.Value, req.InstallationId, req.PemSecretRef,
                 req.WebhookSecretRef, req.Repos, req.AppId, req.AppSlug,
-                user.UserId.ToString(), ct);
+                user.UserId.ToString(), ct,
+                req.ApiUrl, req.AuthKind, req.MetaJson);
             return Results.Ok(conn);
+        }).RequireAuthorization("perm:manage_integrations");
+
+        // SPEC-53 RF-004: diagnóstico da connection (token + escopo).
+        scm.MapPost("/connections/{id:guid}/test", async (
+            Guid id, ICurrentUserAccessor current,
+            IScmConnectionService svc, CancellationToken ct) =>
+        {
+            var user = current.User;
+            if (user is null)
+                return Results.Unauthorized();
+            var diag = await svc.TestAsync(id, ct);
+            return Results.Ok(diag);
         }).RequireAuthorization("perm:manage_integrations");
 
         conns.MapDelete("/{id:guid}", async (
@@ -131,20 +145,70 @@ public static class ScmEndpoints
         }).RequireAuthorization("perm:manage_integrations");
 
         // Webhook público (HMAC + idempotência; sem auth de usuário).
-        app.MapPost("/api/v1/webhooks/scm/github", async (
-            HttpRequest req, IScmWebhookService svc, CancellationToken ct) =>
+        app.MapPost("/api/v1/webhooks/scm/{kind}", async (
+            string kind, HttpRequest req, IScmWebhookService svc,
+            CancellationToken ct) =>
         {
+            var parsed = ScmKindExtensions.Parse(kind);
+            if (parsed is null)
+                return Results.NotFound(new { error = "unknown_kind" });
             if ((req.ContentLength ?? 0) > MaxWebhookPayload)
                 return Results.StatusCode(413);
             using var ms = new MemoryStream();
             await req.Body.CopyToAsync(ms, ct);
             var payload = ms.ToArray();
 
-            var result = await svc.HandleGitHubAsync(
-                req.Headers["X-Hub-Signature-256"].FirstOrDefault(),
-                req.Headers["X-GitHub-Event"].FirstOrDefault() ?? "",
-                req.Headers["X-GitHub-Delivery"].FirstOrDefault(),
-                payload, ct);
+            string? token, eventType, delivery;
+            switch (parsed.Value)
+            {
+                case ScmKind.GitLab:
+                    token = req.Headers["X-Gitlab-Token"].FirstOrDefault();
+                    eventType = req.Headers["X-Gitlab-Event"]
+                        .FirstOrDefault();
+                    delivery = req.Headers["X-Gitlab-Webhook-UUID"]
+                        .FirstOrDefault();
+                    break;
+                case ScmKind.Bitbucket:
+                    token = req.Headers["X-Hub-Signature"].FirstOrDefault();
+                    eventType = req.Headers["X-Event-Key"].FirstOrDefault();
+                    delivery = req.Headers["X-Request-UUID"]
+                        .FirstOrDefault();
+                    break;
+                case ScmKind.AzureDevOps:
+                    token = req.Headers["X-OpenHandsNet-Secret"]
+                        .FirstOrDefault()
+                        ?? req.Query["secret"].FirstOrDefault();
+                    try
+                    {
+                        using var peek = JsonDocument.Parse(payload);
+                        eventType = peek.RootElement
+                            .TryGetProperty("eventType", out var et)
+                                ? et.GetString() : null;
+                        delivery = peek.RootElement
+                            .TryGetProperty("notificationId", out var nd)
+                            && nd.ValueKind == JsonValueKind.Number
+                                ? nd.GetInt32().ToString()
+                                : peek.RootElement.TryGetProperty(
+                                        "id", out var pid)
+                                    ? pid.ToString() : null;
+                    }
+                    catch (JsonException)
+                    {
+                        return Results.Unauthorized();
+                    }
+                    break;
+                default: // github
+                    token = req.Headers["X-Hub-Signature-256"]
+                        .FirstOrDefault();
+                    eventType = req.Headers["X-GitHub-Event"]
+                        .FirstOrDefault();
+                    delivery = req.Headers["X-GitHub-Delivery"]
+                        .FirstOrDefault();
+                    break;
+            }
+
+            var result = await svc.HandleAsync(
+                parsed.Value, token, eventType, delivery, payload, ct);
             return result switch
             {
                 ScmWebhookResult.InvalidSignature =>
@@ -176,7 +240,7 @@ public sealed record ScmPrRequest(
     bool? Draft = null,
     IReadOnlyList<string>? Reviewers = null);
 
-/// <summary>Manual connection registration (BYO app).</summary>
+/// <summary>Manual connection registration (BYO app; SPEC-53 fields).</summary>
 public sealed record ScmConnectionRequest(
     string Kind,
     string? InstallationId = null,
@@ -184,4 +248,7 @@ public sealed record ScmConnectionRequest(
     string? WebhookSecretRef = null,
     IReadOnlyList<string>? Repos = null,
     string? AppId = null,
-    string? AppSlug = null);
+    string? AppSlug = null,
+    string? ApiUrl = null,
+    string? AuthKind = null,
+    string? MetaJson = null);

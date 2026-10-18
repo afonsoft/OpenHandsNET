@@ -241,6 +241,167 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                     b.ToTable("automation_runs", (string)null);
                 });
 
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.ChatOps.ChatChannelConfigRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("AutoTriage")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("auto_triage");
+
+                    b.Property<string>("ChannelId")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("channel_id");
+
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("connection_id");
+
+                    b.Property<string>("SelectedBranch")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("selected_branch");
+
+                    b.Property<string>("SelectedRepository")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("selected_repository");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_chat_channel_configs");
+
+                    b.HasIndex("ConnectionId", "ChannelId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_chat_channel_configs_connection_id_channel_id");
+
+                    b.ToTable("chat_channel_configs", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.ChatOps.ChatConnectionRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BotTokenSecretRef")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("bot_token_secret_ref");
+
+                    b.Property<string>("BotUserId")
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("bot_user_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("DefaultChannelId")
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("default_channel_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("SigningSecretRef")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("signing_secret_ref");
+
+                    b.Property<string>("TeamId")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("team_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_chat_connections");
+
+                    b.HasIndex("OrgId")
+                        .HasDatabaseName("ix_chat_connections_org_id");
+
+                    b.HasIndex("TeamId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_chat_connections_team_id");
+
+                    b.ToTable("chat_connections", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.ChatOps.ChatThreadBindingRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ChannelId")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("channel_id");
+
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("connection_id");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("StatusMessageTs")
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("status_message_ts");
+
+                    b.Property<string>("ThreadTs")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("thread_ts");
+
+                    b.HasKey("Id")
+                        .HasName("pk_chat_thread_bindings");
+
+                    b.HasIndex("ConversationId")
+                        .HasDatabaseName("ix_chat_thread_bindings_conversation_id");
+
+                    b.HasIndex("ConnectionId", "ChannelId", "ThreadTs")
+                        .IsUnique()
+                        .HasDatabaseName("ix_chat_thread_bindings_connection_id_channel_id_thread_ts");
+
+                    b.ToTable("chat_thread_bindings", (string)null);
+                });
+
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Conversations.ConversationRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -347,6 +508,18 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                     b.Property<string>("TagsJson")
                         .HasColumnType("TEXT")
                         .HasColumnName("tags_json");
+
+                    b.Property<string>("TicketId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ticket_id");
+
+                    b.Property<string>("TicketKind")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ticket_kind");
+
+                    b.Property<string>("TicketUrl")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ticket_url");
 
                     b.Property<string>("Title")
                         .HasMaxLength(500)
@@ -1550,6 +1723,11 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("id");
 
+                    b.Property<string>("ApiUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("api_url");
+
                     b.Property<string>("AppId")
                         .HasMaxLength(40)
                         .HasColumnType("TEXT")
@@ -1559,6 +1737,11 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT")
                         .HasColumnName("app_slug");
+
+                    b.Property<string>("AuthKind")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("auth_kind");
 
                     b.Property<string>("ClientSecretRef")
                         .HasMaxLength(200)
@@ -1584,6 +1767,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("TEXT")
                         .HasColumnName("kind");
+
+                    b.Property<string>("MetaJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("meta_json");
 
                     b.Property<Guid?>("OrgId")
                         .HasColumnType("TEXT")
@@ -1760,6 +1947,103 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_conversation_shares_token_hash");
 
                     b.ToTable("conversation_shares", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Tickets.TicketConnectionRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ApiUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("api_url");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("TokenSecretRef")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("token_secret_ref");
+
+                    b.Property<string>("TriggerConfigJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("trigger_config_json");
+
+                    b.Property<string>("WebhookSecretRef")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("webhook_secret_ref");
+
+                    b.Property<string>("WorkspaceId")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ticket_connections");
+
+                    b.HasIndex("Kind", "WorkspaceId")
+                        .HasDatabaseName("ix_ticket_connections_kind_workspace_id");
+
+                    b.ToTable("ticket_connections", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Tickets.TicketProjectConfigRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("connection_id");
+
+                    b.Property<string>("ProjectKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("project_key");
+
+                    b.Property<string>("SelectedBranch")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("selected_branch");
+
+                    b.Property<string>("SelectedRepository")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("selected_repository");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ticket_project_configs");
+
+                    b.HasIndex("ConnectionId", "ProjectKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ticket_project_configs_connection_id_project_key");
+
+                    b.ToTable("ticket_project_configs", (string)null);
                 });
 #pragma warning restore 612, 618
         }

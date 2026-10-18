@@ -154,6 +154,31 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
         WebhookDeliveries =>
             Set<OpenHandsNET.Infrastructure.Scm.WebhookDeliveryRecord>();
 
+    /// <summary>Slack workspaces conectados — secrets by-ref (SPEC-54).</summary>
+    public DbSet<OpenHandsNET.Infrastructure.ChatOps.ChatConnectionRecord>
+        ChatConnections =>
+            Set<OpenHandsNET.Infrastructure.ChatOps.ChatConnectionRecord>();
+
+    /// <summary>Thread → conversa (SPEC-54 RF-002).</summary>
+    public DbSet<OpenHandsNET.Infrastructure.ChatOps.ChatThreadBindingRecord>
+        ChatThreadBindings =>
+            Set<OpenHandsNET.Infrastructure.ChatOps.ChatThreadBindingRecord>();
+
+    /// <summary>Canal → repo/auto-triage (SPEC-54 RF-004/RF-005).</summary>
+    public DbSet<OpenHandsNET.Infrastructure.ChatOps.ChatChannelConfigRecord>
+        ChatChannelConfigs =>
+            Set<OpenHandsNET.Infrastructure.ChatOps.ChatChannelConfigRecord>();
+
+    /// <summary>Conexões Linear/Jira — tokens by-ref (SPEC-55).</summary>
+    public DbSet<OpenHandsNET.Infrastructure.Tickets.TicketConnectionRecord>
+        TicketConnections =>
+            Set<OpenHandsNET.Infrastructure.Tickets.TicketConnectionRecord>();
+
+    /// <summary>Projeto → repo/branch (SPEC-55 RF-003).</summary>
+    public DbSet<OpenHandsNET.Infrastructure.Tickets.TicketProjectConfigRecord>
+        TicketProjectConfigs =>
+            Set<OpenHandsNET.Infrastructure.Tickets.TicketProjectConfigRecord>();
+
     /// <summary>ASP.NET DataProtection keys (PersistKeysToDbContext).</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
@@ -227,6 +252,12 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
             .HasQueryFilter(r =>
                 !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
         modelBuilder.Entity<OpenHandsNET.Infrastructure.Scm.ScmConnectionRecord>()
+            .HasQueryFilter(r =>
+                !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
+        modelBuilder.Entity<OpenHandsNET.Infrastructure.ChatOps.ChatConnectionRecord>()
+            .HasQueryFilter(r =>
+                !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
+        modelBuilder.Entity<OpenHandsNET.Infrastructure.Tickets.TicketConnectionRecord>()
             .HasQueryFilter(r =>
                 !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
     }

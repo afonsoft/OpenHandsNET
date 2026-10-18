@@ -134,3 +134,29 @@ via CLI.
 - Fim de run posta comentário com link conversa (+ PR quando houver).
 - Replay delivery → 1× processado. Testes unit do parser + integração
   mock. Suite verde; OpenAPI golden atualizado.
+
+
+## 11. Entrega — evidência (2026-10-18)
+
+- `Application/Tickets/TicketContracts.cs` — `ITicketProvider`, contratos
+  de webhook (`TicketWebhookEvent`), `TicketTriggerConfig`
+  (label|assignee|state + done_state + prompt_template +
+  selected_repository), `TicketConnection`.
+- `Infrastructure/Tickets/` — `TicketRecords` (ticket_connections +
+  ticket_project_configs + filtros de org), `TicketProviders`
+  (`RestTicketProvider` + `LinearTicketProvider` GraphQL +
+  `JiraTicketProvider` REST v3/ADF), `TicketConnectionService`,
+  `TicketTriggerService` (signature check por connection, routing por
+  workspace hint, triggers label/assignee/state + @openhandsnet mention,
+  dedup `webhook_deliveries`, prompt render + start-task + binding),
+  `TicketReporter` (comentário + transição done_state + audit).
+- `Api/Endpoints/TicketEndpoints.cs` — `/webhooks/tickets/linear|jira`,
+  admin `/orgs/{org}/ticket-connections` (+/projects), `/tickets/
+  connections/{id}/test|run`, `/tickets/{kind}/{issue_key}/comment`.
+- `AgentRunner` chama `ITicketReporter.ReportAsync` no fim do run.
+- Admin `/admin/tickets` + CLI `openhandsnet tickets status|test|run`.
+- Testes: `Spec55TicketsTests` 9/9 verdes (parse Linear/Jira, label
+  trigger + binding, non-match Ignored, @mention, dedup, bad signature,
+  run manual, reporter comment+transition).
+- Migrations `*_spec55_tickets` (SQLite + Postgres); golden OpenAPI
+  regenerado.

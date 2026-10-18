@@ -71,6 +71,15 @@ public sealed class ConversationRecord : IOrgScoped
     /// <summary>SPEC-52 RF-005: head SHA reportado no último commit status.</summary>
     public string? PullRequestHeadSha { get; set; }
 
+    /// <summary>SPEC-55 RF-003: ticket que originou a conversa (linear|jira).</summary>
+    public string? TicketKind { get; set; }
+
+    /// <summary>SPEC-55: identificador do ticket (ENG-123 / PROJ-42).</summary>
+    public string? TicketId { get; set; }
+
+    /// <summary>SPEC-55: URL do ticket.</summary>
+    public string? TicketUrl { get; set; }
+
     /// <summary>
     /// Espelho numérico de <see cref="CreatedAt"/> (UtcTicks) — SQLite não
     /// ordena DateTimeOffset; sincronizado no SaveChanges (ver AppDbContext).
@@ -86,7 +95,8 @@ public sealed class ConversationRecord : IOrgScoped
             : System.Text.Json.JsonSerializer.Deserialize<List<string>>(TagsJson) ?? [],
         Pinned, CreatedAt, UpdatedAt, CreatedByUserId, ConfirmationMode,
         SandboxProfile, NeedsAttentionKind,
-        PullRequestUrl, PullRequestNumber, PullRequestState);
+        PullRequestUrl, PullRequestNumber, PullRequestState,
+        TicketKind, TicketId, TicketUrl);
 }
 
 /// <summary>Persisted start-task row.</summary>
