@@ -125,9 +125,23 @@ public sealed class ApiKeyRecord : IOrgScoped
     public required string KeyHash { get; set; }
     public string? Name { get; set; }
     public string? ScopesJson { get; set; }
+    /// <summary>SPEC-57: quando set, a chave é <c>svc_*</c> deste service user.</summary>
+    public Guid? ServiceUserId { get; set; }
     public DateTimeOffset? NotBefore { get; set; }
     public DateTimeOffset? ExpiresAt { get; set; }
     public DateTimeOffset? LastUsedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+/// <summary>Service user de uma org (SPEC-57 RF-001) — não faz login.</summary>
+public sealed class ServiceUserRecord : IOrgScoped
+{
+    public required Guid Id { get; set; }
+    public required Guid? OrgId { get; set; }
+    public required string Name { get; set; }
+    public required string Role { get; set; }
+    public required Guid CreatedBy { get; set; }
+    public DateTimeOffset? DisabledAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }
 

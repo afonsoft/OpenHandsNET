@@ -93,6 +93,9 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// <summary>API keys (hash at rest).</summary>
     public DbSet<ApiKeyRecord> ApiKeys => Set<ApiKeyRecord>();
 
+    /// <summary>Service users (SPEC-57).</summary>
+    public DbSet<ServiceUserRecord> ServiceUsers => Set<ServiceUserRecord>();
+
     /// <summary>Org-scoped memory entries (SPEC-30).</summary>
     public DbSet<MemoryRecord> MemoryRecords => Set<MemoryRecord>();
 
@@ -260,6 +263,11 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
         modelBuilder.Entity<OpenHandsNET.Infrastructure.Tickets.TicketConnectionRecord>()
             .HasQueryFilter(r =>
                 !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
+        modelBuilder.Entity<ServiceUserRecord>()
+            .HasQueryFilter(r =>
+                !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
+        modelBuilder.Entity<ApiKeyRecord>()
+            .HasIndex(k => k.ServiceUserId);
     }
 }
 

@@ -221,6 +221,8 @@ builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationP
     OpenHandsNET.Api.Policies.PermissionPolicyProvider>();
 builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler,
     OpenHandsNET.Api.Policies.PermissionHandler>();
+builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler,
+    OpenHandsNET.Api.Policies.ScopeHandler>();
 builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationMiddlewareResultHandler,
     OpenHandsNET.Api.Policies.PermissionResultHandler>();
 builder.Services.AddHttpContextAccessor();
@@ -309,6 +311,7 @@ app.MapShareEndpoints();
 app.MapScmEndpoints();
 app.MapChatOpsEndpoints();
 app.MapTicketEndpoints();
+app.MapServiceUserEndpoints();
 app.MapHub<ConversationHub>("/hubs/conversations");
 app.MapHealthChecks("/api/v1/health");
 app.MapHealthChecks("/api/v1/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions

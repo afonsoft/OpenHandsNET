@@ -35,12 +35,80 @@ public sealed class PermissionPolicyProvider(IOptions<AuthorizationOptions> opti
                 .Build();
             return Task.FromResult<AuthorizationPolicy?>(policy);
         }
+        if (policyName.StartsWith("scope:", StringComparison.Ordinal))
+        {
+            var policy = new AuthorizationPolicyBuilder()
+                .AddRequirements(new ScopeRequirement(policyName[6..]))
+                .AddAuthenticationSchemes("cookie", Api.Auth.ApiKeyAuthenticationHandler.SchemeName)
+                .RequireAuthenticatedUser()
+                .Build();
+            return Task.FromResult<AuthorizationPolicy?>(policy);
+        }
         return base.GetPolicyAsync(policyName);
     }
 }
 
 /// <summary>Marker requirement for financial-data access (SPEC-08 RF-005).</summary>
 public sealed class FinancialDataRequirement : IAuthorizationRequirement;
+
+/// <summary>Endpoint-level scope (SPEC-57 RF-002).</summary>
+public sealed class ScopeRequirement(string scope)
+    : IAuthorizationRequirement
+{
+    /// <summary>Required scope wire name (e.g. conversations:write).</summary>
+    public string Scope { get; } = scope;
+}
+
+/// <summary>
+/// Scope check (SPEC-57 RF-002): cookie e <c>sk-*</c> sem ScopesJson
+/// passam (acesso pleno do papel); <c>svc_*</c> precisa do escopo
+/// declarado. 403 genérico — não vaza escopos. Audit
+/// <c>auth.scope_denied</c> best-effort.
+/// </summary>
+public sealed class ScopeHandler(IServiceScopeFactory scopeFactory,
+    IHttpContextAccessor http) : AuthorizationHandler<ScopeRequirement>
+{
+    /// <inheritdoc />
+    protected override async Task HandleRequirementAsync(
+        AuthorizationHandlerContext context, ScopeRequirement requirement)
+    {
+        var ctx = http.HttpContext;
+        if (ctx is null)
+            return;
+        var accessor = ctx.RequestServices
+            .GetRequiredService<ICurrentUserAccessor>();
+        var user = accessor.User;
+        if (user is null)
+            return;
+
+        // Sem restrição de escopo: cookie ou sk-* legada.
+        if (user.Scopes is not { Count: > 0 } scopes
+            || scopes.Contains(requirement.Scope))
+        {
+            context.Succeed(requirement);
+            return;
+        }
+
+        try
+        {
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var audit = scope.ServiceProvider
+                .GetRequiredService<IAuditService>();
+            await audit.RecordAsync(
+                "auth.scope_denied", user.UserId.ToString(),
+                Guid.TryParse(
+                    ctx.Request.RouteValues["org_id"]?.ToString(),
+                    out var orgId) ? orgId : null,
+                "endpoint",
+                ctx.Request.Path.Value,
+                cancellationToken: ctx.RequestAborted);
+        }
+        catch (Exception)
+        {
+            // audit best-effort — não bloqueia o deny.
+        }
+    }
+}
 
 /// <summary>
 /// Permission check (SPEC-08 RF-004), exact upstream order:
@@ -96,17 +164,20 @@ public sealed class PermissionHandler(
         if (targetOrg is { } orgId && user.BoundOrgId is { } bound && bound != orgId)
             return;
 
-        // 3-4. org-role evaluation
+        // 3-4. org-role evaluation — service users carregam a role
+        // no próprio registro (SPEC-57); humanos via OrgMembers.
         if (targetOrg is { } oid)
         {
             var org = await db.Organizations.FindAsync([oid]);
             var suspended = org?.SuspendedAt is not null;
             if (!suspended)
             {
-                var role = await db.OrgMembers
-                    .Where(m => m.OrgId == oid && m.UserId == user.UserId)
-                    .Select(m => m.Role)
-                    .FirstOrDefaultAsync();
+                var role = user.ActorKind == ActorKind.ServiceUser
+                    ? user.Role
+                    : await db.OrgMembers
+                        .Where(m => m.OrgId == oid && m.UserId == user.UserId)
+                        .Select(m => m.Role)
+                        .FirstOrDefaultAsync();
                 if (RolePermissions.ForOrgRole(role).Contains(requirement.Permission))
                 {
                     context.Succeed(requirement);

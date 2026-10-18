@@ -27,6 +27,11 @@ public sealed record CreateAppConversationRequest
     public IReadOnlyList<string>? Secrets { get; init; }
     public JsonElement? LlmConfig { get; init; }
     public JsonElement? ObservabilityConfig { get; init; }
+    /// <summary>
+    /// SPEC-57 RF-003: cria a conversa em nome de outro usuário da mesma
+    /// org — exige scope <c>sessions:impersonate</c> (service users).
+    /// </summary>
+    public Guid? CreateAsUserId { get; init; }
 }
 
 /// <summary>Uma regra de permissão de tool (SPEC-29): pattern+decision.</summary>

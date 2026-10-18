@@ -1,0 +1,195 @@
+@page "/admin/service-users"
+@using OpenHandsNET.Client.Services
+@using System.Text.Json
+@inherits AdminPageBase
+@inject ToastService Toasts
+
+<PageTitle>@L["admin.title"] · @L["admin.nav_service_users"]</PageTitle>
+
+@if (Checking || !Allowed)
+{
+    <div class="settings-wrap"><p class="empty-state">…</p></div>
+}
+else
+{
+    <div class="settings-wrap admin-wrap">
+        <h1>@L["admin.svc_title"]</h1>
+        <AdminNav />
+        @if (Error is not null) { <p class="admin-error">@Error</p> }
+
+        <div class="field admin-toolbar">
+            <select @bind="_orgId" @bind:after="LoadAsync2">
+                <option value="">@L["admin.select_org"]</option>
+                @foreach (var o in _orgs)
+                {
+                    <option value="@Str(o, "id")">@Str(o, "name")</option>
+                }
+            </select>
+        </div>
+
+        @if (_loaded)
+        {
+            <p class="muted">@L["admin.svc_hint"]</p>
+
+            @if (_users.Count == 0)
+            {
+                <p class="empty-state">@L["admin.svc_empty"]</p>
+            }
+            else
+            {
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>@L["admin.svc_name"]</th>
+                            <th>@L["admin.svc_role"]</th>
+                            <th>@L["admin.svc_status"]</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var u in _users)
+                        {
+                            var disabled = u.TryGetProperty("disabled_at",
+                                out var da) && da.ValueKind
+                                == JsonValueKind.String;
+                            <tr>
+                                <td>@Str(u, "name")</td>
+                                <td>@Str(u, "role")</td>
+                                <td>@(disabled
+                                    ? L["admin.svc_disabled"]
+                                    : L["admin.svc_active"])</td>
+                                <td>
+                                    <button class="btn"
+                                        @onclick="() => ToggleAsync(u, !disabled)">
+                                        @(disabled
+                                            ? L["admin.svc_enable"]
+                                            : L["admin.svc_disable"])
+                                    </button>
+                                    <button class="btn danger"
+                                        @onclick="() => DeleteAsync(u)">
+                                        @L["admin.tickets_delete"]
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+
+            <h3>@L["admin.svc_create"]</h3>
+            <div class="admin-toolbar">
+                <input class="input" @bind="_newName"
+                    placeholder="@L["admin.svc_name_ph"]" />
+                <select @bind="_newRole">
+                    <option value="member">member</option>
+                    <option value="admin">admin</option>
+                    <option value="owner">owner</option>
+                </select>
+                <button class="btn" @onclick="CreateAsync">
+                    @L["admin.svc_create_btn"]
+                </button>
+            </div>
+
+            <h3>@L["admin.svc_issue_key"]</h3>
+            <div class="admin-toolbar">
+                <select @bind="_keyUser">
+                    @foreach (var u in _users)
+                    {
+                        <option value="@Str(u, "id")">@Str(u, "name")</option>
+                    }
+                </select>
+                <input class="input" @bind="_keyScopes"
+                    placeholder="conversations:write sandboxes:read" />
+                <button class="btn" @onclick="IssueKeyAsync">
+                    @L["admin.svc_issue_btn"]
+                </button>
+            </div>
+            @if (_issuedKey is not null)
+            {
+                <div class="admin-secret-box">
+                    <p class="muted">@L["admin.svc_key_once"]</p>
+                    <code>@_issuedKey</code>
+                </div>
+            }
+        }
+    </div>
+}
+
+@code {
+    private string _orgId = "";
+    private IReadOnlyList<JsonElement> _orgs = [];
+    private IReadOnlyList<JsonElement> _users = [];
+    private bool _loaded;
+    private string _newName = "";
+    private string _newRole = "member";
+    private string _keyUser = "";
+    private string _keyScopes = "conversations:write";
+    private string? _issuedKey;
+
+    protected override async Task LoadAsync()
+    {
+        _orgs = await Api.ListOrgsAsync();
+    }
+
+    private async Task LoadAsync2()
+    {
+        _issuedKey = null;
+        if (string.IsNullOrEmpty(_orgId))
+        {
+            _loaded = false;
+            return;
+        }
+        _users = await Api.ListServiceUsersAsync(_orgId);
+        _keyUser = _users.FirstOrDefault()
+            .TryGetProperty("id", out var id) ? id.GetString() ?? "" : "";
+        _loaded = true;
+    }
+
+    private async Task CreateAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newName))
+        {
+            Toasts.Error(L["admin.svc_name_ph"]);
+            return;
+        }
+        await Api.CreateServiceUserAsync(
+            _orgId, _newName.Trim(), _newRole);
+        Toasts.Success(L["admin.svc_created"]);
+        _newName = "";
+        await LoadAsync2();
+    }
+
+    private async Task ToggleAsync(JsonElement u, bool disable)
+    {
+        await Api.UpdateServiceUserAsync(
+            _orgId, Str(u, "id")!, disabled: disable);
+        await LoadAsync2();
+    }
+
+    private async Task DeleteAsync(JsonElement u)
+    {
+        await Api.DeleteServiceUserAsync(_orgId, Str(u, "id")!);
+        Toasts.Success(L["admin.svc_deleted"]);
+        await LoadAsync2();
+    }
+
+    private async Task IssueKeyAsync()
+    {
+        if (string.IsNullOrEmpty(_keyUser))
+        {
+            Toasts.Error(L["admin.svc_empty"]);
+            return;
+        }
+        var scopes = _keyScopes.Split(' ',
+            StringSplitOptions.RemoveEmptyEntries);
+        _issuedKey = await Api.CreateServiceUserKeyAsync(
+            _orgId, _keyUser, scopes);
+        if (_issuedKey is null)
+            Toasts.Error(L["admin.svc_issue_fail"]);
+    }
+
+    private static string? Str(JsonElement e, string prop) =>
+        e.TryGetProperty(prop, out var v)
+            && v.ValueKind == JsonValueKind.String
+            ? v.GetString() : null;
+}

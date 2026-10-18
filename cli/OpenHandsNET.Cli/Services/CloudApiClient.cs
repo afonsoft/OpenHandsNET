@@ -297,6 +297,42 @@ public sealed class CloudApiClient
             : default;
     }
 
+    /// <summary>SPEC-57: service users da org.</summary>
+    public async Task<JsonElement> ListServiceUsersAsync(
+        string orgId, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync(
+            $"{BaseUrl}/api/v1/orgs/{orgId}/service-users", ct);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<JsonElement>(ct)
+            : default;
+    }
+
+    /// <summary>SPEC-57: cria service user.</summary>
+    public async Task<bool> CreateServiceUserAsync(
+        string orgId, string name, string role, CancellationToken ct)
+    {
+        var resp = await _http.PostAsJsonAsync(
+            $"{BaseUrl}/api/v1/orgs/{orgId}/service-users",
+            new { name, role }, Json, ct);
+        return resp.IsSuccessStatusCode;
+    }
+
+    /// <summary>SPEC-57: emite svc_* — retorna plaintext ou null.</summary>
+    public async Task<string?> CreateServiceUserKeyAsync(
+        string orgId, string serviceUserId, IReadOnlyList<string> scopes,
+        CancellationToken ct)
+    {
+        var resp = await _http.PostAsJsonAsync(
+            $"{BaseUrl}/api/v1/orgs/{orgId}/service-users/{serviceUserId}/keys",
+            new { scopes }, Json, ct);
+        if (!resp.IsSuccessStatusCode)
+            return null;
+        var body = await resp.Content
+            .ReadFromJsonAsync<JsonElement>(ct);
+        return body.TryGetProperty("key", out var k) ? k.GetString() : null;
+    }
+
     /// <summary>SPEC-52: abre PR a partir do workspace da conversa.</summary>
     public async Task<JsonElement> CreatePullRequestAsync(
         string conversationId, string title, string body,
