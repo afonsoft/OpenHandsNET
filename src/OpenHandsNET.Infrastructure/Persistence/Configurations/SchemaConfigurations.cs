@@ -246,3 +246,28 @@ public sealed class ByorKeyConfiguration : IEntityTypeConfiguration<ByorKeyRecor
         b.HasIndex(e => e.KeyId);
     }
 }
+
+/// <inheritdoc />
+public sealed class RepoIndexConfiguration : IEntityTypeConfiguration<RepoIndexRecord>
+{
+    /// <inheritdoc />
+    public void Configure(EntityTypeBuilder<RepoIndexRecord> b)
+    {
+        b.ToTable("repo_indexes");
+        b.HasKey(e => e.Id);
+        b.HasIndex(e => new { e.OrgId, e.Repository, e.Branch });
+    }
+}
+
+/// <inheritdoc />
+public sealed class CodeUnitConfiguration : IEntityTypeConfiguration<CodeUnitRecord>
+{
+    /// <inheritdoc />
+    public void Configure(EntityTypeBuilder<CodeUnitRecord> b)
+    {
+        b.ToTable("code_units");
+        b.HasKey(e => e.Id);
+        b.HasIndex(e => e.RepoIndexId);
+        b.HasIndex(e => new { e.RepoIndexId, e.Path });
+    }
+}

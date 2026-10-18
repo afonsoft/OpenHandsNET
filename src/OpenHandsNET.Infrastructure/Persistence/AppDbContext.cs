@@ -187,6 +187,12 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
         TicketProjectConfigs =>
             Set<OpenHandsNET.Infrastructure.Tickets.TicketProjectConfigRecord>();
 
+    /// <summary>SPEC-60 RF-001: Índices de código por repositório.</summary>
+    public DbSet<RepoIndexRecord> RepoIndexes => Set<RepoIndexRecord>();
+
+    /// <summary>SPEC-60 RF-001: Unidades de código (chunks/symbols) indexadas.</summary>
+    public DbSet<CodeUnitRecord> CodeUnits => Set<CodeUnitRecord>();
+
     /// <summary>ASP.NET DataProtection keys (PersistKeysToDbContext).</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
