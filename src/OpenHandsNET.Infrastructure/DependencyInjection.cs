@@ -172,6 +172,20 @@ public static class DependencyInjection
                 .AzureDevOpsScmProvider(hf, sc, log);
         });
 
+        // SPEC-54 ChatOps: Slack connections, sink, pipeline e reporter.
+        services.AddScoped<
+            OpenHandsNET.Application.ChatOps.IChatConnectionService,
+            OpenHandsNET.Infrastructure.ChatOps.ChatConnectionService>();
+        services.AddScoped<
+            OpenHandsNET.Application.ChatOps.IChatOpsService,
+            OpenHandsNET.Infrastructure.ChatOps.SlackChatOpsService>();
+        services.AddScoped<
+            OpenHandsNET.Application.ChatOps.IChatSink,
+            OpenHandsNET.Infrastructure.ChatOps.SlackChatSink>();
+        services.AddScoped<
+            OpenHandsNET.Application.ChatOps.IChatOpsReporter,
+            OpenHandsNET.Infrastructure.ChatOps.ChatOpsReporter>();
+
         // Checkpoints (SPEC-43): git-dir separado no sandbox, snapshots
         // pós-turno/manuais, revert com drift guard.
         services.Configure<OpenHandsNET.Application.Checkpoints.CheckpointOptions>(

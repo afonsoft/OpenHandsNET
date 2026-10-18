@@ -359,5 +359,19 @@
   "conv.share": "share link",
   "conv.download": "download trajectory",
   "conv.share_copied": "public link copied to clipboard",
-  "conv.share_failed": "could not create share link: {{error}}"
+  "conv.share_failed": "could not create share link: {{error}}",
+  "admin.nav_chat": "Chat",
+  "admin.chat_title": "Chat connections",
+  "admin.chat_hint": "Slack workspace connections used for ChatOps (@mentions, slash commands, thread replies bound to conversations, auto-triage).",
+  "admin.chat_empty": "No chat connections for this org yet.",
+  "admin.chat_kind": "Kind",
+  "admin.chat_team": "Team",
+  "admin.chat_bot": "Bot user",
+  "admin.chat_test": "Test",
+  "admin.chat_test_ok": "Connection reached Slack (auth.test OK)",
+  "admin.chat_test_fail": "Connection test failed",
+  "admin.chat_delete": "Delete",
+  "admin.chat_deleted": "Connection deleted",
+  "admin.chat_connect_title": "Connect Slack",
+  "admin.chat_connect_hint": "Create a Slack app, save bot token + signing secret in Secrets, register via POST /api/v1/orgs/{org}/chat-connections, then point these Request URLs at the server:"
 }

@@ -1029,6 +1029,14 @@ public sealed class AgentRunner(
                                 conversationId, success: true,
                                 CancellationToken.None)
                         ?? Task.CompletedTask, CancellationToken.None);
+                    // SPEC-54 RF-003: postback no thread Slack bound
+                    // (fire-and-forget — nunca falha a run).
+                    _ = Task.Run(() => services
+                            .GetService<Application.ChatOps.IChatOpsReporter>()?
+                            .ReportRunFinishedAsync(
+                                conversationId, success: true,
+                                finalText, CancellationToken.None)
+                        ?? Task.CompletedTask, CancellationToken.None);
                     // SPEC-43 RF-002: snapshot automático pós-turno
                     // (Checkpoints:Auto) — melhor esforço, nunca falha a run.
                     await AutoCheckpointAsync(services, sandbox,

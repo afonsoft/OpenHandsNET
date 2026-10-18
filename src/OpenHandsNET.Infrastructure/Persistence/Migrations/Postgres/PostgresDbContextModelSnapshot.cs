@@ -250,6 +250,167 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                     b.ToTable("automation_runs", (string)null);
                 });
 
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.ChatOps.ChatChannelConfigRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("AutoTriage")
+                        .HasColumnType("boolean")
+                        .HasColumnName("auto_triage");
+
+                    b.Property<string>("ChannelId")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("channel_id");
+
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("connection_id");
+
+                    b.Property<string>("SelectedBranch")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("selected_branch");
+
+                    b.Property<string>("SelectedRepository")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("selected_repository");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_chat_channel_configs");
+
+                    b.HasIndex("ConnectionId", "ChannelId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_chat_channel_configs_connection_id_channel_id");
+
+                    b.ToTable("chat_channel_configs", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.ChatOps.ChatConnectionRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BotTokenSecretRef")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("bot_token_secret_ref");
+
+                    b.Property<string>("BotUserId")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("bot_user_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("DefaultChannelId")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("default_channel_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("SigningSecretRef")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("signing_secret_ref");
+
+                    b.Property<string>("TeamId")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("team_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_chat_connections");
+
+                    b.HasIndex("OrgId")
+                        .HasDatabaseName("ix_chat_connections_org_id");
+
+                    b.HasIndex("TeamId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_chat_connections_team_id");
+
+                    b.ToTable("chat_connections", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.ChatOps.ChatThreadBindingRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ChannelId")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("channel_id");
+
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("connection_id");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("StatusMessageTs")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("status_message_ts");
+
+                    b.Property<string>("ThreadTs")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("thread_ts");
+
+                    b.HasKey("Id")
+                        .HasName("pk_chat_thread_bindings");
+
+                    b.HasIndex("ConversationId")
+                        .HasDatabaseName("ix_chat_thread_bindings_conversation_id");
+
+                    b.HasIndex("ConnectionId", "ChannelId", "ThreadTs")
+                        .IsUnique()
+                        .HasDatabaseName("ix_chat_thread_bindings_connection_id_channel_id_thread_ts");
+
+                    b.ToTable("chat_thread_bindings", (string)null);
+                });
+
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Conversations.ConversationRecord", b =>
                 {
                     b.Property<Guid>("Id")

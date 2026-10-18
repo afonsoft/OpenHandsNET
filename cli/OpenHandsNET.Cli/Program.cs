@@ -58,6 +58,11 @@ app.Configure(config =>
         b.AddCommand<ScmConnectCommand>("connect");
         b.AddBranch("pr", pb => pb.AddCommand<ScmPrCreateCommand>("create"));
     });
+    config.AddBranch("chat", b =>
+    {
+        b.AddCommand<ChatStatusCommand>("status");
+        b.AddCommand<ChatTestCommand>("test");
+    });
 });
 
 return args.Length == 0

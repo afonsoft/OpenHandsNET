@@ -265,6 +265,34 @@ public sealed class AdminApiClient(HttpClient http)
         return resp.IsSuccessStatusCode;
     }
 
+    // ---- chatops (SPEC-54) -------------------------------------------------
+
+    /// <summary>Chat connections (Slack) da org.</summary>
+    public async Task<IReadOnlyList<JsonElement>> ListChatConnectionsAsync(
+        string orgId, CancellationToken ct = default) =>
+        await GetAsync<List<JsonElement>>(
+            $"/api/v1/orgs/{orgId}/chat-connections", ct) ?? [];
+
+    /// <summary>Remove uma chat connection.</summary>
+    public async Task<bool> DeleteChatConnectionAsync(
+        string orgId, string id, CancellationToken ct = default)
+    {
+        var resp = Guard(await http.DeleteAsync(
+            $"/api/v1/orgs/{orgId}/chat-connections/{id}", ct));
+        return resp.IsSuccessStatusCode;
+    }
+
+    /// <summary>Diagnóstico: auth.test no Slack via connection.</summary>
+    public async Task<JsonElement> TestChatConnectionAsync(
+        string id, CancellationToken ct = default)
+    {
+        var resp = Guard(await http.PostAsync(
+            $"/api/v1/chat/connections/{id}/test", null, ct));
+        return resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<JsonElement>(Json, ct)
+            : default;
+    }
+
     // ---- plumbing --------------------------------------------------------
 
     private async Task<T?> GetAsync<T>(string url, CancellationToken ct) =>

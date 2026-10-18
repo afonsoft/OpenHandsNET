@@ -156,6 +156,66 @@
         ],
         "type": "object"
       },
+      "ChatChannelConfigRequest": {
+        "description": "Canal\u2192repo config request (SPEC-54 RF-004).",
+        "properties": {
+          "auto_triage": {
+            "default": false,
+            "type": "boolean"
+          },
+          "channel_id": {
+            "type": "string"
+          },
+          "selected_branch": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "selected_repository": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "channel_id"
+        ],
+        "type": "object"
+      },
+      "ChatConnectionRequest": {
+        "description": "Create chat connection request.",
+        "properties": {
+          "bot_token_secret_ref": {
+            "type": "string"
+          },
+          "bot_user_id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "default_channel_id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "signing_secret_ref": {
+            "type": "string"
+          },
+          "team_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "team_id",
+          "bot_token_secret_ref",
+          "signing_secret_ref"
+        ],
+        "type": "object"
+      },
       "CompactContextRequest": {
         "description": "POST .../context/compact body (SPEC-22 RF-004).",
         "properties": {
@@ -3878,6 +3938,64 @@
         ]
       }
     },
+    "/api/v1/chat/channels/{connectionId}/config": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connectionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatChannelConfigRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/chat/channels/{connectionId:guid}/config",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/chat/connections/{id}/test": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/chat/connections/{id:guid}/test",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
     "/api/v1/config": {
       "get": {
         "responses": {
@@ -5259,6 +5377,110 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_id}/chat-connections": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/orgs/{org_id:guid}/chat-connections/",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatConnectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/orgs/{org_id:guid}/chat-connections/",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/chat-connections/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "DELETE /api/v1/orgs/{org_id:guid}/chat-connections/{id:guid}",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/chat-connections/{id}/channels": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/orgs/{org_id:guid}/chat-connections/{id:guid}/channels",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_id}/scm-connections": {
       "get": {
         "parameters": [
@@ -6189,6 +6411,45 @@
           }
         },
         "summary": "PUT /api/v1/users/me/preferences",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/webhooks/chat/slack/commands": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/webhooks/chat/slack/commands",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/webhooks/chat/slack/events": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/webhooks/chat/slack/events",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/webhooks/chat/slack/interactions": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/webhooks/chat/slack/interactions",
         "tags": [
           "OpenHandsNET.Api"
         ]

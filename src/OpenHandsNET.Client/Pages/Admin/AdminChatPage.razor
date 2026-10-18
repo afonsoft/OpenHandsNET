@@ -1,0 +1,139 @@
+@page "/admin/chat"
+@using OpenHandsNET.Client.Services
+@using System.Text.Json
+@inherits AdminPageBase
+@inject ToastService Toasts
+
+<PageTitle>@L["admin.title"] · @L["admin.nav_chat"]</PageTitle>
+
+@if (Checking || !Allowed)
+{
+    <div class="settings-wrap"><p class="empty-state">…</p></div>
+}
+else
+{
+    <div class="settings-wrap admin-wrap">
+        <h1>@L["admin.chat_title"]</h1>
+        <AdminNav />
+        @if (Error is not null) { <p class="admin-error">@Error</p> }
+
+        <div class="field admin-toolbar">
+            <select @bind="_orgId" @bind:after="LoadConnectionsAsync">
+                <option value="">@L["admin.select_org"]</option>
+                @foreach (var o in _orgs)
+                {
+                    <option value="@Str(o, "id")">@Str(o, "name")</option>
+                }
+            </select>
+        </div>
+
+        @if (_loaded)
+        {
+            <p class="muted">@L["admin.chat_hint"]</p>
+
+            @if (_connections.Count == 0)
+            {
+                <p class="empty-state">@L["admin.chat_empty"]</p>
+            }
+            else
+            {
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>@L["admin.chat_kind"]</th>
+                            <th>@L["admin.chat_team"]</th>
+                            <th>@L["admin.chat_bot"]</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in _connections)
+                        {
+                            <tr>
+                                <td>@Str(c, "kind")</td>
+                                <td>@Str(c, "team_id")</td>
+                                <td>@Str(c, "bot_user_id")</td>
+                                <td>
+                                    <button class="btn"
+                                        @onclick="() => TestAsync(c)">
+                                        @L["admin.chat_test"]
+                                    </button>
+                                    <button class="btn danger"
+                                        @onclick="() => DeleteAsync(c)">
+                                        @L["admin.chat_delete"]
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+
+            <h3>@L["admin.chat_connect_title"]</h3>
+            <p class="muted">@L["admin.chat_connect_hint"]</p>
+            <ul class="muted">
+                <li>Events → <code>POST /api/v1/webhooks/chat/slack/events</code></li>
+                <li>Commands → <code>POST /api/v1/webhooks/chat/slack/commands</code></li>
+                <li>Interactions → <code>POST /api/v1/webhooks/chat/slack/interactions</code></li>
+            </ul>
+        }
+    </div>
+}
+
+@code {
+    private string _orgId = "";
+    private IReadOnlyList<JsonElement> _orgs = [];
+    private IReadOnlyList<JsonElement> _connections = [];
+    private bool _loaded;
+
+    protected override async Task LoadAsync()
+    {
+        _orgs = await Api.ListOrgsAsync();
+    }
+
+    private async Task LoadConnectionsAsync()
+    {
+        if (string.IsNullOrEmpty(_orgId))
+        {
+            _loaded = false;
+            return;
+        }
+        _connections = await Api.ListChatConnectionsAsync(_orgId);
+        _loaded = true;
+    }
+
+    private async Task TestAsync(JsonElement c)
+    {
+        var id = Str(c, "id")!;
+        var diag = await Api.TestChatConnectionAsync(id);
+        var ok = diag.ValueKind == JsonValueKind.Object
+            && diag.TryGetProperty("ok", out var o)
+            && o.GetBoolean();
+        if (ok)
+        {
+            Toasts.Success(L["admin.chat_test_ok"]);
+        }
+        else
+        {
+            var detail = diag.ValueKind == JsonValueKind.Object
+                && diag.TryGetProperty("detail", out var d)
+                ? d.GetString() : null;
+            Toasts.Error(detail ?? L["admin.chat_test_fail"]);
+        }
+    }
+
+    private async Task DeleteAsync(JsonElement c)
+    {
+        var id = Str(c, "id")!;
+        await Api.DeleteChatConnectionAsync(_orgId, id);
+        Toasts.Success(L["admin.chat_deleted"]);
+        await LoadConnectionsAsync();
+    }
+
+    private static string? Str(JsonElement e, string prop) =>
+        e.TryGetProperty(prop, out var v)
+            && v.ValueKind == JsonValueKind.String
+            ? v.GetString()
+            : v.ValueKind is JsonValueKind.Number
+                ? v.GetRawText() : null;
+}

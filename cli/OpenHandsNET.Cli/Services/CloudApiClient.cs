@@ -239,6 +239,29 @@ public sealed class CloudApiClient
         return await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
     }
 
+    /// <summary>SPEC-54: lista chat-connections (Slack) de uma org.</summary>
+    public async Task<JsonElement> ListChatConnectionsAsync(
+        string orgId, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync(
+            $"{BaseUrl}/api/v1/orgs/{orgId}/chat-connections", ct);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<JsonElement>(ct)
+            : default;
+    }
+
+    /// <summary>SPEC-54: ping na chat connection (diagnóstico).</summary>
+    public async Task<JsonElement> TestChatConnectionAsync(
+        string connectionId, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsync(
+            $"{BaseUrl}/api/v1/chat/connections/{connectionId}/test",
+            null, ct);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<JsonElement>(ct)
+            : default;
+    }
+
     /// <summary>SPEC-52: abre PR a partir do workspace da conversa.</summary>
     public async Task<JsonElement> CreatePullRequestAsync(
         string conversationId, string title, string body,
