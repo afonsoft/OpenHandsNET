@@ -31,14 +31,31 @@ public interface IPlanEnforcementService
     Task<EffectivePlan> GetEffectivePlanAsync(
         Guid? orgId, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// SPEC-58 RF-003: effective limits for a user — manual override →
+    /// IdP tier on the membership → org plan (the resolution above).
+    /// </summary>
+    Task<EffectivePlan> GetEffectiveLimitsAsync(
+        Guid? orgId, Guid? userId, CancellationToken cancellationToken);
+
     /// <summary>Checks <c>max_conversations_per_day</c> before create.</summary>
     Task<PlanLimitError?> CheckConversationCreateAsync(
-        Guid? orgId, CancellationToken cancellationToken);
+        Guid? orgId, CancellationToken cancellationToken) =>
+        CheckConversationCreateAsync(orgId, null, cancellationToken);
+
+    /// <summary>User-aware check (SPEC-58 — quota atribuída ao ator).</summary>
+    Task<PlanLimitError?> CheckConversationCreateAsync(
+        Guid? orgId, Guid? userId, CancellationToken cancellationToken);
 
     /// <summary>
     /// Checks <c>max_concurrent_runs</c>, <c>max_tokens_per_month</c> and
     /// <c>max_sandbox_seconds_per_month</c> before a sandbox start.
     /// </summary>
     Task<PlanLimitError?> CheckRunStartAsync(
-        Guid? orgId, CancellationToken cancellationToken);
+        Guid? orgId, CancellationToken cancellationToken) =>
+        CheckRunStartAsync(orgId, null, cancellationToken);
+
+    /// <summary>User-aware check (SPEC-58).</summary>
+    Task<PlanLimitError?> CheckRunStartAsync(
+        Guid? orgId, Guid? userId, CancellationToken cancellationToken);
 }

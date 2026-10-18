@@ -73,15 +73,73 @@ public sealed class PlanEnforcementService(
     }
 
     /// <inheritdoc />
+    public async Task<EffectivePlan> GetEffectiveLimitsAsync(
+        Guid? orgId, Guid? userId, CancellationToken ct)
+    {
+        var plan = await GetEffectivePlanAsync(orgId, ct);
+        if (orgId is not { } oid || userId is not { } uid)
+        {
+            return plan;
+        }
+
+        // 1) override manual (admin) — não expirado.
+        var now = DateTimeOffset.UtcNow;
+        var overrides = await db.UserUsageOverrides.AsNoTracking()
+            .Where(o => o.OrgId == oid && o.UserId == uid)
+            .ToListAsync(ct);
+        var active = overrides
+            .Where(o => o.ExpiresAt is null || o.ExpiresAt > now)
+            .OrderByDescending(o => o.CreatedAt)
+            .FirstOrDefault();
+        if (active is { LimitsJson.Length: > 0 } ovr)
+        {
+            return plan with
+            {
+                Name = "override",
+                Limits = PlanLimits.Parse(ovr.LimitsJson),
+            };
+        }
+
+        // 2) tier via IdP group mapping gravado na membership.
+        var tierId = await db.OrgMembers.AsNoTracking()
+            .Where(m => m.OrgId == oid && m.UserId == uid)
+            .Select(m => m.UsageTierId)
+            .FirstOrDefaultAsync(ct);
+        if (tierId is { } tid)
+        {
+            var tierJson = await db.UsageTiers.AsNoTracking()
+                .Where(t => t.Id == tid)
+                .Select(t => t.LimitsJson)
+                .FirstOrDefaultAsync(ct);
+            if (tierJson is { Length: > 0 })
+            {
+                return plan with
+                {
+                    Name = "tier",
+                    Limits = PlanLimits.Parse(tierJson),
+                };
+            }
+        }
+
+        // 3) plano da org.
+        return plan;
+    }
+
+    /// <inheritdoc cref="IPlanEnforcementService.CheckConversationCreateAsync(Guid?, CancellationToken)" />
+    public Task<PlanLimitError?> CheckConversationCreateAsync(
+        Guid? orgId, CancellationToken ct) =>
+        CheckConversationCreateAsync(orgId, null, ct);
+
+    /// <inheritdoc />
     public async Task<PlanLimitError?> CheckConversationCreateAsync(
-        Guid? orgId, CancellationToken ct)
+        Guid? orgId, Guid? userId, CancellationToken ct)
     {
         if (!options.Value.EnforcementEnabled)
         {
             return null;
         }
 
-        var plan = await GetEffectivePlanAsync(orgId, ct);
+        var plan = await GetEffectiveLimitsAsync(orgId, userId, ct);
         if (plan.Limits.MaxConversationsPerDay is not { } daily)
         {
             return null;
@@ -100,16 +158,21 @@ public sealed class PlanEnforcementService(
             : null;
     }
 
+    /// <inheritdoc cref="IPlanEnforcementService.CheckRunStartAsync(Guid?, CancellationToken)" />
+    public Task<PlanLimitError?> CheckRunStartAsync(
+        Guid? orgId, CancellationToken ct) =>
+        CheckRunStartAsync(orgId, null, ct);
+
     /// <inheritdoc />
     public async Task<PlanLimitError?> CheckRunStartAsync(
-        Guid? orgId, CancellationToken ct)
+        Guid? orgId, Guid? userId, CancellationToken ct)
     {
         if (!options.Value.EnforcementEnabled)
         {
             return null;
         }
 
-        var plan = await GetEffectivePlanAsync(orgId, ct);
+        var plan = await GetEffectiveLimitsAsync(orgId, userId, ct);
         var limits = plan.Limits;
 
         if (limits.MaxConcurrentRuns is { } maxConcurrent)

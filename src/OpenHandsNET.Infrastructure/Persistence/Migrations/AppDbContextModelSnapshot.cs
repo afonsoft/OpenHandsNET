@@ -1018,6 +1018,87 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                     b.ToTable("hook_configs", (string)null);
                 });
 
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.IdpGroupMappingRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("IdpGroup")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("idp_group");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("role");
+
+                    b.Property<Guid?>("UsageTierId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("usage_tier_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_idp_group_mappings");
+
+                    b.HasIndex("OrgId", "IdpGroup")
+                        .HasDatabaseName("ix_idp_group_mappings_org_id_idp_group");
+
+                    b.ToTable("idp_group_mappings", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.IpAccessRuleRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("action");
+
+                    b.Property<string>("Cidr")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("cidr");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("priority");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("scope");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ip_access_rules");
+
+                    b.HasIndex("Scope")
+                        .HasDatabaseName("ix_ip_access_rules_scope");
+
+                    b.ToTable("ip_access_rules", (string)null);
+                });
+
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.McpServerRecord", b =>
                 {
                     b.Property<string>("OwnerId")
@@ -1167,6 +1248,15 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("role");
 
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("source");
+
+                    b.Property<Guid?>("UsageTierId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("usage_tier_id");
+
                     b.HasKey("OrgId", "UserId")
                         .HasName("pk_org_members");
 
@@ -1293,6 +1383,52 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasName("pk_plans");
 
                     b.ToTable("plans", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.ScimTokenRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DisabledAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("disabled_at");
+
+                    b.Property<string>("KeyHash")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("key_hash");
+
+                    b.Property<DateTimeOffset?>("LastUsedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Prefix")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("prefix");
+
+                    b.HasKey("Id")
+                        .HasName("pk_scim_tokens");
+
+                    b.HasIndex("OrgId")
+                        .HasDatabaseName("ix_scim_tokens_org_id");
+
+                    b.ToTable("scim_tokens", (string)null);
                 });
 
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.SecretRecord", b =>
@@ -1503,6 +1639,36 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                     b.ToTable("usage_records", (string)null);
                 });
 
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.UsageTierRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("LimitsJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("limits_json");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("org_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_usage_tiers");
+
+                    b.ToTable("usage_tiers", (string)null);
+                });
+
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.UserRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1563,6 +1729,46 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_users_email");
 
                     b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.UserUsageOverrideRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("LimitsJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("limits_json");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("org_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_usage_overrides");
+
+                    b.HasIndex("OrgId", "UserId")
+                        .HasDatabaseName("ix_user_usage_overrides_org_id_user_id");
+
+                    b.ToTable("user_usage_overrides", (string)null);
                 });
 
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.WebhookRegistrationRecord", b =>
@@ -1906,6 +2112,14 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("created_at");
+
+                    b.Property<string>("InputGuardLlmRole")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("input_guard_llm_role");
+
+                    b.Property<string>("InputGuardMode")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("input_guard_mode");
 
                     b.Property<string>("MinConfirmRisk")
                         .HasMaxLength(16)

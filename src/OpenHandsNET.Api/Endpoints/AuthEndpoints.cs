@@ -162,11 +162,32 @@ public static class AuthEndpoints
 
         // Paridade /api/authenticate: user + orgs + idp_type.
         app.MapPost("/api/v1/authenticate", async (
-            ICurrentUserAccessor current, IOrgService orgs, CancellationToken ct) =>
+            HttpContext ctx, ICurrentUserAccessor current, IOrgService orgs,
+            IIdpSyncService idpSync, IAuditService audit,
+            CancellationToken ct) =>
         {
             var user = current.User;
             if (user is null)
                 return Results.Unauthorized();
+            // SPEC-58 RF-002: aplica grupos do IdP (claims "groups"/"role")
+            // às memberships — idempotente; revoga memberships idp-sourced
+            // cujo mapping deixou de casar.
+            var groupClaims = ctx.User.FindAll("groups")
+                .Concat(ctx.User.FindAll("group"))
+                .Concat(ctx.User.FindAll(
+                    "http://schemas.microsoft.com/ws/2008/06/identity/claims/groups"))
+                .Select(c => c.Value)
+                .Where(v => !string.IsNullOrWhiteSpace(v))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            try
+            {
+                await idpSync.ApplyOnLoginAsync(user.UserId, groupClaims, ct);
+            }
+            catch (Exception)
+            {
+                // sync é best-effort no login — não bloqueia autenticação.
+            }
             var mine = await orgs.ListMineAsync(user, ct);
             return Results.Ok(new
             {

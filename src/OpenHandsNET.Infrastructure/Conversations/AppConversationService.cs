@@ -59,7 +59,7 @@ public sealed class AppConversationService(
         // SPEC-20 RF-003: enforcement de plano no create (403 → endpoint;
         // nos disparos de automation → run failed com error=quota).
         if (enforcement is not null
-            && await enforcement.CheckConversationCreateAsync(orgId, ct)
+            && await enforcement.CheckConversationCreateAsync(orgId, ownerUserId, ct)
                 is { } limitError)
         {
             throw new OpenHandsNET.Application.Identity

@@ -1,0 +1,125 @@
+@page "/admin/security"
+@using OpenHandsNET.Client.Services
+@using System.Text.Json
+@inherits AdminPageBase
+@inject ToastService Toasts
+
+<PageTitle>@L["admin.title"] · @L["admin.nav_security"]</PageTitle>
+
+@if (Checking || !Allowed)
+{
+    <div class="settings-wrap"><p class="empty-state">…</p></div>
+}
+else
+{
+    <div class="settings-wrap admin-wrap">
+        <h1>@L["admin.sec_title"]</h1>
+        <AdminNav />
+        @if (Error is not null) { <p class="admin-error">@Error</p> }
+
+        <h2>@L["admin.sec_ip_rules"]</h2>
+        <p class="muted">@L["admin.sec_ip_hint"]</p>
+        <div class="field admin-toolbar">
+            <select @bind="_scope">
+                <option value="">@L["admin.sec_global"]</option>
+                @foreach (var o in _orgs)
+                {
+                    <option value="@Str(o, "id")">@Str(o, "name")</option>
+                }
+            </select>
+            <button class="btn" @onclick="LoadRules">@L["admin.refresh"]</button>
+        </div>
+        <table class="admin-table">
+            <thead><tr>
+                <th>CIDR</th><th>@L["admin.sec_action"]</th>
+                <th>@L["admin.sec_priority"]</th><th></th>
+            </tr></thead>
+            <tbody>
+                @foreach (var r in _rules)
+                {
+                    <tr>
+                        <td><code>@Str(r, "cidr")</code></td>
+                        <td>@Str(r, "action")</td>
+                        <td>@Str(r, "priority")</td>
+                        <td><button class="btn btn-sm"
+                            @onclick='() => DeleteRule(Str(r, "id")!)'>
+                            @L["admin.delete"]</button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <div class="admin-form">
+            <input placeholder="10.0.0.0/8" @bind="_cidr" />
+            <select @bind="_action">
+                <option value="deny">deny</option>
+                <option value="allow">allow</option>
+            </select>
+            <input type="number" placeholder="priority" style="width:6em"
+                @bind="_priority" />
+            <button class="btn btn-primary" @onclick="CreateRule">
+                @L["admin.create"]</button>
+        </div>
+
+        <h2>@L["admin.sec_check"]</h2>
+        <div class="admin-form">
+            <input placeholder="ip (opcional)" @bind="_checkIp" />
+            <input placeholder="@L["admin.sec_message"]" @bind="_checkMsg" />
+            <button class="btn" @onclick="RunCheck">@L["admin.sec_run"]</button>
+        </div>
+        @if (_checkResult is not null)
+        {
+            <pre class="admin-json">@_checkResult</pre>
+        }
+    </div>
+}
+
+@code {
+    private string _scope = "";
+    private IReadOnlyList<JsonElement> _orgs = [];
+    private IReadOnlyList<JsonElement> _rules = [];
+    private string _cidr = "", _action = "deny";
+    private int _priority;
+    private string _checkIp = "", _checkMsg = "";
+    private string? _checkResult;
+
+    protected override async Task LoadAsync()
+    {
+        _orgs = await Api.ListOrgsAsync();
+        await LoadRules();
+    }
+
+    private async Task LoadRules() =>
+        _rules = await Api.ListIpRulesAsync(
+            string.IsNullOrEmpty(_scope) ? null : _scope);
+
+    private async Task CreateRule()
+    {
+        if (string.IsNullOrWhiteSpace(_cidr)) return;
+        await Api.CreateIpRuleAsync(
+            string.IsNullOrEmpty(_scope) ? null : _scope,
+            _cidr, _action, _priority);
+        _cidr = "";
+        await LoadRules();
+    }
+
+    private async Task DeleteRule(string id)
+    {
+        await Api.DeleteIpRuleAsync(
+            string.IsNullOrEmpty(_scope) ? null : _scope, id);
+        await LoadRules();
+    }
+
+    private async Task RunCheck()
+    {
+        var r = await Api.EdgeCheckAsync(
+            string.IsNullOrWhiteSpace(_checkIp) ? null : _checkIp,
+            string.IsNullOrWhiteSpace(_checkMsg) ? null : _checkMsg);
+        _checkResult = r.GetRawText();
+    }
+
+    private static string? Str(JsonElement e, string prop) =>
+        e.TryGetProperty(prop, out var v)
+            ? v.ValueKind == JsonValueKind.String
+                ? v.GetString() : v.GetRawText()
+            : null;
+}

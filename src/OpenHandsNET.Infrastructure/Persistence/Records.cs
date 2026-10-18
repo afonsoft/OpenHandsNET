@@ -165,6 +165,11 @@ public sealed class OrgMemberRecord
     public required Guid OrgId { get; set; }
     public required Guid UserId { get; set; }
     public required string Role { get; set; }
+    /// <summary>SPEC-58: <c>manual</c> (invite/SCIM admin) ou <c>idp</c>
+    /// (aplicada por group mapping no login). IdP vence só sobre <c>idp</c>.</summary>
+    public string Source { get; set; } = "manual";
+    /// <summary>SPEC-58: tier derivado do group mapping no último login.</summary>
+    public Guid? UsageTierId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }
 
@@ -300,4 +305,68 @@ public sealed class ByorKeyRecord
     public long CreatedAtTicks { get; set; }
     /// <summary>Set when revoked — at most one row per user with null.</summary>
     public DateTimeOffset? RevokedAt { get; set; }
+}
+
+/// <summary>SCIM bearer token por org (SPEC-58 RF-001) — mesmo padrão sk-*:
+/// prefixo visível + SHA-256, plaintext exibido uma única vez.</summary>
+public sealed class ScimTokenRecord : IOrgScoped
+{
+    public required Guid Id { get; set; }
+    public required Guid? OrgId { get; set; }
+    public required string Prefix { get; set; }
+    public required string KeyHash { get; set; }
+    public string? Name { get; set; }
+    public DateTimeOffset? DisabledAt { get; set; }
+    public DateTimeOffset? LastUsedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+/// <summary>Mapeamento grupo do IdP → role/tier da org (SPEC-58 RF-002).</summary>
+public sealed class IdpGroupMappingRecord : IOrgScoped
+{
+    public required Guid Id { get; set; }
+    public required Guid? OrgId { get; set; }
+    public required string IdpGroup { get; set; }
+    public required string Role { get; set; }
+    public Guid? UsageTierId { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+/// <summary>Tier de quota aplicável via group mapping (SPEC-58 RF-003) —
+/// mesmo formato de <c>LimitsJson</c> dos planos.</summary>
+public sealed class UsageTierRecord : IOrgScoped
+{
+    public required Guid Id { get; set; }
+    public required Guid? OrgId { get; set; }
+    public required string Name { get; set; }
+    public string? LimitsJson { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+/// <summary>Override manual de quota por usuário (SPEC-58 RF-003) —
+/// precede tier e plano; <c>ExpiresAt</c> opcional.</summary>
+public sealed class UserUsageOverrideRecord : IOrgScoped
+{
+    public required Guid Id { get; set; }
+    public required Guid? OrgId { get; set; }
+    public required Guid UserId { get; set; }
+    public string? LimitsJson { get; set; }
+    public DateTimeOffset? ExpiresAt { get; set; }
+    public required Guid CreatedBy { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+/// <summary>SPEC-59 RF-001: IP access rule — <c>Scope</c> = <c>global</c>
+/// ou <c>org:{guid}</c>; deny vence; se houver allow no escopo, precisa
+/// casar; default allow.</summary>
+public sealed class IpAccessRuleRecord
+{
+    public required Guid Id { get; set; }
+    public required string Scope { get; set; }
+    public required string Cidr { get; set; }
+    /// <summary><c>allow</c> | <c>deny</c>.</summary>
+    public required string Action { get; set; }
+    public int Priority { get; set; }
+    public required Guid CreatedBy { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 }
