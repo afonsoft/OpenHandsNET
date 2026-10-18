@@ -217,6 +217,11 @@ public static class KeysEndpoints
             org_id = effective?.OrgId,
             bound_org_id = user.BoundOrgId,
             auth_type = "bearer",
+            // SPEC-57 RF-004: identidade do ator autenticado.
+            actor_kind = user.ActorKind == ActorKind.ServiceUser
+                ? "service_user" : "user",
+            scopes = user.Scopes,
+            role = user.Role,
         });
     }
 
