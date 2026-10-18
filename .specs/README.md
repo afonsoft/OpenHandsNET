@@ -73,6 +73,19 @@ SPECs (Spec-Driven Development) do port do ecossistema **OpenHands** para
 | `49_kubernetes_runtime_completion_spec.md` | Warm pool k8s (`ClaimWarmAsync`), sleep/wake via PVC, Helm production (ingress/postgres/limits/HPA), kind+sysbox runbook | 16, 17, 35, 36, 37 | #115 |
 | `50_byor_llm_spec.md` | BYOR LiteLLM: virtual keys, permitted models, rotate, `byor_keys`, OmniRoute integration | 08, 20, 23 | #116 |
 | `51_openapi_contract_spec.md` | `/openapi/v1.json` gerado + golden snapshot drift guard + Scalar explorer opt-in | 04 | #117 |
+| `52_github_app_scm_spec.md` | GitHub App + `IScmProvider`: PRs, comments, @menção→start-task, commit status | 04, 12, 47, 10 | TBD |
+| `53_scm_providers_spec.md` | Providers GitLab/Bitbucket/Azure DevOps na mesma interface SCM | 52 | TBD |
+| `54_chatops_slack_spec.md` | Slack app: @menção/slash→sessão, thread sync, auto-triage, `IChatSink` | 04, 47, 52 | TBD |
+| `55_ticketing_triggers_spec.md` | Linear/Jira → start-task enriquecido + write-back (comment+transition) | 47, 52 | TBD |
+| `56_public_share_download_spec.md` | Share link público read-only + trajectory download zip | 04, 10, 41 | TBD |
+| `57_service_users_spec.md` | Service users `svc_*` + escopos RBAC + `create_as_user_id` | 08, 20 | TBD |
+| `58_scim_idp_groups_spec.md` | SCIM 2.0 subset + IdP-group→org/role + usage tiers | 08, 20 | TBD |
+| `59_edge_security_hardening_spec.md` | IP allowlist CIDR + `IInputGuard` (prompt-injection) + rate limit por ator | 08, 33, 57 | TBD |
+| `60_repo_indexing_ask_mode_spec.md` | Repo index (FTS/embeddings) + Ask mode read-only c/ citações + handoff plan→Agent | 04, 09, 22, 23 | TBD |
+| `61_session_insights_spec.md` | Insights pós-run: outcome/issues/custos/prompt sugerido + batch + stats | 02, 23, 39 | TBD |
+| `62_managed_conversations_spec.md` | Tool `delegate` (sessões-irmãs cross-sandbox) + coordinator wake + agregação | 28, 04, 16, 20 | TBD |
+| `63_knowledge_pipeline_spec.md` | Sugestões de memória + fila de revisão + dedup/conflict groom | 30, 61 | TBD |
+| `64_browser_profiles_spec.md` | Browser auth profiles (storage state) + site cookies/TOTP secrets | 18, 33, 16 | TBD |
 
 
 Build order: `01 → (02 ∥ 03 ∥ 10 ∥ 13) → (04 ∥ 09 ∥ 11 ∥ 12) → (05 ∥ 06 ∥ 08) → 07 → 14 → 15 → 16 → 17 → (18 ∥ 19 ∥ 20) → 21 → (22 → 23 ∥ 24) → 25 → (26 ∥ 27) → (29 → (28 ∥ 33) ∥ 30 ∥ 31 ∥ 34)`.
@@ -90,6 +103,13 @@ Enterprise-closing wave (gaps finais do `.specs/32` + débitos de 37):
 `48 → (49 ∥ 50 ∥ 51)` — 48 fecha a camada de política org (analyzer já
 existe global); 49 completa o caminho k8s; 50 implementa BYOR LiteLLM;
 51 publica o contrato OpenAPI.
+
+Competitive wave (análise `migration-plan/research/competitive-analysis-
+devin-openhands-cloud.md` — comparativo OpenHands Cloud × Devin Web ×
+OpenHandsNET): **Onda A** fluxo E2E `52 → (53 ∥ 54 ∥ 55) → 56`;
+**Onda B** enterprise readiness `(57 ∥ 58 ∥ 59)`; **Onda C**
+inteligência de produto `(60 ∥ 61 ∥ 62 ∥ 63 ∥ 64)` — 61 recomendado
+antes de 63; 57 antes de 59 (rate-limit por ator).
 
 ## Fluxo
 
