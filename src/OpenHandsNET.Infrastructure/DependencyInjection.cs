@@ -308,6 +308,8 @@ public static class DependencyInjection
             OpenHandsNET.Infrastructure.Identity.UserService>();
         services.AddScoped<OpenHandsNET.Application.Identity.IApiKeyService,
             OpenHandsNET.Infrastructure.Identity.ApiKeyService>();
+        services.AddScoped<OpenHandsNET.Application.Identity.IServiceUserService,
+            OpenHandsNET.Infrastructure.Identity.ServiceUserService>();
         services.AddScoped<OpenHandsNET.Application.Identity.IOrgService,
             OpenHandsNET.Infrastructure.Identity.OrgService>();
         services.AddScoped<OpenHandsNET.Application.Identity.IInvitationService,

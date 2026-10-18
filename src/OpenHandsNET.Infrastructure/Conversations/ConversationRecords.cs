@@ -73,6 +73,8 @@ public sealed class ConversationRecord : IOrgScoped
 
     /// <summary>SPEC-55 RF-003: ticket que originou a conversa (linear|jira).</summary>
     public string? TicketKind { get; set; }
+    /// <summary>SPEC-57: quem criou via impersonation (service_user:{id}…).</summary>
+    public string? CreatedVia { get; set; }
 
     /// <summary>SPEC-55: identificador do ticket (ENG-123 / PROJ-42).</summary>
     public string? TicketId { get; set; }

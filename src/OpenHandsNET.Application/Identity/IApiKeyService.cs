@@ -25,6 +25,16 @@ public interface IApiKeyService
         string presentedKey, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Validated API key — owning user and optional org binding.</summary>
+/// <summary>
+/// Validated API key — owning user (or service user) and optional org
+/// binding. SPEC-57: <c>svc_*</c> resolve com ActorKind=ServiceUser,
+/// ServiceUserId preenchido e <see cref="Scopes"/> da chave;
+/// <c>sk-*</c> legadas mantêm ActorKind=User e Scopes=null (acesso total).
+/// </summary>
 public sealed record ApiKeyResolution(
-    Guid KeyId, Guid UserId, Guid? BoundOrgId, string? Name);
+    Guid KeyId, Guid UserId, Guid? BoundOrgId, string? Name,
+    ActorKind ActorKind = ActorKind.User,
+    Guid? ServiceUserId = null,
+    string? ServiceUserName = null,
+    string? Role = null,
+    IReadOnlyList<string>? Scopes = null);

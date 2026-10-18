@@ -42,15 +42,38 @@ public sealed class HttpCurrentUserAccessor(
         if (!Guid.TryParse(idClaim, out var userId))
             return null;
 
-        var user = await users.GetAsync(userId);
-        if (user is null)
-            return null;
-
         var authType = principal.HasClaim("auth_type", "bearer")
             ? AuthType.Bearer : AuthType.Cookie;
         var bound = Guid.TryParse(
             principal.FindFirst(ApiKeyAuthenticationHandler.BoundOrgClaim)?.Value,
             out var b) ? b : (Guid?)null;
+
+        // SPEC-57: service user não existe em users — AuthUser sintético.
+        if (principal.HasClaim(
+            ApiKeyAuthenticationHandler.ActorKindClaim, "service_user"))
+        {
+            var svcName = principal.FindFirst(
+                ApiKeyAuthenticationHandler.SvcNameClaim)?.Value;
+            return new AuthUser(
+                userId,
+                Email: $"svc+{svcName}@service.local",
+                DisplayName: svcName,
+                IsSuperAdmin: false,
+                CurrentOrgId: bound?.ToString(),
+                AuthType: authType,
+                BoundOrgId: bound,
+                ActorKind: ActorKind.ServiceUser,
+                Role: principal.FindFirst(
+                    ApiKeyAuthenticationHandler.SvcRoleClaim)?.Value,
+                Scopes: principal.FindFirst(
+                    ApiKeyAuthenticationHandler.ScopesClaim)
+                    ?.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        }
+
+        var user = await users.GetAsync(userId);
+        if (user is null)
+            return null;
+
         return user with { AuthType = authType, BoundOrgId = bound };
     }
 }

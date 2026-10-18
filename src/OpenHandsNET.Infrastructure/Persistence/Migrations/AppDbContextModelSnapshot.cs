@@ -429,6 +429,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("created_by_user_id");
 
+                    b.Property<string>("CreatedVia")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_via");
+
                     b.Property<string>("ExecutionStatus")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -693,6 +697,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("scopes_json");
 
+                    b.Property<Guid?>("ServiceUserId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("service_user_id");
+
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasColumnType("TEXT")
@@ -706,6 +714,9 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Prefix")
                         .HasDatabaseName("ix_api_keys_prefix");
+
+                    b.HasIndex("ServiceUserId")
+                        .HasDatabaseName("ix_api_keys_service_user_id");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_api_keys_user_id");
@@ -1319,6 +1330,45 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasName("pk_secrets");
 
                     b.ToTable("secrets", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.ServiceUserRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset?>("DisabledAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("disabled_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("role");
+
+                    b.HasKey("Id")
+                        .HasName("pk_service_users");
+
+                    b.ToTable("service_users", (string)null);
                 });
 
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.SkillRecord", b =>

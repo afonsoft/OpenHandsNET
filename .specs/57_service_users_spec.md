@@ -8,7 +8,7 @@
 | Type | `Feature / Security + API` |
 | Stack | `.NET 10 · ASP.NET auth · EF Core` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Delivered` |
 | Ticket | `TBD` |
 | Depends on | `08` (api keys/orgs/RBAC), `20` (usage) |
 | Reference | competitive-analysis §3.5 (G6); docs.devin.ai
@@ -135,3 +135,33 @@ impersonation auditada; admin UI; compat total com `sk-*`.
   cobra quota do alvo.
 - `sk-*` antigo continua funcionando (teste de regressão).
 - Admin UI cria/desativa; suite verde; golden OpenAPI atualizado.
+
+
+## 9. Entrega — evidência (2026-10-18)
+
+- `Application/Identity/ServiceUserContracts.cs` — `ActorKind`,
+  `ApiScopes` (catálogo), `IServiceUserService` + DTOs.
+- `ServiceUserRecord` + `ApiKeyRecord.ServiceUserId` +
+  `ConversationRecord.CreatedVia` (migrations SQLite + Postgres).
+- `ServiceUserService` — CRUD + emissão `svc_*` (interseção
+  role∩scopes validada na emissão; delete revoga chaves).
+- `ApiKeyService.ValidateAsync` — aceita `sk-`/`svc_`; svc resolve
+  ActorKind/ServiceUserId/Role/Scopes; DisabledAt revoga na hora.
+- `ApiKeyAuthenticationHandler` — claims `actor_kind`, `svc_role`,
+  `svc_name`, `scope`; `HttpCurrentUserAccessor` — AuthUser sintético
+  p/ service users.
+- `PermissionHandler` — role do svc vem do registro (não OrgMembers).
+- `ScopeRequirement` + `ScopeHandler` + provider `scope:` +
+  `.RequireScope()` ext — 403 `insufficient_scope` + audit
+  `auth.scope_denied`. Aplicado em automation (10), secrets (3) e
+  service-users (7) endpoints.
+- Impersonation: `create_as_user_id` no POST `/app-conversations` —
+  scope `sessions:impersonate` + membership da org + `CreatedVia` +
+  audit `session.impersonated`.
+- `GET /api/v1/keys/current` → `{actor_kind, scopes, role, org_id}`.
+- Admin UI `/admin/service-users` (list/create/disable/issue key) +
+  CLI `service-users list|create|key`; i18n en/pt;
+  `docs/features/service-users.md`.
+- Testes: `Spec57ServiceUsersTests` 7/7 (CRUD, role inválida, emissão
+  svc_* + resolução, scope desconhecido, disable revoga, delete
+  remove chaves, sk-* mantém ActorKind=User).

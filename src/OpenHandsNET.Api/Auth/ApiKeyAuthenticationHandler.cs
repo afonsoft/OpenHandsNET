@@ -26,6 +26,18 @@ public sealed class ApiKeyAuthenticationHandler(
     /// <summary>Claim carrying the API key id.</summary>
     public const string KeyIdClaim = "api_key_id";
 
+    /// <summary>SPEC-57: actor_kind=service_user quando a chave é svc_*.</summary>
+    public const string ActorKindClaim = "actor_kind";
+
+    /// <summary>SPEC-57: org role do service user (owner|admin|member).</summary>
+    public const string SvcRoleClaim = "svc_role";
+
+    /// <summary>SPEC-57: nome do service user.</summary>
+    public const string SvcNameClaim = "svc_name";
+
+    /// <summary>SPEC-57: escopos da chave, separados por espaço.</summary>
+    public const string ScopesClaim = "scope";
+
     /// <inheritdoc />
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
@@ -33,7 +45,8 @@ public sealed class ApiKeyAuthenticationHandler(
         if (!header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
             return AuthenticateResult.NoResult();
         var token = header["Bearer ".Length..].Trim();
-        if (!token.StartsWith("sk-", StringComparison.Ordinal))
+        if (!(token.StartsWith("sk-", StringComparison.Ordinal)
+            || token.StartsWith("svc_", StringComparison.Ordinal)))
             return AuthenticateResult.NoResult();
 
         var keys = Context.RequestServices.GetRequiredService<IApiKeyService>();
@@ -49,6 +62,15 @@ public sealed class ApiKeyAuthenticationHandler(
         };
         if (resolution.BoundOrgId is { } bound)
             claims.Add(new Claim(BoundOrgClaim, bound.ToString()));
+        if (resolution.ActorKind == ActorKind.ServiceUser)
+        {
+            claims.Add(new Claim(ActorKindClaim, "service_user"));
+            claims.Add(new Claim(SvcRoleClaim, resolution.Role ?? "member"));
+            claims.Add(new Claim(
+                SvcNameClaim, resolution.ServiceUserName ?? ""));
+            claims.Add(new Claim(ScopesClaim,
+                string.Join(' ', resolution.Scopes ?? [])));
+        }
 
         var principal = new ClaimsPrincipal(
             new ClaimsIdentity(claims, SchemeName));

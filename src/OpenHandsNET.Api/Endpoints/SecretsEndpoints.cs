@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using OpenHandsNET.Api.Policies;
 using OpenHandsNET.Application.Contracts;
 using OpenHandsNET.Application.Identity;
 
@@ -27,7 +28,8 @@ public static class SecretsEndpoints
                     names = await store.ListNamesAsync(
                         "user", user.UserId.ToString(), ct),
                 });
-        }).RequireAuthorization();
+        }).RequireAuthorization()
+            .RequireScope("secrets:write");
 
         g.MapPut("/{name}", async (
             string name, [FromBody] SecretSetRequest req,
@@ -53,7 +55,8 @@ public static class SecretsEndpoints
                 "secret.set", user.UserId.ToString(), null,
                 "secret", name, cancellationToken: ct);
             return Results.Ok(new { name });
-        }).RequireAuthorization();
+        }).RequireAuthorization()
+            .RequireScope("secrets:write");
 
         g.MapDelete("/{name}", async (
             string name, ICurrentUserAccessor current,
@@ -76,7 +79,8 @@ public static class SecretsEndpoints
             }
 
             return removed ? Results.NoContent() : Results.NotFound();
-        }).RequireAuthorization();
+        }).RequireAuthorization()
+            .RequireScope("secrets:write");
 
         return app;
     }

@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text.Json;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +20,9 @@ public sealed class ApiKeyService(
     ILogger<ApiKeyService> logger) : IApiKeyService
 {
     internal const string KeyPrefix = "sk-";
+
+    /// <summary>SPEC-57: prefixo de chaves de service user.</summary>
+    internal const string ServiceKeyPrefix = "svc_";
 
     /// <inheritdoc />
     public async Task<ApiKeyCreateResult> CreateAsync(
@@ -84,7 +88,10 @@ public sealed class ApiKeyService(
     public async Task<ApiKeyResolution?> ValidateAsync(
         string presentedKey, CancellationToken cancellationToken = default)
     {
-        if (!presentedKey.StartsWith(KeyPrefix, StringComparison.Ordinal)
+        var isService = presentedKey.StartsWith(
+            ServiceKeyPrefix, StringComparison.Ordinal);
+        if (!(isService
+            || presentedKey.StartsWith(KeyPrefix, StringComparison.Ordinal))
             || presentedKey.Length < 14)
         {
             return null;
@@ -100,6 +107,16 @@ public sealed class ApiKeyService(
             || !Guid.TryParse(record.UserId, out var userId))
         {
             return null;
+        }
+
+        // SPEC-57: chave de service user — desabilitado revoga imediatamente.
+        ServiceUserRecord? svc = null;
+        if (record.ServiceUserId is { } suid)
+        {
+            svc = await db.ServiceUsers.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(s => s.Id == suid, cancellationToken);
+            if (svc is null || svc.DisabledAt is not null)
+                return null;
         }
 
         var keyId = record.Id;
@@ -123,7 +140,29 @@ public sealed class ApiKeyService(
             }
         }, CancellationToken.None);
 
-        return new ApiKeyResolution(record.Id, userId, record.OrgId, record.Name);
+        return svc is not null
+            ? new ApiKeyResolution(
+                record.Id, svc.Id, record.OrgId ?? svc.OrgId, record.Name,
+                ActorKind.ServiceUser, svc.Id, svc.Name, svc.Role,
+                ParseScopes(record.ScopesJson))
+            : new ApiKeyResolution(
+                record.Id, userId, record.OrgId, record.Name,
+                Scopes: ParseScopes(record.ScopesJson));
+    }
+
+    /// <summary>Scopes serializados (null = chave sem restrição).</summary>
+    internal static IReadOnlyList<string>? ParseScopes(string? json)
+    {
+        if (string.IsNullOrEmpty(json))
+            return null;
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(json);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     /// <summary>SHA-256 hex of the presented key (indexed lookup).</summary>

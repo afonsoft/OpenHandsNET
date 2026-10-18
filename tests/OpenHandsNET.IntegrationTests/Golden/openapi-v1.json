@@ -241,6 +241,14 @@
           "confirmation_mode": {
             "type": "boolean"
           },
+          "create_as_user_id": {
+            "description": "SPEC-57 RF-003: cria a conversa em nome de outro usu\u00E1rio da mesma\norg \u2014 exige scope \u0060sessions:impersonate\u0060 (service users).",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "initial_message": {
             "oneOf": [
               {
@@ -1290,6 +1298,81 @@
             "type": "boolean"
           }
         },
+        "type": "object"
+      },
+      "ServiceUserCreateRequest": {
+        "description": "Cria\u00E7\u00E3o de service user.",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "role"
+        ],
+        "type": "object"
+      },
+      "ServiceUserKeyCreateRequest": {
+        "description": "Emiss\u00E3o de chave \u0060svc_*\u0060 escopada.",
+        "properties": {
+          "expires_at": {
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "scopes",
+          "expires_at"
+        ],
+        "type": "object"
+      },
+      "ServiceUserUpdateRequest": {
+        "description": "Atualiza\u00E7\u00E3o (rename/role/disable) \u2014 campos nulos mant\u00EAm.",
+        "properties": {
+          "disabled": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "role": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "role",
+          "disabled"
+        ],
         "type": "object"
       },
       "SetModeRequest": {
@@ -5665,6 +5748,252 @@
         "summary": "DELETE /api/v1/orgs/{org_id:guid}/scm-connections/{id:guid}",
         "tags": [
           "SCM"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/service-users": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/orgs/{org_id:guid}/service-users/",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceUserCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/orgs/{org_id:guid}/service-users/",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/service-users/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "DELETE /api/v1/orgs/{org_id:guid}/service-users/{id:guid}",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceUserUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "PATCH /api/v1/orgs/{org_id:guid}/service-users/{id:guid}",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/service-users/{id}/keys": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/orgs/{org_id:guid}/service-users/{id:guid}/keys",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceUserKeyCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/orgs/{org_id:guid}/service-users/{id:guid}/keys",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/service-users/{id}/keys/{key_id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "DELETE /api/v1/orgs/{org_id:guid}/service-users/{id:guid}/keys/{key_id:guid}",
+        "tags": [
+          "OpenHandsNET.Api"
         ]
       }
     },

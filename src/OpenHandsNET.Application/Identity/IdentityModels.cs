@@ -12,7 +12,10 @@ public sealed record AuthUser(
     string? CurrentOrgId,
     AuthType AuthType,
     Guid? BoundOrgId = null,
-    string? IdpType = null);
+    string? IdpType = null,
+    ActorKind ActorKind = ActorKind.User,
+    string? Role = null,
+    IReadOnlyList<string>? Scopes = null);
 
 /// <summary>How the request authenticated (SPEC-08 RF-002).</summary>
 public enum AuthType

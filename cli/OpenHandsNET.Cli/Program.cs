@@ -69,6 +69,12 @@ app.Configure(config =>
         b.AddCommand<TicketsTestCommand>("test");
         b.AddCommand<TicketsRunCommand>("run");
     });
+    config.AddBranch("service-users", b =>
+    {
+        b.AddCommand<ServiceUsersListCommand>("list");
+        b.AddCommand<ServiceUsersCreateCommand>("create");
+        b.AddCommand<ServiceUsersKeyCommand>("key");
+    });
 });
 
 return args.Length == 0

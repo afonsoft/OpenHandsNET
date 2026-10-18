@@ -321,6 +321,62 @@ public sealed class AdminApiClient(HttpClient http)
             : default;
     }
 
+    // ---- service users (SPEC-57) -------------------------------------------
+
+    /// <summary>Service users da org.</summary>
+    public async Task<IReadOnlyList<JsonElement>> ListServiceUsersAsync(
+        string orgId, CancellationToken ct = default) =>
+        await GetAsync<List<JsonElement>>(
+            $"/api/v1/orgs/{orgId}/service-users", ct) ?? [];
+
+    /// <summary>Cria service user.</summary>
+    public async Task<bool> CreateServiceUserAsync(
+        string orgId, string name, string role,
+        CancellationToken ct = default)
+    {
+        var resp = Guard(await http.PostAsJsonAsync(
+            $"/api/v1/orgs/{orgId}/service-users",
+            new { name, role }, Json, ct));
+        return resp.IsSuccessStatusCode;
+    }
+
+    /// <summary>Update (rename/role/disable).</summary>
+    public async Task<bool> UpdateServiceUserAsync(
+        string orgId, string id, string? name = null,
+        string? role = null, bool? disabled = null,
+        CancellationToken ct = default)
+    {
+        var resp = Guard(await http.PatchAsJsonAsync(
+            $"/api/v1/orgs/{orgId}/service-users/{id}",
+            new { name, role, disabled }, Json, ct));
+        return resp.IsSuccessStatusCode;
+    }
+
+    /// <summary>Remove service user.</summary>
+    public async Task<bool> DeleteServiceUserAsync(
+        string orgId, string id, CancellationToken ct = default)
+    {
+        var resp = Guard(await http.DeleteAsync(
+            $"/api/v1/orgs/{orgId}/service-users/{id}", ct));
+        return resp.IsSuccessStatusCode;
+    }
+
+    /// <summary>Emite chave svc_* — retorna plaintext (uma vez) ou null.</summary>
+    public async Task<string?> CreateServiceUserKeyAsync(
+        string orgId, string serviceUserId, IReadOnlyList<string> scopes,
+        CancellationToken ct = default)
+    {
+        var resp = Guard(await http.PostAsJsonAsync(
+            $"/api/v1/orgs/{orgId}/service-users/{serviceUserId}/keys",
+            new { scopes }, Json, ct));
+        if (!resp.IsSuccessStatusCode)
+            return null;
+        var body = await resp.Content
+            .ReadFromJsonAsync<JsonElement>(Json, ct);
+        return body.TryGetProperty("key", out var k)
+            ? k.GetString() : null;
+    }
+
     // ---- plumbing --------------------------------------------------------
 
     private async Task<T?> GetAsync<T>(string url, CancellationToken ct) =>

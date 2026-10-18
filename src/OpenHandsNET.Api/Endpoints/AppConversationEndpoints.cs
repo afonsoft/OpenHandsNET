@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using OpenHandsNET.Api.DTOs;
 using OpenHandsNET.Api.ProblemDetails;
 using OpenHandsNET.Application.Conversations;
+using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Application.Events;
 using OpenHandsNET.Application.Sandbox;
 using OpenHandsNET.Domain.Conversations;
@@ -547,12 +548,75 @@ public static class AppConversationEndpoints
 
     private static async Task<IResult> CreateAsync(
         CreateAppConversationRequest body,
-        IAppConversationService svc, CancellationToken ct)
+        IAppConversationService svc,
+        ICurrentUserAccessor current,
+        IEffectiveOrgResolver orgResolver,
+        IAuditService audit,
+        Infrastructure.Persistence.AppDbContext db,
+        HttpContext http, CancellationToken ct)
     {
-        AppConversationStartTask task;
+        var user = current.User;
+
+        // SPEC-57 RF-003: impersonation — scope sessions:impersonate +
+        // alvo membro da mesma org; usage/quota atribuída ao alvo.
+        if (body.CreateAsUserId is { } targetId)
+        {
+            if (user is null
+                || !Policies.ScopeExtensions.HasScope(
+                    user, ApiScopes.SessionsImpersonate))
+            {
+                return Results.Json(
+                    new { error = "insufficient_scope" },
+                    statusCode: StatusCodes.Status403Forbidden);
+            }
+            var org = await orgResolver.ResolveAsync(user, null, ct);
+            var isMember = org is not null
+                && await db.OrgMembers.IgnoreQueryFilters()
+                    .AnyAsync(m => m.OrgId == org.OrgId
+                        && m.UserId == targetId, ct);
+            if (org is null)
+                isMember = false;
+            if (!isMember)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 403, "impersonation target is not an org member");
+            }
+            try
+            {
+                var task = await svc.CreateForUserAsync(
+                    targetId, org?.OrgId, Map(body), ct);
+                if (task.AppConversationId is { } convId
+                    && await db.Conversations.IgnoreQueryFilters()
+                        .FirstOrDefaultAsync(c => c.Id == convId, ct)
+                        is { } conv)
+                {
+                    conv.CreatedVia = user.ActorKind
+                        == ActorKind.ServiceUser
+                        ? $"service_user:{user.UserId}"
+                        : $"user:{user.UserId}";
+                    await db.SaveChangesAsync(ct);
+                }
+                await audit.RecordAsync(
+                    "session.impersonated", user.UserId.ToString(),
+                    org?.OrgId, "app_conversation",
+                    task.AppConversationId?.ToString(),
+                    metadata: new { target = targetId.ToString() },
+                    cancellationToken: ct);
+                return Results.Created(
+                    $"/api/v1/app-conversations/start-tasks/{task.Id}",
+                    ToDto(task));
+            }
+            catch (OpenHandsNET.Application.Identity
+                .PlanLimitExceededException ex)
+            {
+                return PlanLimitProblem(ex.Error);
+            }
+        }
+
+        AppConversationStartTask createdTask;
         try
         {
-            task = await svc.CreateAsync(Map(body), ct);
+            createdTask = await svc.CreateAsync(Map(body), ct);
         }
         catch (OpenHandsNET.Application.Identity.PlanLimitExceededException ex)
         {
@@ -560,7 +624,8 @@ public static class AppConversationEndpoints
         }
 
         return Results.Created(
-            $"/api/v1/app-conversations/start-tasks/{task.Id}", ToDto(task));
+            $"/api/v1/app-conversations/start-tasks/{createdTask.Id}",
+            ToDto(createdTask));
     }
 
     /// <summary>
