@@ -8,7 +8,7 @@
 | Type | `Feature / Infrastructure + API` |
 | Stack | `.NET 10 · LiteLLM admin API · OmniRoute` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `In implementation` |
+| Status | `Done` |
 | Ticket | [#116](https://github.com/afonsoft/OpenHandsNET/issues/116) |
 | Depends on | `08` (api keys/RBAC), `23` (OmniRoute catalog + IModelRouter), `20` (plan quotas) |
 | Reference | upstream Cloud docs (conceitos): LiteLLM proxy + virtual keys; `OpenHands/OpenHands-Cloud` (Polyform — conceitos apenas) |
