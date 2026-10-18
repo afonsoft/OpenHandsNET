@@ -5,7 +5,7 @@ namespace OpenHandsNET.Domain.Events;
 /// do sandbox (via Terminal Web xterm.js ou VNC Canvas) e finaliza sua intervenção.
 /// O agente utiliza esse sumário para recalcular o estado mental e o plano de ação.
 /// </summary>
-public sealed record HumanIntervenedObservation : ObservationBaseEvent
+public sealed record HumanIntervenedObservation : EventBase
 {
     public HumanIntervenedObservation()
     {
