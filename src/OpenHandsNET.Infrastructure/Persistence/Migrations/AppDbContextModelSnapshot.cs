@@ -1583,6 +1583,61 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
 
                     b.ToTable("security_policies", (string)null);
                 });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Sharing.ConversationShareRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("CreatedAtTicks")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("created_at_ticks");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("expires_at");
+
+                    b.Property<long?>("ExpiresAtTicks")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("expires_at_ticks");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("token_hash");
+
+                    b.HasKey("Id")
+                        .HasName("pk_conversation_shares");
+
+                    b.HasIndex("ConversationId")
+                        .HasDatabaseName("ix_conversation_shares_conversation_id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_conversation_shares_token_hash");
+
+                    b.ToTable("conversation_shares", (string)null);
+                });
 #pragma warning restore 612, 618
         }
     }

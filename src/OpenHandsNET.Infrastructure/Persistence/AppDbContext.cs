@@ -139,6 +139,11 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<OpenHandsNET.Infrastructure.Automations.AutomationHookRecord>
         AutomationHooks => Set<OpenHandsNET.Infrastructure.Automations.AutomationHookRecord>();
 
+    /// <summary>Public share links — token hash only (SPEC-56).</summary>
+    public DbSet<OpenHandsNET.Infrastructure.Sharing.ConversationShareRecord>
+        ConversationShares =>
+            Set<OpenHandsNET.Infrastructure.Sharing.ConversationShareRecord>();
+
     /// <summary>ASP.NET DataProtection keys (PersistKeysToDbContext).</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
@@ -186,6 +191,10 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
                     break;
                 case OpenHandsNET.Infrastructure.Automations.AutomationRecord a:
                     a.NextRunAtTicks = a.NextRunAt?.UtcTicks;
+                    break;
+                case OpenHandsNET.Infrastructure.Sharing.ConversationShareRecord s:
+                    s.CreatedAtTicks = s.CreatedAt.UtcTicks;
+                    s.ExpiresAtTicks = s.ExpiresAt?.UtcTicks;
                     break;
             }
         }

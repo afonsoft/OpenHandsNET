@@ -134,6 +134,16 @@ public static class DependencyInjection
         services.AddHostedService<
             OpenHandsNET.Infrastructure.Automations.AutomationScheduler>();
 
+        // SPEC-56: public share links + trajectory export — filtro
+        // público é camada separada (regressão de leak = teste falho).
+        services.AddSingleton<
+            OpenHandsNET.Application.Sharing.IPublicEventFilter,
+            OpenHandsNET.Infrastructure.Sharing.PublicEventFilter>();
+        services.AddScoped<OpenHandsNET.Application.Sharing.IShareService,
+            OpenHandsNET.Infrastructure.Sharing.ShareService>();
+        services.AddScoped<OpenHandsNET.Application.Sharing.ITrajectoryExporter,
+            OpenHandsNET.Infrastructure.Sharing.TrajectoryExporter>();
+
         // Skills & hooks (SPEC-11): skill store + builtin seeder + hook runner.
         services.AddScoped<OpenHandsNET.Application.Skills.ISkillService,
             OpenHandsNET.Infrastructure.Skills.SkillService>();

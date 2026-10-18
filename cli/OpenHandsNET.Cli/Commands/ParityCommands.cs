@@ -204,9 +204,11 @@ public sealed class SkillsCommand : AsyncCommand<SkillsCommand.Settings>
 }
 
 /// <summary>
-/// <c>openhandsnet export &lt;conversation&gt;</c> — SPEC-31 RF-001: dump
-/// JSONL de eventos duráveis no stdout ou <c>--out</c> (secrets redigidos
-/// pelo mesmo SecretRedactor do runner).
+/// <c>openhandsnet export &lt;conversation&gt;</c> — SPEC-56 RF-004:
+/// baixa o zip de trajetória (<c>events.jsonl</c> + <c>metadata.json</c>
+/// + <c>workspace.diff</c> + <c>summary.md</c>) via
+/// <c>GET /app-conversations/{id}/download</c>. <c>--jsonl</c> mantém o
+/// dump legado SPEC-31 no stdout/--out.
 /// </summary>
 public sealed class ExportCommand : AsyncCommand<ExportCommand.Settings>
 {
@@ -218,6 +220,9 @@ public sealed class ExportCommand : AsyncCommand<ExportCommand.Settings>
         [CommandOption("--out <PATH>")]
         public string? Out { get; init; }
 
+        [CommandOption("--jsonl")]
+        public bool Jsonl { get; init; }
+
         [CommandOption("--server-url <URL>")]
         public string? ServerUrl { get; init; }
     }
@@ -228,6 +233,28 @@ public sealed class ExportCommand : AsyncCommand<ExportCommand.Settings>
         var ct = CancellationToken.None;
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(), ct: ct);
+
+        if (settings.Jsonl)
+        {
+            return await ExportJsonlAsync(api, settings, ct);
+        }
+
+        var path = settings.Out
+            ?? $"openhandsnet-{settings.ConversationId}.zip";
+        using var resp = await api.DownloadTrajectoryAsync(
+            settings.ConversationId, ct);
+        await using var src = await resp.Content.ReadAsStreamAsync(ct);
+        await using var dst = File.Create(path);
+        await src.CopyToAsync(dst, ct);
+        AnsiConsole.MarkupLine(
+            $"[green]✓[/] trajectory → {Markup.Escape(path)}");
+        return 0;
+    }
+
+    /// <summary>Dump JSONL legado (SPEC-31 RF-001).</summary>
+    private static async Task<int> ExportJsonlAsync(
+        CloudApiClient api, Settings settings, CancellationToken ct)
+    {
         await using var file = settings.Out is { } path
             ? new StreamWriter(path) : null;
         var count = 0;

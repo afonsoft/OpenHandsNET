@@ -272,6 +272,17 @@ app.UseMiddleware<OpenHandsNET.Api.Middleware.ApiRateLimitMiddleware>();
 // SPEC-38: sandbox host/path router (no-op em RoutingMode=internal).
 app.UseMiddleware<OpenHandsNET.Api.Routing.SandboxHostRouter>();
 
+// SPEC-56 NFR: rotas de share público nunca devem ser indexadas.
+app.Use(async (ctx, next) =>
+{
+    if (ctx.Request.Path.StartsWithSegments("/share"))
+    {
+        ctx.Response.Headers["X-Robots-Tag"] = "noindex";
+    }
+
+    await next();
+});
+
 app.MapSystemEndpoints();
 app.MapAuthEndpoints();
 app.MapKeysEndpoints();
@@ -294,6 +305,7 @@ app.MapHookEndpoints();
 app.MapMcpEndpoints();
 app.MapOpenAiGatewayEndpoints();
 app.MapAcpEndpoints();
+app.MapShareEndpoints();
 app.MapHub<ConversationHub>("/hubs/conversations");
 app.MapHealthChecks("/api/v1/health");
 app.MapHealthChecks("/api/v1/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
