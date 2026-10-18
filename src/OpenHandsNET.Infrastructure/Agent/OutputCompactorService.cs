@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 namespace OpenHandsNET.Infrastructure.Agent;
 
 /// <summary>
-/// Default implementation of <see cref=\"IOutputCompactorService\" /> that uses
+/// Default implementation of <see cref="IOutputCompactorService" /> that uses
 /// head/tail truncation for large outputs.
 /// </summary>
 public class OutputCompactorService : IOutputCompactorService
@@ -20,6 +20,7 @@ public class OutputCompactorService : IOutputCompactorService
         _logger = logger;
     }
 
+    /// <inheritdoc />
     public Task<CompactedOutput> CompactAsync(string originalOutput, string context, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(originalOutput))

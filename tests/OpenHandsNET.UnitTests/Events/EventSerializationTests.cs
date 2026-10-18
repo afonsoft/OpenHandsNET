@@ -41,13 +41,14 @@ public class EventSerializationTests
         ["run_progress"] = typeof(RunProgressEvent),
         ["work_summary"] = typeof(WorkSummaryEvent),
         ["agent_diagnostic"] = typeof(AgentDiagnosticEvent),
+        ["HumanIntervenedObservation"] = typeof(HumanIntervenedObservation),
     };
 
     [Fact]
-    public void Fixture_Covers_All_25_Kinds()
+    public void Fixture_Covers_All_26_Kinds()
     {
         var events = LoadFixture();
-        events.Count.ShouldBe(25);
+        events.Count.ShouldBe(26);
         events.Select(e => e["kind"]!.GetValue<string>())
             .ToHashSet(StringComparer.Ordinal)
             .SetEquals(Expected.Keys).ShouldBeTrue();
