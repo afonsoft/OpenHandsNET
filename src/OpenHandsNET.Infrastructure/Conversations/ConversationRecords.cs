@@ -143,6 +143,7 @@ public sealed class ConversationRecordConfiguration : IEntityTypeConfiguration<C
         builder.HasIndex(e => e.ExecutionStatus);
         // SPEC-44 RF-001: count/list de attention baratos por org.
         builder.HasIndex(e => new { e.OrgId, e.NeedsAttentionAtTicks });
+        builder.HasIndex(e => e.ParentConversationId);
     }
 }
 

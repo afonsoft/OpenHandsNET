@@ -43,7 +43,7 @@ public class DelegationServiceTests : IDisposable
         {
             Id = parentId,
             Title = "Coordinator",
-            ExecutionStatus = "RUNNING",
+            ExecutionStatus = "READY",
             DelegationDepth = 0,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
@@ -51,15 +51,17 @@ public class DelegationServiceTests : IDisposable
         await _db.Conversations.AddAsync(parent);
         await _db.SaveChangesAsync();
 
-        var res = await _service.DelegateAsync(parentId, new DelegateTaskRequest("Inspect files"));
+        var req = new DelegateTaskRequest(TaskDescription = "Subtask 1");
+        var res = await _service.DelegateAsync(parentId, req);
 
         res.ShouldNotBeNull();
-        res.ChildConversationId.ShouldNotBe(Guid.Empty);
         res.DelegationDepth.ShouldBe(1);
         res.Status.ShouldBe("READY");
 
-        var siblings = await _service.ListSiblingsAsync(parentId);
-        siblings.Count.ShouldBe(2); // Parent + Child
+        var children = await _service.ListSiblingsAsync(parentId);
+        children.Count.ShouldBe(1);
+        children[0].ConversationId.ShouldBe(res.ChildConversationId);
+        children[0].ParentConversationId.ShouldBe(parentId);
     }
 
     [Fact]
@@ -70,15 +72,18 @@ public class DelegationServiceTests : IDisposable
         {
             Id = parentId,
             Title = "Coordinator Max Depth",
-            ExecutionStatus = "RUNNING",
-            DelegationDepth = 2,
+            ExecutionStatus = "READY",
+            DelegationDepth = 2, // Max allowed depth is 2
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };
         await _db.Conversations.AddAsync(parent);
         await _db.SaveChangesAsync();
 
-        await Should.ThrowAsync<InvalidOperationException>(() =>
-            _service.DelegateAsync(parentId, new DelegateTaskRequest("Too deep")));
+        var req = new DelegateTaskRequest(TaskDescription = "Subtask nested");
+        await Should.ThrowAsync<InvalidOperationException>(async () =>
+        {
+            await _service.DelegateAsync(parentId, req);
+        });
     }
 }
