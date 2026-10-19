@@ -151,12 +151,12 @@
   "admin.yes": "はい",
   "admin.no": "いいえ",
   "knowledge.title": "ナレッジ",
-  "knowledge.pending": "",
+  "knowledge.pending": "pending",
   "knowledge.approved": "み",
-  "knowledge.dismissed": "",
+  "knowledge.dismissed": "dismissed",
   "knowledge.all": "すべて",
   "knowledge.groom": "グルーミング",
   "knowledge.empty": "キューにはありません",
-  "knowledge.approve": "",
-  "knowledge.dismiss": ""
+  "knowledge.approve": "approve",
+  "knowledge.dismiss": "dismiss"
 }

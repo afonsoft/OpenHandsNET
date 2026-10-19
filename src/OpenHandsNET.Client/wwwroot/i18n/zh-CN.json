@@ -150,13 +150,13 @@
   "admin.reset": "重置为 balanced",
   "admin.yes": "是",
   "admin.no": "否",
-  "knowledge.title": "",
-  "knowledge.pending": "",
-  "knowledge.approved": "",
-  "knowledge.dismissed": "",
-  "knowledge.all": "",
-  "knowledge.groom": "",
-  "knowledge.empty": "",
-  "knowledge.approve": "",
-  "knowledge.dismiss": ""
+  "knowledge.title": "Knowledge",
+  "knowledge.pending": "pending",
+  "knowledge.approved": "approved",
+  "knowledge.dismissed": "dismissed",
+  "knowledge.all": "all",
+  "knowledge.groom": "run groom",
+  "knowledge.empty": "No suggestions in this queue.",
+  "knowledge.approve": "approve",
+  "knowledge.dismiss": "dismiss"
 }
