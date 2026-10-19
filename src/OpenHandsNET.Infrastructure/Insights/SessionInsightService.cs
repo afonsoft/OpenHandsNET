@@ -51,7 +51,6 @@ public sealed class SessionInsightService : ISessionInsightService
         var phaseCosts = new List<PhaseCost>();
 
         bool hasError = false;
-        long totalTokens = 0;
 
         foreach (var ev in events)
         {
@@ -92,6 +91,7 @@ public sealed class SessionInsightService : ISessionInsightService
         {
             Id = Guid.NewGuid(),
             ConversationId = conversationId,
+            Outcome = outcome,
             CreatedAt = DateTimeOffset.UtcNow
         };
 
