@@ -232,6 +232,7 @@ builder.Services.AddScoped<OpenHandsNET.Application.Indexing.ICodeSearchStore, O
 builder.Services.AddScoped<OpenHandsNET.Application.Indexing.IRepoIndexer, OpenHandsNET.Infrastructure.Indexing.RepoIndexer>();
 builder.Services.AddScoped<OpenHandsNET.Application.Ask.IAskModeService, OpenHandsNET.Infrastructure.Ask.AskModeService>();
 builder.Services.AddScoped<OpenHandsNET.Application.Insights.ISessionInsightService, OpenHandsNET.Infrastructure.Insights.SessionInsightService>();
+builder.Services.AddScoped<OpenHandsNET.Application.Delegation.IDelegationService, OpenHandsNET.Infrastructure.Delegation.DelegationService>();
 builder.Services.AddScoped<OpenHandsNET.Application.Identity.ICurrentUserAccessor,
     OpenHandsNET.Api.Auth.HttpCurrentUserAccessor>();
 
@@ -326,6 +327,7 @@ app.MapScimEndpoints();
 app.MapEdgeEndpoints();
 app.MapAskAndIndexEndpoints();
 app.MapSessionInsightEndpoints();
+app.MapDelegationEndpoints();
 app.MapKnowledgeEndpoints();
 app.MapBrowserProfileEndpoints();
 app.MapHub<ConversationHub>("/hubs/conversations");
