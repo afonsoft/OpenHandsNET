@@ -326,6 +326,7 @@ app.MapScimEndpoints();
 app.MapEdgeEndpoints();
 app.MapAskAndIndexEndpoints();
 app.MapSessionInsightEndpoints();
+app.MapKnowledgeEndpoints();
 app.MapBrowserProfileEndpoints();
 app.MapHub<ConversationHub>("/hubs/conversations");
 app.MapHealthChecks("/api/v1/health");

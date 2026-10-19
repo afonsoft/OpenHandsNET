@@ -149,5 +149,14 @@
   "admin.saved": "Enregistré",
   "admin.reset": "Réinitialiser (balanced)",
   "admin.yes": "Oui",
-  "admin.no": "Non"
+  "admin.no": "Non",
+  "knowledge.title": "Connaissances",
+  "knowledge.pending": "en attente",
+  "knowledge.approved": "approuvées",
+  "knowledge.dismissed": "rejetées",
+  "knowledge.all": "toutes",
+  "knowledge.groom": "lancer le groom",
+  "knowledge.empty": "Aucune suggestion dans cette file.",
+  "knowledge.approve": "approuver",
+  "knowledge.dismiss": "rejeter"
 }

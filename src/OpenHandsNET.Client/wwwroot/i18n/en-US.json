@@ -434,5 +434,14 @@
   "admin.sec_priority": "Priority",
   "admin.sec_check": "Edge check (simulate)",
   "admin.sec_message": "message (optional)",
-  "admin.sec_run": "Run"
+  "admin.sec_run": "Run",
+  "knowledge.title": "Knowledge",
+  "knowledge.pending": "pending",
+  "knowledge.approved": "approved",
+  "knowledge.dismissed": "dismissed",
+  "knowledge.all": "all",
+  "knowledge.groom": "run groom",
+  "knowledge.empty": "No suggestions in this queue.",
+  "knowledge.approve": "approve",
+  "knowledge.dismiss": "dismiss"
 }

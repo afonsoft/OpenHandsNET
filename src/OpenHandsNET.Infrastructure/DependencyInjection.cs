@@ -310,6 +310,11 @@ public static class DependencyInjection
             OpenHandsNET.Infrastructure.Identity.ApiKeyService>();
         services.AddScoped<OpenHandsNET.Application.Identity.IServiceUserService,
             OpenHandsNET.Infrastructure.Identity.ServiceUserService>();
+        // SPEC-63: knowledge pipeline.
+        services.AddScoped<OpenHandsNET.Application.Knowledge.IKnowledgeService,
+            OpenHandsNET.Infrastructure.Knowledge.KnowledgeService>();
+        services.AddHostedService<
+            OpenHandsNET.Infrastructure.Knowledge.KnowledgeGroomer>();
         services.AddScoped<OpenHandsNET.Application.Identity.IScimTokenService,
             OpenHandsNET.Infrastructure.Identity.IdentityAdminService>();
         services.AddScoped<OpenHandsNET.Application.Identity.IIdentityAdminService,

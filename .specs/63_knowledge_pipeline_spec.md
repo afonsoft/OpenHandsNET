@@ -8,7 +8,7 @@
 | Type | `Feature / AI + API + Frontend` |
 | Stack | `.NET 10 · OmniRoute · EF Core · Blazor` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Delivered` |
 | Ticket | `TBD` |
 | Depends on | `30` (memory org+projeto), `61` recomendado (insight
   alimenta sugestões) |
@@ -131,3 +131,22 @@ modo curadoria para orgs; fila visível na UI.
 - `AgentWriteMode=suggest` + tool `suggest_knowledge` → fila (não
   grava direto).
 - Suite verde; golden OpenAPI atualizado.
+
+## 11. Delivered
+
+- `Application/Knowledge/KnowledgeContracts.cs` —
+  `SuggestionStatus`, `SuggestionKind`, `KnowledgeSuggestionInfo`,
+  `KnowledgeGroomReport`, `IKnowledgeService`.
+- `Infrastructure/Knowledge/KnowledgeService.cs` —
+  `KnowledgeSuggestionRecord` (`IOrgScoped`), approve via
+  `IMemoryService` (`SecretRedactor` no conteúdo), Jaccard
+  dedup/conflict/stale; `KnowledgeGroomer` hosted service.
+- `Api/Endpoints/KnowledgeEndpoints.cs` — fila + approve/dismiss +
+  groom + entries.
+- `SessionInsightService` — cada `learning` do insight gera uma
+  suggestion `entry` pendente (fire-and-forget via `IServiceProvider`).
+- EF migrations `spec63_knowledge` (SQLite + Postgres).
+- UI `/knowledge` + `ApiClient` + i18n (8 locales).
+- `tests/.../Spec63KnowledgeTests.cs` — 7 testes verdes.
+- Divergência: `suggest_knowledge`/`AgentWriteMode=suggest`
+  deferred (tool dispatch no agente do sandbox — SPEC-62).

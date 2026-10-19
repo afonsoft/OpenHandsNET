@@ -149,5 +149,14 @@
   "admin.saved": "Salvato",
   "admin.reset": "Reimposta a balanced",
   "admin.yes": "Sì",
-  "admin.no": "No"
+  "admin.no": "No",
+  "knowledge.title": "Conoscenza",
+  "knowledge.pending": "in attesa",
+  "knowledge.approved": "approvate",
+  "knowledge.dismissed": "scartate",
+  "knowledge.all": "tutte",
+  "knowledge.groom": "esegui groom",
+  "knowledge.empty": "Nessun suggerimento in questa coda.",
+  "knowledge.approve": "approva",
+  "knowledge.dismiss": "scarta"
 }
