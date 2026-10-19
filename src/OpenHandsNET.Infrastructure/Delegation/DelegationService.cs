@@ -73,7 +73,7 @@ public sealed class DelegationService : IDelegationService
 
         var family = await _db.Conversations
             .Where(c => c.Id == parentId || c.ParentConversationId == parentId)
-            .OrderBy(c => c.CreatedAt)
+            .OrderBy(c => c.CreatedAtTicks)
             .ToListAsync(ct);
 
         return family.Select(c => new DelegationStatusDto(
