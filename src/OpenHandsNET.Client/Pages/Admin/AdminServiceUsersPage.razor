@@ -140,8 +140,10 @@ else
             return;
         }
         _users = await Api.ListServiceUsersAsync(_orgId);
-        _keyUser = _users.FirstOrDefault()
-            .TryGetProperty("id", out var id) ? id.GetString() ?? "" : "";
+        // JsonElement default (lista vazia) → TryGetProperty lança.
+        _keyUser = _users.Count > 0
+            && _users[0].TryGetProperty("id", out var id)
+            ? id.GetString() ?? "" : "";
         _loaded = true;
     }
 
