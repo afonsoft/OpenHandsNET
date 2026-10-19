@@ -902,7 +902,7 @@ public sealed class AgentRunner(
                     // mensagem do usuário no canal _incoming (mesma UX de
                     // uma pergunta no chat; kind=question no inbox).
                     var answer = await WaitUserAnswerAsync(
-                        events, db, conv, actionEvent, call, opt, ct);
+                        events, db, conv, opt, ct);
                     if (answer is null)
                     {
                         return; // interrupt/timeout já sinalizados
@@ -1173,8 +1173,7 @@ public sealed class AgentRunner(
     /// </summary>
     private async Task<ToolResult?> WaitUserAnswerAsync(
         IEventService events, AppDbContext db, ConversationRecord conv,
-        ActionEvent action, LlmToolCall call, AgentLlmOptions opt,
-        CancellationToken ct)
+        AgentLlmOptions opt, CancellationToken ct)
     {
         await SetStatusAsync(events, db, conv, "waiting_for_question",
             null, ct,

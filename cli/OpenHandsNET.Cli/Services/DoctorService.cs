@@ -38,7 +38,7 @@ public sealed class DoctorService(HttpClient http)
     /// public domain, egress aos registries, docker, cgroup v2, disco ≥50GB
     /// e portas livres. Falha rápida (gate de CI/install).
     /// </summary>
-    public async Task<DoctorReport> RunPreflightAsync(
+    public static async Task<DoctorReport> RunPreflightAsync(
         string serverUrl, string workspaceRoot, CancellationToken ct,
         bool k8s = false)
     {

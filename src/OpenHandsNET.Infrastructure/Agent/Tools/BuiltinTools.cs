@@ -159,7 +159,7 @@ public static class BuiltinTools
                 await ctx.Executor.WriteFileAsync(ctx.Sandbox, path,
                     args.GetProperty("content").GetString()!, ct);
                 await EmitPathsAsync(ctx, "file_write",
-                    [(path, existed ? "modify" : "create")], ct);
+                    [(path, existed ? "modify" : "create")]);
                 return ToolResult.Ok(new { ok = true });
             }
             catch (Exception ex)
@@ -223,7 +223,7 @@ public static class BuiltinTools
                     ctx.Sandbox, path, edited, ct);
                 // SPEC-24 RF-004 + SPEC-25: files_changed também nos modes.
                 await EmitPathsAsync(ctx, "file_edit",
-                    [(path, "modify")], ct);
+                    [(path, "modify")]);
                 return ToolResult.Ok(new { ok = true });
             }
             catch (Exception ex)
@@ -1291,8 +1291,7 @@ public static class BuiltinTools
     /// SPEC-24 RF-004: files_changed determinístico para file_write/file_edit.
     /// </summary>
     private static async Task EmitPathsAsync(ToolCallContext ctx,
-        string sourceTool, IReadOnlyList<(string Path, string Op)> paths,
-        CancellationToken ct)
+        string sourceTool, IReadOnlyList<(string Path, string Op)> paths)
     {
         if (paths.Count == 0 || ctx.ToolCallId is null)
         {
@@ -1356,7 +1355,7 @@ public static class BuiltinTools
                 paths.Add((path, op));
             }
 
-            await EmitPathsAsync(ctx, "bash", paths, ct);
+            await EmitPathsAsync(ctx, "bash", paths);
         }
         catch
         {

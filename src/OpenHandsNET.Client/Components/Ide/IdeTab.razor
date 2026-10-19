@@ -27,7 +27,7 @@
                 <IdeExplorer ConversationId="@ConvId"
                              OnOpenFile="@(async p => await OpenFileAsync(p))"
                              OnChanged="@(async () => await RefreshPathsAsync())"
-                             @ref="_explorer" />
+                             />
                 break;
             case "search":
                 <IdeSearchView ConversationId="@ConvId"
@@ -158,7 +158,6 @@
     private readonly List<Tab> _tabs = [];
     private int _active = -1;
     private string _panel = "explorer";
-    private IdeExplorer? _explorer;
     private DiffView? _diff;
     private bool _conflict;
     private bool _editorDirty; // (re)cria o Monaco no próximo render

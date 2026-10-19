@@ -23,7 +23,7 @@ public sealed class MarkdownService
     private static readonly HtmlSanitizer Sanitizer = Build();
 
     /// <summary>Markdown → HTML sanitizado pronto para <see cref="MarkupString"/>.</summary>
-    public MarkupString Render(string? markdown)
+    public static MarkupString Render(string? markdown)
     {
         if (string.IsNullOrWhiteSpace(markdown))
         {

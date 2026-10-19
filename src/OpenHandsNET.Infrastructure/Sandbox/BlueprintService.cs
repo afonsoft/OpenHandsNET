@@ -269,7 +269,7 @@ public sealed class BlueprintService(
         }
     }
 
-    private async Task WriteEnvAsync(
+    private static async Task WriteEnvAsync(
         Domain.Sandbox.Sandbox sandbox,
         IReadOnlyDictionary<string, string> env,
         ISandboxExecutor executor, StringBuilder log, CancellationToken ct)

@@ -432,7 +432,7 @@ public sealed class DockerSandboxEngine(
         c.Names.Any(n => n.TrimStart('/')
             .StartsWith(EngineLabels.PoolNamePrefix, StringComparison.Ordinal));
 
-    private EngineSandboxInfo ToInfo(ContainerListResponse c) => new(
+    private static EngineSandboxInfo ToInfo(ContainerListResponse c) => new(
         c.ID, c.State, null,
         c.Labels is null
             ? new Dictionary<string, string>()

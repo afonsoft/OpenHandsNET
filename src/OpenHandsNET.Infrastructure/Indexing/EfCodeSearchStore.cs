@@ -11,12 +11,10 @@ namespace OpenHandsNET.Infrastructure.Indexing;
 public sealed class EfCodeSearchStore : ICodeSearchStore
 {
     private readonly AppDbContext _db;
-    private readonly ILogger<EfCodeSearchStore> _logger;
 
-    public EfCodeSearchStore(AppDbContext db, ILogger<EfCodeSearchStore> logger)
+    public EfCodeSearchStore(AppDbContext db)
     {
         _db = db;
-        _logger = logger;
     }
 
     public async Task IndexUnitsAsync(Guid repoIndexId, IEnumerable<CodeUnitDto> units, CancellationToken ct = default)

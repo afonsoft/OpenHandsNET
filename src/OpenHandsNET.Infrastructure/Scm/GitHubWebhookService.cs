@@ -92,7 +92,7 @@ public sealed class GitHubWebhookService(
                 return ScmWebhookResult.Ignored;
             }
 
-            var prompt = BuildPrompt(mention, root);
+            var prompt = BuildPrompt(mention);
             var task = await conversations.CreateForUserAsync(
                 ownerUserId.Value, connection.OrgId,
                 new CreateConversationRequest(
@@ -374,7 +374,7 @@ public sealed class GitHubWebhookService(
                 return ScmWebhookResult.Ignored;
             }
 
-            var prompt = BuildPrompt(mention, root);
+            var prompt = BuildPrompt(mention);
             var task = await conversations.CreateForUserAsync(
                 ownerUserId.Value, connection.OrgId,
                 new CreateConversationRequest(
@@ -577,7 +577,7 @@ public sealed class GitHubWebhookService(
     }
 
     private static string BuildPrompt(
-        ScmMentionContext mention, JsonElement root)
+        ScmMentionContext mention)
     {
         var sb = new StringBuilder();
         sb.Append("[SCM trigger: github webhook]\n");

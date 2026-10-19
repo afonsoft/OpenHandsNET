@@ -25,8 +25,7 @@ public class Spec26UiTests : TestContext
     [Fact]
     public void Markdown_Renders_Code_And_Headings()
     {
-        var md = new MarkdownService();
-        var html = md.Render("# title\n\n```cs\nvar x = 1;\n```\n\n- a\n- b")
+        var html = MarkdownService.Render("# title\n\n```cs\nvar x = 1;\n```\n\n- a\n- b")
             .ToString();
         html.ShouldContain("<h1");
         html.ShouldContain("<pre");
@@ -39,7 +38,7 @@ public class Spec26UiTests : TestContext
         var md = new MarkdownService();
         // DisableHtml já remove HTML cru — injeção via link javascript: e
         // spans escapados também precisam sair.
-        var html = md.Render(
+        var html = MarkdownService.Render(
             "[x](javascript:alert(1))\n\n<script>alert(2)</script>").ToString();
         html.ShouldNotContain("<script");
         html.ShouldNotContain("javascript:");
@@ -48,8 +47,8 @@ public class Spec26UiTests : TestContext
     [Fact]
     public void Markdown_Empty_Returns_Empty()
     {
-        new MarkdownService().Render("").ToString().ShouldBe("");
-        new MarkdownService().Render(null).ToString().ShouldBe("");
+        MarkdownService.Render("").ToString().ShouldBe("");
+        MarkdownService.Render(null).ToString().ShouldBe("");
     }
 
     // ---------- PaletteService ----------

@@ -14,18 +14,15 @@ public sealed class AskModeService : IAskModeService
 {
     private readonly AppDbContext _db;
     private readonly ICodeSearchStore _searchStore;
-    private readonly IRepoIndexer _repoIndexer;
     private readonly ILogger<AskModeService> _logger;
 
     public AskModeService(
         AppDbContext db,
         ICodeSearchStore searchStore,
-        IRepoIndexer repoIndexer,
         ILogger<AskModeService> logger)
     {
         _db = db;
         _searchStore = searchStore;
-        _repoIndexer = repoIndexer;
         _logger = logger;
     }
 

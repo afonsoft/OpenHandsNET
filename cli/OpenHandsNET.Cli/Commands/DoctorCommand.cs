@@ -45,7 +45,7 @@ public sealed class DoctorCommand : AsyncCommand<DoctorCommand.Settings>
             ?? "http://localhost:8080";
         var svc = new DoctorService(new HttpClient());
         var report = settings.Preflight
-            ? await svc.RunPreflightAsync(
+            ? await DoctorService.RunPreflightAsync(
                 url, settings.Workspace, CancellationToken.None,
                 k8s: settings.K8s)
             : await svc.RunAsync(
