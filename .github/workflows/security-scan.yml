@@ -102,7 +102,7 @@ jobs:
       - name: setup dotnet 10
         uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d # v5.0.0
         with:
-          dotnet-version: "10.0.x"
+          dotnet-version: "10.0.112"   # pinned: WASM lockfiles capture SDK-band implicit package versions — bump with lockfile regen
 
       - name: restore (locked-mode)
         run: dotnet restore OpenHandsNET.slnx --locked-mode
@@ -131,8 +131,9 @@ jobs:
       - name: osv-scanner on lockfiles (blocking)
         # packages.lock.json is a first-class osv-scanner input. A newly
         # disclosed CVE on an unchanged dep can red this gate — the fix is to
-        # bump the dep, not to weaken the gate.
-        run: '"$HOME/.local/bin/osv-scanner" scan --recursive --skip-git .'
+        # bump the dep, not to weaken the gate. In v2, git-history scanning is
+        # opt-in (--include-git-root), so recursive tree scan is all we need.
+        run: '"$HOME/.local/bin/osv-scanner" scan --recursive .'
 
   docker-lint:
     name: hadolint (Dockerfiles)

@@ -1,0 +1,41 @@
+# .gitleaks.toml — gitleaks config for OpenHandsNET
+#
+# Extends the default ruleset with project-level allowlists.
+# INSTRUÇÕES: só adicione uma entrada de allowlist com justificativa real —
+# se o finding é um valor que o sistema usa em produção, é verdadeiro
+# positivo: corrija, não allowliste.
+#
+# ATENÇÃO: sem [extend].useDefault = true o gitleaks SUBSTITUI o ruleset
+# padrão por este arquivo — com zero [[rules]] próprias, nada é detectado
+# e o gate vira no-op silencioso.
+
+[extend]
+  useDefault = true
+
+# ---------------------------------------------------------------------------
+# Allowlist global — aplica-se a todas as regras.
+# ---------------------------------------------------------------------------
+[allowlist]
+  description = "Vendored third-party frontend bundles — minified JS trips entropy rules (a mesma árvore já é excluída do Sonar)"
+  paths = [
+    '''wwwroot/lib''',
+  ]
+
+# ---------------------------------------------------------------------------
+# Allowlist por-regra
+# ---------------------------------------------------------------------------
+[[rules]]
+  # Falsos-positivos comprovados (2026-10-19, primeiro run do gate):
+  # - GEZDG... é o vetor de teste PÚBLICO do RFC 6238 (TOTP) em
+  #   Spec64BrowserProfilesTests.cs — documentado no próprio RFC.
+  # - sk-abc123def é fixture fake em CredentialStoreTests.cs.
+  # - signature256 é um NOME DE PARÂMETRO em GitHubWebhookService.cs:146
+  #   (`signature256 is null`) — identificador, não segredo.
+  id = "generic-api-key"
+  [rules.allowlist]
+    description = "RFC 6238 public test vector + test fixtures + identifier names (não são credenciais)"
+    regexes = [
+      '''GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ''',
+      '''sk-abc123def''',
+      '''signature256''',
+    ]
