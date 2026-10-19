@@ -1,0 +1,8 @@
+# osv-scanner per-directory config — applies to the lockfiles in this folder.
+# Reviewed each release; entries MUST carry a reason and an ignoreUntil date
+# so stale exceptions resurface instead of silently hiding new disclosures.
+
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm"
+ignoreUntil = 2027-04-19
+reason = "braces is a dev-only transitive of @tailwindcss/cli — used for CSS build-time globbing on our own trusted patterns, never shipped to the browser; no fixed upstream version exists (advisory covers <=3.0.3)"

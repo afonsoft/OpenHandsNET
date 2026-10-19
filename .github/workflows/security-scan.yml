@@ -131,8 +131,9 @@ jobs:
       - name: osv-scanner on lockfiles (blocking)
         # packages.lock.json is a first-class osv-scanner input. A newly
         # disclosed CVE on an unchanged dep can red this gate — the fix is to
-        # bump the dep, not to weaken the gate.
-        run: '"$HOME/.local/bin/osv-scanner" scan --recursive --skip-git .'
+        # bump the dep, not to weaken the gate. In v2, git-history scanning is
+        # opt-in (--include-git-root), so recursive tree scan is all we need.
+        run: '"$HOME/.local/bin/osv-scanner" scan --recursive .'
 
   docker-lint:
     name: hadolint (Dockerfiles)
