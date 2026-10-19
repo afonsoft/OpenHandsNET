@@ -22,9 +22,8 @@ public sealed class TuiCommand : AsyncCommand<TuiCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         if (Console.IsInputRedirected || Console.IsOutputRedirected)
         {
             AnsiConsole.MarkupLine(

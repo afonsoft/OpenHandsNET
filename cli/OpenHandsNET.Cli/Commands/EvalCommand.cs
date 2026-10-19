@@ -61,9 +61,8 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
 
     /// <inheritdoc />
     public override async Task<int> ExecuteAsync(
-        CommandContext ctx, Settings s)
+        CommandContext ctx, Settings s, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         if (s.Mode is not "live" and not "recorded")
         {
             AnsiConsole.MarkupLine("[red]--mode deve ser live|recorded[/]");
@@ -288,7 +287,7 @@ public sealed class EvalReportCommand : Command<EvalReportCommand.Settings>
     }
 
     /// <inheritdoc />
-    public override int Execute(CommandContext ctx, Settings s)
+    public override int Execute(CommandContext ctx, Settings s, CancellationToken ct)
     {
         var results = LoadResults(s.Dir);
         var regressions = s.Baseline is { } b && Directory.Exists(b)
@@ -352,7 +351,7 @@ public sealed class EvalListCommand : Command<EvalListCommand.Settings>
     }
 
     /// <inheritdoc />
-    public override int Execute(CommandContext ctx, Settings s)
+    public override int Execute(CommandContext ctx, Settings s, CancellationToken ct)
     {
         var tasksDir = Path.Combine(s.EvalsDir, "tasks");
         var errors = 0;

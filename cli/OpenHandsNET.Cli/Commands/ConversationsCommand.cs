@@ -15,9 +15,8 @@ public sealed class ConversationsListCommand : AsyncCommand<ConversationsListCom
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(), ct: ct);
         var page = await api.ListConversationsAsync(ct);
@@ -55,9 +54,8 @@ public sealed class ConversationsStatusCommand : AsyncCommand<ConversationsStatu
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(), ct: ct);
         var conv = await api.GetConversationAsync(settings.Id, ct);
@@ -90,9 +88,8 @@ public sealed class ConversationsDeleteCommand : AsyncCommand<ConversationsDelet
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(), ct: ct);
         await api.DeleteConversationAsync(settings.Id, ct);

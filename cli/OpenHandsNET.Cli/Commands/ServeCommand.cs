@@ -33,9 +33,8 @@ public sealed class ServeCommand : AsyncCommand<ServeCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var api = settings.ApiPath ?? FindApiProject();
         if (api is null)
         {
