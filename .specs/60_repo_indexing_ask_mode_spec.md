@@ -8,7 +8,7 @@
 | Type | `Feature / AI + API + Frontend` |
 | Stack | `.NET 10 · EF Core · embeddings opcionais · Blazor WASM` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Delivered` |
 | Ticket | `TBD` |
 | Depends on | `04`, `09` (LLM provider), `22` (context), `23` (OmniRoute) |
 | Reference | competitive-analysis §6.3 (G8/G33); docs.devin.ai
@@ -141,3 +141,11 @@ plan→Agent; admin de índices.
 - Promote cria start-task Agent com o plano no initial_message.
 - Repo sem index → 400 `index_required`. FTS Postgres+SQLite cobertos
   por teste parametrizado. Suite verde; golden OpenAPI atualizado.
+
+## 11. Delivered
+
+- `Infrastructure/Indexing/` + `Api/Endpoints/AskAndIndexEndpoints.cs` —
+  repo indexing (`code_units`, `repo_indexes`) + Ask read-only.
+- Entidades `CodeUnitRecord`/`RepoIndexRecord` (EF); migration tardia
+  absorvida em `spec63_knowledge` (PR #140) — ver spec 63 §Delivered.
+- PR: https://github.com/afonsoft/OpenHandsNET/pull/136

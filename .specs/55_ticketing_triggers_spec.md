@@ -8,7 +8,7 @@
 | Type | `Feature / Integration` |
 | Stack | `.NET 10 · webhooks · EF Core · SignalR` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Delivered` |
 | Ticket | `TBD` |
 | Depends on | `47` (automation triggers), `52` (PR de volta) |
 | Reference | competitive-analysis §6.1 (G4); docs.devin.ai
@@ -160,3 +160,12 @@ via CLI.
   run manual, reporter comment+transition).
 - Migrations `*_spec55_tickets` (SQLite + Postgres); golden OpenAPI
   regenerado.
+
+## 11. Delivered
+
+- `Application/Tickets/` + `Infrastructure/Tickets/` — triggers
+  Linear/Jira → start-task, write-back de status/comentário.
+- `Api/Endpoints/TicketEndpoints.cs` — config + webhook + bindings.
+- CLI `ticket` commands; docs `docs/features/tickets.md`.
+- EF migrations `spec55_tickets` (SQLite + Postgres).
+- PR: https://github.com/afonsoft/OpenHandsNET/pull/129
