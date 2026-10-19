@@ -1,8 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
+
 using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Domain.Events;
 using OpenHandsNET.Infrastructure.Agent;
 using OpenHandsNET.Infrastructure.Conversations;
+
 using Shouldly;
 
 namespace OpenHandsNET.UnitTests.Agent;

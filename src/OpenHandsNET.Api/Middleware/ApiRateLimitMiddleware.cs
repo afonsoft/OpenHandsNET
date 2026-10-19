@@ -1,5 +1,7 @@
 using System.Security.Claims;
+
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Coordination;
 
 namespace OpenHandsNET.Api.Middleware;
@@ -92,7 +94,8 @@ public sealed class ApiRateLimitMiddleware(
                 {
                     code = "rate_limited",
                     message = "Rate limit exceeded — retry later.",
-                    limit, bucket,
+                    limit,
+                    bucket,
                 },
             }, ctx.RequestAborted);
             return;

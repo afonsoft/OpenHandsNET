@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 using OpenHandsNET.Infrastructure.Persistence;
 
 namespace OpenHandsNET.Infrastructure.Automations;

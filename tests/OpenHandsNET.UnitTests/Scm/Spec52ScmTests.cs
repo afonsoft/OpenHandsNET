@@ -1,8 +1,10 @@
 using System.Security.Cryptography;
 using System.Text;
+
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+
 using OpenHandsNET.Application.Contracts;
 using OpenHandsNET.Application.Conversations;
 using OpenHandsNET.Application.Events;
@@ -15,8 +17,11 @@ using OpenHandsNET.Domain.Events;
 using OpenHandsNET.Domain.Sandbox;
 using OpenHandsNET.Infrastructure.Conversations;
 using OpenHandsNET.Infrastructure.Scm;
+
 using Shouldly;
+
 using Xunit;
+
 using SandboxModel = OpenHandsNET.Domain.Sandbox.Sandbox;
 
 namespace OpenHandsNET.UnitTests.Scm;
@@ -264,7 +269,8 @@ public sealed class Spec52ScmTests : IAsyncDisposable
         : OpenHandsNET.Application.Conversations.IAppConversationService
     {
         public List<(Guid UserId, Guid? OrgId, CreateConversationRequest
-            Request)> Calls { get; } = [];
+            Request)> Calls
+        { get; } = [];
 
         public Task<AppConversationStartTask> CreateAsync(
             CreateConversationRequest request, CancellationToken ct) =>

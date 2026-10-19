@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+
 using OpenHandsNET.Application.Contracts;
 using OpenHandsNET.Application.Sharing;
 using OpenHandsNET.Domain.Conversations;
@@ -8,7 +9,9 @@ using OpenHandsNET.Infrastructure.Conversations;
 using OpenHandsNET.Infrastructure.Eventing;
 using OpenHandsNET.Infrastructure.Persistence;
 using OpenHandsNET.Infrastructure.Sharing;
+
 using Shouldly;
+
 using Xunit;
 
 namespace OpenHandsNET.UnitTests.Sharing;

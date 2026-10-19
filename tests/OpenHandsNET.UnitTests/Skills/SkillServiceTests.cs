@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+
 using OpenHandsNET.Application.Skills;
 using OpenHandsNET.Domain.Skills;
 using OpenHandsNET.Infrastructure.Persistence;
@@ -35,8 +36,11 @@ public sealed class SkillServiceTests : IAsyncLifetime
     {
         var s = await _svc.CreateAsync(new Skill
         {
-            Id = Guid.NewGuid(), Name = "my-skill", OwnerId = "u1",
-            Description = "d", ContentMd = "# hi",
+            Id = Guid.NewGuid(),
+            Name = "my-skill",
+            OwnerId = "u1",
+            Description = "d",
+            ContentMd = "# hi",
             Triggers = [new SkillTrigger(SkillTriggerType.Keyword, "dotnet")],
         }, CancellationToken.None);
 
@@ -52,7 +56,9 @@ public sealed class SkillServiceTests : IAsyncLifetime
         await Should.ThrowAsync<InvalidOperationException>(() =>
             _svc.CreateAsync(new Skill
             {
-                Id = Guid.NewGuid(), Name = "Not A Slug!", ContentMd = "x",
+                Id = Guid.NewGuid(),
+                Name = "Not A Slug!",
+                ContentMd = "x",
             }, CancellationToken.None));
     }
 
@@ -80,7 +86,9 @@ public sealed class SkillServiceTests : IAsyncLifetime
         await SeedAsync("always-one", SkillTriggerType.Always);
         await _svc.CreateAsync(new Skill
         {
-            Id = Guid.NewGuid(), Name = "task-one", ContentMd = "x",
+            Id = Guid.NewGuid(),
+            Name = "task-one",
+            ContentMd = "x",
             Triggers = [new SkillTrigger(SkillTriggerType.Task, "bugfix")],
         }, CancellationToken.None);
 
@@ -110,7 +118,9 @@ public sealed class SkillServiceTests : IAsyncLifetime
         var conv = Guid.NewGuid();
         await _svc.CreateAsync(new Skill
         {
-            Id = Guid.NewGuid(), Name = "org-secret", OrgId = "orgA",
+            Id = Guid.NewGuid(),
+            Name = "org-secret",
+            OrgId = "orgA",
             ContentMd = "x",
             Triggers = [new SkillTrigger(SkillTriggerType.Always)],
         }, CancellationToken.None);
@@ -130,7 +140,9 @@ public sealed class SkillServiceTests : IAsyncLifetime
         var conv = Guid.NewGuid();
         var s = await _svc.CreateAsync(new Skill
         {
-            Id = Guid.NewGuid(), Name = "pinned", ContentMd = "x",
+            Id = Guid.NewGuid(),
+            Name = "pinned",
+            ContentMd = "x",
             Triggers = [new SkillTrigger(SkillTriggerType.Keyword, "never-match")],
         }, CancellationToken.None);
         await _svc.PinAsync(conv, [s.Id], CancellationToken.None);
@@ -173,8 +185,11 @@ public sealed class SkillServiceTests : IAsyncLifetime
     {
         _db.Skills.Add(new SkillRecord
         {
-            Id = Guid.NewGuid(), Name = name, OwnerId = owner,
-            Content = "x", Source = source,
+            Id = Guid.NewGuid(),
+            Name = name,
+            OwnerId = owner,
+            Content = "x",
+            Source = source,
             TriggersJson = $$"""[{"type":"{{type.ToString().ToLowerInvariant()}}","value":{{(value is null ? "null" : $"\"{value}\"")}}}]""",
             Enabled = true,
             CreatedAt = DateTimeOffset.UtcNow,

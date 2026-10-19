@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Application.Tickets;
 using OpenHandsNET.Infrastructure.Persistence;
@@ -18,8 +19,11 @@ public sealed class TicketConnectionService(
     {
         var rec = new TicketConnectionRecord
         {
-            Id = Guid.NewGuid(), OrgId = orgId, Kind = kind.ToWire(),
-            ApiUrl = apiUrl.TrimEnd('/'), TokenSecretRef = tokenSecretRef,
+            Id = Guid.NewGuid(),
+            OrgId = orgId,
+            Kind = kind.ToWire(),
+            ApiUrl = apiUrl.TrimEnd('/'),
+            TokenSecretRef = tokenSecretRef,
             WebhookSecretRef = webhookSecretRef,
             WorkspaceId = workspaceId,
             TriggerConfigJson = triggerConfigJson,
@@ -98,7 +102,8 @@ public sealed class TicketConnectionService(
         {
             rec = new TicketProjectConfigRecord
             {
-                Id = Guid.NewGuid(), ConnectionId = connectionId,
+                Id = Guid.NewGuid(),
+                ConnectionId = connectionId,
                 ProjectKey = projectKey,
             };
             db.TicketProjectConfigs.Add(rec);

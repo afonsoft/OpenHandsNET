@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Application.Memory;
 using OpenHandsNET.Infrastructure.Persistence;
@@ -26,9 +27,13 @@ public sealed class MemoryService(
         {
             existing = new MemoryRecord
             {
-                Id = Guid.NewGuid(), OrgId = orgId, Key = normalized,
-                Text = text, CreatedByUserId = actorUserId,
-                CreatedAt = now, UpdatedAt = now,
+                Id = Guid.NewGuid(),
+                OrgId = orgId,
+                Key = normalized,
+                Text = text,
+                CreatedByUserId = actorUserId,
+                CreatedAt = now,
+                UpdatedAt = now,
             };
             db.MemoryRecords.Add(existing);
         }

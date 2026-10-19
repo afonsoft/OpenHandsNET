@@ -1,7 +1,8 @@
-using Spectre.Console;
-using Spectre.Console.Cli;
 using OpenHandsNET.Cli.Services;
 using OpenHandsNET.Cli.Tui;
+
+using Spectre.Console;
+using Spectre.Console.Cli;
 
 namespace OpenHandsNET.Cli.Commands;
 

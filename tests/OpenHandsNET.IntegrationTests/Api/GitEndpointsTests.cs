@@ -1,9 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+
 using Shouldly;
 
 namespace OpenHandsNET.IntegrationTests.Api;
@@ -103,8 +105,10 @@ public sealed class GitEndpointsTests : IDisposable
             .GetRequiredService<OpenHandsNET.Infrastructure.Persistence.AppDbContext>();
         var conv = new OpenHandsNET.Infrastructure.Conversations.ConversationRecord
         {
-            Id = Guid.NewGuid(), ExecutionStatus = "Running",
-            CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow,
+            Id = Guid.NewGuid(),
+            ExecutionStatus = "Running",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
         };
         db.Conversations.Add(conv);
         await db.SaveChangesAsync();
@@ -136,8 +140,10 @@ public sealed class GitEndpointsTests : IDisposable
             .GetRequiredService<OpenHandsNET.Infrastructure.Persistence.AppDbContext>();
         var conv = new OpenHandsNET.Infrastructure.Conversations.ConversationRecord
         {
-            Id = Guid.NewGuid(), ExecutionStatus = "Running",
-            CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow,
+            Id = Guid.NewGuid(),
+            ExecutionStatus = "Running",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
         };
         db.Conversations.Add(conv);
         await db.SaveChangesAsync();
@@ -153,7 +159,8 @@ public sealed class GitEndpointsTests : IDisposable
         {
             initial_message = new
             {
-                role = "user", content = new[] { new { type = "text", text = "hi" } },
+                role = "user",
+                content = new[] { new { type = "text", text = "hi" } },
             },
         });
         var task = await resp.Content.ReadFromJsonAsync<JsonElement>();
@@ -185,7 +192,8 @@ public sealed class GitEndpointsTests : IDisposable
             using var p = System.Diagnostics.Process.Start(
                 new System.Diagnostics.ProcessStartInfo("docker", "info")
                 {
-                    RedirectStandardOutput = true, RedirectStandardError = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
                 })!;
             p.WaitForExit(5000);
             return p.ExitCode == 0;

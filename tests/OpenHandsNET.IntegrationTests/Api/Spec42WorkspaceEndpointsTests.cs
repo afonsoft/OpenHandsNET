@@ -1,9 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+
 using Shouldly;
 
 namespace OpenHandsNET.IntegrationTests.Api;
@@ -52,8 +54,10 @@ public sealed class Spec42WorkspaceEndpointsTests : IDisposable
             .GetRequiredService<OpenHandsNET.Infrastructure.Persistence.AppDbContext>();
         var conv = new OpenHandsNET.Infrastructure.Conversations.ConversationRecord
         {
-            Id = Guid.NewGuid(), ExecutionStatus = "Running",
-            CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow,
+            Id = Guid.NewGuid(),
+            ExecutionStatus = "Running",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
         };
         db.Conversations.Add(conv);
         await db.SaveChangesAsync();
@@ -262,8 +266,11 @@ public sealed class Spec42WorkspaceEndpointsTests : IDisposable
             .StatusCode.ShouldBe(HttpStatusCode.OK);
 
         (await _http.PostAsJsonAsync($"{b}/files/rename",
-            new { from = "/workspace/repo/spec42dir/needle.txt",
-                  to = "/workspace/repo/spec42dir/renamed.txt" }))
+            new
+            {
+                from = "/workspace/repo/spec42dir/needle.txt",
+                to = "/workspace/repo/spec42dir/renamed.txt"
+            }))
             .StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
         var search = await _http.GetFromJsonAsync<JsonElement>(

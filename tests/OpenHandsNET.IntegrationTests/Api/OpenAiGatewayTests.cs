@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace OpenHandsNET.IntegrationTests.Api;
@@ -91,7 +92,8 @@ public sealed class OpenAiGatewayTests : IDisposable
         var http = await LoginAsync("gw2@example.com");
         var res = await http.PostAsJsonAsync("/v1/chat/completions", new
         {
-            model = "x", n = 2,
+            model = "x",
+            n = 2,
             messages = new[] { new { role = "user", content = "hi" } },
         });
         res.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
@@ -105,7 +107,8 @@ public sealed class OpenAiGatewayTests : IDisposable
         var http = await LoginAsync("gw3@example.com");
         var res = await http.PostAsJsonAsync("/v1/chat/completions", new
         {
-            model = "x", messages = Array.Empty<object>(),
+            model = "x",
+            messages = Array.Empty<object>(),
         });
         res.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         (await ErrorAsync(res)).GetProperty("message").GetString()!

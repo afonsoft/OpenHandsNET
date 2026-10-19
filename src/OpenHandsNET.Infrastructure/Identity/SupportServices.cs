@@ -1,5 +1,7 @@
 using System.Text.Json;
+
 using Microsoft.EntityFrameworkCore;
+
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Infrastructure.Persistence;
 
@@ -126,8 +128,10 @@ public sealed class FeatureFlagService(AppDbContext db) : IFeatureFlagService
         {
             db.FeatureFlags.Add(new FeatureFlagRecord
             {
-                Name = name, Enabled = enabled,
-                Description = description, CreatedAt = DateTimeOffset.UtcNow,
+                Name = name,
+                Enabled = enabled,
+                Description = description,
+                CreatedAt = DateTimeOffset.UtcNow,
             });
         }
         else

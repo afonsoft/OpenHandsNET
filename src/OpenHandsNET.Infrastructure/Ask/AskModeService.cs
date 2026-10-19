@@ -1,6 +1,8 @@
 using System.Text;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using OpenHandsNET.Application.Ask;
 using OpenHandsNET.Application.Indexing;
 using OpenHandsNET.Domain.Conversations;

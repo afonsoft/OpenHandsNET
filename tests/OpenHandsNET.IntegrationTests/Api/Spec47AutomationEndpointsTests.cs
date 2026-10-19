@@ -1,10 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+
 using OpenHandsNET.Infrastructure.Persistence;
+
 using Shouldly;
 
 namespace OpenHandsNET.IntegrationTests.Api;
@@ -71,8 +74,10 @@ public sealed class Spec47AutomationEndpointsTests : IDisposable
         // create (validação: interval requer interval_minutes > 0)
         var bad = await alice.PostAsJsonAsync("/api/v1/automations", new
         {
-            name = "x", prompt = "p",
-            schedule_kind = "interval", interval_minutes = 0,
+            name = "x",
+            prompt = "p",
+            schedule_kind = "interval",
+            interval_minutes = 0,
         });
         bad.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
 

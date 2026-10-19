@@ -1,5 +1,7 @@
 using System.Text.Json.Nodes;
+
 using Microsoft.EntityFrameworkCore;
+
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Application.Security;
 using OpenHandsNET.Infrastructure.Persistence;
@@ -98,7 +100,11 @@ public static class EdgeEndpoints
             .OrderByDescending(r => r.Priority)
             .Select(r => (object)new
             {
-                r.Id, r.Scope, r.Cidr, r.Action, r.Priority,
+                r.Id,
+                r.Scope,
+                r.Cidr,
+                r.Action,
+                r.Priority,
             })
             .ToArrayAsync(ct);
 
@@ -122,8 +128,11 @@ public static class EdgeEndpoints
         }
         var rec = new IpAccessRuleRecord
         {
-            Id = Guid.NewGuid(), Scope = scope, Cidr = cidr!,
-            Action = action, Priority = priority,
+            Id = Guid.NewGuid(),
+            Scope = scope,
+            Cidr = cidr!,
+            Action = action,
+            Priority = priority,
             CreatedBy = current.User?.UserId ?? Guid.Empty,
             CreatedAt = DateTimeOffset.UtcNow,
         };
@@ -136,7 +145,11 @@ public static class EdgeEndpoints
             metadata: new { scope, cidr, action });
         return Results.Ok(new
         {
-            rec.Id, rec.Scope, rec.Cidr, rec.Action, rec.Priority,
+            rec.Id,
+            rec.Scope,
+            rec.Cidr,
+            rec.Action,
+            rec.Priority,
         });
     }
 

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+
 using OpenHandsNET.Application.Contracts;
 using OpenHandsNET.Infrastructure.Persistence;
 
@@ -51,8 +52,11 @@ public sealed class SecretStore(
         {
             db.Secrets.Add(new SecretRecord
             {
-                Scope = scope, OwnerId = ownerId, Name = name,
-                Ciphertext = ciphertext, Nonce = nonce,
+                Scope = scope,
+                OwnerId = ownerId,
+                Name = name,
+                Ciphertext = ciphertext,
+                Nonce = nonce,
                 CreatedAt = DateTimeOffset.UtcNow,
             });
         }

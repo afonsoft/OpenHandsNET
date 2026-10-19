@@ -1,7 +1,9 @@
 using System.Text.Json;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Application.Sandbox;
 using OpenHandsNET.Domain.Sandbox;
@@ -10,8 +12,10 @@ using OpenHandsNET.Infrastructure.Agent.Tools;
 using OpenHandsNET.Infrastructure.Discovery;
 using OpenHandsNET.Infrastructure.Skills;
 using OpenHandsNET.Infrastructure.Web;
-using SandboxOptions = OpenHandsNET.Sandboxing.SandboxOptions;
+
 using Shouldly;
+
+using SandboxOptions = OpenHandsNET.Sandboxing.SandboxOptions;
 
 namespace OpenHandsNET.UnitTests.Agent;
 
@@ -237,7 +241,8 @@ public sealed class Spec25ToolsTests
         {
             ToolOutputCaps = new Dictionary<string, int>
             {
-                ["bash"] = 100, ["mcp__*"] = 200,
+                ["bash"] = 100,
+                ["mcp__*"] = 200,
             },
         }));
         policy.CapFor("bash").ShouldBe(100);

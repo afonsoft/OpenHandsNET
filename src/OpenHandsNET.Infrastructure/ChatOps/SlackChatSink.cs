@@ -1,7 +1,9 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+
 using Microsoft.Extensions.Logging;
+
 using OpenHandsNET.Application.ChatOps;
 using OpenHandsNET.Application.Contracts;
 
@@ -83,7 +85,9 @@ public sealed class SlackChatSink(
         string text, CancellationToken ct) =>
         await CallAsync(connection, "chat.update", new
         {
-            channel = channelId, ts, text,
+            channel = channelId,
+            ts,
+            text,
         }, ct);
 
     /// <inheritdoc />
@@ -92,7 +96,9 @@ public sealed class SlackChatSink(
         string emoji, CancellationToken ct) =>
         await CallAsync(connection, "reactions.add", new
         {
-            channel = channelId, timestamp = ts, name = emoji,
+            channel = channelId,
+            timestamp = ts,
+            name = emoji,
         }, ct);
 
     /// <inheritdoc />

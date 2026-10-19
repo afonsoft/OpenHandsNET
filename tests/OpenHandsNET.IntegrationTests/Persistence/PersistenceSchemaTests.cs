@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+
 using OpenHandsNET.Infrastructure.Persistence;
+
 using Shouldly;
 
 namespace OpenHandsNET.IntegrationTests.Persistence;
@@ -98,7 +100,9 @@ public sealed class PersistenceSchemaTests : IAsyncLifetime
 
         db.Secrets.Add(new SecretRecord
         {
-            Scope = "app", OwnerId = "system", Name = "llm_key",
+            Scope = "app",
+            OwnerId = "system",
+            Name = "llm_key",
             Ciphertext = protector.Protect(plaintext),
             CreatedAt = DateTimeOffset.UtcNow,
         });
@@ -119,14 +123,18 @@ public sealed class PersistenceSchemaTests : IAsyncLifetime
             await seed.Database.MigrateAsync();
             seed.Conversations.Add(new OpenHandsNET.Infrastructure.Conversations.ConversationRecord
             {
-                Id = Guid.NewGuid(), ExecutionStatus = "idle",
-                OrgId = orgA, CreatedAt = DateTimeOffset.UtcNow,
+                Id = Guid.NewGuid(),
+                ExecutionStatus = "idle",
+                OrgId = orgA,
+                CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow,
             });
             seed.Conversations.Add(new OpenHandsNET.Infrastructure.Conversations.ConversationRecord
             {
-                Id = Guid.NewGuid(), ExecutionStatus = "idle",
-                OrgId = orgB, CreatedAt = DateTimeOffset.UtcNow,
+                Id = Guid.NewGuid(),
+                ExecutionStatus = "idle",
+                OrgId = orgB,
+                CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow,
             });
             await seed.SaveChangesAsync();
@@ -149,7 +157,8 @@ public sealed class PersistenceSchemaTests : IAsyncLifetime
 
         db.AuditEvents.Add(new AuditEventRecord
         {
-            Id = Guid.NewGuid(), Action = "test",
+            Id = Guid.NewGuid(),
+            Action = "test",
             Timestamp = DateTimeOffset.UtcNow,
         });
         await db.SaveChangesAsync();

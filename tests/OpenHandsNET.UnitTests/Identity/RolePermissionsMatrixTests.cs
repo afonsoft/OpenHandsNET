@@ -1,4 +1,5 @@
 using OpenHandsNET.Domain.Identity;
+
 using Shouldly;
 
 namespace OpenHandsNET.UnitTests.Identity;

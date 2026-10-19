@@ -1,9 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+
 using OpenHandsNET.Infrastructure.Persistence;
 
 namespace OpenHandsNET.IntegrationTests.Api;
@@ -48,7 +50,8 @@ public sealed class SwitchEndpointsTests : IDisposable
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var conv = new OpenHandsNET.Infrastructure.Conversations.ConversationRecord
         {
-            Id = Guid.NewGuid(), SandboxId = sandboxId,
+            Id = Guid.NewGuid(),
+            SandboxId = sandboxId,
             ExecutionStatus = status,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,

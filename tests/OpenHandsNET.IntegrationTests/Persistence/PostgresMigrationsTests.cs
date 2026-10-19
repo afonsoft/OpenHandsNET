@@ -1,9 +1,12 @@
 using Docker.DotNet;
 using Docker.DotNet.Models;
+
 using Microsoft.EntityFrameworkCore;
+
 using OpenHandsNET.Infrastructure.Persistence;
 using OpenHandsNET.Infrastructure.Sandbox;
 using OpenHandsNET.Sandboxing;
+
 using Shouldly;
 
 namespace OpenHandsNET.IntegrationTests.Persistence;
@@ -116,7 +119,9 @@ public sealed class PostgresMigrationsTests : IAsyncLifetime
 
         var org = new OrganizationRecord
         {
-            Id = Guid.NewGuid(), Slug = "acme", Name = "Acme",
+            Id = Guid.NewGuid(),
+            Slug = "acme",
+            Name = "Acme",
             CreatedAt = DateTimeOffset.UtcNow,
         };
         db.Organizations.Add(org);
@@ -138,7 +143,8 @@ public sealed class PostgresMigrationsTests : IAsyncLifetime
             using var p = System.Diagnostics.Process.Start(
                 new System.Diagnostics.ProcessStartInfo("docker", "info")
                 {
-                    RedirectStandardOutput = true, RedirectStandardError = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
                 })!;
             p.WaitForExit(5000);
             return p.ExitCode == 0;

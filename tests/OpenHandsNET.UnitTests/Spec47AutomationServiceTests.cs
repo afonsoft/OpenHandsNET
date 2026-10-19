@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+
 using OpenHandsNET.Application.Automations;
 using OpenHandsNET.Application.Conversations;
 using OpenHandsNET.Application.Identity;
@@ -9,7 +10,9 @@ using OpenHandsNET.Infrastructure.Automations;
 using OpenHandsNET.Infrastructure.Conversations;
 using OpenHandsNET.Infrastructure.Persistence;
 using OpenHandsNET.UnitTests.Agent;
+
 using Shouldly;
+
 using Xunit;
 
 namespace OpenHandsNET.UnitTests;
@@ -278,7 +281,8 @@ public sealed class Spec47AutomationServiceTests
         {
             Id = run.ConversationId!.Value,
             ExecutionStatus = nameof(ConversationExecutionStatus.Finished),
-            CreatedAt = now, UpdatedAt = now,
+            CreatedAt = now,
+            UpdatedAt = now,
         });
         await db.SaveChangesAsync();
         await svc.TickAsync(now, CancellationToken.None);

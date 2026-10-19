@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using OpenHandsNET.Application.Git;
 using OpenHandsNET.Infrastructure.Persistence;
 
@@ -48,9 +49,12 @@ public sealed class GitCredentialProvider(
         {
             db.Secrets.Add(new SecretRecord
             {
-                Scope = Scope, OwnerId = ownerId, Name = host,
+                Scope = Scope,
+                OwnerId = ownerId,
+                Name = host,
                 Ciphertext = protector.Protect(secret),
-                MetaJson = meta, CreatedAt = DateTimeOffset.UtcNow,
+                MetaJson = meta,
+                CreatedAt = DateTimeOffset.UtcNow,
             });
         }
         else

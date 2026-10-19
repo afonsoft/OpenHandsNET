@@ -1,9 +1,11 @@
 using System.Security.Cryptography;
 using System.Text;
+
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+
 using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Application.ChatOps;
 using OpenHandsNET.Application.Contracts;
@@ -13,7 +15,9 @@ using OpenHandsNET.Domain.Conversations;
 using OpenHandsNET.Domain.Events;
 using OpenHandsNET.Infrastructure.ChatOps;
 using OpenHandsNET.Infrastructure.Persistence;
+
 using Shouldly;
+
 using Xunit;
 
 namespace OpenHandsNET.UnitTests.ChatOps;
@@ -36,7 +40,7 @@ public sealed class Spec54ChatOpsTests : IAsyncDisposable
     private readonly FakeEvents _events = new();
     private readonly SlackChatOpsService _svc;
     private readonly ChatConnectionService _connections;
-    private Guid _connId;
+    private readonly Guid _connId;
 
     public Spec54ChatOpsTests()
     {
@@ -60,15 +64,21 @@ public sealed class Spec54ChatOpsTests : IAsyncDisposable
             NullLogger<SlackChatOpsService>.Instance);
         _db.OrgMembers.Add(new OrgMemberRecord
         {
-            OrgId = _orgId, UserId = _ownerId, Role = "owner",
+            OrgId = _orgId,
+            UserId = _ownerId,
+            Role = "owner",
             CreatedAt = DateTimeOffset.UtcNow,
         });
         _db.SaveChanges();
         _connId = _db.ChatConnections.Add(new ChatConnectionRecord
         {
-            Id = Guid.NewGuid(), OrgId = _orgId, Kind = "slack",
-            TeamId = "T123", BotTokenSecretRef = "bot_tok",
-            SigningSecretRef = "sign_sec", BotUserId = "UBOT",
+            Id = Guid.NewGuid(),
+            OrgId = _orgId,
+            Kind = "slack",
+            TeamId = "T123",
+            BotTokenSecretRef = "bot_tok",
+            SigningSecretRef = "sign_sec",
+            BotUserId = "UBOT",
             CreatedByUserId = _ownerId.ToString(),
             CreatedAt = DateTimeOffset.UtcNow,
         }).Entity.Id;
@@ -177,8 +187,10 @@ public sealed class Spec54ChatOpsTests : IAsyncDisposable
         var convId = Guid.NewGuid();
         _db.ChatThreadBindings.Add(new ChatThreadBindingRecord
         {
-            Id = Guid.NewGuid(), ConnectionId = _connId,
-            ChannelId = "C1", ThreadTs = "1700.99",
+            Id = Guid.NewGuid(),
+            ConnectionId = _connId,
+            ChannelId = "C1",
+            ThreadTs = "1700.99",
             ConversationId = convId,
             CreatedAt = DateTimeOffset.UtcNow,
         });
@@ -223,8 +235,10 @@ public sealed class Spec54ChatOpsTests : IAsyncDisposable
         var raw = Encoding.UTF8.GetBytes(formStr);
         var form = new Dictionary<string, string>
         {
-            ["team_id"] = "T123", ["channel_id"] = "C5",
-            ["user_id"] = "U9", ["text"] = "investigate the bug",
+            ["team_id"] = "T123",
+            ["channel_id"] = "C5",
+            ["user_id"] = "U9",
+            ["text"] = "investigate the bug",
         };
         var ts = Now();
         var (result, reply) = await _svc.HandleCommandAsync(
@@ -342,7 +356,8 @@ public sealed class Spec54ChatOpsTests : IAsyncDisposable
         : OpenHandsNET.Application.Conversations.IAppConversationService
     {
         public List<(Guid UserId, Guid? OrgId, CreateConversationRequest
-            Request)> Calls { get; } = [];
+            Request)> Calls
+        { get; } = [];
         public Task<AppConversationStartTask> CreateAsync(
             CreateConversationRequest r, CancellationToken ct) =>
             Task.FromResult(Task0());

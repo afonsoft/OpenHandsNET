@@ -1,13 +1,17 @@
 using System.Net;
 using System.Text;
+
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Domain.Events;
 using OpenHandsNET.Infrastructure.Agent;
 using OpenHandsNET.Infrastructure.Agent.Routing;
+
 using Shouldly;
+
 using Xunit;
 
 namespace OpenHandsNET.UnitTests.Agent;
@@ -32,7 +36,8 @@ public sealed class OmniRouteModelCatalogTests
         return new OmniRouteModelCatalog(factory, cache,
             Options.Create(opt ?? new AgentLlmOptions
             {
-                Model = "gpt-5", BaseUrl = "http://omniroute",
+                Model = "gpt-5",
+                BaseUrl = "http://omniroute",
             }),
             NullLogger<OmniRouteModelCatalog>.Instance);
     }
@@ -57,7 +62,8 @@ public sealed class OmniRouteModelCatalogTests
     {
         var opt = new AgentLlmOptions
         {
-            Model = "gpt-5", BaseUrl = "http://omniroute",
+            Model = "gpt-5",
+            BaseUrl = "http://omniroute",
             ContextWindowOverrides = { ["gpt-5"] = 999 },
         };
         var catalog = Make(new StubHandler(HttpStatusCode.OK, ModelsJson), opt);
@@ -157,7 +163,8 @@ public sealed class ModelRouterTests
     {
         var router = Make(new AgentLlmOptions
         {
-            Model = "a", FallbackModels = ["b", "c"],
+            Model = "a",
+            FallbackModels = ["b", "c"],
         });
         var first = new ModelSelection("a", null, null, 0, null);
         var second = await router.NextFallbackAsync(
@@ -176,7 +183,8 @@ public sealed class ModelRouterTests
     {
         var router = Make(new AgentLlmOptions
         {
-            Model = "a", FallbackModels = ["b"],
+            Model = "a",
+            FallbackModels = ["b"],
         });
         var sel = await router.NextFallbackAsync(
             new ModelSelection("x", null, null, 0, null),
@@ -192,7 +200,8 @@ public sealed class ModelRouterTests
     {
         var router = Make(new AgentLlmOptions
         {
-            Model = "a", FallbackModels = ["b"],
+            Model = "a",
+            FallbackModels = ["b"],
         });
         (await router.NextFallbackAsync(
             new ModelSelection("a", null, null, 0, null), kind,
@@ -275,7 +284,8 @@ public sealed class RunnerFallbackTests
         var provider = new FailThenFinishProvider(1, LlmErrorKind.ModelUnavailable);
         var opt = new AgentLlmOptions
         {
-            Model = "primary", FallbackModels = ["backup"],
+            Model = "primary",
+            FallbackModels = ["backup"],
         };
         await using var fx = new AgentRunnerFixture(
             options: opt, provider: provider, catalog: new FakeCatalog());
@@ -303,7 +313,8 @@ public sealed class RunnerFallbackTests
         var provider = new FailThenFinishProvider(1, LlmErrorKind.Auth);
         var opt = new AgentLlmOptions
         {
-            Model = "primary", FallbackModels = ["backup"],
+            Model = "primary",
+            FallbackModels = ["backup"],
         };
         await using var fx = new AgentRunnerFixture(
             options: opt, provider: provider, catalog: new FakeCatalog());

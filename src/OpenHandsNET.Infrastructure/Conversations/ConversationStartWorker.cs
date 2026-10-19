@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Sandbox;
 using OpenHandsNET.Domain.Conversations;
 using OpenHandsNET.Infrastructure.Persistence;
@@ -231,7 +232,8 @@ public sealed class ConversationStartWorker(
                             instructions_files = manifest.InstructionFiles,
                             skills = manifest.Skills.Select(s => new
                             {
-                                name = s.Name, path = s.Path,
+                                name = s.Name,
+                                path = s.Path,
                                 description = s.Description,
                             }),
                             config = manifest.HasRepoConfig,

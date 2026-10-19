@@ -31,8 +31,11 @@ public sealed class EvalRunner(IEvalBackend backend, RecordingStore? recordings 
             {
                 results[i] = new EvalResult
                 {
-                    Name = task.Name, ExecutionStatus = "ERROR",
-                    Score = 0, Pass = false, Mode = options.Mode,
+                    Name = task.Name,
+                    ExecutionStatus = "ERROR",
+                    Score = 0,
+                    Pass = false,
+                    Mode = options.Mode,
                     Error = ex.Message,
                 };
             }
@@ -60,8 +63,11 @@ public sealed class EvalRunner(IEvalBackend backend, RecordingStore? recordings 
             {
                 return new EvalResult
                 {
-                    Name = task.Name, ExecutionStatus = "NO_RECORDING",
-                    Score = 0, Pass = false, Mode = "recorded",
+                    Name = task.Name,
+                    ExecutionStatus = "NO_RECORDING",
+                    Score = 0,
+                    Pass = false,
+                    Mode = "recorded",
                     Error = "no recording for task hash — run --mode live --record first",
                 };
             }
@@ -98,8 +104,11 @@ public sealed class EvalRunner(IEvalBackend backend, RecordingStore? recordings 
         {
             return new EvalResult
             {
-                Name = task.Name, ConversationId = convId,
-                ExecutionStatus = "TIMEOUT", Score = 0, Pass = false,
+                Name = task.Name,
+                ConversationId = convId,
+                ExecutionStatus = "TIMEOUT",
+                Score = 0,
+                Pass = false,
                 DurationMs = sw.ElapsedMilliseconds,
             };
         }
@@ -205,11 +214,16 @@ public sealed class EvalRunner(IEvalBackend backend, RecordingStore? recordings 
         var score = Scorer.TaskScore(asserts);
         return new EvalResult
         {
-            Name = task.Name, ConversationId = conversationId,
-            ExecutionStatus = "FINISHED", Score = score,
+            Name = task.Name,
+            ConversationId = conversationId,
+            ExecutionStatus = "FINISHED",
+            Score = score,
             Pass = asserts.All(a => a.Pass || a.Skipped),
-            Asserts = asserts, EventsSummary = ev.Kinds,
-            Tokens = ev.Tokens, DurationMs = durationMs, Mode = mode,
+            Asserts = asserts,
+            EventsSummary = ev.Kinds,
+            Tokens = ev.Tokens,
+            DurationMs = durationMs,
+            Mode = mode,
         };
     }
 

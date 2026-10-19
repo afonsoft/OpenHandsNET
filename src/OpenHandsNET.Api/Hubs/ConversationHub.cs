@@ -1,5 +1,7 @@
 using System.Runtime.CompilerServices;
+
 using Microsoft.AspNetCore.SignalR;
+
 using OpenHandsNET.Application.Conversations;
 using OpenHandsNET.Application.Events;
 using OpenHandsNET.Domain.Events;

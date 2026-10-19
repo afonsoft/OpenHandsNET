@@ -1,11 +1,15 @@
 using System.Net;
 using System.Text;
+
 using k8s;
 using k8s.Models;
+
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Sandbox;
 using OpenHandsNET.Sandboxing;
+
 using Shouldly;
 
 namespace OpenHandsNET.UnitTests.Agent;
@@ -200,7 +204,8 @@ public class Spec49KubernetesEngineTests
     {
         var cfg = new KubernetesClientConfiguration
         {
-            Host = "http://127.0.0.1:8080", SkipTlsVerify = true,
+            Host = "http://127.0.0.1:8080",
+            SkipTlsVerify = true,
         };
         var client = new Kubernetes(cfg, handler);
         return new KubernetesSandboxEngine(
@@ -214,7 +219,8 @@ public class Spec49KubernetesEngineTests
     {
         Metadata = new V1ObjectMeta
         {
-            Name = name, NamespaceProperty = Ns,
+            Name = name,
+            NamespaceProperty = Ns,
             Labels = new Dictionary<string, string>
             {
                 [EngineLabels.Managed] = "true",

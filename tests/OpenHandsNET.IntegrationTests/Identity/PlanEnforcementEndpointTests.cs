@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace OpenHandsNET.IntegrationTests.Identity;
@@ -118,7 +119,8 @@ public sealed class PlanEnforcementEndpointTests : IDisposable
 
         var create = await http.PostAsJsonAsync("/api/v1/admin/plans", new
         {
-            name = "pro", limits = new { },
+            name = "pro",
+            limits = new { },
         });
         create.StatusCode.ShouldBe(HttpStatusCode.Created);
         var plan = await create.Content.ReadFromJsonAsync<JsonElement>();

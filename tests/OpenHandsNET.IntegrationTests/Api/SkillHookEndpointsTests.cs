@@ -1,8 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+
 using Shouldly;
 
 namespace OpenHandsNET.IntegrationTests.Api;
@@ -75,7 +77,8 @@ public sealed class SkillHookEndpointsTests : IDisposable
     {
         var resp = await _http.PostAsJsonAsync("/api/v1/skills", new
         {
-            name = "INVALID NAME!!", content_md = "x",
+            name = "INVALID NAME!!",
+            content_md = "x",
         });
         resp.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     }
@@ -110,7 +113,9 @@ public sealed class SkillHookEndpointsTests : IDisposable
 
         var bad = await _http.PostAsJsonAsync("/api/v1/hooks", new
         {
-            name = "x", @event = "bogus", action = "emit_event",
+            name = "x",
+            @event = "bogus",
+            action = "emit_event",
         });
         bad.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
 

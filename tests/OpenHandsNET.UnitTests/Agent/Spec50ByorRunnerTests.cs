@@ -1,6 +1,8 @@
 using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Domain.Events;
+
 using Shouldly;
+
 using Xunit;
 
 namespace OpenHandsNET.UnitTests.Agent;
@@ -31,7 +33,9 @@ public sealed class Spec50ByorRunnerTests
                 permitted: ["claude-sonnet-4"]),
             proxyOptions: new LlmProxyOptions
             {
-                BaseUrl = "http://litellm", MasterKey = "mk", Mode = "byor",
+                BaseUrl = "http://litellm",
+                MasterKey = "mk",
+                Mode = "byor",
             });
         await fx.Runner.RunAsync(CancellationToken.None)
             .WaitAsync(TimeSpan.FromSeconds(15));
@@ -57,7 +61,9 @@ public sealed class Spec50ByorRunnerTests
                 permitted: ["claude-sonnet-4"]),
             proxyOptions: new LlmProxyOptions
             {
-                BaseUrl = "http://litellm", MasterKey = "mk", Mode = "byor",
+                BaseUrl = "http://litellm",
+                MasterKey = "mk",
+                Mode = "byor",
             });
         await fx.Runner.RunAsync(CancellationToken.None)
             .WaitAsync(TimeSpan.FromSeconds(15));
@@ -82,7 +88,8 @@ public sealed class Spec50ByorRunnerTests
                 permitted: ["gpt-4o-mini"]),
             proxyOptions: new LlmProxyOptions
             {
-                BaseUrl = "http://litellm", MasterKey = "mk",
+                BaseUrl = "http://litellm",
+                MasterKey = "mk",
                 Mode = "hybrid",
             });
         await fx.Runner.RunAsync(CancellationToken.None)
@@ -107,7 +114,8 @@ public sealed class Spec50ByorRunnerTests
                 ctx: null, permitted: ["gpt-4o-mini"]),
             proxyOptions: new LlmProxyOptions
             {
-                BaseUrl = "http://litellm", MasterKey = "mk",
+                BaseUrl = "http://litellm",
+                MasterKey = "mk",
                 Mode = "hybrid",
             });
         await fx.Runner.RunAsync(CancellationToken.None)
@@ -133,7 +141,9 @@ public sealed class Spec50ByorRunnerTests
                 ctx: null, permitted: ["gpt-4o"]),
             proxyOptions: new LlmProxyOptions
             {
-                BaseUrl = "http://litellm", MasterKey = "mk", Mode = "byor",
+                BaseUrl = "http://litellm",
+                MasterKey = "mk",
+                Mode = "byor",
             });
         await fx.Runner.RunAsync(CancellationToken.None)
             .WaitAsync(TimeSpan.FromSeconds(15));

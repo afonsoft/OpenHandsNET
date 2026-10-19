@@ -1,7 +1,9 @@
 using System.Text.Json;
+
+using OpenHandsNET.Cli.Services;
+
 using Spectre.Console;
 using Spectre.Console.Cli;
-using OpenHandsNET.Cli.Services;
 
 namespace OpenHandsNET.Cli.Commands;
 
@@ -57,7 +59,9 @@ public sealed class DoctorCommand : AsyncCommand<DoctorCommand.Settings>
                 healthy = report.Healthy,
                 probes = report.Probes.Select(p => new
                 {
-                    name = p.Name, ok = p.Ok, detail = p.Detail,
+                    name = p.Name,
+                    ok = p.Ok,
+                    detail = p.Detail,
                 }),
             };
             Console.WriteLine(JsonSerializer.Serialize(payload,

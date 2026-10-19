@@ -1,6 +1,8 @@
 using System.Text.Json;
+
 using OpenHandsNET.Cli.Services;
 using OpenHandsNET.Eval;
+
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -127,9 +129,13 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
 
         await File.WriteAllTextAsync(
             Path.Combine(outDir, "suite.json"), JsonSerializer.Serialize(
-                new { suite = suiteName, total = results.Count,
+                new
+                {
+                    suite = suiteName,
+                    total = results.Count,
                     pass = results.Count(r => r.Pass),
-                    score = results.Average(r => r.Score) },
+                    score = results.Average(r => r.Score)
+                },
                 Json), ct);
 
         var regressions = CheckGate(s, results);
@@ -137,8 +143,10 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
         {
             AnsiConsole.WriteLine(JsonSerializer.Serialize(new
             {
-                suite = suiteName, out_dir = outDir,
-                total = results.Count, pass = results.Count(r => r.Pass),
+                suite = suiteName,
+                out_dir = outDir,
+                total = results.Count,
+                pass = results.Count(r => r.Pass),
                 score = results.Average(r => r.Score),
                 regressions = regressions.Select(r => r.Task).ToArray(),
             }));
@@ -295,7 +303,9 @@ public sealed class EvalReportCommand : Command<EvalReportCommand.Settings>
                 score = results.Count > 0 ? results.Average(r => r.Score) : 0,
                 regressions = regressions.Select(r => new
                 {
-                    task = r.Task, baseline = r.BaselineScore, score = r.Score,
+                    task = r.Task,
+                    baseline = r.BaselineScore,
+                    score = r.Score,
                 }).ToArray(),
             }));
         }

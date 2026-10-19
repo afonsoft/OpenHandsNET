@@ -1,6 +1,8 @@
 using System.Text;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Agent;
 
 namespace OpenHandsNET.Infrastructure.Agent.Context;

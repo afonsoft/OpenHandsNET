@@ -30,11 +30,13 @@ public sealed class CredentialStoreTests : IDisposable
     {
         await _store.SaveAsync(new CredentialStore.Credential
         {
-            ServerUrl = "http://x", ApiKey = "sk-one",
+            ServerUrl = "http://x",
+            ApiKey = "sk-one",
         });
         await _store.SaveAsync(new CredentialStore.Credential
         {
-            ServerUrl = "http://x", ApiKey = "sk-two",
+            ServerUrl = "http://x",
+            ApiKey = "sk-two",
         });
 
         (await _store.LoadAllAsync()).ShouldHaveSingleItem()
@@ -46,11 +48,13 @@ public sealed class CredentialStoreTests : IDisposable
     {
         await _store.SaveAsync(new CredentialStore.Credential
         {
-            ServerUrl = "http://a", ApiKey = "sk-a",
+            ServerUrl = "http://a",
+            ApiKey = "sk-a",
         });
         await _store.SaveAsync(new CredentialStore.Credential
         {
-            ServerUrl = "http://b", ApiKey = "sk-b",
+            ServerUrl = "http://b",
+            ApiKey = "sk-b",
         });
 
         (await _store.DeleteAsync("http://a")).ShouldBeTrue();
@@ -64,7 +68,8 @@ public sealed class CredentialStoreTests : IDisposable
     {
         var c = new CredentialStore.Credential
         {
-            ServerUrl = "http://x", ApiKey = "sk-super-secret-value",
+            ServerUrl = "http://x",
+            ApiKey = "sk-super-secret-value",
         };
         c.Masked.ShouldBe("sk-***alue");
         c.Masked.ShouldNotContain("super-secret");
@@ -80,7 +85,8 @@ public sealed class CredentialStoreTests : IDisposable
 
         await _store.SaveAsync(new CredentialStore.Credential
         {
-            ServerUrl = "http://x", ApiKey = "sk-k",
+            ServerUrl = "http://x",
+            ApiKey = "sk-k",
         });
 
         var mode = File.GetUnixFileMode(

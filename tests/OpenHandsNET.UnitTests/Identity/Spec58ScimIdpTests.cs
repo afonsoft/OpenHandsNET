@@ -2,10 +2,13 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Infrastructure.Identity;
 using OpenHandsNET.Infrastructure.Persistence;
+
 using Shouldly;
+
 using Xunit;
 
 namespace OpenHandsNET.UnitTests.Identity;
@@ -83,7 +86,8 @@ public sealed class Spec58ScimIdpTests : IDisposable
     {
         var u = new UserRecord
         {
-            Id = Guid.NewGuid(), Email = email,
+            Id = Guid.NewGuid(),
+            Email = email,
             CreatedAt = DateTimeOffset.UtcNow,
         };
         _db.Users.Add(u);
@@ -140,8 +144,11 @@ public sealed class Spec58ScimIdpTests : IDisposable
             Org, "gold", "{\"max_conversations_per_day\":50}", default);
         _db.OrgMembers.Add(new OrgMemberRecord
         {
-            OrgId = Org, UserId = uid, Role = "owner",
-            Source = "manual", CreatedAt = DateTimeOffset.UtcNow,
+            OrgId = Org,
+            UserId = uid,
+            Role = "owner",
+            Source = "manual",
+            CreatedAt = DateTimeOffset.UtcNow,
         });
         _db.SaveChanges();
         await _svc.CreateMappingAsync(Org, "eng", "member", tier.Id, default);
@@ -159,21 +166,28 @@ public sealed class Spec58ScimIdpTests : IDisposable
         var uid = SeedUser();
         var plan = new PlanRecord
         {
-            Id = Guid.NewGuid(), Name = "pro",
+            Id = Guid.NewGuid(),
+            Name = "pro",
             LimitsJson = "{\"max_conversations_per_day\":10}",
         };
         _db.Plans.Add(plan);
         _db.Organizations.Add(new OrganizationRecord
         {
-            Id = Org, Slug = "o", Name = "O", PlanId = plan.Id,
+            Id = Org,
+            Slug = "o",
+            Name = "O",
+            PlanId = plan.Id,
             CreatedAt = DateTimeOffset.UtcNow,
         });
         var tier = await _svc.CreateTierAsync(
             Org, "gold", "{\"max_conversations_per_day\":50}", default);
         _db.OrgMembers.Add(new OrgMemberRecord
         {
-            OrgId = Org, UserId = uid, Role = "member",
-            Source = "idp", UsageTierId = tier.Id,
+            OrgId = Org,
+            UserId = uid,
+            Role = "member",
+            Source = "idp",
+            UsageTierId = tier.Id,
             CreatedAt = DateTimeOffset.UtcNow,
         });
         _db.SaveChanges();

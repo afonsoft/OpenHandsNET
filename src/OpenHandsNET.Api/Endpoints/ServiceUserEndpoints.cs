@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using OpenHandsNET.Application.Identity;
+
 using OpenHandsNET.Api.Policies;
+using OpenHandsNET.Application.Identity;
 
 namespace OpenHandsNET.Api.Endpoints;
 

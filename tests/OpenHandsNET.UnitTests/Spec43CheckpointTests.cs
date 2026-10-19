@@ -1,11 +1,15 @@
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Checkpoints;
 using OpenHandsNET.Application.Git;
 using OpenHandsNET.Application.Sandbox;
 using OpenHandsNET.Domain.Sandbox;
 using OpenHandsNET.Infrastructure.Checkpoints;
+
 using Shouldly;
+
 using Xunit;
+
 using DomainSandbox = OpenHandsNET.Domain.Sandbox.Sandbox;
 
 namespace OpenHandsNET.UnitTests;

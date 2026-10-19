@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Domain.Identity;
 using OpenHandsNET.Domain.Sandbox;
@@ -8,6 +9,7 @@ using OpenHandsNET.Infrastructure.Conversations;
 using OpenHandsNET.Infrastructure.Identity;
 using OpenHandsNET.Infrastructure.Persistence;
 using OpenHandsNET.Infrastructure.Sandbox;
+
 using DomainSandboxStatus = OpenHandsNET.Domain.Sandbox.SandboxStatus;
 
 namespace OpenHandsNET.UnitTests.Identity;
@@ -50,7 +52,9 @@ public sealed class PlanEnforcementTests : IDisposable
         var slug = $"org-{Guid.NewGuid():N}"[..20];
         var org = new OrganizationRecord
         {
-            Id = Guid.NewGuid(), Name = slug, Slug = slug,
+            Id = Guid.NewGuid(),
+            Name = slug,
+            Slug = slug,
             CreatedAt = DateTimeOffset.UtcNow,
         };
         _db.Organizations.Add(org);
@@ -58,7 +62,8 @@ public sealed class PlanEnforcementTests : IDisposable
         {
             var plan = new PlanRecord
             {
-                Id = Guid.NewGuid(), Name = $"p-{Guid.NewGuid():N}"[..16],
+                Id = Guid.NewGuid(),
+                Name = $"p-{Guid.NewGuid():N}"[..16],
                 LimitsJson = limitsJson,
             };
             _db.Plans.Add(plan);
@@ -72,7 +77,8 @@ public sealed class PlanEnforcementTests : IDisposable
     private ConversationRecord NewConversation(
         Guid? orgId, string status = "Stopped") => new()
         {
-            Id = Guid.NewGuid(), OrgId = orgId,
+            Id = Guid.NewGuid(),
+            OrgId = orgId,
             ExecutionStatus = status,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
@@ -135,7 +141,9 @@ public sealed class PlanEnforcementTests : IDisposable
     {
         _db.Plans.Add(new PlanRecord
         {
-            Id = Guid.NewGuid(), Name = "free", LimitsJson = "{}",
+            Id = Guid.NewGuid(),
+            Name = "free",
+            LimitsJson = "{}",
         });
         await _db.SaveChangesAsync();
         var p = await Enforcement().GetEffectivePlanAsync(
@@ -160,14 +168,18 @@ public sealed class PlanEnforcementTests : IDisposable
         var orgId = await SeedOrgAsync("""{"max_concurrent_runs": 1}""");
         var subPlan = new PlanRecord
         {
-            Id = Guid.NewGuid(), Name = "team",
+            Id = Guid.NewGuid(),
+            Name = "team",
             LimitsJson = """{"max_concurrent_runs": 9}""",
         };
         _db.Plans.Add(subPlan);
         _db.Subscriptions.Add(new SubscriptionRecord
         {
-            Id = Guid.NewGuid(), OrgId = orgId, PlanId = subPlan.Id,
-            Status = "active", StartedAt = DateTimeOffset.UtcNow,
+            Id = Guid.NewGuid(),
+            OrgId = orgId,
+            PlanId = subPlan.Id,
+            Status = "active",
+            StartedAt = DateTimeOffset.UtcNow,
         });
         await _db.SaveChangesAsync();
         var p = await Enforcement().GetEffectivePlanAsync(
@@ -182,7 +194,9 @@ public sealed class PlanEnforcementTests : IDisposable
         var orgId = await SeedOrgAsync("""{"max_concurrent_runs": 4}""");
         _db.Subscriptions.Add(new SubscriptionRecord
         {
-            Id = Guid.NewGuid(), OrgId = orgId, PlanId = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
+            OrgId = orgId,
+            PlanId = Guid.NewGuid(),
             Status = "ended",
             StartedAt = DateTimeOffset.UtcNow.AddDays(-60),
             EndedAt = DateTimeOffset.UtcNow.AddDays(-30),
@@ -217,7 +231,8 @@ public sealed class PlanEnforcementTests : IDisposable
             // ontem não conta
             new ConversationRecord
             {
-                Id = Guid.NewGuid(), OrgId = orgId,
+                Id = Guid.NewGuid(),
+                OrgId = orgId,
                 ExecutionStatus = "Stopped",
                 CreatedAt = DateTimeOffset.UtcNow.AddDays(-1),
                 UpdatedAt = DateTimeOffset.UtcNow.AddDays(-1),
@@ -252,7 +267,8 @@ public sealed class PlanEnforcementTests : IDisposable
         _db.Conversations.Add(conv);
         _db.Sandboxes.Add(new SandboxRecord
         {
-            Id = Guid.NewGuid(), SpecId = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
+            SpecId = Guid.NewGuid(),
             ConversationId = conv.Id,
             Status = nameof(DomainSandboxStatus.Running),
             CreatedAt = DateTimeOffset.UtcNow,
@@ -273,8 +289,11 @@ public sealed class PlanEnforcementTests : IDisposable
         var period = DateTimeOffset.UtcNow.ToString("yyyy-MM");
         _db.UsageRecords.Add(new UsageRecord
         {
-            Id = Guid.NewGuid(), OrgId = orgId, Period = period,
-            TokensUsed = 1200, RecordedAt = DateTimeOffset.UtcNow,
+            Id = Guid.NewGuid(),
+            OrgId = orgId,
+            Period = period,
+            TokensUsed = 1200,
+            RecordedAt = DateTimeOffset.UtcNow,
         });
         await _db.SaveChangesAsync();
         var err = await Enforcement()
@@ -293,7 +312,8 @@ public sealed class PlanEnforcementTests : IDisposable
         _db.Conversations.Add(conv);
         _db.Sandboxes.Add(new SandboxRecord
         {
-            Id = Guid.NewGuid(), SpecId = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
+            SpecId = Guid.NewGuid(),
             ConversationId = conv.Id,
             Status = nameof(DomainSandboxStatus.Running),
             CreatedAt = DateTimeOffset.UtcNow.AddHours(-1),
@@ -314,7 +334,8 @@ public sealed class PlanEnforcementTests : IDisposable
         _db.Conversations.Add(conv);
         _db.Sandboxes.Add(new SandboxRecord
         {
-            Id = Guid.NewGuid(), SpecId = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
+            SpecId = Guid.NewGuid(),
             ConversationId = conv.Id,
             Status = nameof(DomainSandboxStatus.Running),
             CreatedAt = DateTimeOffset.UtcNow.AddDays(-1),
@@ -389,13 +410,18 @@ public sealed class PlanEnforcementTests : IDisposable
         var orgId = await SeedOrgAsync();
         var plan = new PlanRecord
         {
-            Id = Guid.NewGuid(), Name = "team", LimitsJson = "{}",
+            Id = Guid.NewGuid(),
+            Name = "team",
+            LimitsJson = "{}",
         };
         _db.Plans.Add(plan);
         _db.Subscriptions.Add(new SubscriptionRecord
         {
-            Id = Guid.NewGuid(), OrgId = orgId, PlanId = plan.Id,
-            Status = "active", StartedAt = DateTimeOffset.UtcNow,
+            Id = Guid.NewGuid(),
+            OrgId = orgId,
+            PlanId = plan.Id,
+            Status = "active",
+            StartedAt = DateTimeOffset.UtcNow,
         });
         await _db.SaveChangesAsync();
         (await new PlanAdminService(_db)

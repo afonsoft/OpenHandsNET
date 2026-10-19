@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Api.Routing;
 using OpenHandsNET.Sandboxing;
+
 using Shouldly;
 
 namespace OpenHandsNET.UnitTests.Eval;
@@ -14,7 +16,7 @@ public sealed class PreviewTokenTests
 {
     private static PreviewTokenService NewSvc(string? secret = "s3cret") =>
         new(Options.Create(new SandboxOptions
-            { PreviewTokenSecret = secret }),
+        { PreviewTokenSecret = secret }),
             NullLogger<PreviewTokenService>.Instance);
 
     [Fact]

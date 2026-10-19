@@ -59,7 +59,7 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                 name: "ix_conversations_created_at_ticks",
                 table: "conversations",
                 column: "created_at_ticks");
-        
+
             // Backfill: timestamptz → UtcTicks (epoch numeric = exata).
             const string ticksExpr =
                 "CAST((EXTRACT(EPOCH FROM {0}) + 62135596800) * 10000000 AS bigint)";

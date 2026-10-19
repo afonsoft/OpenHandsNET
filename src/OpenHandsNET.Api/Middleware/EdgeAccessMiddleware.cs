@@ -1,7 +1,9 @@
 using System.Net;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Infrastructure.Persistence;
 
 namespace OpenHandsNET.Api.Middleware;

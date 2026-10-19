@@ -1,7 +1,9 @@
 using System.Security.Cryptography;
 using System.Text;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using OpenHandsNET.Application.Automations;
 using OpenHandsNET.Application.Conversations;
 using OpenHandsNET.Application.Events;
@@ -146,7 +148,8 @@ public sealed class AutomationService(
             Weekday = req.Weekday,
             Enabled = req.Enabled ?? true,
             NextRunAt = req.NextRunAt,
-            CreatedAt = now, UpdatedAt = now,
+            CreatedAt = now,
+            UpdatedAt = now,
         };
         Reschedule(rec, now);
         db.Automations.Add(rec);
@@ -252,10 +255,13 @@ public sealed class AutomationService(
         {
             var skipped = new AutomationRunRecord
             {
-                Id = Guid.NewGuid(), AutomationId = rec.Id,
-                StartedAt = now, StartedAtTicks = now.UtcTicks,
+                Id = Guid.NewGuid(),
+                AutomationId = rec.Id,
+                StartedAt = now,
+                StartedAtTicks = now.UtcTicks,
                 FinishedAt = now,
-                Status = "skipped", Error = "previous run still running",
+                Status = "skipped",
+                Error = "previous run still running",
             };
             db.AutomationRuns.Add(skipped);
             await db.SaveChangesAsync(ct);
@@ -266,8 +272,10 @@ public sealed class AutomationService(
 
         var run = new AutomationRunRecord
         {
-            Id = Guid.NewGuid(), AutomationId = rec.Id,
-            StartedAt = now, StartedAtTicks = now.UtcTicks,
+            Id = Guid.NewGuid(),
+            AutomationId = rec.Id,
+            StartedAt = now,
+            StartedAtTicks = now.UtcTicks,
             Status = "running",
         };
         db.AutomationRuns.Add(run);
@@ -288,7 +296,8 @@ public sealed class AutomationService(
             {
                 await events.AppendAsync(convId, new AgentDiagnosticEvent
                 {
-                    Severity = "info", Code = "automation",
+                    Severity = "info",
+                    Code = "automation",
                     Message = $"fired by automation:{rec.Id} ({rec.Name})",
                 }, CancellationToken.None);
             }
@@ -325,15 +334,20 @@ public sealed class AutomationService(
                 targetId: rec.Id.ToString(), ip: ip,
                 metadata: new
                 {
-                    run_id = run.Id, run.Status,
-                    run.ConversationId, actor,
+                    run_id = run.Id,
+                    run.Status,
+                    run.ConversationId,
+                    actor,
                 }, cancellationToken: CancellationToken.None);
             await audit.RecordAsync("automation_run_created",
                 actorUserId: rec.CreatedByUserId, orgId: rec.OrgId,
                 targetType: "automation_run", targetId: run.Id.ToString(),
                 ip: ip, metadata: new
                 {
-                    rec.Name, run.Status, run.ConversationId, actor,
+                    rec.Name,
+                    run.Status,
+                    run.ConversationId,
+                    actor,
                 }, cancellationToken: CancellationToken.None);
         }
 
@@ -396,7 +410,8 @@ public sealed class AutomationService(
             RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
         var rec = new AutomationHookRecord
         {
-            Id = Guid.NewGuid(), AutomationId = automationId,
+            Id = Guid.NewGuid(),
+            AutomationId = automationId,
             TokenHash = HashToken(token),
             CreatedAt = DateTimeOffset.UtcNow,
         };

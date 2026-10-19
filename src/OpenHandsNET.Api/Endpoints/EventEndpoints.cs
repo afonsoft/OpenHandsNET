@@ -1,4 +1,5 @@
 using System.Text.Json;
+
 using OpenHandsNET.Api.ProblemDetails;
 using OpenHandsNET.Application.Events;
 using OpenHandsNET.Domain.Events;

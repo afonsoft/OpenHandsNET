@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Identity;
+
 using StackExchange.Redis;
 
 namespace OpenHandsNET.Infrastructure.Cache;

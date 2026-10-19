@@ -1,7 +1,9 @@
 using k8s;
 using k8s.Models;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Sandbox;
 
 namespace OpenHandsNET.Sandboxing;
@@ -87,7 +89,8 @@ public sealed class KubernetesSandboxEngine(
         {
             Metadata = new V1ObjectMeta
             {
-                Name = request.Name, NamespaceProperty = Ns,
+                Name = request.Name,
+                NamespaceProperty = Ns,
                 Labels = new Dictionary<string, string>(request.Labels)
                 {
                     [EngineLabels.Managed] = "true",
@@ -535,7 +538,8 @@ public sealed class KubernetesSandboxEngine(
             {
                 Metadata = new V1ObjectMeta
                 {
-                    Name = name, NamespaceProperty = Ns,
+                    Name = name,
+                    NamespaceProperty = Ns,
                     Labels = new Dictionary<string, string>
                     {
                         [EngineLabels.Managed] = "true",

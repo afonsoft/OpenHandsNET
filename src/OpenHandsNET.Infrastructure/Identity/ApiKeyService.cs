@@ -1,9 +1,11 @@
 using System.Security.Cryptography;
-using System.Text.Json;
 using System.Text;
+using System.Text.Json;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Infrastructure.Persistence;
 

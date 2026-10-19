@@ -1,11 +1,13 @@
 using System.Text;
+
 using Microsoft.EntityFrameworkCore;
+
 using OpenHandsNET.Application.Conversations;
 using OpenHandsNET.Application.Events;
+using OpenHandsNET.Application.Sandbox;
 using OpenHandsNET.Domain.Conversations;
 using OpenHandsNET.Domain.Events;
 using OpenHandsNET.Infrastructure.Persistence;
-using OpenHandsNET.Application.Sandbox;
 
 namespace OpenHandsNET.Infrastructure.Conversations;
 
@@ -95,12 +97,16 @@ public sealed class AppConversationService(
             // Sinaliza ao worker que o agente deve iniciar ao chegar em READY.
             PendingKickoff = request.InitialMessage?.Run == true,
             ExecutionStatus = ConversationExecutionStatus.Starting.ToString(),
-            CreatedAt = now, UpdatedAt = now,
+            CreatedAt = now,
+            UpdatedAt = now,
         };
         var task = new StartTaskRecord
         {
-            Id = Guid.NewGuid(), Status = StartTaskStatus.Working.ToString(),
-            AppConversationId = conv.Id, CreatedAt = now, UpdatedAt = now,
+            Id = Guid.NewGuid(),
+            Status = StartTaskStatus.Working.ToString(),
+            AppConversationId = conv.Id,
+            CreatedAt = now,
+            UpdatedAt = now,
         };
         db.Conversations.Add(conv);
         db.StartTasks.Add(task);

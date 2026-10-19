@@ -1,9 +1,11 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
 using OpenHandsNET.Application.ChatOps;
 using OpenHandsNET.Application.Contracts;
 using OpenHandsNET.Application.Conversations;
@@ -89,7 +91,8 @@ public sealed class SlackChatOpsService(
         }
         scoped.WebhookDeliveries.Add(new WebhookDeliveryRecord
         {
-            Id = Guid.NewGuid(), Kind = "slack",
+            Id = Guid.NewGuid(),
+            Kind = "slack",
             DeliveryId = eventId,
             ProcessedAt = DateTimeOffset.UtcNow,
         });

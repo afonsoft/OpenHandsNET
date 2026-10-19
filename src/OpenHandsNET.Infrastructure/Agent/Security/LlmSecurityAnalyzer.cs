@@ -1,7 +1,9 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+
 using Microsoft.Extensions.Caching.Memory;
+
 using OpenHandsNET.Application.Agent;
 
 namespace OpenHandsNET.Infrastructure.Agent.Security;
@@ -65,7 +67,8 @@ public sealed class LlmSecurityAnalyzer(
 
         cache.Set(key, risk, new MemoryCacheEntryOptions
         {
-            Size = 1, AbsoluteExpirationRelativeToNow =
+            Size = 1,
+            AbsoluteExpirationRelativeToNow =
                 TimeSpan.FromMinutes(30),
         });
         return risk;

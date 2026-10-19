@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using OpenHandsNET.Application.ChatOps;
 using OpenHandsNET.Infrastructure.Persistence;
 

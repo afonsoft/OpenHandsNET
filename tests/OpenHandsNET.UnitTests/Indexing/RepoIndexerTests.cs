@@ -1,5 +1,7 @@
 using OpenHandsNET.Infrastructure.Indexing;
+
 using Shouldly;
+
 using Xunit;
 
 namespace OpenHandsNET.UnitTests.Indexing;

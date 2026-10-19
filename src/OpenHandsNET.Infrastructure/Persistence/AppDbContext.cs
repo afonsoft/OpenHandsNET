@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Domain.Configuration;
 using OpenHandsNET.Infrastructure.Eventing;
 

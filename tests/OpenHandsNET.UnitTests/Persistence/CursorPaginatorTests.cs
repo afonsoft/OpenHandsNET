@@ -1,4 +1,5 @@
 using OpenHandsNET.Infrastructure.Persistence;
+
 using Shouldly;
 
 namespace OpenHandsNET.UnitTests.Persistence;

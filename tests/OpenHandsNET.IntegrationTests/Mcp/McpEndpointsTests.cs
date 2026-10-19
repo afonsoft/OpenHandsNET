@@ -1,11 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Logging;
+
 using Shouldly;
 
 namespace OpenHandsNET.IntegrationTests.Mcp;
@@ -119,7 +121,8 @@ public sealed class McpEndpointsTests : IAsyncDisposable
             {
                 await ctx.Response.WriteAsJsonAsync(new
                 {
-                    jsonrpc = "2.0", id,
+                    jsonrpc = "2.0",
+                    id,
                     error = new { code = -32601, message = "not found" },
                 });
                 return;
@@ -127,7 +130,9 @@ public sealed class McpEndpointsTests : IAsyncDisposable
 
             await ctx.Response.WriteAsJsonAsync(new
             {
-                jsonrpc = "2.0", id, result,
+                jsonrpc = "2.0",
+                id,
+                result,
             });
         });
 
@@ -240,7 +245,8 @@ public sealed class McpEndpointsTests : IAsyncDisposable
         {
             server = new
             {
-                name = "broken", transport = "http",
+                name = "broken",
+                transport = "http",
                 url = "http://127.0.0.1:1/mcp",
             },
         }, Json);
@@ -336,8 +342,10 @@ public sealed class McpEndpointsTests : IAsyncDisposable
         // Tool call direto → echo via MCP-HTTP fake.
         var call = await _http.PostAsJsonAsync("/api/v1/mcp/tool-call", new
         {
-            conversation_id = convId, server = "call-http",
-            tool = "echo", arguments = new { text = "hello-mcp" },
+            conversation_id = convId,
+            server = "call-http",
+            tool = "echo",
+            arguments = new { text = "hello-mcp" },
         });
         call.StatusCode.ShouldBe(HttpStatusCode.OK,
             await call.Content.ReadAsStringAsync());

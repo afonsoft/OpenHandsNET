@@ -1,8 +1,8 @@
 using OpenHandsNET.Api.ProblemDetails;
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Application.Knowledge;
-using OpenHandsNET.Infrastructure.Knowledge;
 using OpenHandsNET.Application.Memory;
+using OpenHandsNET.Infrastructure.Knowledge;
 
 namespace OpenHandsNET.Api.Endpoints;
 

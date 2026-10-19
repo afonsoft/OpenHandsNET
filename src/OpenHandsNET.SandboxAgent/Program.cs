@@ -361,7 +361,9 @@ app.MapGet("/surfaces", (HttpContext http) =>
 
     return Results.Ok(surfaces.Active().Select(s => new
     {
-        name = s.Name, port = s.Port, protocol = s.Protocol,
+        name = s.Name,
+        port = s.Port,
+        protocol = s.Protocol,
     }).ToList());
 });
 

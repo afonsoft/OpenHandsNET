@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Infrastructure.Sandbox;
 using OpenHandsNET.Sandboxing;
 
@@ -36,7 +37,9 @@ public sealed class Spec17BlueprintTests : IDisposable
         spec.Image.ShouldBe("ghcr.io/openhandsnet/runtime:custom");
         spec.Sdks.ShouldBe(new Dictionary<string, string>
         {
-            ["dotnet"] = "10", ["node"] = "22", ["python"] = "",
+            ["dotnet"] = "10",
+            ["node"] = "22",
+            ["python"] = "",
         });
         spec.Env["DOTNET_CLI_TELEMETRY_OPTOUT"].ShouldBe("1");
         spec.Env["FOO"].ShouldBe("bar");
@@ -115,7 +118,9 @@ public sealed class Spec17BlueprintTests : IDisposable
         var targets = pool.PoolTargets();
         targets.ShouldBe(new Dictionary<string, int>
         {
-            ["img/default:1"] = 2, ["img/a"] = 3, ["img/b"] = 1,
+            ["img/default:1"] = 2,
+            ["img/a"] = 3,
+            ["img/b"] = 1,
         });
     }
 

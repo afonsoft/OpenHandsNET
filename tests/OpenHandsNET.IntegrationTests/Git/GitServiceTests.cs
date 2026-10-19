@@ -1,15 +1,18 @@
 using Docker.DotNet;
 using Docker.DotNet.Models;
+
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Git;
 using OpenHandsNET.Infrastructure.Git;
 using OpenHandsNET.Infrastructure.Persistence;
 using OpenHandsNET.Infrastructure.Sandbox;
 using OpenHandsNET.Sandboxing;
+
 using Shouldly;
 
 namespace OpenHandsNET.IntegrationTests.Git;
@@ -55,7 +58,8 @@ public sealed class GitServiceTests : IAsyncLifetime
         await EnsureGitImageAsync();
         var opts = Options.Create(new SandboxOptions
         {
-            WorkspaceRoot = _wsRoot, InstanceOwner = _owner,
+            WorkspaceRoot = _wsRoot,
+            InstanceOwner = _owner,
         });
         var provisioner = new WorkspaceProvisioner(opts,
             NullLogger<WorkspaceProvisioner>.Instance);

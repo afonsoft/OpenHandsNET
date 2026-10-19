@@ -1,7 +1,9 @@
 using System.Security.Cryptography;
 using System.Text;
+
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+
 using OpenHandsNET.Application.BrowserProfiles;
 using OpenHandsNET.Infrastructure.Persistence;
 
@@ -74,9 +76,13 @@ public sealed class BrowserProfileService(
         {
             row = new BrowserProfileRecord
             {
-                Id = Guid.NewGuid(), OrgId = db.CurrentOrgId,
-                OwnerId = ownerId, Domain = normalized,
-                Name = name, Ciphertext = ciphertext, Nonce = nonce,
+                Id = Guid.NewGuid(),
+                OrgId = db.CurrentOrgId,
+                OwnerId = ownerId,
+                Domain = normalized,
+                Name = name,
+                Ciphertext = ciphertext,
+                Nonce = nonce,
                 ExpiresAt = expiresAt,
             };
             db.BrowserProfiles.Add(row);

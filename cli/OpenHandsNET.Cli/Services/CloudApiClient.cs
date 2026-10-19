@@ -342,7 +342,10 @@ public sealed class CloudApiClient
             $"{BaseUrl}/api/v1/app-conversations/{conversationId}/pull-request",
             new
             {
-                title, body, @base = baseBranch, draft,
+                title,
+                body,
+                @base = baseBranch,
+                draft,
             }, Json, ct);
         await EnsureAsync(resp, ct);
         return await resp.Content.ReadFromJsonAsync<JsonElement>(ct);

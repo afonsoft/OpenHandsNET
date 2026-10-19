@@ -2,10 +2,13 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Infrastructure.Identity;
 using OpenHandsNET.Infrastructure.Persistence;
+
 using Shouldly;
+
 using Xunit;
 
 namespace OpenHandsNET.UnitTests.Identity;
@@ -145,7 +148,9 @@ public sealed class Spec57ServiceUsersTests : IDisposable
         var userId = Guid.NewGuid();
         _db.Users.Add(new UserRecord
         {
-            Id = userId, Email = "u@t.com", CreatedAt = DateTimeOffset.UtcNow,
+            Id = userId,
+            Email = "u@t.com",
+            CreatedAt = DateTimeOffset.UtcNow,
         });
         await _db.SaveChangesAsync();
 

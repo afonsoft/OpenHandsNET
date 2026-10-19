@@ -2,7 +2,9 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+
 using Microsoft.Extensions.Logging;
+
 using OpenHandsNET.Application.Contracts;
 using OpenHandsNET.Application.Scm;
 
@@ -565,7 +567,8 @@ public sealed class AzureDevOpsScmProvider(
                 state = state == "failure" ? "failed"
                     : state == "success" ? "succeeded" : "pending",
                 context = new { name = context, genre = "openhandsnet" },
-                targetUrl, description,
+                targetUrl,
+                description,
             }, ct);
         if (!resp.IsSuccessStatusCode)
         {

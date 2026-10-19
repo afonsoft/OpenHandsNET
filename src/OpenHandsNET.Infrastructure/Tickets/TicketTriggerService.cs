@@ -1,6 +1,8 @@
 using System.Text.Json;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using OpenHandsNET.Application.Conversations;
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Application.Tickets;
@@ -198,7 +200,9 @@ public sealed class TicketTriggerService(
             targetId: convId?.ToString(),
             metadata: new
             {
-                kind = c.Kind.ToWire(), ev.IssueKey, ev.EventKind,
+                kind = c.Kind.ToWire(),
+                ev.IssueKey,
+                ev.EventKind,
             },
             cancellationToken: ct);
     }
@@ -287,7 +291,8 @@ public sealed class TicketTriggerService(
         db.WebhookDeliveries.Add(
             new OpenHandsNET.Infrastructure.Scm.WebhookDeliveryRecord
             {
-                Id = Guid.NewGuid(), Kind = "ticket",
+                Id = Guid.NewGuid(),
+                Kind = "ticket",
                 DeliveryId = deliveryId,
                 ProcessedAt = DateTimeOffset.UtcNow,
             });

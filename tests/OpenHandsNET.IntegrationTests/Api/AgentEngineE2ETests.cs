@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 
@@ -53,7 +54,8 @@ public sealed class AgentEngineE2ETests : IDisposable
             using var p = System.Diagnostics.Process.Start(
                 new System.Diagnostics.ProcessStartInfo("docker", "info")
                 {
-                    RedirectStandardOutput = true, RedirectStandardError = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
                 })!;
             p.WaitForExit(5000);
             return p.ExitCode == 0;

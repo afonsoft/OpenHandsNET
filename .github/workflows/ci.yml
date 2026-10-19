@@ -36,6 +36,9 @@ jobs:
       - name: restore
         run: dotnet restore OpenHandsNET.slnx
 
+      - name: lint (dotnet format)
+        run: dotnet format OpenHandsNET.slnx --verify-no-changes
+
       - name: build (Release)
         run: dotnet build OpenHandsNET.slnx -c Release --no-restore
 
@@ -89,3 +92,42 @@ jobs:
           POSTGRES_PASSWORD=ci KEYCLOAK_ADMIN_PASSWORD=ci \
             docker compose -f docker-compose.yaml \
             -f docker-compose.postgres.yaml config -q
+
+  sonarcloud:
+    name: sonarcloud analysis
+    runs-on: ubuntu-latest
+    # Ativar criando o repo variable SONAR_ENABLED=true e o secret SONAR_TOKEN
+    # (SonarCloud org afonsoft, projeto afonsoft_OpenHandsNET).
+    if: vars.SONAR_ENABLED == 'true'
+    steps:
+      - name: checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: setup java 17 (sonar scanner)
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: setup dotnet 10
+        uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d # v5.0.0
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: install sonar scanner
+        run: dotnet tool install --global dotnet-sonarscanner
+
+      - name: sonar begin
+        run: >
+          dotnet-sonarscanner begin
+          /k:"afonsoft_OpenHandsNET" /o:"afonsoft"
+          /d:sonar.host.url="https://sonarcloud.io"
+          /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+
+      - name: build (Release)
+        run: dotnet build OpenHandsNET.slnx -c Release
+
+      - name: sonar end
+        run: dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"

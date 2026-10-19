@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Domain.Identity;
 using OpenHandsNET.Domain.Sandbox;
@@ -226,7 +227,8 @@ public sealed class PlanEnforcementService(
                 where c.OrgId == orgId && s.CreatedAtTicks < nowTicks
                 select new
                 {
-                    s.Status, s.CreatedAtTicks,
+                    s.Status,
+                    s.CreatedAtTicks,
                     ExpiresTicks = s.ExpiresAtTicks ?? nowTicks,
                 }).ToListAsync(ct);
             var seconds = (long)used.Sum(s =>

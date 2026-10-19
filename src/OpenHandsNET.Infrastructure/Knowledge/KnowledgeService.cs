@@ -1,9 +1,11 @@
 using System.Text.Json;
+
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Application.Knowledge;
 using OpenHandsNET.Application.Memory;
@@ -65,8 +67,10 @@ public sealed class KnowledgeService(
     {
         var rec = new KnowledgeSuggestionRecord
         {
-            Id = Guid.NewGuid(), OrgId = db.CurrentOrgId,
-            Scope = scope, RepoPath = repoPath,
+            Id = Guid.NewGuid(),
+            OrgId = db.CurrentOrgId,
+            Scope = scope,
+            RepoPath = repoPath,
             Title = title,
             Content = SecretRedactor.Redact(content),
             Kind = kind.ToString().ToLowerInvariant(),

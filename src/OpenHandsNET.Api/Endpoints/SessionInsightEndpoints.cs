@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+
 using OpenHandsNET.Application.Insights;
 
 namespace OpenHandsNET.Api.Endpoints;

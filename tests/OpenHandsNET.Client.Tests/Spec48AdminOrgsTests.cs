@@ -1,10 +1,14 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+
 using Bunit;
+
 using Microsoft.Extensions.DependencyInjection;
+
 using OpenHandsNET.Client.Pages.Admin;
 using OpenHandsNET.Client.Services;
+
 using Shouldly;
 
 namespace OpenHandsNET.Client.Tests;
@@ -71,8 +75,10 @@ public class Spec48AdminOrgsTests : TestContext
         {
             return Json(new
             {
-                preset = "balanced", analyzer_override = (string?)null,
-                ask_mcp_tools = false, min_confirm_risk = "high",
+                preset = "balanced",
+                analyzer_override = (string?)null,
+                ask_mcp_tools = false,
+                min_confirm_risk = "high",
                 resume_strict = (bool?)null,
             });
         }

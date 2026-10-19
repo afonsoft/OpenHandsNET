@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 using OpenHandsNET.Application.Tickets;
 using OpenHandsNET.Infrastructure.Persistence;
 

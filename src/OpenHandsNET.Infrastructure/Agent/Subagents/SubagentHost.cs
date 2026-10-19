@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+
 using OpenHandsNET.Application.Agent;
 
 namespace OpenHandsNET.Infrastructure.Agent.Subagents;
@@ -38,7 +39,9 @@ public sealed class SubagentHost : ISubagentHost
         {
             run.Info = run.Info with
             {
-                Status = status, Result = result, Error = error,
+                Status = status,
+                Result = result,
+                Error = error,
                 EndedAt = DateTimeOffset.UtcNow,
             };
         }

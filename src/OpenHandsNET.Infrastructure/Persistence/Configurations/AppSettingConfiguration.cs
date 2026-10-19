@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 using OpenHandsNET.Domain.Configuration;
 
 namespace OpenHandsNET.Infrastructure.Persistence.Configurations;

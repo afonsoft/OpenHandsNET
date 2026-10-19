@@ -1,6 +1,8 @@
 using System.Text;
 using System.Text.Json;
+
 using Microsoft.AspNetCore.Http.HttpResults;
+
 using OpenHandsNET.Api.ProblemDetails;
 using OpenHandsNET.Application.Conversations;
 using OpenHandsNET.Application.Git;
@@ -187,7 +189,9 @@ public static class GitEndpoints
         var files = await executor.ListFilesAsync(sb, dir, ct);
         return Results.Ok(files.Select(f => new
         {
-            path = f.Path, is_directory = f.IsDirectory, size = f.Size,
+            path = f.Path,
+            is_directory = f.IsDirectory,
+            size = f.Size,
         }));
     }
 
@@ -614,8 +618,10 @@ public static class GitEndpoints
             TimeSpan.FromSeconds(Math.Clamp(timeoutS, 1, 600)), ct);
         return Results.Ok(new
         {
-            exit_code = r.ExitCode, stdout = r.StdOut,
-            stderr = r.StdErr, timed_out = r.TimedOut,
+            exit_code = r.ExitCode,
+            stdout = r.StdOut,
+            stderr = r.StdErr,
+            timed_out = r.TimedOut,
         });
     }
 

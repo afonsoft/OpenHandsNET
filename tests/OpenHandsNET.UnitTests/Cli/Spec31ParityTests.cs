@@ -1,8 +1,10 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+
 using OpenHandsNET.Cli.Commands;
 using OpenHandsNET.Cli.Services;
+
 using Shouldly;
 
 namespace OpenHandsNET.UnitTests.Cli;

@@ -1,9 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+
 using Shouldly;
 
 namespace OpenHandsNET.IntegrationTests.Api;
@@ -49,8 +51,10 @@ public sealed class Spec43CheckpointEndpointsTests : IDisposable
             .GetRequiredService<OpenHandsNET.Infrastructure.Persistence.AppDbContext>();
         var conv = new OpenHandsNET.Infrastructure.Conversations.ConversationRecord
         {
-            Id = Guid.NewGuid(), ExecutionStatus = status,
-            CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow,
+            Id = Guid.NewGuid(),
+            ExecutionStatus = status,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
         };
         db.Conversations.Add(conv);
         await db.SaveChangesAsync();

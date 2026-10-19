@@ -1,7 +1,10 @@
 using System.Net;
 using System.Text;
+
 using Microsoft.JSInterop;
+
 using OpenHandsNET.Client.Services;
+
 using Shouldly;
 
 namespace OpenHandsNET.Client.Tests;

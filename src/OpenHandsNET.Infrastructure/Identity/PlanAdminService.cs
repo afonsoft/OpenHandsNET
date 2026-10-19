@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Domain.Identity;
 using OpenHandsNET.Infrastructure.Persistence;
@@ -38,8 +39,10 @@ public sealed class PlanAdminService(AppDbContext db) : IPlanAdminService
 
         var plan = new PlanRecord
         {
-            Id = Guid.NewGuid(), Name = name,
-            LimitsJson = limits.ToJson(), MonthlyPriceUsd = monthlyPriceUsd,
+            Id = Guid.NewGuid(),
+            Name = name,
+            LimitsJson = limits.ToJson(),
+            MonthlyPriceUsd = monthlyPriceUsd,
         };
         db.Plans.Add(plan);
         await db.SaveChangesAsync(ct);
@@ -129,8 +132,11 @@ public sealed class PlanAdminService(AppDbContext db) : IPlanAdminService
 
         db.Subscriptions.Add(new SubscriptionRecord
         {
-            Id = Guid.NewGuid(), OrgId = orgId, PlanId = planId,
-            Status = "active", StartedAt = now,
+            Id = Guid.NewGuid(),
+            OrgId = orgId,
+            PlanId = planId,
+            Status = "active",
+            StartedAt = now,
         });
         org.PlanId = planId;
         await db.SaveChangesAsync(ct);

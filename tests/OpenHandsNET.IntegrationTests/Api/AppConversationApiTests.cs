@@ -1,9 +1,11 @@
-using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
+
 using OpenHandsNET.Domain.Sandbox;
 
 namespace OpenHandsNET.IntegrationTests.Api;
@@ -48,7 +50,8 @@ public sealed class AppConversationApiTests : IDisposable
             using var p = System.Diagnostics.Process.Start(
                 new System.Diagnostics.ProcessStartInfo("docker", "info")
                 {
-                    RedirectStandardOutput = true, RedirectStandardError = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
                 })!;
             p.WaitForExit(5000);
             return p.ExitCode == 0;
@@ -193,8 +196,10 @@ public sealed class AppConversationApiTests : IDisposable
         var convs = Enumerable.Range(0, 3).Select(_ =>
             new OpenHandsNET.Infrastructure.Conversations.ConversationRecord
             {
-                Id = Guid.NewGuid(), ExecutionStatus = "Running",
-                CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow,
+                Id = Guid.NewGuid(),
+                ExecutionStatus = "Running",
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
             }).ToList();
         db.Conversations.AddRange(convs);
         await db.SaveChangesAsync();

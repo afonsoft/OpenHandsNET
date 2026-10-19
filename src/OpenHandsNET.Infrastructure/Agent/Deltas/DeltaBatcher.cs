@@ -1,4 +1,5 @@
 using System.Text;
+
 using OpenHandsNET.Application.Events;
 
 namespace OpenHandsNET.Infrastructure.Agent.Deltas;

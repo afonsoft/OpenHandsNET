@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
 using OpenHandsNET.Application.Events;
 using OpenHandsNET.Infrastructure.Cache;
 using OpenHandsNET.Infrastructure.Eventing;

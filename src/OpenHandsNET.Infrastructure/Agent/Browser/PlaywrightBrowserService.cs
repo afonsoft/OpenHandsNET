@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Playwright;
+
 using OpenHandsNET.Application.Agent;
 
 namespace OpenHandsNET.Infrastructure.Agent.Browser;
@@ -226,7 +228,8 @@ public sealed class PlaywrightBrowserService(
                     {
                         ViewportSize = new ViewportSize
                         {
-                            Width = o.ViewportWidth, Height = o.ViewportHeight,
+                            Width = o.ViewportWidth,
+                            Height = o.ViewportHeight,
                         },
                         StorageState = pendingState,
                     });

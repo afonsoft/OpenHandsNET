@@ -1,5 +1,7 @@
 using System.Text.Json;
+
 using Microsoft.EntityFrameworkCore;
+
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Domain.Identity;
 using OpenHandsNET.Infrastructure.Persistence;
@@ -51,8 +53,10 @@ public sealed class UserService(AppDbContext db, IAuditService audit) : IUserSer
                 db.Organizations.Add(org);
                 db.OrgMembers.Add(new OrgMemberRecord
                 {
-                    OrgId = org.Id, UserId = user.Id,
-                    Role = RoleName.Owner, CreatedAt = DateTimeOffset.UtcNow,
+                    OrgId = org.Id,
+                    UserId = user.Id,
+                    Role = RoleName.Owner,
+                    CreatedAt = DateTimeOffset.UtcNow,
                 });
                 user.CurrentOrgId = org.Id.ToString();
             }

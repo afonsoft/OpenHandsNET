@@ -2,10 +2,12 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Mcp;
 using OpenHandsNET.Infrastructure.Persistence;
 
@@ -204,7 +206,9 @@ public sealed class McpOAuthService(
         {
             db.Secrets.Add(new SecretRecord
             {
-                Scope = scope, OwnerId = owner, Name = name,
+                Scope = scope,
+                OwnerId = owner,
+                Name = name,
                 Ciphertext = protector.Protect(plaintext),
                 CreatedAt = DateTimeOffset.UtcNow,
             });

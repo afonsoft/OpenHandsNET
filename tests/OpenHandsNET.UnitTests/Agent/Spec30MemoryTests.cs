@@ -1,8 +1,10 @@
 using System.Text.Json;
+
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+
 using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Application.Discovery;
 using OpenHandsNET.Application.Memory;
@@ -14,6 +16,7 @@ using OpenHandsNET.Infrastructure.Discovery;
 using OpenHandsNET.Infrastructure.Memory;
 using OpenHandsNET.Infrastructure.Persistence;
 using OpenHandsNET.Infrastructure.Skills;
+
 using Shouldly;
 
 namespace OpenHandsNET.UnitTests.Agent;
@@ -56,7 +59,9 @@ public sealed class Spec30MemoryTests
         var convId = Guid.NewGuid();
         db.Conversations.Add(new ConversationRecord
         {
-            Id = convId, OrgId = orgId, ExecutionStatus = "Running",
+            Id = convId,
+            OrgId = orgId,
+            ExecutionStatus = "Running",
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
         });

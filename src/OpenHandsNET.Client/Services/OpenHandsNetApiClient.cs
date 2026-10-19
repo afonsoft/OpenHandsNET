@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+
 using OpenHandsNET.Application.Checkpoints;
 
 namespace OpenHandsNET.Client.Services;
@@ -674,7 +675,8 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
                 CheckpointRevertResult>(Json, ct))!
             : new CheckpointRevertResult
             {
-                Reverted = false, Conflicts = [],
+                Reverted = false,
+                Conflicts = [],
                 Untracked = [$"http {(int)resp.StatusCode}"],
             };
     }

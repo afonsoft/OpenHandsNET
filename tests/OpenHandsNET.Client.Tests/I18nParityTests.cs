@@ -1,5 +1,7 @@
 using System.Text.Json;
+
 using Shouldly;
+
 using Xunit;
 
 namespace OpenHandsNET.Client.Tests;
