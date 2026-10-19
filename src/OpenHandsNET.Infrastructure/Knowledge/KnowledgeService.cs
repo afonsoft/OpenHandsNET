@@ -235,8 +235,6 @@ public sealed class KnowledgeGroomer(
                     scopeFactory.CreateAsyncScope();
                 var svc = scope.ServiceProvider
                     .GetRequiredService<IKnowledgeService>();
-                var db2 = scope.ServiceProvider
-                    .GetRequiredService<AppDbContext>();
                 var report = await svc.GroomAsync(stoppingToken);
                 foreach (var (a, b, sim) in report.Duplicates)
                 {

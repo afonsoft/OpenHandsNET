@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -116,7 +118,8 @@ public static class EvalParser
             };
         }
 
-        return TimeSpan.TryParse(v, out var ts) ? ts : TimeSpan.FromMinutes(10);
+        return TimeSpan.TryParse(v, CultureInfo.InvariantCulture, out var ts)
+            ? ts : TimeSpan.FromMinutes(10);
     }
 
     /// <summary>Valida a task; devolve lista de erros (vazia = ok).</summary>

@@ -273,7 +273,7 @@ public sealed class PlaywrightBrowserService(
                 && options.Value.AutoInstall)
             {
                 logger.LogInformation(
-                    "Playwright browsers missing — installing chromium");
+                    ex, "Playwright browsers missing — installing chromium");
                 var code = await Task.Run(
                     () => Program.Main(["install", "chromium"]), ct);
                 if (code != 0)

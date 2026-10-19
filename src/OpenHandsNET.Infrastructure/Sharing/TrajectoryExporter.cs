@@ -82,7 +82,7 @@ public sealed class TrajectoryExporter(
         IReadOnlyList<string> secretValues, CancellationToken ct)
     {
         var entry = zip.CreateEntry("events.jsonl");
-        await using var stream = entry.Open();
+        await using var stream = await entry.OpenAsync();
         await using var writer = new StreamWriter(stream, Encoding.UTF8);
         foreach (var e in records)
         {
@@ -155,7 +155,7 @@ public sealed class TrajectoryExporter(
         ZipArchive zip, string name, byte[] content, CancellationToken ct)
     {
         var entry = zip.CreateEntry(name);
-        await using var stream = entry.Open();
+        await using var stream = await entry.OpenAsync();
         await stream.WriteAsync(content, ct);
     }
 

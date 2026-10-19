@@ -417,7 +417,7 @@ IResult Dormant(HttpContext _) =>
 IResult Unauthorized(HttpContext _) =>
     Results.Json(new { error = "unauthorized" }, statusCode: 401);
 
-app.Run();
+await app.RunAsync();
 
 
 namespace OpenHandsNET.SandboxAgent

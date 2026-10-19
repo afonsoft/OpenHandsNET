@@ -237,7 +237,7 @@ public sealed class McpOAuthService(
         }
         catch (Exception ex) when (ex is CryptographicException or JsonException)
         {
-            logger.LogWarning("secret {Scope}/{Name} ilegível", scope, name);
+            logger.LogWarning(ex, "secret {Scope}/{Name} ilegível", scope, name);
             return default;
         }
     }

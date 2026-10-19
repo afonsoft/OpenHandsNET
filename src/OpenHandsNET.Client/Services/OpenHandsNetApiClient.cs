@@ -437,7 +437,7 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
         var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
         if (doc.TryGetProperty("encoding", out var enc)
             && enc.GetString() == "base64"
-            && doc.TryGetProperty("content", out var b64))
+            && doc.TryGetProperty("content", out var _))
         {
             return "[binary file — base64 omitted]";
         }

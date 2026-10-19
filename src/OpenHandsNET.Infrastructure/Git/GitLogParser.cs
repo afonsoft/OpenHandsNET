@@ -19,7 +19,9 @@ public static class GitLogParser
 
             entries.Add(new GitLogEntry(
                 f[0], f[1],
-                DateTimeOffset.TryParse(f[2], out var d) ? d : DateTimeOffset.UnixEpoch,
+                DateTimeOffset.TryParse(f[2], System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out var d)
+                    ? d : DateTimeOffset.UnixEpoch,
                 f[3]));
         }
 

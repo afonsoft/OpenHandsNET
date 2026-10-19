@@ -11,7 +11,6 @@ public static class EventRenderer
     public static void Write(JsonElement e)
     {
         var kind = e.TryGetProperty("kind", out var k) ? k.GetString() : "?";
-        var source = e.TryGetProperty("source", out var s) ? s.GetString() : "";
         switch (kind)
         {
             case "MessageEvent":

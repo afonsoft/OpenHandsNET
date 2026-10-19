@@ -72,7 +72,7 @@ public sealed class DoctorService(HttpClient http)
     private static async Task<ProbeResult> ProbeKubectlAsync(
         CancellationToken ct)
     {
-        var (code, output) = await TryRunAsync(
+        var (code, _) = await TryRunAsync(
             "kubectl", "version --client=true -o json", ct);
         if (code < 0)
         {
@@ -93,7 +93,7 @@ public sealed class DoctorService(HttpClient http)
     private static async Task<ProbeResult> ProbeSysboxAsync(
         CancellationToken ct)
     {
-        var (code, output) = await TryRunAsync("kubectl",
+        var (code, _) = await TryRunAsync("kubectl",
             "get runtimeclass sysbox-runc --request-timeout=5s", ct);
         if (code < 0)
         {

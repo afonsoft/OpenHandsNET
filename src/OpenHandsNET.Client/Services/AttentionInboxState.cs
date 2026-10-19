@@ -114,7 +114,7 @@ public sealed class AttentionInboxState(
 
     public async ValueTask DisposeAsync()
     {
-        _cts.Cancel();
+        await _cts.CancelAsync();
         try
         {
             if (_watch is not null)

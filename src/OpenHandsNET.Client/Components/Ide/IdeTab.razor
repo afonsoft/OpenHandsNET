@@ -145,7 +145,7 @@
     private sealed class Tab
     {
         public required string Path { get; init; }
-        public string Name => Path.TrimEnd('/').Split('/').Last();
+        public string Name => Path.TrimEnd('/').Split('/')[^1];
         public string? Etag { get; set; }
         public bool Dirty { get; set; }
         public bool Binary { get; init; }

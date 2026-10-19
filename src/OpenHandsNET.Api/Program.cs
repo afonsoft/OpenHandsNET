@@ -250,7 +250,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseSerilogRequestLogging();
 
-// SPEC-13 RF-004: correlation enrichers em todo log do request.
+// SPEC-13 RF-004: correlation enrichers em cada log do request.
 // (Middleware roda pré-routing → conversation_id vem do path.)
 app.Use(async (ctx, next) =>
 {
@@ -362,7 +362,7 @@ app.UseMetricServer("/metrics");
 // SPA fallback: any non-API route serves the Blazor WASM shell.
 app.MapFallbackToFile("index.html");
 
-app.Run();
+await app.RunAsync();
 
 /// <summary>Entry point exposed for WebApplicationFactory-based integration tests.</summary>
 public partial class Program;

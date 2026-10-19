@@ -10,7 +10,7 @@ namespace OpenHandsNET.Client.Services;
 /// SPEC-26 RF-003: markdown → HTML sanitizado. Markdig com pipeline
 /// avançado (tabelas, task-lists, fenced code) + whitelist via
 /// <see cref="HtmlSanitizer"/> (sem script/iframe/on*/javascript:) —
-/// XSS é o vetor #1 do chat, sanitize é obrigatório em todo render.
+/// XSS é o vetor #1 do chat, sanitize é obrigatório em toda renderização.
 /// </summary>
 public sealed class MarkdownService
 {
