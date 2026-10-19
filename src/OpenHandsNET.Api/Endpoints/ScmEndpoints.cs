@@ -1,5 +1,7 @@
 using System.Text.Json;
+
 using Microsoft.AspNetCore.Mvc;
+
 using OpenHandsNET.Api.ProblemDetails;
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Application.Scm;
@@ -44,7 +46,8 @@ public static class ScmEndpoints
                 ? Results.BadRequest(new { error = "manifest_exchange_failed" })
                 : Results.Ok(new
                 {
-                    id = conn.Id, kind = conn.Kind.ToWire(),
+                    id = conn.Id,
+                    kind = conn.Kind.ToWire(),
                     app_slug = conn.AppSlug,
                 });
         }).RequireAuthorization("perm:manage_integrations");
@@ -79,7 +82,9 @@ public static class ScmEndpoints
                             http, 502, "scm provider error"),
                     (_, { } pr) => Results.Ok(new
                     {
-                        url = pr.Url, number = pr.Number, state = pr.State,
+                        url = pr.Url,
+                        number = pr.Number,
+                        state = pr.State,
                     }),
                     _ => OpenHandsNetProblemFactory.Create(
                         http, 500, "unexpected state"),

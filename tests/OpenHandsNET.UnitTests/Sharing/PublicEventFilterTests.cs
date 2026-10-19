@@ -1,6 +1,9 @@
 using System.Text.Json;
+
 using OpenHandsNET.Infrastructure.Sharing;
+
 using Shouldly;
+
 using Xunit;
 
 namespace OpenHandsNET.UnitTests.Sharing;

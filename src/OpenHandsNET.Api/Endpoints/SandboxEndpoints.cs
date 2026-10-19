@@ -1,4 +1,5 @@
 using System.Text.Json;
+
 using OpenHandsNET.Api.DTOs;
 using OpenHandsNET.Api.ProblemDetails;
 using OpenHandsNET.Application.Sandbox;
@@ -170,22 +171,28 @@ public static class SandboxEndpoints
 
     private static SandboxDto ToDto(Domain.Sandbox.Sandbox s) => new()
     {
-        Id = s.Id.ToString(), SpecId = s.SpecId.ToString(),
+        Id = s.Id.ToString(),
+        SpecId = s.SpecId.ToString(),
         ConversationId = s.ConversationId?.ToString(),
         Status = s.Status.ToString().ToUpperInvariant(),
         Pool = s.Pool,
         PoolKey = s.PoolKey,
         BlueprintStatus = s.BlueprintStatus,
-        CreatedAt = s.CreatedAt, ExpiresAt = s.ExpiresAt,
+        CreatedAt = s.CreatedAt,
+        ExpiresAt = s.ExpiresAt,
     };
 
     private static SandboxSpecDto ToDto(SandboxSpec s) => new()
     {
-        Id = s.Id.ToString(), Name = s.Name, Image = s.Image,
-        MemoryMb = s.MemoryMb, CpuLimit = s.CpuLimit,
+        Id = s.Id.ToString(),
+        Name = s.Name,
+        Image = s.Image,
+        MemoryMb = s.MemoryMb,
+        CpuLimit = s.CpuLimit,
         TimeoutMinutes = s.TimeoutMinutes,
         Env = s.Env?.ToDictionary(kv => kv.Key, kv => kv.Value),
         MountWorkspace = s.MountWorkspace,
-        PidsLimit = s.PidsLimit, Profile = s.Profile,
+        PidsLimit = s.PidsLimit,
+        Profile = s.Profile,
     };
 }

@@ -2,9 +2,11 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Application.Events;
 using OpenHandsNET.Application.Sandbox;
@@ -562,7 +564,8 @@ public sealed class AgentRunner(
                 logger.LogError(cex, "LLM context overflow persists");
                 await events.AppendAsync(conversationId, new AgentErrorEvent
                 {
-                    ToolName = "llm", ToolCallId = "",
+                    ToolName = "llm",
+                    ToolCallId = "",
                     Error = SecretRedactor.Redact(cex.Message),
                 }, CancellationToken.None);
                 await activity.DiagnosticAsync(events, conversationId,
@@ -598,7 +601,8 @@ public sealed class AgentRunner(
                     logger.LogError("LLM auth failure — aborting run");
                     await events.AppendAsync(conversationId, new AgentErrorEvent
                     {
-                        ToolName = "llm", ToolCallId = "",
+                        ToolName = "llm",
+                        ToolCallId = "",
                         Error = SecretRedactor.Redact(lce.Message),
                     }, CancellationToken.None);
                     await SetStatusAsync(events, db, conv, "error",
@@ -613,7 +617,8 @@ public sealed class AgentRunner(
                     logger.LogError("Route wait budget exhausted");
                     await events.AppendAsync(conversationId, new AgentErrorEvent
                     {
-                        ToolName = "llm", ToolCallId = "",
+                        ToolName = "llm",
+                        ToolCallId = "",
                         Error = SecretRedactor.Redact(
                             $"route budget exceeded: {lce.Message}"),
                     }, CancellationToken.None);
@@ -630,7 +635,8 @@ public sealed class AgentRunner(
                     logger.LogError(lce, "LLM call failed — no fallback left");
                     await events.AppendAsync(conversationId, new AgentErrorEvent
                     {
-                        ToolName = "llm", ToolCallId = "",
+                        ToolName = "llm",
+                        ToolCallId = "",
                         Error = SecretRedactor.Redact(lce.Message),
                     }, CancellationToken.None);
                     await SetStatusAsync(events, db, conv, "error",
@@ -655,7 +661,8 @@ public sealed class AgentRunner(
                 logger.LogError(ex, "LLM completion failed");
                 await events.AppendAsync(conversationId, new AgentErrorEvent
                 {
-                    ToolName = "llm", ToolCallId = "",
+                    ToolName = "llm",
+                    ToolCallId = "",
                     Error = SecretRedactor.Redact(ex.Message),
                 }, CancellationToken.None);
                 await activity.SummaryAsync(events, conversationId,
@@ -1079,7 +1086,8 @@ public sealed class AgentRunner(
 
         await events.AppendAsync(conversationId, new AgentErrorEvent
         {
-            ToolName = "loop", ToolCallId = "",
+            ToolName = "loop",
+            ToolCallId = "",
             Error = $"max_iterations ({opt.MaxIterations}) reached",
         }, CancellationToken.None);
         await activity.DiagnosticAsync(events, conversationId, "warn",
@@ -1125,7 +1133,8 @@ public sealed class AgentRunner(
                 await events.AppendAsync(conversationId,
                     new Domain.Events.AgentDiagnosticEvent
                     {
-                        Severity = "warn", Code = "checkpoint_failed",
+                        Severity = "warn",
+                        Code = "checkpoint_failed",
                         Message = $"auto-checkpoint failed: {ex.Message}",
                     }, CancellationToken.None);
             }
@@ -1277,15 +1286,15 @@ public sealed class AgentRunner(
         ISandboxExecutor? executor, CancellationToken ct)
     {
         var compactor = services.GetService<OpenHandsNET.Application.Common.Interfaces.IOutputCompactorService>();
-        
+
         JsonElement payload = result.Observation;
 
         if (compactor != null && payload.ValueKind == JsonValueKind.String)
         {
             var originalText = payload.GetString() ?? string.Empty;
             var compactionResult = await compactor.CompactAsync(originalText, action.ToolName ?? "unknown", ct);
-            
-            payload = JsonDocument.Parse(JsonSerializer.Serialize(new 
+
+            payload = JsonDocument.Parse(JsonSerializer.Serialize(new
             {
                 content = compactionResult.CompactContent,
                 artifact_ref = compactionResult.ArtifactId
@@ -1424,26 +1433,26 @@ public sealed class AgentRunner(
             case "pattern":
                 return new Security.PatternSecurityAnalyzer();
             case "llm":
-            {
-                var llmProvider = services.GetService<IAgentLlmProvider>();
-                var mem = services.GetService<
-                    Microsoft.Extensions.Caching.Memory.IMemoryCache>();
-                if (llmProvider is not null && mem is not null)
                 {
-                    return new Security.LlmSecurityAnalyzer(llmProvider, mem);
-                }
-
-                await events.AppendAsync(conversationId,
-                    new AgentDiagnosticEvent
+                    var llmProvider = services.GetService<IAgentLlmProvider>();
+                    var mem = services.GetService<
+                        Microsoft.Extensions.Caching.Memory.IMemoryCache>();
+                    if (llmProvider is not null && mem is not null)
                     {
-                        Severity = "warning",
-                        Code = "security_analyzer_fallback",
-                        Message = "org policy requests llm analyzer but no "
-                            + "provider is configured — falling back to "
-                            + "the global analyzer",
-                    }, ct);
-                return global;
-            }
+                        return new Security.LlmSecurityAnalyzer(llmProvider, mem);
+                    }
+
+                    await events.AppendAsync(conversationId,
+                        new AgentDiagnosticEvent
+                        {
+                            Severity = "warning",
+                            Code = "security_analyzer_fallback",
+                            Message = "org policy requests llm analyzer but no "
+                                + "provider is configured — falling back to "
+                                + "the global analyzer",
+                        }, ct);
+                    return global;
+                }
             default:
                 return global;
         }
@@ -1475,8 +1484,11 @@ public sealed class AgentRunner(
         string? priorAgent = null;
         foreach (var e in prior.Items.Reverse())
         {
-            if (e is not ConversationStateUpdateEvent { Key: "agent_contract",
-                Value: { } v })
+            if (e is not ConversationStateUpdateEvent
+                {
+                    Key: "agent_contract",
+                    Value: { } v
+                })
             {
                 continue;
             }
@@ -1506,7 +1518,8 @@ public sealed class AgentRunner(
                 await events.AppendAsync(conversationId,
                     new AgentDiagnosticEvent
                     {
-                        Severity = "error", Code = "resume_drift",
+                        Severity = "error",
+                        Code = "resume_drift",
                         Message = msg,
                     }, CancellationToken.None);
                 await SetStatusAsync(events, db, conv, "error",
@@ -1517,7 +1530,8 @@ public sealed class AgentRunner(
             await events.AppendAsync(conversationId,
                 new AgentDiagnosticEvent
                 {
-                    Severity = "warning", Code = "resume_drift",
+                    Severity = "warning",
+                    Code = "resume_drift",
                     Message = msg,
                 }, ct);
         }
@@ -1528,7 +1542,9 @@ public sealed class AgentRunner(
                 Key = "agent_contract",
                 Value = JsonSerializer.SerializeToElement(new
                 {
-                    agent_type = conv.AgentType, tools = names, fingerprint,
+                    agent_type = conv.AgentType,
+                    tools = names,
+                    fingerprint,
                 }, EventJson.Options),
             }, ct);
         return true;

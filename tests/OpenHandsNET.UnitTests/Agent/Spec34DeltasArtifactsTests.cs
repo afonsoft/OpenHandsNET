@@ -1,13 +1,16 @@
 using System.Text;
 using System.Text.Json;
+
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Artifacts;
 using OpenHandsNET.Application.Events;
 using OpenHandsNET.Domain.Events;
 using OpenHandsNET.Infrastructure.Agent.Deltas;
 using OpenHandsNET.Infrastructure.Agent.Tools;
 using OpenHandsNET.Infrastructure.Artifacts;
+
 using Shouldly;
 
 namespace OpenHandsNET.UnitTests.Agent;

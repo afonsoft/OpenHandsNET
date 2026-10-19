@@ -1,6 +1,7 @@
+using Microsoft.Extensions.Logging;
+
 using OpenHandsNET.Application.Common.Interfaces;
 using OpenHandsNET.Application.Common.Models;
-using Microsoft.Extensions.Logging;
 
 namespace OpenHandsNET.Infrastructure.Agent;
 
@@ -40,7 +41,7 @@ public class OutputCompactorService : IOutputCompactorService
         string artifactId = $"artifact://outputs/{Guid.NewGuid():N}.log";
 
         var lines = originalOutput.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-        
+
         var head = lines.Take(HeadLines);
         var tail = lines.Skip(Math.Max(HeadLines, lines.Length - TailLines));
 
@@ -48,9 +49,9 @@ public class OutputCompactorService : IOutputCompactorService
         sb.AppendLine($"[OUTPUT TRUNCATED - Full log stored at {artifactId}]");
         sb.AppendLine("--- HEAD ---");
         foreach (var line in head) sb.AppendLine(line);
-        
+
         sb.AppendLine("...");
-        
+
         sb.AppendLine("--- TAIL ---");
         foreach (var line in tail) sb.AppendLine(line);
 

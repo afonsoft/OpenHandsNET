@@ -1,5 +1,7 @@
 using System.Text.Json;
+
 using OpenHandsNET.Infrastructure.Agent;
+
 using Shouldly;
 
 namespace OpenHandsNET.UnitTests.Agent;

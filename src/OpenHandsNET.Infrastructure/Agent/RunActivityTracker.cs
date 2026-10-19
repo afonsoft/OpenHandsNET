@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+
 using OpenHandsNET.Application.Events;
 using OpenHandsNET.Domain.Events;
 
@@ -113,7 +114,8 @@ public sealed class RunActivityTracker
         CancellationToken ct) =>
         await events.AppendAsync(conversationId, new AgentDiagnosticEvent
         {
-            Severity = severity, Code = code,
+            Severity = severity,
+            Code = code,
             Message = SecretRedactor.Redact(message),
         }, ct);
 }

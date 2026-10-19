@@ -1,8 +1,10 @@
 using Docker.DotNet;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Events;
 using OpenHandsNET.Application.Sandbox;
 using OpenHandsNET.Domain.Conversations;
@@ -55,7 +57,8 @@ public sealed class Spec16LifecycleTests : IAsyncLifetime
 
         var opts = Options.Create(new SandboxOptions
         {
-            WorkspaceRoot = _wsRoot, InstanceOwner = _owner,
+            WorkspaceRoot = _wsRoot,
+            InstanceOwner = _owner,
         });
         _provisioner = new WorkspaceProvisioner(
             opts, NullLogger<WorkspaceProvisioner>.Instance);
@@ -90,7 +93,8 @@ public sealed class Spec16LifecycleTests : IAsyncLifetime
     {
         var conv = new ConversationRecord
         {
-            Id = Guid.NewGuid(), SandboxId = sandboxId,
+            Id = Guid.NewGuid(),
+            SandboxId = sandboxId,
             ExecutionStatus = executionStatus,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
@@ -208,7 +212,8 @@ public sealed class Spec16LifecycleTests : IAsyncLifetime
                 var watcher = new SandboxTimeoutWatcher(
                     SingleScopeFactory(), Options.Create(new SandboxOptions
                     {
-                        WorkspaceRoot = _wsRoot, InstanceOwner = _owner,
+                        WorkspaceRoot = _wsRoot,
+                        InstanceOwner = _owner,
                         SleepStopAfterHours = 1,
                     }),
                     NullLogger<SandboxTimeoutWatcher>.Instance);

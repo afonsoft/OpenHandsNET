@@ -1,11 +1,13 @@
 using System.Text.Json;
+
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+
 using OpenHandsNET.Api.DTOs;
 using OpenHandsNET.Api.ProblemDetails;
 using OpenHandsNET.Application.Conversations;
-using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Application.Events;
+using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Application.Sandbox;
 using OpenHandsNET.Domain.Conversations;
 using OpenHandsNET.Domain.Events;
@@ -334,7 +336,8 @@ public static class AppConversationEndpoints
                     .OrderByDescending(m => m.UpdatedAt)
                     .Select(m => new
                     {
-                        key = m.Key, scope = "org",
+                        key = m.Key,
+                        scope = "org",
                         updated_at = m.UpdatedAt,
                     }).ToList()
                 : [];
@@ -394,7 +397,8 @@ public static class AppConversationEndpoints
                     instructions_files = manifest.InstructionFiles,
                     skills = manifest.Skills.Select(s => new
                     {
-                        name = s.Name, path = s.Path,
+                        name = s.Name,
+                        path = s.Path,
                         description = s.Description,
                     }),
                     config = manifest.HasRepoConfig,
@@ -459,9 +463,12 @@ public static class AppConversationEndpoints
                 ? Results.Ok(v)
                 : Results.Ok(new
                 {
-                    tokens_estimate = 0, window = (int?)null,
-                    compactions = 0, boundary_event_id = (string?)null,
-                    model = (string?)null, updated_at = (string?)null,
+                    tokens_estimate = 0,
+                    window = (int?)null,
+                    compactions = 0,
+                    boundary_event_id = (string?)null,
+                    model = (string?)null,
+                    updated_at = (string?)null,
                 });
         });
 
@@ -532,7 +539,8 @@ public static class AppConversationEndpoints
                 role_models = llmOpts.Value.RoleModels,
                 models = models.Select(m => new
                 {
-                    id = m.Id, provider = m.Provider,
+                    id = m.Id,
+                    provider = m.Provider,
                     context_window = m.ContextWindow,
                     pricing = m.Pricing is { } p ? new
                     {
@@ -777,19 +785,19 @@ public static class AppConversationEndpoints
 
     private static IResult MapSwitch(
         SwitchResult r, Guid id, HttpContext http) => r.Error switch
-    {
-        null => Results.Ok(ToDto(r.Conversation!)),
-        SwitchError.NotFound => OpenHandsNetProblemFactory.Create(
-            http, 404, $"Conversation {id} not found"),
-        SwitchError.InvalidProfile => OpenHandsNetProblemFactory.Create(
-            http, 400, "unknown sandbox profile (small|medium|large)"),
-        SwitchError.InvalidModel => OpenHandsNetProblemFactory.Create(
-            http, 400, "model must be a non-empty string"),
-        SwitchError.SandboxError => OpenHandsNetProblemFactory.Create(
-            http, 502, OpenHandsNetProblemFactory.SandboxError),
-        _ => OpenHandsNetProblemFactory.Create(
-            http, 409, OpenHandsNetProblemFactory.SandboxNotRunning),
-    };
+        {
+            null => Results.Ok(ToDto(r.Conversation!)),
+            SwitchError.NotFound => OpenHandsNetProblemFactory.Create(
+                http, 404, $"Conversation {id} not found"),
+            SwitchError.InvalidProfile => OpenHandsNetProblemFactory.Create(
+                http, 400, "unknown sandbox profile (small|medium|large)"),
+            SwitchError.InvalidModel => OpenHandsNetProblemFactory.Create(
+                http, 400, "model must be a non-empty string"),
+            SwitchError.SandboxError => OpenHandsNetProblemFactory.Create(
+                http, 502, OpenHandsNetProblemFactory.SandboxError),
+            _ => OpenHandsNetProblemFactory.Create(
+                http, 409, OpenHandsNetProblemFactory.SandboxNotRunning),
+        };
 
     private static CreateConversationRequest Map(CreateAppConversationRequest b) =>
         new(b.InitialMessage is null ? null : new InitialMessage(
@@ -812,20 +820,30 @@ public static class AppConversationEndpoints
 
     private static StartTaskDto ToDto(AppConversationStartTask t) => new()
     {
-        Id = t.Id.ToString(), Status = t.Status.ToString().ToUpperInvariant(),
+        Id = t.Id.ToString(),
+        Status = t.Status.ToString().ToUpperInvariant(),
         AppConversationId = t.AppConversationId?.ToString(),
-        SandboxId = t.SandboxId?.ToString(), Detail = t.Detail,
-        CreatedAt = t.CreatedAt, UpdatedAt = t.UpdatedAt,
+        SandboxId = t.SandboxId?.ToString(),
+        Detail = t.Detail,
+        CreatedAt = t.CreatedAt,
+        UpdatedAt = t.UpdatedAt,
     };
 
     private static AppConversationDto ToDto(AppConversation c) => new()
     {
-        Id = c.Id.ToString(), Title = c.Title, SandboxId = c.SandboxId?.ToString(),
-        SelectedRepository = c.SelectedRepository, AgentType = c.AgentType,
-        LlmModel = c.LlmModel, SandboxProfile = c.SandboxProfile,
+        Id = c.Id.ToString(),
+        Title = c.Title,
+        SandboxId = c.SandboxId?.ToString(),
+        SelectedRepository = c.SelectedRepository,
+        AgentType = c.AgentType,
+        LlmModel = c.LlmModel,
+        SandboxProfile = c.SandboxProfile,
         ExecutionStatus = c.ExecutionStatus.ToString().ToUpperInvariant(),
-        Tags = c.Tags, Pinned = c.Pinned, ConfirmationMode = c.ConfirmationMode,
+        Tags = c.Tags,
+        Pinned = c.Pinned,
+        ConfirmationMode = c.ConfirmationMode,
         NeedsAttention = c.NeedsAttentionKind,
-        CreatedAt = c.CreatedAt, UpdatedAt = c.UpdatedAt,
+        CreatedAt = c.CreatedAt,
+        UpdatedAt = c.UpdatedAt,
     };
 }

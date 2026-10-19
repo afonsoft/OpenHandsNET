@@ -1,6 +1,8 @@
 using System.Text.Json;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+
 using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Application.Contracts;
 using OpenHandsNET.Application.Identity;
@@ -65,7 +67,8 @@ public static class BuiltinTools
             {
                 await ctx.EmitAsync(new Domain.Events.AgentDiagnosticEvent
                 {
-                    Severity = "warn", Code = "output_truncated",
+                    Severity = "warn",
+                    Code = "output_truncated",
                     Message = "command output exceeded the 2MB channel cap",
                 }, CancellationToken.None);
             }
@@ -292,7 +295,9 @@ public static class BuiltinTools
             return result.Success
                 ? ToolResult.Ok(new
                 {
-                    ok = true, hash = result.Hash, output = result.Output,
+                    ok = true,
+                    hash = result.Hash,
+                    output = result.Output,
                 })
                 : ToolResult.Error(result.Error ?? result.Output);
         });
@@ -363,7 +368,9 @@ public static class BuiltinTools
             return result.PullRequest is { } pr
                 ? ToolResult.Ok(new
                 {
-                    ok = true, url = pr.Url, number = pr.Number,
+                    ok = true,
+                    url = pr.Url,
+                    number = pr.Number,
                     state = pr.State,
                 })
                 : ToolResult.Error($"create_pull_request failed: {result.Error}");
@@ -462,66 +469,74 @@ public static class BuiltinTools
             switch (action)
             {
                 case "list":
-                {
-                    var items = await svc.ListAsync(ownerId, ct);
-                    return ToolResult.Ok(new
                     {
-                        routines = items.Select(a => new
+                        var items = await svc.ListAsync(ownerId, ct);
+                        return ToolResult.Ok(new
                         {
-                            a.Id, a.Name, a.ScheduleKind, a.Enabled,
-                            a.NextRunAt, a.LastRunAt,
-                        }),
-                    });
-                }
+                            routines = items.Select(a => new
+                            {
+                                a.Id,
+                                a.Name,
+                                a.ScheduleKind,
+                                a.Enabled,
+                                a.NextRunAt,
+                                a.LastRunAt,
+                            }),
+                        });
+                    }
                 case "create":
-                {
-                    var req = new OpenHandsNET.Application.Automations
-                        .AutomationUpsert(
-                            Str(args, "name"), Str(args, "prompt"),
-                            Str(args, "llm_model"),
-                            Str(args, "selected_repository"),
-                            Str(args, "schedule_kind"),
-                            Str(args, "schedule_time_utc"),
-                            Int(args, "interval_minutes"),
-                            Int(args, "weekday"),
-                            Enabled: true, NextRunAt: null);
-                    var (info, error) = await svc.CreateAsync(
-                        req, ownerId, conv.OrgId, ct);
-                    return info is null
-                        ? ToolResult.Error(error ?? "create failed")
-                        : ToolResult.Ok(new
-                        {
-                            info.Id, info.Name, info.NextRunAt,
-                        });
-                }
+                    {
+                        var req = new OpenHandsNET.Application.Automations
+                            .AutomationUpsert(
+                                Str(args, "name"), Str(args, "prompt"),
+                                Str(args, "llm_model"),
+                                Str(args, "selected_repository"),
+                                Str(args, "schedule_kind"),
+                                Str(args, "schedule_time_utc"),
+                                Int(args, "interval_minutes"),
+                                Int(args, "weekday"),
+                                Enabled: true, NextRunAt: null);
+                        var (info, error) = await svc.CreateAsync(
+                            req, ownerId, conv.OrgId, ct);
+                        return info is null
+                            ? ToolResult.Error(error ?? "create failed")
+                            : ToolResult.Ok(new
+                            {
+                                info.Id,
+                                info.Name,
+                                info.NextRunAt,
+                            });
+                    }
                 case "enable" or "disable" or "delete":
-                {
-                    if (!Guid.TryParse(Str(args, "id"), out var id))
                     {
-                        return ToolResult.Error("id required");
-                    }
-
-                    if (action == "delete")
-                    {
-                        return await svc.DeleteAsync(id, ownerId, ct)
-                            ? ToolResult.Ok(new { deleted = id })
-                            : ToolResult.Error("routine not found");
-                    }
-
-                    var (info, error) = await svc.UpdateAsync(id,
-                        new OpenHandsNET.Application.Automations
-                            .AutomationUpsert(null, null, null, null,
-                                null, null, null, null,
-                                Enabled: action == "enable",
-                                NextRunAt: null),
-                        ownerId, ct);
-                    return info is null
-                        ? ToolResult.Error(error ?? "routine not found")
-                        : ToolResult.Ok(new
+                        if (!Guid.TryParse(Str(args, "id"), out var id))
                         {
-                            info.Id, info.Enabled, info.NextRunAt,
-                        });
-                }
+                            return ToolResult.Error("id required");
+                        }
+
+                        if (action == "delete")
+                        {
+                            return await svc.DeleteAsync(id, ownerId, ct)
+                                ? ToolResult.Ok(new { deleted = id })
+                                : ToolResult.Error("routine not found");
+                        }
+
+                        var (info, error) = await svc.UpdateAsync(id,
+                            new OpenHandsNET.Application.Automations
+                                .AutomationUpsert(null, null, null, null,
+                                    null, null, null, null,
+                                    Enabled: action == "enable",
+                                    NextRunAt: null),
+                            ownerId, ct);
+                        return info is null
+                            ? ToolResult.Error(error ?? "routine not found")
+                            : ToolResult.Ok(new
+                            {
+                                info.Id,
+                                info.Enabled,
+                                info.NextRunAt,
+                            });
+                    }
                 default:
                     return ToolResult.Error($"unknown action {action}");
             }
@@ -663,7 +678,9 @@ public static class BuiltinTools
         {
             entries = entries.Select(e => new
             {
-                key = e.Key, text = e.Text, scope = e.Scope,
+                key = e.Key,
+                text = e.Text,
+                scope = e.Scope,
             }).ToList(),
         });
     }
@@ -795,7 +812,8 @@ public static class BuiltinTools
             {
                 await ctx.EmitAsync(new Domain.Events.ToolProgressEvent
                 {
-                    ToolCallId = ctx.ToolCallId, ActionId = ctx.ActionId,
+                    ToolCallId = ctx.ToolCallId,
+                    ActionId = ctx.ActionId,
                     Phase = "start",
                     Message = $"browser {actionName}",
                 }, CancellationToken.None);
@@ -809,7 +827,8 @@ public static class BuiltinTools
             {
                 await ctx.EmitAsync(new Domain.Events.ToolProgressEvent
                 {
-                    ToolCallId = ctx.ToolCallId, ActionId = ctx.ActionId,
+                    ToolCallId = ctx.ToolCallId,
+                    ActionId = ctx.ActionId,
                     Phase = result.Ok ? "done" : "error",
                     Message = result.Ok
                         ? result.Title ?? result.Url ?? "ok"
@@ -820,7 +839,9 @@ public static class BuiltinTools
             return result.Ok
                 ? ToolResult.Ok(new
                 {
-                    ok = true, url = result.Url, title = result.Title,
+                    ok = true,
+                    url = result.Url,
+                    title = result.Title,
                     screenshot_base64 = result.ScreenshotBase64,
                     content = result.Content,
                 })
@@ -992,7 +1013,8 @@ public static class BuiltinTools
             return res.ExitCode is 0 or 1 // rg: 1 = no matches
                 ? ToolResult.Ok(new
                 {
-                    mode, query,
+                    mode,
+                    query,
                     output = res.StdOut.Trim(),
                     matches = res.StdOut.Split('\n',
                         StringSplitOptions.RemoveEmptyEntries).Length,
@@ -1031,7 +1053,8 @@ public static class BuiltinTools
             return res.Ok
                 ? ToolResult.Ok(new
                 {
-                    url = res.FinalUrl, status = res.StatusCode,
+                    url = res.FinalUrl,
+                    status = res.StatusCode,
                     content = res.Text,
                 })
                 : ToolResult.Error(res.Error ?? "fetch failed");
@@ -1146,7 +1169,8 @@ public static class BuiltinTools
                     () => ExecuteAsync(run.Cts.Token));
                 return ToolResult.Ok(new
                 {
-                    queued = true, task_id = taskId,
+                    queued = true,
+                    task_id = taskId,
                     subagent_type = type,
                 });
             }
@@ -1156,7 +1180,9 @@ public static class BuiltinTools
                 var result = await ExecuteAsync(ct);
                 return ToolResult.Ok(new
                 {
-                    task_id = taskId, status = "completed", result,
+                    task_id = taskId,
+                    status = "completed",
+                    result,
                 });
             }
             catch (OperationCanceledException)
@@ -1228,12 +1254,14 @@ public static class BuiltinTools
             {
                 SubagentStatus.Completed => ToolResult.Ok(new
                 {
-                    task_id = id, status = "completed",
+                    task_id = id,
+                    status = "completed",
                     result = run.Info.Result,
                 }),
                 SubagentStatus.Running => ToolResult.Ok(new
                 {
-                    task_id = id, status = "running",
+                    task_id = id,
+                    status = "running",
                 }),
                 _ => ToolResult.Error(
                     $"subagent {run.Info.Status.ToString().ToLowerInvariant()}"

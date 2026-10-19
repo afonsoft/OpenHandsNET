@@ -1,12 +1,15 @@
 using System.Net;
 using System.Net.Http;
 using System.Text;
+
 using OpenHandsNET.Application.Sandbox;
 using OpenHandsNET.Domain.Events;
 using OpenHandsNET.Infrastructure.Agent;
 using OpenHandsNET.Infrastructure.Agent.Tools;
 using OpenHandsNET.Infrastructure.Sandbox;
+
 using Shouldly;
+
 using Xunit;
 
 namespace OpenHandsNET.UnitTests.Agent;

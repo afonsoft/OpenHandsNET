@@ -1,7 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using OpenHandsNET.Infrastructure.Persistence;
+
 using OpenHandsNET.Domain.Conversations;
+using OpenHandsNET.Infrastructure.Persistence;
 
 namespace OpenHandsNET.Infrastructure.Conversations;
 

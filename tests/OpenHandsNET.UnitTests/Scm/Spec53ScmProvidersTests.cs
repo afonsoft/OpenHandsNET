@@ -1,8 +1,10 @@
 using System.Security.Cryptography;
 using System.Text;
+
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+
 using OpenHandsNET.Application.Contracts;
 using OpenHandsNET.Application.Conversations;
 using OpenHandsNET.Application.Identity;
@@ -10,7 +12,9 @@ using OpenHandsNET.Application.Scm;
 using OpenHandsNET.Domain.Conversations;
 using OpenHandsNET.Infrastructure.Persistence;
 using OpenHandsNET.Infrastructure.Scm;
+
 using Shouldly;
+
 using Xunit;
 
 namespace OpenHandsNET.UnitTests.Scm;
@@ -47,7 +51,9 @@ public sealed class Spec53ScmProvidersTests : IAsyncDisposable
             NullLogger<ScmConnectionService>.Instance);
         _db.OrgMembers.Add(new OrgMemberRecord
         {
-            OrgId = _orgId, UserId = _ownerId, Role = "owner",
+            OrgId = _orgId,
+            UserId = _ownerId,
+            Role = "owner",
             CreatedAt = DateTimeOffset.UtcNow,
         });
         _db.SaveChanges();
@@ -56,7 +62,9 @@ public sealed class Spec53ScmProvidersTests : IAsyncDisposable
     private void Seed(string kind, string repo) =>
         _db.ScmConnections.Add(new ScmConnectionRecord
         {
-            Id = Guid.NewGuid(), OrgId = _orgId, Kind = kind,
+            Id = Guid.NewGuid(),
+            OrgId = _orgId,
+            Kind = kind,
             WebhookSecretRef = "hook_secret",
             ReposJson = $"[\"{repo}\"]",
             CreatedByUserId = _ownerId.ToString(),
@@ -284,7 +292,8 @@ public sealed class Spec53ScmProvidersTests : IAsyncDisposable
         : OpenHandsNET.Application.Conversations.IAppConversationService
     {
         public List<(Guid UserId, Guid? OrgId, CreateConversationRequest
-            Request)> Calls { get; } = [];
+            Request)> Calls
+        { get; } = [];
 
         public Task<AppConversationStartTask> CreateAsync(
             CreateConversationRequest request, CancellationToken ct) =>

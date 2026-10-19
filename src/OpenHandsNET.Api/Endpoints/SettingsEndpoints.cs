@@ -1,6 +1,8 @@
 using System.Text.Json;
+
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+
 using OpenHandsNET.Api.DTOs;
 using OpenHandsNET.Domain.Configuration;
 using OpenHandsNET.Infrastructure.Persistence;
@@ -60,7 +62,8 @@ public static class SettingsEndpoints
             await db.Secrets.FindAsync([SecretScope, SecretOwner, name], ct) is { } row
                 ? Results.Ok(new SecretMetaDto
                 {
-                    Name = name, CreatedAt = row.CreatedAt,
+                    Name = name,
+                    CreatedAt = row.CreatedAt,
                 })
                 : Results.NotFound()).WithTags("Secrets");
 
@@ -75,7 +78,9 @@ public static class SettingsEndpoints
             {
                 db.Secrets.Add(new SecretRecord
                 {
-                    Scope = SecretScope, OwnerId = SecretOwner, Name = name,
+                    Scope = SecretScope,
+                    OwnerId = SecretOwner,
+                    Name = name,
                     Ciphertext = protector.Protect(value ?? ""),
                     CreatedAt = DateTimeOffset.UtcNow,
                 });

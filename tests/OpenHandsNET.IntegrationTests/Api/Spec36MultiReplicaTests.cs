@@ -1,13 +1,17 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+
 using Docker.DotNet;
 using Docker.DotNet.Models;
+
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
+
 using OpenHandsNET.Application.Events;
 using OpenHandsNET.Domain.Events;
 using OpenHandsNET.Sandboxing;
+
 using StackExchange.Redis;
 
 namespace OpenHandsNET.IntegrationTests.Api;
@@ -271,7 +275,8 @@ public sealed class Spec36MultiReplicaTests : IAsyncLifetime
             using var p = System.Diagnostics.Process.Start(
                 new System.Diagnostics.ProcessStartInfo("docker", "info")
                 {
-                    RedirectStandardOutput = true, RedirectStandardError = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
                 })!;
             p.WaitForExit(5000);
             return p.ExitCode == 0;

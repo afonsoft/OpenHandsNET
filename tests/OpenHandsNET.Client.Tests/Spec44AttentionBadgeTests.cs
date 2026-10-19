@@ -1,10 +1,14 @@
 using System.Net;
 using System.Text;
+
 using Bunit;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
+
 using OpenHandsNET.Client.Components;
 using OpenHandsNET.Client.Services;
+
 using Shouldly;
 
 namespace OpenHandsNET.Client.Tests;

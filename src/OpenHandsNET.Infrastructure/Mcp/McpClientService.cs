@@ -1,12 +1,15 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text.Json;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
+
 using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Application.Mcp;
 using OpenHandsNET.Application.Sandbox;
@@ -88,8 +91,11 @@ public sealed class McpClientService(
         var fullName = McpToolCatalog.FullName(serverName, toolName);
         await AppendAsync(conversationId, new AcpToolCallEvent
         {
-            ToolCallId = callId, Title = fullName, Status = "running",
-            ToolKind = "execute", RawInput = args,
+            ToolCallId = callId,
+            Title = fullName,
+            Status = "running",
+            ToolKind = "execute",
+            RawInput = args,
         }, ct);
 
         try
@@ -111,8 +117,10 @@ public sealed class McpClientService(
             }, JsonOpts);
             await AppendAsync(conversationId, new ObservationEvent
             {
-                Observation = payload, ActionId = callId,
-                ToolName = fullName, ToolCallId = callId,
+                Observation = payload,
+                ActionId = callId,
+                ToolName = fullName,
+                ToolCallId = callId,
             }, ct);
             return new ToolResult(payload, result.IsError ?? false);
         }
@@ -120,12 +128,16 @@ public sealed class McpClientService(
         {
             var payload = JsonSerializer.SerializeToElement(new
             {
-                tool = fullName, is_error = true, error = ex.Message,
+                tool = fullName,
+                is_error = true,
+                error = ex.Message,
             }, JsonOpts);
             await AppendAsync(conversationId, new ObservationEvent
             {
-                Observation = payload, ActionId = callId,
-                ToolName = fullName, ToolCallId = callId,
+                Observation = payload,
+                ActionId = callId,
+                ToolName = fullName,
+                ToolCallId = callId,
             }, CancellationToken.None);
             return new ToolResult(payload, IsError: true);
         }
@@ -246,7 +258,8 @@ public sealed class McpClientService(
                 await AppendAsync(conversationId,
                     new AgentDiagnosticEvent
                     {
-                        Severity = "info", Code = "mcp_notification",
+                        Severity = "info",
+                        Code = "mcp_notification",
                         Message = $"mcp '{server}': {error}",
                     }, ct);
                 return;
@@ -258,7 +271,10 @@ public sealed class McpClientService(
                     Key = "mcp_servers",
                     Value = JsonSerializer.SerializeToElement(new
                     {
-                        server, state, tools, error,
+                        server,
+                        state,
+                        tools,
+                        error,
                     }, JsonOpts),
                 }, ct);
         }
@@ -283,7 +299,9 @@ public sealed class McpClientService(
                 cfg, conversationId, ct);
             transport = new StdioClientTransport(new StdioClientTransportOptions
             {
-                Name = cfg.Name, Command = cmd, Arguments = args,
+                Name = cfg.Name,
+                Command = cmd,
+                Arguments = args,
                 EnvironmentVariables = cfg.Env?
                     .ToDictionary(kv => kv.Key, kv => (string?)kv.Value),
             });

@@ -1,4 +1,5 @@
 using System.Text.Json;
+
 using Microsoft.AspNetCore.SignalR.Client;
 
 namespace OpenHandsNET.Client.Services;

@@ -1,4 +1,5 @@
 using OpenHandsNET.Infrastructure.Git;
+
 using Shouldly;
 
 namespace OpenHandsNET.UnitTests.Git;

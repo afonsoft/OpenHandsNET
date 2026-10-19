@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
 using OpenHandsNET.Domain.Sandbox;
 
 namespace OpenHandsNET.Infrastructure.Sandbox;
@@ -94,8 +95,12 @@ public sealed class SandboxSpecRecord
 
     public static SandboxSpecRecord From(SandboxSpec s) => new()
     {
-        Id = s.Id, Name = s.Name, Image = s.Image, MemoryMb = s.MemoryMb,
-        CpuLimit = s.CpuLimit, TimeoutMinutes = s.TimeoutMinutes,
+        Id = s.Id,
+        Name = s.Name,
+        Image = s.Image,
+        MemoryMb = s.MemoryMb,
+        CpuLimit = s.CpuLimit,
+        TimeoutMinutes = s.TimeoutMinutes,
         EnvJson = s.Env is null ? null
             : System.Text.Json.JsonSerializer.Serialize(s.Env),
         MountWorkspace = s.MountWorkspace,

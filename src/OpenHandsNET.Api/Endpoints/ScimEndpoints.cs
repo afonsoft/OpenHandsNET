@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+
 using Microsoft.EntityFrameworkCore;
+
 using OpenHandsNET.Api.Policies;
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Infrastructure.Persistence;
@@ -32,11 +34,13 @@ public static class ScimEndpoints
             ["bulk"] = new JsonObject { ["supported"] = false },
             ["filter"] = new JsonObject
             {
-                ["supported"] = true, ["maxResults"] = 200,
+                ["supported"] = true,
+                ["maxResults"] = 200,
             },
             ["authenticationSchemes"] = new JsonArray(new JsonObject
             {
-                ["type"] = "oauthbearertoken", ["name"] = "scim_*",
+                ["type"] = "oauthbearertoken",
+                ["name"] = "scim_*",
                 ["primary"] = true,
             }),
         }));
@@ -143,8 +147,10 @@ public static class ScimEndpoints
             {
                 db.OrgMembers.Add(new OrgMemberRecord
                 {
-                    OrgId = orgId.Value, UserId = user.Id,
-                    Role = "member", Source = "idp",
+                    OrgId = orgId.Value,
+                    UserId = user.Id,
+                    Role = "member",
+                    Source = "idp",
                     CreatedAt = DateTimeOffset.UtcNow,
                 });
             }
@@ -250,8 +256,10 @@ public static class ScimEndpoints
                 return ScimError(409, "group exists", "uniqueness");
             var rec = new IdpGroupMappingRecord
             {
-                Id = Guid.NewGuid(), OrgId = orgId,
-                IdpGroup = displayName, Role = "member",
+                Id = Guid.NewGuid(),
+                OrgId = orgId,
+                IdpGroup = displayName,
+                Role = "member",
                 CreatedAt = DateTimeOffset.UtcNow,
             };
             db.IdpGroupMappings.Add(rec);
@@ -402,7 +410,9 @@ public static class ScimEndpoints
             var issue = await tokens.MintAsync(org_id, name, ct);
             return Results.Ok(new
             {
-                id = issue.Id, prefix = issue.Prefix, token = issue.Plaintext,
+                id = issue.Id,
+                prefix = issue.Prefix,
+                token = issue.Plaintext,
             });
         }).RequireAuthorization("perm:manage_api_keys")
             .RequireScope(ApiScopes.AdminServiceUsers);
@@ -513,8 +523,11 @@ public static class ScimEndpoints
             {
                 db.OrgMembers.Add(new OrgMemberRecord
                 {
-                    OrgId = orgId, UserId = uid, Role = group.Role,
-                    Source = "idp", UsageTierId = group.UsageTierId,
+                    OrgId = orgId,
+                    UserId = uid,
+                    Role = group.Role,
+                    Source = "idp",
+                    UsageTierId = group.UsageTierId,
                     CreatedAt = DateTimeOffset.UtcNow,
                 });
             }
@@ -545,7 +558,9 @@ public static class ScimEndpoints
         {
             ["schemas"] = new JsonArray(
                 "urn:ietf:params:scim:schemas:core:2.0:ResourceType"),
-            ["id"] = name, ["name"] = name, ["endpoint"] = ep,
+            ["id"] = name,
+            ["name"] = name,
+            ["endpoint"] = ep,
         };
 
     private static JsonObject ToScimUser(UserRecord u, OrgMemberRecord m) =>
@@ -559,7 +574,8 @@ public static class ScimEndpoints
             ["active"] = u.DisabledAt is null,
             ["emails"] = new JsonArray(new JsonObject
             {
-                ["value"] = u.Email, ["primary"] = true,
+                ["value"] = u.Email,
+                ["primary"] = true,
             }),
             ["roles"] = new JsonArray(new JsonObject
             {

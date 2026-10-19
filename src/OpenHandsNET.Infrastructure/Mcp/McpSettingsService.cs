@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+
 using Microsoft.EntityFrameworkCore;
+
 using OpenHandsNET.Application.Mcp;
 using OpenHandsNET.Domain.Mcp;
 using OpenHandsNET.Infrastructure.Persistence;
@@ -43,8 +45,10 @@ public sealed class McpSettingsService(AppDbContext db) : IMcpSettingsService
         {
             db.McpServers.Add(new McpServerRecord
             {
-                OwnerId = ownerId, Name = config.Name,
-                ConfigJson = json, Enabled = config.Enabled,
+                OwnerId = ownerId,
+                Name = config.Name,
+                ConfigJson = json,
+                Enabled = config.Enabled,
             });
         }
         else

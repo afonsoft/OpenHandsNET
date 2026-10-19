@@ -22,10 +22,17 @@ public sealed class RecordingStore
     {
         var raw = JsonSerializer.Serialize(new
         {
-            t.Name, t.Task, t.Repo, t.Setup,
+            t.Name,
+            t.Task,
+            t.Repo,
+            t.Setup,
             Assert = t.Assert.Select(a => new
             {
-                a.Type, a.Cmd, a.Expect, a.Path, a.Pattern,
+                a.Type,
+                a.Cmd,
+                a.Expect,
+                a.Path,
+                a.Pattern,
             }),
         });
         return Convert.ToHexStringLower(

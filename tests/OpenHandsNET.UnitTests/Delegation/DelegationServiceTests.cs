@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+
 using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Application.Artifacts;
 using OpenHandsNET.Application.Conversations;
@@ -10,7 +11,9 @@ using OpenHandsNET.Domain.Events;
 using OpenHandsNET.Infrastructure.Conversations;
 using OpenHandsNET.Infrastructure.Delegation;
 using OpenHandsNET.Infrastructure.Persistence;
+
 using Shouldly;
+
 using Xunit;
 
 namespace OpenHandsNET.UnitTests.Delegation;

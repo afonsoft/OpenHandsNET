@@ -1,5 +1,6 @@
-using Shouldly;
 using OpenHandsNET.Client.Services;
+
+using Shouldly;
 
 namespace OpenHandsNET.Client.Tests;
 

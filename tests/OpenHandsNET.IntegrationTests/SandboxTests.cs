@@ -1,9 +1,11 @@
 using Docker.DotNet;
 using Docker.DotNet.Models;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Sandbox;
 using OpenHandsNET.Domain.Sandbox;
 using OpenHandsNET.Infrastructure.Persistence;
@@ -51,7 +53,8 @@ public sealed class DockerSandboxTests : IAsyncLifetime
 
         var opts = Options.Create(new SandboxOptions
         {
-            WorkspaceRoot = _wsRoot, InstanceOwner = _owner,
+            WorkspaceRoot = _wsRoot,
+            InstanceOwner = _owner,
         });
         var provisioner = new WorkspaceProvisioner(opts,
             NullLogger<WorkspaceProvisioner>.Instance);
@@ -180,7 +183,8 @@ public sealed class DockerSandboxTests : IAsyncLifetime
         var c = await _docker.Containers.CreateContainerAsync(
             new CreateContainerParameters
             {
-                Image = Image, Cmd = ["sleep", "infinity"],
+                Image = Image,
+                Cmd = ["sleep", "infinity"],
                 Labels = new Dictionary<string, string>
                 {
                     ["openhandsnet.managed"] = "true",

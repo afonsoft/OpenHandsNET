@@ -1,6 +1,9 @@
 using System.Net;
+
 using Bunit;
+
 using Microsoft.Extensions.DependencyInjection;
+
 using OpenHandsNET.Client.Services;
 
 namespace OpenHandsNET.Client.Tests;

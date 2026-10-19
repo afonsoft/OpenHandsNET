@@ -1,5 +1,7 @@
 using System.Reflection;
+
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Api.Options;
 
 namespace OpenHandsNET.Api.Endpoints;

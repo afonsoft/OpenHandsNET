@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+
 using OpenHandsNET.Application.Coordination;
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Application.Sharing;
@@ -54,7 +55,9 @@ public static class ShareEndpoints
                     id, current.RequireUserId(), ct);
                 return Results.Ok(new
                 {
-                    shared = s.Shared, url = s.Url, expires_at = s.ExpiresAt,
+                    shared = s.Shared,
+                    url = s.Url,
+                    expires_at = s.ExpiresAt,
                 });
             }
             catch (ShareForbiddenException ex)

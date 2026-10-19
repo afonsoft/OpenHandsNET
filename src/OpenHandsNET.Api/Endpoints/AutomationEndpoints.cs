@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+
 using OpenHandsNET.Api.Policies;
 using OpenHandsNET.Api.ProblemDetails;
 using OpenHandsNET.Application.Automations;
@@ -202,7 +203,7 @@ public static class AutomationEndpoints
     {
         private sealed class Bucket(int limit)
         {
-            private int _limit = limit;
+            private readonly int _limit = limit;
             private int _used;
             private DateTimeOffset _windowStart = DateTimeOffset.UtcNow;
 

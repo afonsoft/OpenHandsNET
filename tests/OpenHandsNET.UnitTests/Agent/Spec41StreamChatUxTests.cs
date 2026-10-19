@@ -1,12 +1,15 @@
 using System.Net;
 using System.Text;
+
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Application.Events;
 using OpenHandsNET.Domain.Events;
 using OpenHandsNET.Infrastructure.Agent;
 using OpenHandsNET.Infrastructure.Agent.Deltas;
+
 using Shouldly;
 
 namespace OpenHandsNET.UnitTests.Agent;

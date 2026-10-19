@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+
 using OpenHandsNET.Application.Security;
 
 namespace OpenHandsNET.Infrastructure.Security;

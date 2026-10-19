@@ -1,6 +1,8 @@
 using System.Text.Json;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using OpenHandsNET.Application.Tickets;
 using OpenHandsNET.Infrastructure.Persistence;
 
@@ -80,7 +82,9 @@ public sealed class TicketReporter(
                 targetId: conversationId.ToString(),
                 metadata: new
                 {
-                    kind = conv.TicketKind, conv.TicketId, success,
+                    kind = conv.TicketKind,
+                    conv.TicketId,
+                    success,
                 },
                 cancellationToken: ct);
         }

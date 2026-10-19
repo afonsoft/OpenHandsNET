@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using OpenHandsNET.Infrastructure.Persistence;
 
 namespace OpenHandsNET.Infrastructure.Skills;

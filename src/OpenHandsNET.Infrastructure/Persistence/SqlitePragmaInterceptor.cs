@@ -1,4 +1,5 @@
 using System.Data.Common;
+
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace OpenHandsNET.Infrastructure.Persistence;

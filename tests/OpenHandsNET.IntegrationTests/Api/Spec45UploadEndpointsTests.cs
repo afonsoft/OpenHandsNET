@@ -1,10 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
+
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+
 using OpenHandsNET.Infrastructure.Conversations;
 using OpenHandsNET.Infrastructure.Persistence;
+
 using Shouldly;
 
 namespace OpenHandsNET.IntegrationTests.Api;
@@ -49,7 +52,8 @@ public sealed class Spec45UploadEndpointsTests : IDisposable
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var conv = new ConversationRecord
         {
-            Id = Guid.NewGuid(), ExecutionStatus = "Running",
+            Id = Guid.NewGuid(),
+            ExecutionStatus = "Running",
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
         };

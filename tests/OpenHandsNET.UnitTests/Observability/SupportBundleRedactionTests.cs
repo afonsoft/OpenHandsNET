@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+
 using OpenHandsNET.Infrastructure.Observability;
 
 namespace OpenHandsNET.UnitTests.Observability;

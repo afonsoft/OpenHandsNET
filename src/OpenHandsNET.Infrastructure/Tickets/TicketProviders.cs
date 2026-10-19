@@ -3,7 +3,9 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+
 using Microsoft.Extensions.Logging;
+
 using OpenHandsNET.Application.Contracts;
 using OpenHandsNET.Application.Tickets;
 
@@ -628,7 +630,8 @@ public sealed class JiraTicketProvider(
             {
                 body = new
                 {
-                    type = "doc", version = 1,
+                    type = "doc",
+                    version = 1,
                     content = new[]
                     {
                         new

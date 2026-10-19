@@ -1,14 +1,18 @@
 using System.Text;
+
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+
 using OpenHandsNET.Application.Conversations;
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Application.Tickets;
 using OpenHandsNET.Domain.Conversations;
 using OpenHandsNET.Infrastructure.Persistence;
 using OpenHandsNET.Infrastructure.Tickets;
+
 using Shouldly;
+
 using Xunit;
 
 namespace OpenHandsNET.UnitTests.Tickets;
@@ -22,14 +26,14 @@ public sealed class Spec55TicketsTests : IAsyncDisposable
     private readonly SqliteConnection _conn = new("Data Source=:memory:");
     private readonly AppDbContext _db;
     private readonly Guid _orgId = Guid.NewGuid();
-    private FakeConversations _conversations = null!;
+    private readonly FakeConversations _conversations = null!;
     private readonly FakeAudit _audit = new();
     private readonly FakeProvider _linear = new(TicketKind.Linear);
     private readonly FakeProvider _jira = new(TicketKind.Jira);
     private readonly TicketConnectionService _connections;
     private readonly TicketTriggerService _svc;
     private readonly TicketReporter _reporter;
-    private Guid _connId;
+    private readonly Guid _connId;
 
     public Spec55TicketsTests()
     {
@@ -52,14 +56,19 @@ public sealed class Spec55TicketsTests : IAsyncDisposable
             NullLogger<TicketReporter>.Instance);
         _db.OrgMembers.Add(new OrgMemberRecord
         {
-            OrgId = _orgId, UserId = Guid.NewGuid(), Role = "owner",
+            OrgId = _orgId,
+            UserId = Guid.NewGuid(),
+            Role = "owner",
             CreatedAt = DateTimeOffset.UtcNow,
         });
         _connId = _db.TicketConnections.Add(new TicketConnectionRecord
         {
-            Id = Guid.NewGuid(), OrgId = _orgId, Kind = "linear",
+            Id = Guid.NewGuid(),
+            OrgId = _orgId,
+            Kind = "linear",
             ApiUrl = "https://api.linear.app/graphql",
-            TokenSecretRef = "tok", WebhookSecretRef = "whsec",
+            TokenSecretRef = "tok",
+            WebhookSecretRef = "whsec",
             WorkspaceId = "ORG-WS",
             TriggerConfigJson =
                 """{"mode":"label","value":"openhandsnet","done_state":"In Review"}""",
@@ -218,9 +227,11 @@ public sealed class Spec55TicketsTests : IAsyncDisposable
             new OpenHandsNET.Infrastructure.Conversations
                 .ConversationRecord
             {
-                Id = convId, OrgId = _orgId,
+                Id = convId,
+                OrgId = _orgId,
                 ExecutionStatus = "finished",
-                TicketKind = "linear", TicketId = "ENG-42",
+                TicketKind = "linear",
+                TicketId = "ENG-42",
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow,
             });
@@ -306,7 +317,8 @@ public sealed class Spec55TicketsTests : IAsyncDisposable
         : OpenHandsNET.Application.Conversations.IAppConversationService
     {
         public List<(Guid UserId, Guid? OrgId, CreateConversationRequest
-            Request)> Calls { get; } = [];
+            Request)> Calls
+        { get; } = [];
         public async Task<AppConversationStartTask> CreateAsync(
             CreateConversationRequest r, CancellationToken ct) =>
             await Task0();

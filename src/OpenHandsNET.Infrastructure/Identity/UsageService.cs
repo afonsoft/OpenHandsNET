@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Domain.Sandbox;
 using OpenHandsNET.Infrastructure.Persistence;
@@ -38,7 +39,8 @@ public sealed class UsageService(AppDbContext db) : IUsageService
             where c.OrgId == orgId
             select new
             {
-                s.Status, s.CreatedAt,
+                s.Status,
+                s.CreatedAt,
                 ExpiresTicks = s.ExpiresAtTicks ?? nowTicks,
             }).ToListAsync(ct);
 

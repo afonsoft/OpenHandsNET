@@ -1,11 +1,14 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+
 using OpenHandsNET.Application.BrowserProfiles;
 using OpenHandsNET.Infrastructure.BrowserProfiles;
 using OpenHandsNET.Infrastructure.Persistence;
+
 using Shouldly;
+
 using Xunit;
 
 namespace OpenHandsNET.UnitTests.BrowserProfiles;

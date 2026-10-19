@@ -1,4 +1,5 @@
 using System.Text.Json;
+
 using OpenHandsNET.Application.Tickets;
 
 namespace OpenHandsNET.Api.Endpoints;

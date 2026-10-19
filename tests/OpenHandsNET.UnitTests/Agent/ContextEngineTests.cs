@@ -1,12 +1,15 @@
 using System.Text.Json.Nodes;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Application.Events;
 using OpenHandsNET.Domain.Events;
 using OpenHandsNET.Infrastructure.Agent;
 using OpenHandsNET.Infrastructure.Agent.Context;
+
 using Shouldly;
 
 namespace OpenHandsNET.UnitTests.Agent;
@@ -280,7 +283,8 @@ public sealed class LlmSummarizingCondenserTests
         var conv = new OpenHandsNET.Infrastructure.Conversations
             .ConversationRecord
         {
-            Id = Guid.NewGuid(), ExecutionStatus = "Running",
+            Id = Guid.NewGuid(),
+            ExecutionStatus = "Running",
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
         };

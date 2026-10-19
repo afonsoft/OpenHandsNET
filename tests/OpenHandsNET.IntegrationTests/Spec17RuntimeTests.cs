@@ -1,10 +1,12 @@
 using Docker.DotNet;
 using Docker.DotNet.Models;
+
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Infrastructure.Conversations;
 using OpenHandsNET.Infrastructure.Persistence;
 using OpenHandsNET.Infrastructure.Sandbox;
@@ -85,7 +87,8 @@ public sealed class Spec17RuntimeTests : IAsyncLifetime
     {
         var opts = Options.Create(overrides ?? new SandboxOptions
         {
-            WorkspaceRoot = _wsRoot, InstanceOwner = _owner,
+            WorkspaceRoot = _wsRoot,
+            InstanceOwner = _owner,
             DefaultImage = Image,
         });
         var provisioner = new WorkspaceProvisioner(opts,
@@ -105,7 +108,8 @@ public sealed class Spec17RuntimeTests : IAsyncLifetime
     {
         var conv = new ConversationRecord
         {
-            Id = Guid.NewGuid(), ExecutionStatus = "Starting",
+            Id = Guid.NewGuid(),
+            ExecutionStatus = "Starting",
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
         };
@@ -121,7 +125,8 @@ public sealed class Spec17RuntimeTests : IAsyncLifetime
         var convId = await SeedConversationAsync();
         var svc = MakeService(new SandboxOptions
         {
-            WorkspaceRoot = _wsRoot, InstanceOwner = _owner,
+            WorkspaceRoot = _wsRoot,
+            InstanceOwner = _owner,
             AgentImagePrefixes = "bash",
         });
         var spec = new Domain.Sandbox.SandboxSpec(
@@ -184,8 +189,10 @@ public sealed class Spec17RuntimeTests : IAsyncLifetime
         if (!_dockerUp) return;
         var opts = new SandboxOptions
         {
-            WorkspaceRoot = _wsRoot, InstanceOwner = _owner,
-            AgentImagePrefixes = "bash", WarmPoolImages = $"{Image}:1",
+            WorkspaceRoot = _wsRoot,
+            InstanceOwner = _owner,
+            AgentImagePrefixes = "bash",
+            WarmPoolImages = $"{Image}:1",
             DefaultImage = Image,
         };
         var optWrap = Options.Create(opts);
@@ -273,7 +280,8 @@ public sealed class Spec17RuntimeTests : IAsyncLifetime
 
         var opts = new SandboxOptions
         {
-            WorkspaceRoot = _wsRoot, InstanceOwner = _owner,
+            WorkspaceRoot = _wsRoot,
+            InstanceOwner = _owner,
             DefaultImage = Image,
         };
         var svc = MakeService(opts);
@@ -312,7 +320,8 @@ public sealed class Spec17RuntimeTests : IAsyncLifetime
 
         var opts = new SandboxOptions
         {
-            WorkspaceRoot = _wsRoot, InstanceOwner = _owner,
+            WorkspaceRoot = _wsRoot,
+            InstanceOwner = _owner,
             DefaultImage = Image,
         };
         var svc = MakeService(opts);

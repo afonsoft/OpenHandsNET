@@ -1,11 +1,14 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+
 using OpenHandsNET.Application.Knowledge;
 using OpenHandsNET.Application.Memory;
 using OpenHandsNET.Infrastructure.Knowledge;
 using OpenHandsNET.Infrastructure.Persistence;
+
 using Shouldly;
+
 using Xunit;
 
 namespace OpenHandsNET.UnitTests.Knowledge;
@@ -101,13 +104,15 @@ public sealed class Spec63KnowledgeTests : IDisposable
         _db.MemoryRecords.AddRange(
             new MemoryRecord
             {
-                Id = Guid.NewGuid(), OrgId = Guid.Empty,
+                Id = Guid.NewGuid(),
+                OrgId = Guid.Empty,
                 Key = "a",
                 Text = "use postgres for production data store",
             },
             new MemoryRecord
             {
-                Id = Guid.NewGuid(), OrgId = Guid.Empty,
+                Id = Guid.NewGuid(),
+                OrgId = Guid.Empty,
                 Key = "b",
                 Text = "use postgres for production data store",
             });
@@ -121,7 +126,9 @@ public sealed class Spec63KnowledgeTests : IDisposable
     {
         _db.MemoryRecords.Add(new MemoryRecord
         {
-            Id = Guid.NewGuid(), OrgId = Guid.Empty, Key = "old",
+            Id = Guid.NewGuid(),
+            OrgId = Guid.Empty,
+            Key = "old",
             Text = "ancient note",
             UpdatedAt = DateTimeOffset.UtcNow.AddDays(-120),
         });

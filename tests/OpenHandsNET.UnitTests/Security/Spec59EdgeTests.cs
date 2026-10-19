@@ -1,8 +1,12 @@
 using System.Net;
+
 using Microsoft.AspNetCore.Http;
+
 using OpenHandsNET.Api.Middleware;
 using OpenHandsNET.Infrastructure.Security;
+
 using Shouldly;
+
 using Xunit;
 
 namespace OpenHandsNET.UnitTests.Security;

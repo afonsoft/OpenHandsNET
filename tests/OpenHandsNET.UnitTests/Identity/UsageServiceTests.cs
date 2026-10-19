@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+
 using OpenHandsNET.Domain.Sandbox;
 using OpenHandsNET.Infrastructure.Conversations;
 using OpenHandsNET.Infrastructure.Identity;
 using OpenHandsNET.Infrastructure.Persistence;
 using OpenHandsNET.Infrastructure.Sandbox;
+
 using DomainSandboxStatus = OpenHandsNET.Domain.Sandbox.SandboxStatus;
 
 namespace OpenHandsNET.UnitTests.Identity;
@@ -42,7 +44,9 @@ public sealed class UsageServiceTests : IDisposable
         var slug = $"org-{Guid.NewGuid():N}"[..20];
         var org = new OrganizationRecord
         {
-            Id = Guid.NewGuid(), Name = slug, Slug = slug,
+            Id = Guid.NewGuid(),
+            Name = slug,
+            Slug = slug,
             CreatedAt = DateTimeOffset.UtcNow,
         };
         _db.Organizations.Add(org);
@@ -70,21 +74,30 @@ public sealed class UsageServiceTests : IDisposable
         _db.UsageRecords.AddRange(
             new UsageRecord
             {
-                Id = Guid.NewGuid(), OrgId = orgId, Period = period,
-                TokensUsed = 1000, CostUsd = 0.5m,
+                Id = Guid.NewGuid(),
+                OrgId = orgId,
+                Period = period,
+                TokensUsed = 1000,
+                CostUsd = 0.5m,
                 RecordedAt = DateTimeOffset.UtcNow,
             },
             new UsageRecord
             {
-                Id = Guid.NewGuid(), OrgId = orgId, Period = period,
-                TokensUsed = 500, CostUsd = 0.25m,
+                Id = Guid.NewGuid(),
+                OrgId = orgId,
+                Period = period,
+                TokensUsed = 500,
+                CostUsd = 0.25m,
                 RecordedAt = DateTimeOffset.UtcNow,
             },
             // other period must not leak in
             new UsageRecord
             {
-                Id = Guid.NewGuid(), OrgId = orgId, Period = "1999-01",
-                TokensUsed = 999999, RecordedAt = DateTimeOffset.UtcNow,
+                Id = Guid.NewGuid(),
+                OrgId = orgId,
+                Period = "1999-01",
+                TokensUsed = 999999,
+                RecordedAt = DateTimeOffset.UtcNow,
             });
         await _db.SaveChangesAsync();
 
@@ -101,14 +114,16 @@ public sealed class UsageServiceTests : IDisposable
         var otherOrgId = await SeedOrgAsync();
         var conv = new ConversationRecord
         {
-            Id = Guid.NewGuid(), OrgId = orgId,
+            Id = Guid.NewGuid(),
+            OrgId = orgId,
             ExecutionStatus = "Running",
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
         };
         var otherConv = new ConversationRecord
         {
-            Id = Guid.NewGuid(), OrgId = otherOrgId,
+            Id = Guid.NewGuid(),
+            OrgId = otherOrgId,
             ExecutionStatus = "Running",
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
@@ -117,14 +132,16 @@ public sealed class UsageServiceTests : IDisposable
         _db.Sandboxes.AddRange(
             new SandboxRecord
             {
-                Id = Guid.NewGuid(), SpecId = Guid.NewGuid(),
+                Id = Guid.NewGuid(),
+                SpecId = Guid.NewGuid(),
                 ConversationId = conv.Id,
                 Status = nameof(DomainSandboxStatus.Running),
                 CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-2),
             },
             new SandboxRecord
             {
-                Id = Guid.NewGuid(), SpecId = Guid.NewGuid(),
+                Id = Guid.NewGuid(),
+                SpecId = Guid.NewGuid(),
                 ConversationId = otherConv.Id,
                 Status = nameof(DomainSandboxStatus.Running),
                 CreatedAt = DateTimeOffset.UtcNow.AddHours(-5),

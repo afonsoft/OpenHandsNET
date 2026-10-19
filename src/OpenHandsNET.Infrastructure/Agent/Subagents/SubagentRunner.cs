@@ -1,7 +1,9 @@
 using System.Text;
 using System.Text.Json;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Application.Events;
 using OpenHandsNET.Application.Sandbox;
@@ -47,8 +49,10 @@ public sealed class SubagentRunner(
                 Key = "subagent_run",
                 Value = JsonSerializer.SerializeToElement(new
                 {
-                    task_id = taskId, subagent_type = subagentType,
-                    description, status = "running",
+                    task_id = taskId,
+                    subagent_type = subagentType,
+                    description,
+                    status = "running",
                     model = selection?.Model,
                 }, EventJson.Options),
                 ParentId = parentActionId,
@@ -204,7 +208,8 @@ public sealed class SubagentRunner(
                 Key = "subagent_run",
                 Value = JsonSerializer.SerializeToElement(new
                 {
-                    task_id = taskId, subagent_type = subagentType,
+                    task_id = taskId,
+                    subagent_type = subagentType,
                     status = "completed",
                 }, EventJson.Options),
                 ParentId = parentActionId,

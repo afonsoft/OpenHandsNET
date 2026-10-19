@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+
 using Microsoft.EntityFrameworkCore;
+
 using OpenHandsNET.Application.Skills;
 using OpenHandsNET.Domain.Skills;
 using OpenHandsNET.Infrastructure.Persistence;
@@ -180,7 +182,8 @@ public sealed partial class SkillService(AppDbContext db) : ISkillService
         {
             db.ConversationSkills.Add(new ConversationSkillRecord
             {
-                ConversationId = conversationId, SkillId = id,
+                ConversationId = conversationId,
+                SkillId = id,
             });
         }
 

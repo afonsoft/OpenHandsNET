@@ -1,6 +1,8 @@
 using System.Text.RegularExpressions;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using OpenHandsNET.Application.Indexing;
 using OpenHandsNET.Infrastructure.Persistence;
 

@@ -1,5 +1,7 @@
 using System.Text.Json;
+
 using OpenHandsNET.Eval;
+
 using Shouldly;
 
 namespace OpenHandsNET.UnitTests.Eval;
@@ -176,7 +178,9 @@ public sealed class EvalHarnessTests
     {
         var r = new EvalResult
         {
-            Name = "x", Score = 0.5, Pass = false,
+            Name = "x",
+            Score = 0.5,
+            Pass = false,
             Asserts = [new AssertResult("exit_code", true, false, 1, null)],
             Tokens = 123,
         };

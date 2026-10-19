@@ -1,7 +1,7 @@
 namespace OpenHandsNET.Domain.Events;
 
 /// <summary>
-/// SPEC-53 RF-002: Observação injetada quando um operador humano assume o controle direto
+/// SPEC-69 RF-002: Observação injetada quando um operador humano assume o controle direto
 /// do sandbox (via Terminal Web xterm.js ou VNC Canvas) e finaliza sua intervenção.
 /// O agente utiliza esse sumário para recalcular o estado mental e o plano de ação.
 /// </summary>

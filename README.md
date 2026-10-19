@@ -1,14 +1,24 @@
 # OpenHandsNET
 
+[![ci](https://github.com/afonsoft/OpenHandsNET/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/afonsoft/OpenHandsNET/actions/workflows/ci.yml)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=afonsoft_OpenHandsNET&metric=alert_status)](https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main)
+[![Maintainability](https://sonarcloud.io/api/project_badges/measure?project=afonsoft_OpenHandsNET&metric=sqale_rating)](https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main)
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=afonsoft_OpenHandsNET&metric=code_smells)](https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main)
+[![Security](https://sonarcloud.io/api/project_badges/measure?project=afonsoft_OpenHandsNET&metric=security_rating)](https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=afonsoft_OpenHandsNET&metric=coverage)](https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main)
+
 Port open-source (MIT) do ecossistema **OpenHands** para **.NET 10 / C# 14 /
 Blazor WebAssembly** — agente autônomo de engenharia de software com conceitos
 Cloud + Enterprise e UX inspirada no Devin Web, sobre a base de
 [`afonsoft/open-webui`](https://github.com/afonsoft/open-webui).
 
-> Status: **produto funcional** — SPECs 01–64 entregues (agente, sandbox,
-> API, UI completa, enterprise ops, integrações SCM/ChatOps/ticketing,
+> Status: **produto funcional** — SPECs 01–64 + 68/69 entregues e
+> arquivadas em [`docs/specs/`](docs/specs/) (agente, sandbox, API, UI
+> completa, enterprise ops, integrações SCM/ChatOps/ticketing,
 > identidade enterprise, edge security, indexing/insights/knowledge e
-> browser profiles). Em andamento: SPEC-62 (managed conversations).
+> browser profiles). SPECs ativas em [`.specs/`](.specs/).
+> Quality gates: `dotnet format` + testes em CI; análise SonarCloud
+> (badges acima) — ver `ci.yml`.
 > English: [README.en.md](README.en.md).
 
 ## Visão

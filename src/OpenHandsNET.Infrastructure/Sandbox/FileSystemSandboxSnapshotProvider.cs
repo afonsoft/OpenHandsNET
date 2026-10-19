@@ -1,11 +1,13 @@
 using System.Collections.Concurrent;
+
 using Microsoft.Extensions.Logging;
+
 using OpenHandsNET.Application.Sandbox;
 
 namespace OpenHandsNET.Infrastructure.Sandbox;
 
 /// <summary>
-/// SPEC-53 RF-003: Implementação de snapshots em filesystem local com cópia atômica/CoW
+/// SPEC-69 RF-003: Implementação de snapshots em filesystem local com cópia atômica/CoW
 /// para habilitar Time-Travel rápido entre execuções do sandbox.
 /// </summary>
 public sealed class FileSystemSandboxSnapshotProvider(

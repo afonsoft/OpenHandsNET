@@ -1,7 +1,10 @@
 using System.Text;
+
 using Docker.DotNet;
 using Docker.DotNet.Models;
+
 using OpenHandsNET.Application.Sandbox;
+
 using DomainSandbox = OpenHandsNET.Domain.Sandbox.Sandbox;
 
 namespace OpenHandsNET.Infrastructure.Sandbox;
@@ -23,7 +26,9 @@ public sealed class DockerSandboxExecutor(IDockerClient docker) : ISandboxExecut
         var exec = await docker.Exec.CreateContainerExecAsync(
             sandbox.ContainerId!, new ContainerExecCreateParameters
             {
-                AttachStdin = true, AttachStdout = true, AttachStderr = true,
+                AttachStdin = true,
+                AttachStdout = true,
+                AttachStderr = true,
                 TTY = false,
                 Cmd = ["bash"],
                 WorkingDir = Domain.Sandbox.SandboxSpec.WorkspacePath,
@@ -40,7 +45,9 @@ public sealed class DockerSandboxExecutor(IDockerClient docker) : ISandboxExecut
         var exec = await docker.Exec.CreateContainerExecAsync(
             sandbox.ContainerId!, new ContainerExecCreateParameters
             {
-                AttachStdout = true, AttachStderr = true, TTY = false,
+                AttachStdout = true,
+                AttachStderr = true,
+                TTY = false,
                 Cmd = ["bash", "-c", command],
                 WorkingDir = Domain.Sandbox.SandboxSpec.WorkspacePath,
             }, ct);

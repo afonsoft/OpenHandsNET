@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -9,10 +10,13 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Infrastructure.Agent.Routing;
 using OpenHandsNET.Infrastructure.Persistence;
+
 using Shouldly;
+
 using Xunit;
 
 namespace OpenHandsNET.UnitTests.Agent;
@@ -27,8 +31,10 @@ public sealed class Spec50ByorKeyServiceTests
 {
     private static LlmProxyOptions EnabledOptions => new()
     {
-        BaseUrl = "http://litellm:4000", MasterKey = "mk-test",
-        Mode = "hybrid", DefaultBudgetUsd = 25m,
+        BaseUrl = "http://litellm:4000",
+        MasterKey = "mk-test",
+        Mode = "hybrid",
+        DefaultBudgetUsd = 25m,
     };
 
     private static async Task<AppDbContext> NewDbAsync(SqliteConnection conn)
@@ -237,7 +243,8 @@ public sealed class Spec50LiteLlmAdminClientTests
         LlmProxyOptions? opt = null) =>
         new(new StubFactory(handler), Options.Create(opt ?? new LlmProxyOptions
         {
-            BaseUrl = "http://litellm:4000/", MasterKey = "mk-secret",
+            BaseUrl = "http://litellm:4000/",
+            MasterKey = "mk-secret",
             Mode = "hybrid",
         }), NullLogger<LiteLlmAdminClient>.Instance);
 

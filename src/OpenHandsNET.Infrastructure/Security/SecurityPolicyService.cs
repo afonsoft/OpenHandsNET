@@ -1,6 +1,8 @@
 using System.Text.Json;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
+
 using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Infrastructure.Persistence;
 
@@ -92,8 +94,11 @@ public sealed class SecurityPolicyService(
         {
             row = new SecurityPolicyRecord
             {
-                Id = Guid.NewGuid(), OrgId = orgId,
-                Preset = preset, CreatedAt = now, UpdatedAt = now,
+                Id = Guid.NewGuid(),
+                OrgId = orgId,
+                Preset = preset,
+                CreatedAt = now,
+                UpdatedAt = now,
             };
             db.SecurityPolicies.Add(row);
         }

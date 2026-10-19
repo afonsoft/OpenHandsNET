@@ -1,12 +1,15 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+
 using OpenHandsNET.Application.Coordination;
 using OpenHandsNET.Application.Events;
 using OpenHandsNET.Domain.Events;
 using OpenHandsNET.Infrastructure.Cache;
 using OpenHandsNET.Infrastructure.Eventing;
+
 using Shouldly;
+
 using Xunit;
 
 namespace OpenHandsNET.UnitTests.Events;

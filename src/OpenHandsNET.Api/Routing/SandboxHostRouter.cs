@@ -1,5 +1,7 @@
 using System.Net.WebSockets;
+
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Sandbox;
 using OpenHandsNET.Sandboxing;
 
@@ -187,7 +189,8 @@ public sealed class SandboxHostRouter(
         using var client = new ClientWebSocket();
         var wsUri = new UriBuilder(upstream)
         {
-            Scheme = "ws", Path = path,
+            Scheme = "ws",
+            Path = path,
             Query = ctx.Request.QueryString.Value?.TrimStart('?'),
         }.Uri;
         await client.ConnectAsync(wsUri, ctx.RequestAborted);

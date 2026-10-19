@@ -1,13 +1,18 @@
 using Microsoft.AspNetCore.DataProtection;
+
 using OpenHandsNET.Api.Endpoints;
 using OpenHandsNET.Api.Hubs;
 using OpenHandsNET.Api.Options;
 using OpenHandsNET.Infrastructure;
 using OpenHandsNET.Infrastructure.Persistence;
+
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+
 using Prometheus;
+
 using Scalar.AspNetCore;
+
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);

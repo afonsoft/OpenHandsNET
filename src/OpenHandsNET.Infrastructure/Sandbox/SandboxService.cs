@@ -2,10 +2,12 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Sandbox;
 using OpenHandsNET.Domain.Sandbox;
 using OpenHandsNET.Infrastructure.Persistence;
 using OpenHandsNET.Sandboxing;
+
 using DomainSandbox = OpenHandsNET.Domain.Sandbox.Sandbox;
 
 namespace OpenHandsNET.Infrastructure.Sandbox;
@@ -65,8 +67,11 @@ public sealed class SandboxService(
 
         var record = new SandboxRecord
         {
-            Id = Guid.NewGuid(), SpecId = specId, ConversationId = conversationId,
-            Status = SandboxStatus.Starting.ToString(), CreatedAt = DateTimeOffset.UtcNow,
+            Id = Guid.NewGuid(),
+            SpecId = specId,
+            ConversationId = conversationId,
+            Status = SandboxStatus.Starting.ToString(),
+            CreatedAt = DateTimeOffset.UtcNow,
             ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(spec.TimeoutMinutes),
         };
         db.Sandboxes.Add(record);
@@ -625,7 +630,9 @@ public sealed class SandboxService(
             .Where(c => c.Id == conversationId.Value)
             .Select(c => new
             {
-                c.CreatedByUserId, c.SelectedRepository, c.SecretNamesJson,
+                c.CreatedByUserId,
+                c.SelectedRepository,
+                c.SecretNamesJson,
             })
             .FirstOrDefaultAsync(ct);
         if (conv is null)

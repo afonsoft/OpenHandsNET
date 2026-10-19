@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+
 using OpenHandsNET.Api.ProblemDetails;
 using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Application.Conversations;
@@ -348,7 +349,10 @@ public static class OpenAiGatewayEndpoints
         // Primeiro chunk: role (convenção OpenAI streaming).
         await WriteChunkAsync(new
         {
-            id, @object = "chat.completion.chunk", created, model,
+            id,
+            @object = "chat.completion.chunk",
+            created,
+            model,
             choices = new[]
             {
                 new
@@ -378,8 +382,10 @@ public static class OpenAiGatewayEndpoints
                 sentText.Add(frame.Text);
                 await WriteChunkAsync(new
                 {
-                    id, @object = "chat.completion.chunk",
-                    created, model,
+                    id,
+                    @object = "chat.completion.chunk",
+                    created,
+                    model,
                     choices = new[]
                     {
                         new
@@ -405,7 +411,10 @@ public static class OpenAiGatewayEndpoints
             // Sem deltas (modelo não-streaming): manda o texto inteiro.
             await WriteChunkAsync(new
             {
-                id, @object = "chat.completion.chunk", created, model,
+                id,
+                @object = "chat.completion.chunk",
+                created,
+                model,
                 choices = new[]
                 {
                     new
@@ -420,7 +429,10 @@ public static class OpenAiGatewayEndpoints
 
         await WriteChunkAsync(new
         {
-            id, @object = "chat.completion.chunk", created, model,
+            id,
+            @object = "chat.completion.chunk",
+            created,
+            model,
             choices = new[]
             {
                 new

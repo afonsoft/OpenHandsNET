@@ -32,7 +32,8 @@ src/OpenHandsNET.Api             # /api/v1 + hubs SignalR + hosting WASM
 src/OpenHandsNET.Client          # Blazor WASM (base: open-webui-net Client)
 cli/OpenHandsNET.Cli             # `openhandsnet` CLI
 tests/                           # Unit · Integration (Testcontainers) · Client
-.specs/                          # SPECs SDD (fonte única de verdade)
+.specs/                          # SPECs SDD ativas (fonte única de verdade)
+docs/specs/                      # SPECs entregues (arquivo morto)
 migration-plan/                  # research + roadmap do port
 docs/reference/                  # baseline upstream + extratos de docs
 ```
@@ -75,11 +76,59 @@ dotnet run --project src/OpenHandsNET.Api        # app em http://localhost:8080
 docker compose up -d --build                      # app em http://localhost:3032
 ```
 
+## Harness Structure
+
+| Componente | Local | Loading |
+|---|---|---|
+| Instruções raiz | `CLAUDE.md` | always-on nativo |
+| Regras globais | `.claude/rules/global-rules.md` | always-on nativo |
+| Regras de domínio | `.claude/rules/{dotnet,workflows}.md` | path-scoped |
+| Sub-agentes | `.claude/agents/{engineer,plan,review,test,architecture}.md` | Task |
+| Contexto/domínio | `.claude/CONTEXT.md` | ritual (Agent Loop) |
+| Guardrails | `.claude/RULES.md` | ritual |
+| Memória state/history | `.claude/memory/{memory,YYYYMMDD}-memory.md` | ritual/on-demand |
+| Protocolo memória | `.claude/MEMORY.md` | on-demand |
+| Tools/MCP · workflows · harness | `.claude/{TOOLS,WORKFLOWS,README}.md` | on-demand |
+| Arquitetura | `docs/architecture/` | on-demand |
+
+## Context Engineering
+
+Prioridade de leitura e orçamento de tokens: `.claude/CONTEXT.md`.
+Reservar ~20% do contexto para saída; arquivos >500 linhas por seções.
+
+## Memory Protocol
+
+- **State**: `.claude/memory/memory.md` — sobrescrito a cada sessão (≤100 linhas).
+- **History**: `.claude/memory/{YYYYMMDD}-memory.md` — append-only;
+  prompts, decisões, débito, lições.
+- **Orchestrator**: `orchestrator_stats.md` + `orchestrator_sessions.md`.
+- **Knowledge**: `.claude/knowledge/` — fatos duráveis promovidos da memória.
+- **Save always**: registrar cada prompt, checkpoint, decisão e erro;
+  nada sobrevive só no contexto.
+- **## Prompts**: toda instrução do usuário gera uma linha no arquivo
+  long-term do dia sob `## Prompts`; checkpoints/decisões sob suas
+  seções; `## Session summary` antes de compactar/encerrar.
+
 ## Agent Loop
 
-Padrão **Plan-and-Execute**: ler `.specs/` → plano → implementar em
-`feature/*` → `build → test` → PR. SPECs: `write-specs` → aprovação →
-`create-issues` → `execute-specs`/`tdd-spec` → review → merge.
+Padrão **Plan-and-Execute**:
+
+1. `CLAUDE.md` + `global-rules.md` carregados (always-on nativo).
+2. Ler `memory.md` + 3 `*-memory.md` recentes + `orchestrator_sessions.md`.
+3. Ler `.claude/CONTEXT.md` + `.claude/RULES.md` (ritual).
+4. Ler `.specs/` ativas relevantes → plano → implementar em `feature/*`
+   → `build → test` → PR. SPECs: `write-specs` → aprovação →
+   `create-issues` → `execute-specs`/`tdd-spec` → review → merge →
+   arquivar em `docs/specs/`.
+5. Verificação: `dotnet format --verify-no-changes` → `dotnet build` →
+   `dotnet test`.
+6. Atualizar memória antes de encerrar/compactar.
+
+## Always-on Connection
+
+Claude Code carrega nativamente só `CLAUDE.md` + `.claude/rules/*.md`
+(sem `paths:`). Os demais documentos always-on (`.claude/CONTEXT.md`,
+`.claude/RULES.md`, `memory.md`) são lidos pelo ritual do Agent Loop.
 
 ## Autonomia do agente
 
@@ -99,3 +148,14 @@ Padrão **Plan-and-Execute**: ler `.specs/` → plano → implementar em
 
 - Português (pt-BR) para o usuário; código/commits em inglês (Conventional Commits).
 - Conciso e direto; referências `path:linha`.
+
+## Referências
+
+- [.claude/rules/](.claude/rules/) — regras always-on e path-scoped
+- [.claude/agents/](.claude/agents/) — sub-agentes do harness
+- [.claude/CONTEXT.md](.claude/CONTEXT.md) · [.claude/RULES.md](.claude/RULES.md)
+- [.claude/MEMORY.md](.claude/MEMORY.md) · [.claude/TOOLS.md](.claude/TOOLS.md) · [.claude/WORKFLOWS.md](.claude/WORKFLOWS.md)
+- [.claude/README.md](.claude/README.md) — infraestrutura do harness
+- [.claude/memory/](.claude/memory/) — estado cross-session
+- [docs/architecture/](docs/architecture/) — ADRs e diagramas
+- [.specs/](.specs/) — SPECs ativas · [docs/specs/](docs/specs/) — entregues

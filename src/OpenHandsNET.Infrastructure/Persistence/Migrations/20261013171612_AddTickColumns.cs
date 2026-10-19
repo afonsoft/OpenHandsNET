@@ -59,7 +59,7 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                 name: "ix_conversations_created_at_ticks",
                 table: "conversations",
                 column: "created_at_ticks");
-        
+
             // Backfill: converte o TEXT ISO-8601 do DateTimeOffset em UtcTicks
             // ((unix_s + 62135596800) * 1e7 + fração de segundo * 1e7).
             const string ticksExpr =

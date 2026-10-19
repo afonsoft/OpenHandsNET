@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+
 using OpenHandsNET.Application.Coordination;
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Infrastructure.Persistence;
@@ -82,8 +83,10 @@ public sealed class UsageFlushWorker(
                 {
                     db.UsageRecords.Add(new UsageRecord
                     {
-                        Id = Guid.NewGuid(), OrgId = p.OrgId,
-                        Period = p.Period, TokensUsed = p.Tokens,
+                        Id = Guid.NewGuid(),
+                        OrgId = p.OrgId,
+                        Period = p.Period,
+                        TokensUsed = p.Tokens,
                         CostUsd = p.CostUsd > 0 ? p.CostUsd : null,
                         RecordedAt = DateTimeOffset.UtcNow,
                     });

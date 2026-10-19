@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Infrastructure.Persistence;
 
@@ -28,8 +29,11 @@ public sealed class UsageMeter(AppDbContext db) : IUsageMeter
         {
             db.UsageRecords.Add(new UsageRecord
             {
-                Id = Guid.NewGuid(), OrgId = orgId, Period = period,
-                TokensUsed = tokens, CostUsd = costUsd,
+                Id = Guid.NewGuid(),
+                OrgId = orgId,
+                Period = period,
+                TokensUsed = tokens,
+                CostUsd = costUsd,
                 RecordedAt = DateTimeOffset.UtcNow,
             });
         }

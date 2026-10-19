@@ -1,10 +1,12 @@
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
+
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Application.Events;
 using OpenHandsNET.Application.Sandbox;
@@ -243,9 +245,12 @@ internal sealed class AgentRunnerFixture : IAsyncDisposable
         db.Database.EnsureCreated();
         var record = new ConversationRecord
         {
-            Id = ConversationId, SandboxId = SandboxId,
-            ExecutionStatus = "Running", ConfirmationMode = confirmationMode,
-            CreatedAt = DateTimeOffset.UtcNow, UpdatedAt = DateTimeOffset.UtcNow,
+            Id = ConversationId,
+            SandboxId = SandboxId,
+            ExecutionStatus = "Running",
+            ConfirmationMode = confirmationMode,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
         };
         configureConv?.Invoke(record);
         db.Conversations.Add(record);

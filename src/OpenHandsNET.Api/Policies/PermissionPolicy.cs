@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Domain.Identity;
 

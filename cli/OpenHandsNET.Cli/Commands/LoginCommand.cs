@@ -1,6 +1,7 @@
+using OpenHandsNET.Cli.Services;
+
 using Spectre.Console;
 using Spectre.Console.Cli;
-using OpenHandsNET.Cli.Services;
 
 namespace OpenHandsNET.Cli.Commands;
 
@@ -30,7 +31,8 @@ public sealed class LoginCommand : AsyncCommand<LoginCommand.Settings>
         {
             await store.SaveAsync(new CredentialStore.Credential
             {
-                ServerUrl = url, ApiKey = key,
+                ServerUrl = url,
+                ApiKey = key,
             }, ct);
             AnsiConsole.MarkupLine(
                 $"[green]✓[/] API key gravada para [bold]{url}[/] " +

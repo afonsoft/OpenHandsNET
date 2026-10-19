@@ -1,9 +1,11 @@
 using Docker.DotNet;
 using Docker.DotNet.Models;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
 using OpenHandsNET.Infrastructure.Conversations;
 using OpenHandsNET.Infrastructure.Persistence;
 using OpenHandsNET.Infrastructure.Sandbox;
@@ -57,7 +59,8 @@ public sealed class Spec14SandboxTests : IAsyncLifetime
     {
         var opts = Options.Create(overrides ?? new SandboxOptions
         {
-            WorkspaceRoot = _wsRoot, InstanceOwner = _owner,
+            WorkspaceRoot = _wsRoot,
+            InstanceOwner = _owner,
         });
         var provisioner = new WorkspaceProvisioner(opts,
             NullLogger<WorkspaceProvisioner>.Instance);
@@ -85,7 +88,9 @@ public sealed class Spec14SandboxTests : IAsyncLifetime
     {
         var conv = new ConversationRecord
         {
-            Id = Guid.NewGuid(), OrgId = orgId, SandboxProfile = profile,
+            Id = Guid.NewGuid(),
+            OrgId = orgId,
+            SandboxProfile = profile,
             ExecutionStatus = "Starting",
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
@@ -118,7 +123,9 @@ public sealed class Spec14SandboxTests : IAsyncLifetime
         if (!_dockerUp) return;
         var org = new OrganizationRecord
         {
-            Id = Guid.NewGuid(), Name = "BigOrg", Slug = "big",
+            Id = Guid.NewGuid(),
+            Name = "BigOrg",
+            Slug = "big",
             SettingsJson = """{"sandbox_profile":"large"}""",
             CreatedAt = DateTimeOffset.UtcNow,
         };
@@ -143,7 +150,9 @@ public sealed class Spec14SandboxTests : IAsyncLifetime
         if (!_dockerUp) return;
         var org = new OrganizationRecord
         {
-            Id = Guid.NewGuid(), Name = "Org2", Slug = "org2",
+            Id = Guid.NewGuid(),
+            Name = "Org2",
+            Slug = "org2",
             SettingsJson = """{"sandbox_profile":"large"}""",
             CreatedAt = DateTimeOffset.UtcNow,
         };
@@ -154,7 +163,9 @@ public sealed class Spec14SandboxTests : IAsyncLifetime
 
         var svc = MakeService(new SandboxOptions
         {
-            WorkspaceRoot = _wsRoot, InstanceOwner = _owner, Profile = "medium",
+            WorkspaceRoot = _wsRoot,
+            InstanceOwner = _owner,
+            Profile = "medium",
         });
         var sb = await svc.StartAsync(Guid.Empty, convId, CancellationToken.None);
         try
@@ -172,8 +183,10 @@ public sealed class Spec14SandboxTests : IAsyncLifetime
         var convId = await SeedConversationAsync();
         var svc = MakeService(new SandboxOptions
         {
-            WorkspaceRoot = _wsRoot, InstanceOwner = _owner,
-            EgressMode = "deny", DefaultImage = Image,
+            WorkspaceRoot = _wsRoot,
+            InstanceOwner = _owner,
+            EgressMode = "deny",
+            DefaultImage = Image,
         });
         // spec default image must exist locally; use bash:5 via custom spec
         var spec = new OpenHandsNET.Domain.Sandbox.SandboxSpec(
@@ -198,8 +211,10 @@ public sealed class Spec14SandboxTests : IAsyncLifetime
         if (!_dockerUp) return;
         var opts = new SandboxOptions
         {
-            WorkspaceRoot = _wsRoot, InstanceOwner = _owner,
-            WarmPoolSize = 1, DefaultImage = Image,
+            WorkspaceRoot = _wsRoot,
+            InstanceOwner = _owner,
+            WarmPoolSize = 1,
+            DefaultImage = Image,
         };
         var optWrap = Options.Create(opts);
         var provisioner = new WorkspaceProvisioner(optWrap,

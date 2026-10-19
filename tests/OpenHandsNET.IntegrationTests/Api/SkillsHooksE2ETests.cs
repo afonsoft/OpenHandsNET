@@ -1,8 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+
 using Shouldly;
 
 namespace OpenHandsNET.IntegrationTests.Api;
@@ -55,7 +57,8 @@ public sealed class SkillsHooksE2ETests : IDisposable
             using var p = System.Diagnostics.Process.Start(
                 new System.Diagnostics.ProcessStartInfo("docker", "info")
                 {
-                    RedirectStandardOutput = true, RedirectStandardError = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
                 })!;
             p.WaitForExit(5000);
             return p.ExitCode == 0;
@@ -88,8 +91,11 @@ public sealed class SkillsHooksE2ETests : IDisposable
         {
             (await _http.PostAsJsonAsync("/api/v1/hooks", new
             {
-                name = $"hook-{ev}", @event = ev, action = "emit_event",
-                payload, blocking = false,
+                name = $"hook-{ev}",
+                @event = ev,
+                action = "emit_event",
+                payload,
+                blocking = false,
             })).StatusCode.ShouldBe(HttpStatusCode.Created);
         }
 

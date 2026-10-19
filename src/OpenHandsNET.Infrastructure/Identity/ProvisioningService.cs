@@ -1,7 +1,9 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Domain.Identity;
 using OpenHandsNET.Infrastructure.Identity.Provisioning;
@@ -58,8 +60,10 @@ public sealed class ProvisioningService(
             db.Users.Add(user);
             db.OrgMembers.Add(new OrgMemberRecord
             {
-                OrgId = orgId, UserId = user.Id,
-                Role = role, CreatedAt = DateTimeOffset.UtcNow,
+                OrgId = orgId,
+                UserId = user.Id,
+                Role = role,
+                CreatedAt = DateTimeOffset.UtcNow,
             });
             await db.SaveChangesAsync(cancellationToken);
             localUserId = user.Id;

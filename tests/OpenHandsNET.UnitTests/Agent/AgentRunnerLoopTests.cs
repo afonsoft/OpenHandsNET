@@ -1,6 +1,7 @@
 using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Application.Sandbox;
 using OpenHandsNET.Domain.Events;
+
 using Shouldly;
 
 namespace OpenHandsNET.UnitTests.Agent;

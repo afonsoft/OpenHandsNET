@@ -1,5 +1,7 @@
 using OpenHandsNET.Application.Automations;
+
 using Shouldly;
+
 using Xunit;
 
 namespace OpenHandsNET.UnitTests;

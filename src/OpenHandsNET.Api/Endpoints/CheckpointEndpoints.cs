@@ -1,5 +1,7 @@
 using System.Text.RegularExpressions;
+
 using Microsoft.Extensions.DependencyInjection;
+
 using OpenHandsNET.Api.ProblemDetails;
 using OpenHandsNET.Application.Checkpoints;
 using OpenHandsNET.Application.Conversations;
@@ -129,8 +131,10 @@ public static partial class CheckpointEndpoints
 
         return Results.Ok(new CheckpointRevertResult
         {
-            Reverted = true, Conflicts = conflicts,
-            Untracked = untracked, PreRevertHash = pre.Hash,
+            Reverted = true,
+            Conflicts = conflicts,
+            Untracked = untracked,
+            PreRevertHash = pre.Hash,
         });
     }
 
