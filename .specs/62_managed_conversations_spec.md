@@ -8,7 +8,7 @@
 | Type | `Feature / Agent + API` |
 | Stack | `.NET 10 · start-task pipeline · SignalR` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Delivered` |
 | Ticket | `TBD` |
 | Depends on | `28` (task tool), `04` (start-task), `16` (sleep/wake), `20` (quotas) |
 | Reference | competitive-analysis §6.3 (G10); docs.devin.ai
@@ -141,3 +141,18 @@ segurança.
 - Depth/sibling cap → 403; auto-approve=false pede `ask_user`.
 - `delegate_message` entrega; `delegate_cancel` para a filha.
 - Suite verde; golden OpenAPI atualizado.
+
+## 11. Delivered
+
+- **PR #138** (mergeado): `POST/GET /api/v1/app-conversations/{id}/delegations`
+  com `RequireAuthorization` + IInputGuard (`guard.input_blocked` audit).
+- Filha criada pelo pipeline real `IAppConversationService.CreateAsync`
+  (record STARTING + start-task enfileirada + mensagem inicial com
+  kickoff); herda Permissions/Mode/ConfirmationMode/SandboxProfile do pai.
+- Depth cap (2) e sibling cap (8); `ListSiblingsAsync` lista só filhas.
+- Migrations regeneradas via dotnet-ef (SQLite + Postgres).
+- Testes: `DelegationServiceTests` (2 casos, 587 unit verdes).
+- Divergência de escopo vs spec original: tools de agente
+  `delegate_message`/`delegate_cancel`/`delegate_status` e wake via
+  `delegate_event` ficam para spec futura — entregue aqui: criação da
+  filha + listagem de siblings + `WakeParentOnCompletionAsync`.
