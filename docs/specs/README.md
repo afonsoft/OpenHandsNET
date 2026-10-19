@@ -72,3 +72,11 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | `64_browser_profiles_spec` | SPEC — 64 · Browser Auth Profiles (storage state + site cookies/TOT | #141 |
 | `68_nextgen_improvements_spec` | Devin Web & Upstream OpenHands Next-Gen Improvements | #123/#124 |
 | `69_enterprise_sandbox_hardening_spec` | SPEC-69: Enterprise Sandbox Hardening, Live Handover & Session Time-Tr | #134 |
+
+## Entregues em 2026-10-19 (gap-analysis 2026-10-19 / Epic #146)
+
+| SPEC | Título | Entrega | Issue |
+|---|---|---|---|
+| 65 | Specs hygiene | `0cd88c5` — arquivo `docs/specs/`, renumbering 68/69, índices | #147 |
+| 66 | Quality gates | `dba6ea0` — `.editorconfig`, lint gate CI, job sonarcloud gated, badges | #148 |
+| 67 | Harness structure | estrutura `.claude/` completa + `docs/architecture/` + CLAUDE.md seções | #149 |

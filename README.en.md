@@ -1,14 +1,24 @@
 # OpenHandsNET
 
+[![ci](https://github.com/afonsoft/OpenHandsNET/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/afonsoft/OpenHandsNET/actions/workflows/ci.yml)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=afonsoft_OpenHandsNET&metric=alert_status)](https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main)
+[![Maintainability](https://sonarcloud.io/api/project_badges/measure?project=afonsoft_OpenHandsNET&metric=sqale_rating)](https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main)
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=afonsoft_OpenHandsNET&metric=code_smells)](https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main)
+[![Security](https://sonarcloud.io/api/project_badges/measure?project=afonsoft_OpenHandsNET&metric=security_rating)](https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=afonsoft_OpenHandsNET&metric=coverage)](https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main)
+
 Open-source (MIT) port of the **OpenHands** ecosystem to **.NET 10 / C# 14 /
 Blazor WebAssembly** — an autonomous software-engineering agent with Cloud +
 Enterprise concepts and a Devin Web–inspired UX, built on top of
 [`afonsoft/open-webui`](https://github.com/afonsoft/open-webui).
 
-> Status: **working product** — SPECs 01–64 delivered (agent, sandbox,
-> API, full UI, enterprise ops, SCM/ChatOps/ticketing integrations,
-> enterprise identity, edge security, indexing/insights/knowledge and
-> browser profiles). In progress: SPEC-62 (managed conversations).
+> Status: **working product** — SPECs 01–64 + 68/69 delivered and
+> archived in [`docs/specs/`](docs/specs/) (agent, sandbox, API, full
+> UI, enterprise ops, SCM/ChatOps/ticketing integrations, enterprise
+> identity, edge security, indexing/insights/knowledge, browser
+> profiles). Active SPECs in [`.specs/`](.specs/).
+> Quality gates: `dotnet format` + tests in CI; SonarCloud analysis
+> (badges above) — see `ci.yml`.
 > Português: [README.md](README.md).
 
 ## Vision

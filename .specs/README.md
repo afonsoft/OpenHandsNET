@@ -26,15 +26,13 @@ SPECs (Spec-Driven Development) do port do ecossistema **OpenHands** para
 
 | SPEC | Domínio | Status | Issue |
 |---|---|---|---|
-| `65_specs_hygiene_spec.md` | Arquivamento `docs/specs/`, colisões 52/53, metadata `Status` | `Approved` | #147 |
-| `66_quality_gates_automation_spec.md` | `.editorconfig` + `dotnet format` em CI + SonarQube | `Approved` | #148 |
-| `67_harness_structure_spec.md` | `docs/architecture/` + ADR thin-harness + `.claude/CONTEXT.md` | `Approved` | #149 |
 
 ## Arquivo morto — `docs/specs/`
 
-SPECs **01–64 + 68 + 69** entregues (66 documentos) foram movidas para
-[`docs/specs/`](../docs/specs/README.md) em 2026-10-19 (SPEC-65), com
-`Status: Completed` e evidência de entrega (PR/commit) no índice.
+SPECs **01–69** entregues (69 documentos) estão em
+[`docs/specs/`](../docs/specs/README.md), com `Status: Completed` e
+evidência de entrega (PR/commit) no índice — incluindo 65/66/67
+(arquivadas em 2026-10-19).
 
 > **Renumbering (2026-10-19)**: `52_nextgen_improvements` → **68** e
 > `53_enterprise_sandbox_hardening` → **69** para resolver colisões com
