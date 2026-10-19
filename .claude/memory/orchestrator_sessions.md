@@ -34,3 +34,16 @@
 - SQLite can't `ORDER BY DateTimeOffset` — companion `*Ticks` column (repo convention).
 - `MapFallbackToFile` swallows unmapped routes → opt-in endpoint tests must assert on body markers, not status.
 - NuGet ≥7-day rule: check publish dates via `v3/registration5-gz-semver2` index (e.g. chose OpenApi 10.0.12 over 5-day-old 10.0.13).
+
+## Session — 2026-10-19 (status check)
+
+**Scope**: Orchestrator run on `main` — full test suite + audit of sonarqube-autofix (code smells) and gap-analysis implementation status.
+
+**Findings**:
+- `dotnet test` on main: **851/851 green** (Unit 587 · Integration 174 · Client 80 · SandboxAgent 10), 0 failed.
+- 0 open issues, 0 open PRs, no worktrees besides main.
+- **sonarqube-autofix**: never executed — no SonarQube/SonarCloud integration exists (no `sonar-project.*`, no CI step in `.github/workflows/`, no issues/SPECs for code smells). Phase 2 gate never ran; needs `SONAR_HOST_URL`/`SONAR_TOKEN` + project key to start.
+- **gap-analysis**: last formal audit was the competitive wave analysis (SPEC-32 upstream survey + waves A/B/C → SPECs 52-64, commit `6c5c1c7`), all `Delivered` (PRs ≤ #145). No post-delivery gap audit on record; `risk-assessment.md` prescribes periodic re-audit.
+- Bookkeeping gaps: `docs/specs/` doesn't exist (delivered SPECs not archived per Phase 5 step 8); numbering collision 52×2 and 53×2; SPEC-53 enterprise missing `Status`; SPECs 27/32/52-nextgen still `Approved` (research/meta, not implementation gaps).
+
+**Remaining**: optional — wire SonarQube to enable sonarqube-autofix gate; run a fresh `/gap-analysis` audit post-wave; archive delivered SPECs to `docs/specs/`.
