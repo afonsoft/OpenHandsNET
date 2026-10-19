@@ -897,4 +897,35 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
         var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(Json, ct);
         return doc.GetProperty("token").GetString();
     }
+
+
+    // ---- SPEC-63: knowledge pipeline ---------------------------------
+
+    public async Task<IReadOnlyList<KnowledgeSuggestionItem>>
+        ListKnowledgeSuggestionsAsync(string? status = null,
+            CancellationToken ct = default) =>
+        (await GetOrNull<List<KnowledgeSuggestionItem>>(
+            $"/api/v1/knowledge/suggestions{(status is null ? "" : $"?status={status}")}",
+            ct)) ?? [];
+
+    public async Task ApproveSuggestionAsync(
+        Guid id, string? contentOverride, CancellationToken ct = default)
+        => await http.PostAsJsonAsync(
+            $"/api/v1/knowledge/suggestions/{id}/approve",
+            new { contentOverride }, Json, ct);
+
+    public async Task DismissSuggestionAsync(
+        Guid id, string? reason, CancellationToken ct = default)
+        => await http.PostAsJsonAsync(
+            $"/api/v1/knowledge/suggestions/{id}/dismiss",
+            new { reason }, Json, ct);
+
+    public async Task GroomKnowledgeAsync(CancellationToken ct = default)
+        => await http.PostAsync("/api/v1/knowledge/groom", null, ct);
 }
+
+/// <summary>SPEC-63: sugestão de knowledge na fila.</summary>
+public sealed record KnowledgeSuggestionItem(
+    Guid Id, string Scope, string? RepoPath, string Title,
+    string Content, string Kind, string Status, string? Reason,
+    string? Resolution, DateTimeOffset CreatedAt);

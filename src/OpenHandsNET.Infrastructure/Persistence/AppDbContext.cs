@@ -103,6 +103,8 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
 
     /// <summary>Service users (SPEC-57).</summary>
     public DbSet<ServiceUserRecord> ServiceUsers => Set<ServiceUserRecord>();
+    /// <summary>SPEC-63: fila de sugestões de conhecimento.</summary>
+    public DbSet<OpenHandsNET.Infrastructure.Knowledge.KnowledgeSuggestionRecord> KnowledgeSuggestions => Set<OpenHandsNET.Infrastructure.Knowledge.KnowledgeSuggestionRecord>();
     public DbSet<ScimTokenRecord> ScimTokens => Set<ScimTokenRecord>();
     public DbSet<IdpGroupMappingRecord> IdpGroupMappings => Set<IdpGroupMappingRecord>();
     public DbSet<UsageTierRecord> UsageTiers => Set<UsageTierRecord>();
@@ -111,6 +113,10 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
 
     /// <summary>Org-scoped memory entries (SPEC-30).</summary>
     public DbSet<MemoryRecord> MemoryRecords => Set<MemoryRecord>();
+
+    /// <summary>SPEC-64: browser auth profiles (state ciphertext-only).</summary>
+    public DbSet<OpenHandsNET.Infrastructure.BrowserProfiles.BrowserProfileRecord>
+        BrowserProfiles => Set<OpenHandsNET.Infrastructure.BrowserProfiles.BrowserProfileRecord>();
 
     /// <summary>Organizations.</summary>
     public DbSet<OrganizationRecord> Organizations => Set<OrganizationRecord>();
@@ -291,6 +297,9 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
         modelBuilder.Entity<ServiceUserRecord>()
             .HasQueryFilter(r =>
                 !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
+        modelBuilder.Entity<OpenHandsNET.Infrastructure.Knowledge.KnowledgeSuggestionRecord>()
+            .HasQueryFilter(r =>
+                !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
         modelBuilder.Entity<ScimTokenRecord>()
             .HasQueryFilter(r =>
                 !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
@@ -313,6 +322,11 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
             .HasIndex(k => new { k.OrgId, k.UserId });
         modelBuilder.Entity<IpAccessRuleRecord>()
             .HasIndex(k => k.Scope);
+        modelBuilder.Entity<OpenHandsNET.Infrastructure.BrowserProfiles.BrowserProfileRecord>()
+            .HasQueryFilter(r =>
+                !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
+        modelBuilder.Entity<OpenHandsNET.Infrastructure.BrowserProfiles.BrowserProfileRecord>()
+            .HasIndex(p => new { p.OwnerId, p.Domain }).IsUnique();
     }
 }
 

@@ -12,12 +12,16 @@ public sealed class SessionInsightService : ISessionInsightService
     private readonly AppDbContext _db;
     private readonly ILogger<SessionInsightService> _logger;
 
+    private readonly IServiceProvider _services;
+
     public SessionInsightService(
         AppDbContext db,
-        ILogger<SessionInsightService> logger)
+        ILogger<SessionInsightService> logger,
+        IServiceProvider services)
     {
         _db = db;
         _logger = logger;
+        _services = services;
     }
 
     public async Task<SessionInsightDto> AnalyzeSessionAsync(Guid conversationId, bool force = false, CancellationToken ct = default)
@@ -109,6 +113,31 @@ public sealed class SessionInsightService : ISessionInsightService
         }
 
         await _db.SaveChangesAsync(ct);
+
+        // SPEC-63 RF-001a: learnings da sessão → fila de sugestões
+        // (fire-and-forget; nunca falha a análise).
+        try
+        {
+            var knowledge = _services?.GetService(
+                typeof(Application.Knowledge.IKnowledgeService))
+                as Application.Knowledge.IKnowledgeService;
+            if (knowledge is not null)
+            {
+                foreach (var learning in learnings)
+                {
+                    await knowledge.SuggestAsync(
+                        $"learning: {conv.Title ?? conversationId.ToString()[..8]}",
+                        learning, "org", conv.SelectedRepository,
+                        Application.Knowledge.SuggestionKind.Entry,
+                        "session-insight", [conversationId], null, ct);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "knowledge suggestion hook failed for {Id}", conversationId);
+        }
 
         return ToDto(insightRecord);
     }

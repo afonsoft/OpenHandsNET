@@ -16,6 +16,9 @@ public sealed class PlaywrightBrowserService(
     ILogger<PlaywrightBrowserService> logger) : IBrowserService
 {
     private readonly ConcurrentDictionary<Guid, Lazy<Task<ContextEntry>>> _contexts = new();
+    // SPEC-64 RF-003: storage states a aplicar quando o contexto
+    // for (re)criado — attach antes da primeira navegação.
+    private readonly ConcurrentDictionary<Guid, string> _pendingStates = new();
     private readonly SemaphoreSlim _launchGate = new(1, 1);
     private IPlaywright? _playwright;
     private IBrowser? _browser;
@@ -138,6 +141,35 @@ public sealed class PlaywrightBrowserService(
     }
 
     /// <inheritdoc />
+    public async Task<string?> CaptureStorageStateAsync(
+        Guid conversationId, CancellationToken ct)
+    {
+        if (!_contexts.TryGetValue(conversationId, out var lazy)
+            || !lazy.IsValueCreated)
+        {
+            return null;
+        }
+        var entry = await lazy.Value;
+        return await entry.Context.StorageStateAsync();
+    }
+
+    /// <inheritdoc />
+    public async Task SetStorageStateAsync(
+        Guid conversationId, string storageStateJson,
+        CancellationToken ct)
+    {
+        _pendingStates[conversationId] = storageStateJson;
+        // contexto existente não carrega state novo — recria para
+        // o attach valer já nesta sessão.
+        if (_contexts.TryRemove(conversationId, out var lazy)
+            && lazy.IsValueCreated)
+        {
+            var entry = await lazy.Value;
+            try { await entry.Context.CloseAsync(); } catch { }
+        }
+    }
+
+    /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
         _disposed = true;
@@ -188,6 +220,7 @@ public sealed class PlaywrightBrowserService(
             {
                 var browser = await EnsureLaunchedAsync(ct);
                 var o = options.Value;
+                _pendingStates.TryGetValue(id, out var pendingState);
                 var context = await browser.NewContextAsync(
                     new BrowserNewContextOptions
                     {
@@ -195,6 +228,7 @@ public sealed class PlaywrightBrowserService(
                         {
                             Width = o.ViewportWidth, Height = o.ViewportHeight,
                         },
+                        StorageState = pendingState,
                     });
                 var page = await context.NewPageAsync();
                 page.SetDefaultTimeout(o.NavigationTimeoutMs);

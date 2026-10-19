@@ -8,7 +8,7 @@
 | Type | `Feature / Agent + Security` |
 | Stack | `.NET 10 · Microsoft.Playwright · EF Core` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Delivered` |
 | Ticket | `TBD` |
 | Depends on | `18` (browser tool), `33` (secrets by-ref), `14`/`16` (sandbox
   lifecycle) |
@@ -140,3 +140,31 @@ tipados; UX de captura e attach; audit completo.
 - `totp` action retorna código válido (TOTP determinístico em teste).
 - Profile listado sem state; delete revoga attach futuro.
 - Suite verde; golden OpenAPI atualizado.
+
+## 11. Delivered
+
+- `Application/BrowserProfiles/BrowserProfileContracts.cs` —
+  `BrowserProfileInfo`, `BrowserProfileExpiredException`,
+  `IBrowserProfileService` (+ `NormalizeDomain` eTLD+1).
+- `Infrastructure/BrowserProfiles/BrowserProfileService.cs` —
+  `BrowserProfileRecord` (`IOrgScoped`), criptografia DataProtection
+  (`openhandsnet.browserprofiles.v1` + nonce), upsert por
+  (owner, domain), visibilidade owner/shared/admin, `LastUsedAt`;
+  `TotpGenerator` RFC 6238 (base32 → HMAC-SHA1 → 6 dígitos).
+- `IBrowserService`/`PlaywrightBrowserService` —
+  `CaptureStorageStateAsync` + `SetStorageStateAsync`
+  (`_pendingStates` aplicado na criação/recriação do contexto).
+- `Api/Endpoints/BrowserProfileEndpoints.cs` — list/get/delete
+  + capture (filtra state ao eTLD+1) + attach (merge `site_cookie`),
+  flag `Browser:ProfilesEnabled`, audit dos 3 eventos.
+- `SecretRecord.Kind` (`value|site_cookie|totp`) + action
+  `browser` `"totp"` (só o código efêmero sai; audit `browser.totp_used`).
+- `BrowserOptions`: `ProfilesEnabled`, `AutoAttachProfiles`.
+- EF migrations `spec64_browser_profiles` (SQLite + Postgres):
+  tabela `browser_profiles` + coluna `secrets.kind`.
+- Testes: `Spec64BrowserProfilesTests` (7) — roundtrip cripto,
+  upsert, expirado, cross-owner, admin delete, NormalizeDomain,
+  vetores RFC 6238.
+- Docs: `docs/features/browser-profiles.md`.
+- Divergências: UI de admin de profiles deferida; confirmação humana
+  do capture fica na superfície chamadora (endpoints são explícitos).

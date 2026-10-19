@@ -434,5 +434,14 @@
   "admin.sec_priority": "Prioridade",
   "admin.sec_check": "Simulação de borda",
   "admin.sec_message": "mensagem (opcional)",
-  "admin.sec_run": "Testar"
+  "admin.sec_run": "Testar",
+  "knowledge.title": "Knowledge",
+  "knowledge.pending": "pendentes",
+  "knowledge.approved": "aprovadas",
+  "knowledge.dismissed": "descartadas",
+  "knowledge.all": "todas",
+  "knowledge.groom": "rodar groom",
+  "knowledge.empty": "Nenhuma sugestão nesta fila.",
+  "knowledge.approve": "aprovar",
+  "knowledge.dismiss": "descartar"
 }

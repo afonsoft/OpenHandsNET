@@ -52,6 +52,20 @@
         ],
         "type": "object"
       },
+      "ApproveRequest": {
+        "properties": {
+          "content_override": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "content_override"
+        ],
+        "type": "object"
+      },
       "AssignPlanRequest": {
         "description": "Org plan assignment body.",
         "properties": {
@@ -62,6 +76,18 @@
         },
         "required": [
           "plan_id"
+        ],
+        "type": "object"
+      },
+      "AttachRequest": {
+        "properties": {
+          "profile_id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_id"
         ],
         "type": "object"
       },
@@ -153,6 +179,34 @@
         },
         "required": [
           "budget"
+        ],
+        "type": "object"
+      },
+      "CaptureRequest": {
+        "properties": {
+          "domain": {
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "shared": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "domain"
         ],
         "type": "object"
       },
@@ -421,6 +475,20 @@
         },
         "required": [
           "server"
+        ],
+        "type": "object"
+      },
+      "DismissRequest": {
+        "properties": {
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "reason"
         ],
         "type": "object"
       },
@@ -1415,6 +1483,38 @@
         },
         "required": [
           "label"
+        ],
+        "type": "object"
+      },
+      "SuggestRequest": {
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "repo_path": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "scope": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "content",
+          "scope",
+          "repo_path"
         ],
         "type": "object"
       },
@@ -2613,6 +2713,74 @@
         "summary": "POST /api/v1/app-conversations/{id:guid}/attention/dismiss",
         "tags": [
           "Conversations"
+        ]
+      }
+    },
+    "/api/v1/app-conversations/{id}/browser/attach": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/app-conversations/{id:guid}/browser/attach",
+        "tags": [
+          "BrowserProfiles"
+        ]
+      }
+    },
+    "/api/v1/app-conversations/{id}/browser/capture": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaptureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/app-conversations/{id:guid}/browser/capture",
+        "tags": [
+          "BrowserProfiles"
         ]
       }
     },
@@ -4119,6 +4287,65 @@
         ]
       }
     },
+    "/api/v1/browser-profiles": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/browser-profiles",
+        "tags": [
+          "BrowserProfiles"
+        ]
+      }
+    },
+    "/api/v1/browser-profiles/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "DELETE /api/v1/browser-profiles/{id:guid}",
+        "tags": [
+          "BrowserProfiles"
+        ]
+      },
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/browser-profiles/{id:guid}",
+        "tags": [
+          "BrowserProfiles"
+        ]
+      }
+    },
     "/api/v1/chat/channels/{connectionId}/config": {
       "post": {
         "parameters": [
@@ -4715,6 +4942,171 @@
           }
         },
         "summary": "DELETE /api/v1/keys/{id:guid}",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/knowledge/entries": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/knowledge/entries",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/knowledge/groom": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/knowledge/groom",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/knowledge/suggestions": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/knowledge/suggestions",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      },
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuggestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/knowledge/suggestions",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/knowledge/suggestions/{id}/approve": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ApproveRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/knowledge/suggestions/{id:guid}/approve",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/knowledge/suggestions/{id}/dismiss": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/DismissRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/knowledge/suggestions/{id:guid}/dismiss",
         "tags": [
           "OpenHandsNET.Api"
         ]
@@ -8194,6 +8586,9 @@
     },
     {
       "name": "SCM"
+    },
+    {
+      "name": "BrowserProfiles"
     }
   ]
 }

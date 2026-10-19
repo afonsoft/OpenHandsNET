@@ -35,6 +35,8 @@ public sealed class SecretRecord
     public required string Ciphertext { get; set; }
     public string? Nonce { get; set; }
     public string? MetaJson { get; set; }
+    /// <summary>SPEC-64 RF-004: value | site_cookie | totp.</summary>
+    public string Kind { get; set; } = "value";
     public DateTimeOffset CreatedAt { get; set; }
 }
 

@@ -310,6 +310,11 @@ public static class DependencyInjection
             OpenHandsNET.Infrastructure.Identity.ApiKeyService>();
         services.AddScoped<OpenHandsNET.Application.Identity.IServiceUserService,
             OpenHandsNET.Infrastructure.Identity.ServiceUserService>();
+        // SPEC-63: knowledge pipeline.
+        services.AddScoped<OpenHandsNET.Application.Knowledge.IKnowledgeService,
+            OpenHandsNET.Infrastructure.Knowledge.KnowledgeService>();
+        services.AddHostedService<
+            OpenHandsNET.Infrastructure.Knowledge.KnowledgeGroomer>();
         services.AddScoped<OpenHandsNET.Application.Identity.IScimTokenService,
             OpenHandsNET.Infrastructure.Identity.IdentityAdminService>();
         services.AddScoped<OpenHandsNET.Application.Identity.IIdentityAdminService,
@@ -528,6 +533,8 @@ public static class DependencyInjection
             OpenHandsNET.Infrastructure.Agent.Browser.BrowserOptions>(
             configuration.GetSection(
                 OpenHandsNET.Infrastructure.Agent.Browser.BrowserOptions.Section));
+        services.AddScoped<OpenHandsNET.Application.BrowserProfiles.IBrowserProfileService,
+            OpenHandsNET.Infrastructure.BrowserProfiles.BrowserProfileService>();
         services.AddSingleton<OpenHandsNET.Application.Agent.IBrowserService,
             OpenHandsNET.Infrastructure.Agent.Browser.PlaywrightBrowserService>();
 
