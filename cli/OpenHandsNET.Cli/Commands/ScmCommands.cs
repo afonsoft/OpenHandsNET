@@ -18,9 +18,8 @@ public sealed class ScmStatusCommand : AsyncCommand<ScmStatusCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(), ct: ct);
         var orgId = settings.OrgId ?? await ResolveOrgAsync(api, ct);
@@ -88,9 +87,8 @@ public sealed class ScmConnectCommand : AsyncCommand<ScmConnectCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(), ct: ct);
         if (settings.Kind == "github")
@@ -149,9 +147,8 @@ public sealed class ScmPrCreateCommand
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(), ct: ct);
         var pr = await api.CreatePullRequestAsync(

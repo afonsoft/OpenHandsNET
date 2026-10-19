@@ -39,9 +39,8 @@ public sealed class RunCommand : AsyncCommand<RunCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var task = settings.Task ?? (settings.File is { } f
             ? await System.IO.File.ReadAllTextAsync(f, ct) : null);
         if (string.IsNullOrWhiteSpace(task))

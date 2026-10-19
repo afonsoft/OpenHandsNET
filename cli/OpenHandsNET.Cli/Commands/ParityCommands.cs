@@ -23,7 +23,7 @@ public sealed class ModelsCommand : AsyncCommand<ModelsCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(),
@@ -88,9 +88,8 @@ public sealed class StatsCommand : AsyncCommand<StatsCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(), ct: ct);
         var conversations = await api.CountConversationsAsync(ct);
@@ -175,7 +174,7 @@ public sealed class SkillsCommand : AsyncCommand<SkillsCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(),
@@ -230,9 +229,8 @@ public sealed class ExportCommand : AsyncCommand<ExportCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(), ct: ct);
 
@@ -311,9 +309,8 @@ public sealed class ResumeCommand : AsyncCommand<ResumeCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(), ct: ct);
         var conv = await api.GetConversationAsync(settings.Id, ct);
@@ -381,13 +378,13 @@ public sealed class AttachCommand : AsyncCommand<AttachCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings) =>
+        CommandContext context, Settings settings, CancellationToken ct) =>
         await new TuiCommand().ExecuteAsync(context,
             new TuiCommand.Settings
             {
                 ServerUrl = settings.Url,
                 ConversationId = settings.ConversationId,
-            });
+            }, ct);
 }
 
 /// <summary><c>openhandsnet mcp list</c> — SPEC-31 RF-001.</summary>
@@ -400,7 +397,7 @@ public sealed class McpListCommand : AsyncCommand<McpListCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(),
@@ -445,9 +442,8 @@ public sealed class McpTestCommand : AsyncCommand<McpTestCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(), ct: ct);
         var servers = await api.GetMcpServersAsync(ct);

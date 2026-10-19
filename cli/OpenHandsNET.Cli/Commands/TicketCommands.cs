@@ -19,9 +19,8 @@ public sealed class TicketsStatusCommand
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(), ct: ct);
         var orgId = settings.OrgId
@@ -63,9 +62,8 @@ public sealed class TicketsTestCommand
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(), ct: ct);
         var diag = await api.TestTicketConnectionAsync(
@@ -100,9 +98,8 @@ public sealed class TicketsRunCommand
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(), ct: ct);
         var r = await api.RunTicketAsync(

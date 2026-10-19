@@ -22,9 +22,8 @@ public sealed class ServiceUsersListCommand
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(), ct: ct);
         var orgId = settings.OrgId
@@ -72,9 +71,8 @@ public sealed class ServiceUsersCreateCommand
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(), ct: ct);
         var orgId = settings.OrgId
@@ -111,9 +109,8 @@ public sealed class ServiceUsersKeyCommand
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(), ct: ct);
         var orgId = settings.OrgId

@@ -15,9 +15,8 @@ public sealed class LogoutCommand : AsyncCommand<LogoutCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var url = settings.ServerUrl
             ?? Environment.GetEnvironmentVariable("OPENHANDSNET_SERVER_URL")
             ?? "http://localhost:8080";

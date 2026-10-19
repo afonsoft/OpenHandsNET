@@ -37,7 +37,7 @@ public sealed class DoctorCommand : AsyncCommand<DoctorCommand.Settings>
 
     /// <inheritdoc />
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
         var url = settings.ServerUrl
             ?? Environment.GetEnvironmentVariable("OPENHANDSNET_SERVER_URL")

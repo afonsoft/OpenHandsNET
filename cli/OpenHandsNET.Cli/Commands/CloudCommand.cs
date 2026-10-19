@@ -33,9 +33,8 @@ public sealed class CloudCommand : AsyncCommand<CloudCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var task = settings.Task;
         if (settings.File is { } file)
         {

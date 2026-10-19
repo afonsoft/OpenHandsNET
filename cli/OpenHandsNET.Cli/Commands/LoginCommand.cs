@@ -18,9 +18,8 @@ public sealed class LoginCommand : AsyncCommand<LoginCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var url = settings.ServerUrl
             ?? Environment.GetEnvironmentVariable("OPENHANDSNET_SERVER_URL")
             ?? Environment.GetEnvironmentVariable("OPENHANDSNET_CLOUD_URL")

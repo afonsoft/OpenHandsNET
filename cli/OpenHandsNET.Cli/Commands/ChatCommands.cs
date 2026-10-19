@@ -18,9 +18,8 @@ public sealed class ChatStatusCommand : AsyncCommand<ChatStatusCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(), ct: ct);
         var orgId = settings.OrgId
@@ -73,9 +72,8 @@ public sealed class ChatTestCommand : AsyncCommand<ChatTestCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings)
+        CommandContext context, Settings settings, CancellationToken ct)
     {
-        var ct = CancellationToken.None;
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(), ct: ct);
         var diag = await api.TestChatConnectionAsync(
