@@ -63,4 +63,21 @@ public interface IBrowserService : IAsyncDisposable
 
     /// <summary>Closes the conversation's browser context (idempotent).</summary>
     Task CloseAsync(Guid conversationId, CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-64 RF-002: captures the conversation context's storage
+    /// state (Playwright JSON — cookies + localStorage). Returns
+    /// null when the context does not exist yet.
+    /// </summary>
+    Task<string?> CaptureStorageStateAsync(
+        Guid conversationId, CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-64 RF-003: storage state applied to the conversation's
+    /// context on creation (before first navigation). If the
+    /// context already exists it is recreated with the state.
+    /// </summary>
+    Task SetStorageStateAsync(
+        Guid conversationId, string storageStateJson,
+        CancellationToken ct);
 }

@@ -26,6 +26,15 @@ public sealed class BrowserOptions
     /// <summary>Cap for extracted page text returned to the LLM.</summary>
     public int MaxContentChars { get; set; } = 8192;
 
+    /// <summary>SPEC-64: browser auth profiles (capture/attach).</summary>
+    public bool ProfilesEnabled { get; set; } = true;
+
+    /// <summary>
+    /// SPEC-64 RF-003: attach automático do profile do domínio alvo
+    /// quando a org habilita — sem ele, attach explícito por conversa.
+    /// </summary>
+    public bool AutoAttachProfiles { get; set; }
+
     /// <summary>Viewport used by every conversation context.</summary>
     public int ViewportWidth { get; set; } = 1280;
 
