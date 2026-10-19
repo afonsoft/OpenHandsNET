@@ -140,7 +140,7 @@ public static class OpenAiGatewayEndpoints
         /// <summary>Última mensagem user (o prompt efetivo do run).</summary>
         public string Prompt => Messages
             .LastOrDefault(m => m.Role == "user").Text
-            ?? Messages.Last().Text;
+            ?? Messages[^1].Text;
     }
 
     private static async Task<ChatRequest> ParseAsync(

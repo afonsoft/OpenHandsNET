@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 
 namespace OpenHandsNET.Client.Services;
@@ -20,7 +21,8 @@ public sealed class ClientEvent
     public string? ItemId => Get("item_id").ValueKind == JsonValueKind.String
         ? Get("item_id").GetString() : null;
     public DateTimeOffset Timestamp => Get("timestamp").ValueKind == JsonValueKind.String
-        && DateTimeOffset.TryParse(Get("timestamp").GetString(), out var ts)
+        && DateTimeOffset.TryParse(Get("timestamp").GetString(), CultureInfo.InvariantCulture,
+            DateTimeStyles.None, out var ts)
             ? ts : DateTimeOffset.MinValue;
 
     public JsonElement Get(string name) =>

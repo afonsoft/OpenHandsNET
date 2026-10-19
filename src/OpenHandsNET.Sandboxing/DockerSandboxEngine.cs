@@ -376,11 +376,11 @@ public sealed class DockerSandboxEngine(
         {
             await docker.Images.InspectImageAsync(image, ct);
         }
-        catch (DockerImageNotFoundException)
+        catch (DockerImageNotFoundException ex)
         {
             var (name, tag) = image.Split(':') is [var n, var t]
                 ? (n, t) : (image, "latest");
-            logger.LogInformation("Pulling sandbox image {Image}…", image);
+            logger.LogInformation(ex, "Pulling sandbox image {Image}…", image);
             await docker.Images.CreateImageAsync(
                 new ImagesCreateParameters { FromImage = name, Tag = tag },
                 null, new Progress<JSONMessage>(), ct);

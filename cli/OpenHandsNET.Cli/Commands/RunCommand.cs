@@ -46,7 +46,7 @@ public sealed class RunCommand : AsyncCommand<RunCommand.Settings>
             ? await System.IO.File.ReadAllTextAsync(f, ct) : null);
         if (string.IsNullOrWhiteSpace(task))
         {
-            Console.Error.WriteLine("task required (-t or -f)");
+            await Console.Error.WriteLineAsync("task required (-t or -f)");
             return 1;
         }
 

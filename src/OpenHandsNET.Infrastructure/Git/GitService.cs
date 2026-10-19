@@ -234,7 +234,7 @@ public sealed class GitService(
                 SecretRedactor.Redact(r.StdErr.Trim()));
         }
 
-        return new GitPushResult(true, r.StdOut.Trim().Split('\n').Last(), null);
+        return new GitPushResult(true, r.StdOut.Trim().Split('\n')[^1], null);
     }
 
     /// <inheritdoc />

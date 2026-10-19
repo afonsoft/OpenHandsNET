@@ -154,9 +154,12 @@ public sealed class ScmStatusReporter(
             var connection = await connections.FindForRepositoryAsync(
                 conv.OrgId.Value, ScmKind.GitHub,
                 conv.SelectedRepository, ct);
-            var provider = connection is null
-                ? null : providers.Get(connection.Kind);
-            if (provider is null || connection is null)
+            if (connection is null)
+            {
+                return;
+            }
+            var provider = providers.Get(connection.Kind);
+            if (provider is null)
             {
                 return;
             }

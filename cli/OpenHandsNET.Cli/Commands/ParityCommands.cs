@@ -338,7 +338,7 @@ public sealed class ResumeCommand : AsyncCommand<ResumeCommand.Settings>
             $"[grey]resumed {settings.Id[..8]} — /exit sai[/]");
         while (!ct.IsCancellationRequested)
         {
-            var input = AnsiConsole.Ask<string>("[green]>[/]");
+            var input = await AnsiConsole.AskAsync<string>("[green]>[/]");
             if (input.Trim() is "/exit" or "/quit")
             {
                 return 0;

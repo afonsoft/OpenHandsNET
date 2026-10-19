@@ -51,7 +51,7 @@ public sealed class TuiCommand : AsyncCommand<TuiCommand.Settings>
         {
             if (convId is null)
             {
-                var task = AnsiConsole.Ask<string>(
+                var task = await AnsiConsole.AskAsync<string>(
                     "[green]nova tarefa[/] ([grey]ou /list /exit[/])");
                 if (task.StartsWith('/'))
                 {
@@ -89,7 +89,7 @@ public sealed class TuiCommand : AsyncCommand<TuiCommand.Settings>
             }
 
             await PumpLoopAsync(api, convId, ct);
-            var input = AnsiConsole.Ask<string>("[green]>[/]");
+            var input = await AnsiConsole.AskAsync<string>("[green]>[/]");
             switch (keys.Resolve(input).Trim())
             {
                 case "/exit" or "/quit":

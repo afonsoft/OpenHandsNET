@@ -167,7 +167,7 @@ public sealed class AgentRunner(
         }
         finally
         {
-            hbCts.Cancel();
+            await hbCts.CancelAsync();
             try { await heartbeat; }
             catch (Exception) { /* best-effort — falha tolerada */ }
 
@@ -957,7 +957,7 @@ public sealed class AgentRunner(
                 // threshold, compacta entre tool calls da mesma iteração.
                 if (opt.Compaction.MidTurnEnabled
                     && await condenser.EvaluateAsync(history, model, ct)
-                        is { } mid)
+                        is not null)
                 {
                     var midResult = await condenser.CondenseAsync(
                         history, ids, CompactionTrigger.MidTurn, model,

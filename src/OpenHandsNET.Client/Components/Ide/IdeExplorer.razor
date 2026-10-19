@@ -87,7 +87,7 @@
     }
 
     private static string Name(string path) =>
-        path.TrimEnd('/').Split('/').Last();
+        path.TrimEnd('/').Split('/')[^1];
 
     private async Task LoadAsync()
     {

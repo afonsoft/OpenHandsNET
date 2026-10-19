@@ -31,7 +31,7 @@ public sealed class ProvisioningService(
     {
         if (!RoleName.IsOrgRole(role))
             throw new ArgumentException($"invalid org role '{role}'");
-        var org = await db.Organizations.FindAsync([orgId], cancellationToken)
+        _ = await db.Organizations.FindAsync([orgId], cancellationToken)
             ?? throw new ArgumentException("org not found");
 
         var password = generatePassword

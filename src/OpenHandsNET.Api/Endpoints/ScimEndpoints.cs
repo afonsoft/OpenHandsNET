@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -359,11 +360,13 @@ public static class ScimEndpoints
             CancellationToken ct) =>
         {
             var body = await JsonNode.ParseAsync(ctx.Request.Body, cancellationToken: ct);
-            var name = body?["name"]?.GetValue<string>();
+            if (body is null)
+                return Results.BadRequest(new { error = "invalid json" });
+            var name = body["name"]?.GetValue<string>();
             if (string.IsNullOrWhiteSpace(name))
                 return Results.BadRequest(new { error = "name required" });
-            var limits = body?["limits_json"]?.GetValue<string>()
-                ?? body?["limits"]?.ToJsonString();
+            var limits = body["limits_json"]?.GetValue<string>()
+                ?? body["limits"]?.ToJsonString();
             return Results.Ok(await svc.CreateTierAsync(
                 org_id, name, limits, ct));
         }).RequireAuthorization("perm:edit_org_settings");
@@ -438,7 +441,8 @@ public static class ScimEndpoints
             var body = await JsonNode.ParseAsync(ctx.Request.Body, cancellationToken: ct);
             DateTimeOffset? expires = body?["expires_at"] is JsonNode en
                 && DateTimeOffset.TryParse(
-                    en.GetValue<string>(), out var ex) ? ex : null;
+                    en.GetValue<string>(), CultureInfo.InvariantCulture,
+                    DateTimeStyles.None, out var ex) ? ex : null;
             var r = await svc.SetUserOverrideAsync(
                 org?.OrgId ?? Guid.Empty, id, actor.UserId,
                 body?["limits_json"]?.GetValue<string>()

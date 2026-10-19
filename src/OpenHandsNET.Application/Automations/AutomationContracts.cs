@@ -5,7 +5,7 @@ public static class AutomationScheduleKinds
 {
     /// <summary>A cada N minutos.</summary>
     public const string Interval = "interval";
-    /// <summary>Todo dia no horário UTC.</summary>
+    /// <summary>Diariamente no horário UTC.</summary>
     public const string Daily = "daily";
     /// <summary>Toda semana no weekday + horário UTC.</summary>
     public const string Weekly = "weekly";
@@ -108,7 +108,8 @@ public static class AutomationSchedule
     }
 
     private static bool TryParseTime(string? value, out TimeOnly time) =>
-        TimeOnly.TryParseExact(value, "HH:mm", out time);
+        TimeOnly.TryParseExact(value, "HH:mm", System.Globalization.CultureInfo.InvariantCulture,
+        System.Globalization.DateTimeStyles.None, out time);
 }
 
 /// <summary>
