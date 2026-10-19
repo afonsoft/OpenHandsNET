@@ -792,3 +792,17 @@ details.ev-details summary { cursor: pointer; color: var(--ohn-fg-dim); font-siz
 .modal-actions {
     display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px;
 }
+
+/* ---------- SPEC-76: run status pill + repo diff chip ---------- */
+.run-spin {
+    width: 10px; height: 10px; flex: none; border-radius: 50%;
+    border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+    border-top-color: currentColor;
+    animation: ohn-spin .8s linear infinite;
+}
+@keyframes ohn-spin { to { transform: rotate(360deg); } }
+.repo-btn {
+    border: 0; background: none; cursor: pointer; font: inherit;
+    color: inherit; padding: 0; display: inline-flex; align-items: center; gap: 4px;
+}
+.repo-btn:hover { text-decoration: underline; }

@@ -19,7 +19,10 @@
         <span class="title">@(State.Conversation?.Title ?? L["common.loading"])</span>
         @if (State.Conversation?.SelectedRepository is { } repo)
         {
-            <span class="repo"><Icon Name="git-branch" Size="13" /> @repo</span>
+            <button class="repo repo-btn" title="@repo — diff"
+                    @onclick='() => _tab = "diff"'>
+                <Icon Name="git-branch" Size="13" /> @repo
+            </button>
         }
         <ModelSelector Current="@State.Conversation?.LlmModel"
                        OnSwitch="OnModelSwitch" />
@@ -52,8 +55,17 @@
         </button>
         <span class="tokens">@(State.PromptTokens + State.CompletionTokens) tok ·
             $@State.CostUsd.ToString("F4")</span>
-        <span class="badge @BadgeClass(State.ExecutionStatus)">
-            <span class="dot"></span>@State.ExecutionStatus
+        <span class="badge @BadgeClass(State.ExecutionStatus)"
+              role="status" aria-live="polite">
+            @if (IsRunActive(State.ExecutionStatus))
+            {
+                <span class="run-spin" aria-hidden="true"></span>
+            }
+            else
+            {
+                <span class="dot"></span>
+            }
+            @State.ExecutionStatus
         </span>
         <span class="badge @(State.Connected ? "running" : "stopped")"
               title="@L["conv.hub_connection"]">
@@ -250,6 +262,12 @@
 
     private static string BadgeClass(string status) =>
         "badge " + status.ToLowerInvariant().Replace(' ', '_');
+
+    /// <summary>SPEC-76 RF-001: pill viva durante run (spinner).</summary>
+    private static bool IsRunActive(string status) =>
+        status.ToUpperInvariant() is "RUNNING" or "WORKING"
+            or "SETTING_UP_WORKSPACE" or "SETTING_UP_SKILLS"
+            or "SETTING_UP_GIT";
 
     public async ValueTask DisposeAsync()
     {
