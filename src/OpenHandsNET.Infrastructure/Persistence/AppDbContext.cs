@@ -201,6 +201,12 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// <summary>SPEC-60 RF-001: Unidades de código (chunks/symbols) indexadas.</summary>
     public DbSet<CodeUnitRecord> CodeUnits => Set<CodeUnitRecord>();
 
+    /// <summary>SPEC-61 RF-001: Diagnósticos pós-sessão de conversas.</summary>
+    public DbSet<SessionInsightRecord> SessionInsights => Set<SessionInsightRecord>();
+
+    /// <summary>SPEC-61 RF-001/RF-002: Relatórios agregados de insights.</summary>
+    public DbSet<InsightReportRecord> InsightReports => Set<InsightReportRecord>();
+
     /// <summary>ASP.NET DataProtection keys (PersistKeysToDbContext).</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 

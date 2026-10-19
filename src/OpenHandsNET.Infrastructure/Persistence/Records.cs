@@ -403,3 +403,31 @@ public sealed class CodeUnitRecord : IOrgScoped
     public required string Hash { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }
+
+/// <summary>SPEC-61 RF-001: Diagnóstico e métricas pós-sessão de conversa do agente.</summary>
+public sealed class SessionInsightRecord : IOrgScoped
+{
+    public required Guid Id { get; set; }
+    public Guid? OrgId { get; set; }
+    public required Guid ConversationId { get; set; }
+    /// <summary>success | partial | failed | unclear</summary>
+    public required string Outcome { get; set; }
+    public string? IssuesJson { get; set; }
+    public string? DeadEndsJson { get; set; }
+    public string? PhaseCostsJson { get; set; }
+    public string? SuggestedPrompt { get; set; }
+    public string? LearningsJson { get; set; }
+    public string? Model { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+/// <summary>SPEC-61 RF-001/RF-002: Relatório agregado de análise multi-sessão.</summary>
+public sealed class InsightReportRecord : IOrgScoped
+{
+    public required Guid Id { get; set; }
+    public Guid? OrgId { get; set; }
+    public required string Title { get; set; }
+    public string? ScopeJson { get; set; }
+    public string? SummaryJson { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}

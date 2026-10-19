@@ -271,3 +271,28 @@ public sealed class CodeUnitConfiguration : IEntityTypeConfiguration<CodeUnitRec
         b.HasIndex(e => new { e.RepoIndexId, e.Path });
     }
 }
+
+/// <inheritdoc />
+public sealed class SessionInsightConfiguration : IEntityTypeConfiguration<SessionInsightRecord>
+{
+    /// <inheritdoc />
+    public void Configure(EntityTypeBuilder<SessionInsightRecord> b)
+    {
+        b.ToTable("session_insights");
+        b.HasKey(e => e.Id);
+        b.HasIndex(e => e.ConversationId).IsUnique();
+        b.HasIndex(e => new { e.OrgId, e.Outcome });
+    }
+}
+
+/// <inheritdoc />
+public sealed class InsightReportConfiguration : IEntityTypeConfiguration<InsightReportRecord>
+{
+    /// <inheritdoc />
+    public void Configure(EntityTypeBuilder<InsightReportRecord> b)
+    {
+        b.ToTable("insight_reports");
+        b.HasKey(e => e.Id);
+        b.HasIndex(e => e.OrgId);
+    }
+}
