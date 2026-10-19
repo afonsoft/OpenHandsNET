@@ -5,10 +5,11 @@ Blazor WebAssembly** — an autonomous software-engineering agent with Cloud +
 Enterprise concepts and a Devin Web–inspired UX, built on top of
 [`afonsoft/open-webui`](https://github.com/afonsoft/open-webui).
 
-> Status: **working product** — SPECs 01–47 delivered (agent, sandbox,
-> API, full UI, enterprise ops). Approved SPECs 48–51 close the remaining
-> enterprise-parity gaps (org security policies, k8s warm-pool + Helm,
-> BYOR LiteLLM, OpenAPI contract). Português: [README.md](README.md).
+> Status: **working product** — SPECs 01–64 delivered (agent, sandbox,
+> API, full UI, enterprise ops, SCM/ChatOps/ticketing integrations,
+> enterprise identity, edge security, indexing/insights/knowledge and
+> browser profiles). In progress: SPEC-62 (managed conversations).
+> Português: [README.md](README.md).
 
 ## Vision
 
@@ -38,16 +39,16 @@ Enterprise concepts and a Devin Web–inspired UX, built on top of
 | License | MIT | Polyform (closed) | **MIT** | Closed (SaaS) |
 | Stack | Python + React | Python + k8s | **.NET 10 + Blazor WASM** | Proprietary |
 | Event model | V1 `kind`/ULID | V1 + delta events | **Full V1 + `streaming_delta`** | Proprietary |
-| Sandbox | Docker | k8s + Sysbox multi-host | **Docker in prod; k8s engine — completion in SPEC-49** | Proprietary |
-| Warm pool / sleep-wake | Partial | Yes | **Docker yes; k8s in SPEC-49** | Yes |
-| LLM routing | Static config | LiteLLM proxy | **OmniRoute catalog + roles; BYOR in SPEC-50** | Proprietary |
+| Sandbox | Docker | k8s + Sysbox multi-host | **Docker in prod; k8s engine (SPEC-49)** | Proprietary |
+| Warm pool / sleep-wake | Partial | Yes | **Docker + k8s warm-pool (SPEC-49)** | Yes |
+| LLM routing | Static config | LiteLLM proxy | **OmniRoute catalog + roles + BYOR LiteLLM (SPEC-50)** | Proprietary |
 | Security | SecurityAnalyzer | IdP orgs + analyzer | **pluggable analyzer + org policies (SPEC-48)** | Proprietary |
 | Secrets | LookupSecret by-ref | Same | **by-reference (`SecretNamesJson`)** | Internal vault |
 | Memory | `.openhands/memory/` | Same | **project + org scopes** | Knowledge/playbooks |
 | Subagents | task tool | Same | **`task` + presets + depth cap** | Yes |
-| Permissions | allow/deny/ask | Same + org policy | **`allow/deny/ask` + plan mode; org in SPEC-48** | Proprietary |
+| Permissions | allow/deny/ask | Same + org policy | **`allow/deny/ask` + plan mode + org policies (SPEC-48)** | Proprietary |
 | Artifacts | workspace | S3/GCS filestore | **workspace + S3 provider** | Proprietary |
-| Deploy | docker run/compose | Helm + KOTS/k0s | **compose + basic Helm; full chart in SPEC-49** | SaaS only |
+| Deploy | docker run/compose | Helm + KOTS/k0s | **compose + Helm chart (SPEC-49)** | SaaS only |
 | Multi-replica | — | Valkey/Redis backplane | **`IDistributedCache` + SignalR backplane** | Yes |
 | UI | Agent Canvas (React) | Cloud UI | **Devin-like Blazor: chat, IDE, surfaces** | UX reference |
 | CLI | `openhands` TUI | cloud mode | **`openhandsnet` parity + eval + doctor** | `devin` API |
@@ -55,6 +56,17 @@ Enterprise concepts and a Devin Web–inspired UX, built on top of
 | Automations | GitHub webhooks | internal schedules | **routines + hook triggers + `routine` tool** | Devin automations |
 | API keys | — | `sk-*` + org binding | **`sk-*` + org binding + BYOR** | Yes |
 | Eval | OSS benchmarks | — | **`openhandsnet eval` + asserts + llm_judge** | — |
+| GitHub App | — | yes | **App + verified webhooks + workspace PRs (SPEC-52)** | yes |
+| SCM providers | — | GitHub | **GitHub + GitLab + Bitbucket + Azure DevOps (SPEC-53)** | GitHub+ |
+| ChatOps | — | — | **Slack app: mention/slash → session, thread sync, auto-triage (SPEC-54)** | yes |
+| Ticketing | — | — | **Linear + Jira triggers → start-task + write-back (SPEC-55)** | yes |
+| Service users | — | — | **`svc_*` scoped identities + impersonation (SPEC-57)** | yes |
+| IdP/SCIM | — | Keycloak | **SCIM 2.0 + IdP groups→role/tier, any IdP (SPEC-58)** | SSO |
+| Edge security | — | — | **IP rules + input guard + per-actor rate limit (SPEC-59)** | proprietary |
+| Repo indexing | — | — | **index + read-only Ask (SPEC-60)** | codebase context |
+| Session insights | — | — | **cost/latency/tool diagnostics (SPEC-61)** | yes |
+| Knowledge | playbooks | playbooks | **suggestion queue + human review + groom (SPEC-63)** | knowledge |
+| Browser profiles | — | — | **encrypted storage state + site cookies + TOTP (SPEC-64)** | yes |
 
 Legend: **bold** = current OpenHandsNET state; "in SPEC-N" = approved,
 immediate roadmap.
@@ -78,7 +90,7 @@ Configuration via `OPENHANDSNET_`-prefixed env vars (e.g.
 ## Repository layout
 
 ```
-.specs/             SDD specs (51 modules — start with .specs/README.md)
+.specs/             SDD specs (60+ modules — start with .specs/README.md)
 migration-plan/     research (api-inventory, domains, risks) + roadmap
 docs/               guides (deployment, ui, api, features) — index at docs/README.md
 docs/en/            English documentation

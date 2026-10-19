@@ -23,6 +23,25 @@ traduz `AdminDeniedException` (401/403) em mensagem amigável.
 | `/admin/flags` | Feature flags | `GET/PUT/DELETE /admin/feature-flags` — toggle inline |
 | `/admin/plans` | Plans | `GET/POST/PATCH/DELETE /admin/plans` + `PUT /admin/organizations/{id}/plan` (picker de org) |
 | `/admin/usage` | Usage | `GET /organizations` (picker) + `GET /organizations/{id}/usage` e `…/plan` |
+| `/admin/orgs` | Orgs | orgs CRUD + membership (SPEC-08) |
+| `/admin/scm` | SCM | conexões GitHub App / GitLab / Bitbucket / Azure DevOps (SPECs 52–53) |
+| `/admin/chat` | Chat | Slack ChatOps connections + auto-triage (SPEC-54) |
+| `/admin/tickets` | Tickets | conexões Linear/Jira + webhooks (SPEC-55) |
+| `/admin/service-users` | Service users | `svc_*` keys com escopos (SPEC-57) |
+| `/admin/identity` | Identidade (SCIM) | tokens `scim_*`, mapeamentos de grupo IdP, tiers (SPEC-58) |
+| `/admin/security` | Segurança | IP rules, input guard, rate limit (SPEC-59) |
+
+## Screenshots
+
+| Tela | |
+|---|---|
+| Knowledge (`/knowledge`) | ![knowledge](../images/knowledge.png) |
+| Segurança (`/admin/security`) | ![segurança](../images/admin-security.png) |
+| SCM (`/admin/scm`) | ![scm](../images/admin-scm.png) |
+| Tickets (`/admin/tickets`) | ![tickets](../images/admin-tickets.png) |
+| Service users (`/admin/service-users`) | ![service-users](../images/admin-service-users.png) |
+| Identidade SCIM (`/admin/identity`) | ![identity](../images/admin-identity.png) |
+| Uso (`/admin/usage`) | ![usage](../images/admin-usage.png) |
 
 Support-bundle: `<a href="/api/v1/support-bundle" download>` — cookie
 same-origin autentica; o zip já chega redigido (secrets mascarados).
