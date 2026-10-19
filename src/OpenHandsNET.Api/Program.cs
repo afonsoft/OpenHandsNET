@@ -231,6 +231,7 @@ builder.Services.AddSingleton<OpenHandsNET.Application.Sandbox.ISandboxSnapshotP
 builder.Services.AddScoped<OpenHandsNET.Application.Indexing.ICodeSearchStore, OpenHandsNET.Infrastructure.Indexing.EfCodeSearchStore>();
 builder.Services.AddScoped<OpenHandsNET.Application.Indexing.IRepoIndexer, OpenHandsNET.Infrastructure.Indexing.RepoIndexer>();
 builder.Services.AddScoped<OpenHandsNET.Application.Ask.IAskModeService, OpenHandsNET.Infrastructure.Ask.AskModeService>();
+builder.Services.AddScoped<OpenHandsNET.Application.Insights.ISessionInsightService, OpenHandsNET.Infrastructure.Insights.SessionInsightService>();
 builder.Services.AddScoped<OpenHandsNET.Application.Identity.ICurrentUserAccessor,
     OpenHandsNET.Api.Auth.HttpCurrentUserAccessor>();
 
@@ -324,6 +325,7 @@ app.MapServiceUserEndpoints();
 app.MapScimEndpoints();
 app.MapEdgeEndpoints();
 app.MapAskAndIndexEndpoints();
+app.MapSessionInsightEndpoints();
 app.MapHub<ConversationHub>("/hubs/conversations");
 app.MapHealthChecks("/api/v1/health");
 app.MapHealthChecks("/api/v1/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
