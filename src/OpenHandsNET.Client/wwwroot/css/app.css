@@ -806,3 +806,47 @@ details.ev-details summary { cursor: pointer; color: var(--ohn-fg-dim); font-siz
     color: inherit; padding: 0; display: inline-flex; align-items: center; gap: 4px;
 }
 .repo-btn:hover { text-decoration: underline; }
+
+/* ---------- SPEC-76/77: ev-steps, subconv, ide zen + scm badge ---------- */
+.ev-steps { margin: 4px 16px; }
+.ev-steps > summary {
+    cursor: pointer; font-size: 11px; color: var(--ohn-fg-dim);
+    padding: 4px 8px; border-radius: 6px; list-style: none; user-select: none;
+}
+.ev-steps > summary::before { content: "▸ "; }
+.ev-steps[open] > summary::before { content: "▾ "; }
+.ev-steps > summary:hover { background: var(--ohn-bg-hover); color: var(--ohn-fg); }
+.ev-steps .ev-wrap { margin-left: 12px; }
+
+.subconv { margin: 8px 16px; display: flex; flex-direction: column; gap: 4px; }
+.subconv-item {
+    border: 1px solid var(--ohn-border); border-radius: 8px;
+    background: var(--ohn-bg-2, var(--ohn-bg));
+}
+.subconv-head {
+    display: flex; align-items: center; gap: 6px; width: 100%;
+    border: 0; background: transparent; cursor: pointer;
+    padding: 6px 10px; color: var(--ohn-fg); font-size: 12px; text-align: left;
+}
+.subconv-head:hover { background: var(--ohn-bg-hover); }
+.subconv-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.subconv-status { font-size: 10px; color: var(--ohn-fg-dim); flex: none; }
+.subconv-body {
+    border-top: 1px solid var(--ohn-border);
+    max-height: 16rem; overflow-y: auto; padding: 4px;
+}
+.subconv-ev pre {
+    white-space: pre-wrap; word-break: break-word; font-size: 11px;
+    margin: 2px 0; color: var(--ohn-fg-dim);
+}
+.subconv-link { display: inline-block; padding: 4px 10px; font-size: 11px; }
+
+.ide-activity .ide-activity-spacer { flex: 1; }
+.ide-activity button { position: relative; }
+.ide-activity-badge {
+    position: absolute; top: 2px; right: 2px; min-width: 13px; height: 13px;
+    padding: 0 3px; border-radius: 999px; background: var(--ohn-red);
+    color: #fff; font-size: 8.5px; font-weight: 700; line-height: 13px; text-align: center;
+}
+.ide-shell.zen .ide-side { display: none; }
+.ide-shell.zen .ide-activity { border-right: 0; }

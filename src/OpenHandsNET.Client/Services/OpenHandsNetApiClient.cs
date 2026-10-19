@@ -411,6 +411,13 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
         return items;
     }
 
+    /// <summary>SPEC-76 RF-004: sub-conversas delegadas da conversa.</summary>
+    public async Task<IReadOnlyList<DelegationItem>> GetDelegationsAsync(
+        string conversationId, CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<DelegationItem>>(
+            $"/api/v1/app-conversations/{conversationId}/delegations",
+            Json, ct) ?? [];
+
     // ---- workspace / git proxies --------------------------------------
 
     public async Task<IReadOnlyList<FileItem>> ListFilesAsync(

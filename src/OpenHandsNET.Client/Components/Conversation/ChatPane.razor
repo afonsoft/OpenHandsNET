@@ -8,18 +8,39 @@
     {
         <div class="ev-card condense">@L["chat.loading_history"]</div>
     }
-    @foreach (var e in State.Events)
+    @foreach (var grp in EventGroups())
     {
-        // SPEC-45 RF-006: última mensagem do usuário ganha "Editar".
-        var isLastUser = ReferenceEquals(e, _lastUser);
-        <div class="ev-wrap @(isLastUser ? "editable" : "")">
-            <EventCard Event="e" Siblings="State.Events" />
-            @if (isLastUser && _composer is not null)
+        if (grp.Collapsed)
+        {
+            // SPEC-76 RF-003: run finalizada → run de steps colapsa em
+            // "N passos" expansível (padrão open-webui RunActivityFeed).
+            <details class="ev-steps">
+                <summary role="button">@L.T("chat.worklog.steps",
+                    ("count", grp.Events.Count.ToString()))</summary>
+                @foreach (var e in grp.Events)
+                {
+                    <div class="ev-wrap">
+                        <EventCard Event="e" Siblings="State.Events" />
+                    </div>
+                }
+            </details>
+        }
+        else
+        {
+            @foreach (var e in grp.Events)
             {
-                <button class="ev-edit" title="@L["chat.edit_resend"]"
-                        @onclick="EditLastUserAsync">@L["chat.edit"]</button>
+                // SPEC-45 RF-006: última mensagem do usuário ganha "Editar".
+                var isLastUser = ReferenceEquals(e, _lastUser);
+                <div class="ev-wrap @(isLastUser ? "editable" : "")">
+                    <EventCard Event="e" Siblings="State.Events" />
+                    @if (isLastUser && _composer is not null)
+                    {
+                        <button class="ev-edit" title="@L["chat.edit_resend"]"
+                                @onclick="EditLastUserAsync">@L["chat.edit"]</button>
+                    }
+                </div>
             }
-        </div>
+        }
     }
     @* SPEC-34: slots de delta efêmeros — removidos quando o evento durável
        com o mesmo item_id chega (supersedes). Cursor ▍ via CSS .delta::after.
@@ -36,6 +57,10 @@
             <div class="ev-head"><span>assistant</span><em>@L["chat.streaming"]</em></div>
             <pre>@delta.Value</pre>
         </div>
+    }
+    @if (State.Conversation is { } conv)
+    {
+        <SubConversationPanel ConversationId="@conv.Id" />
     }
     @if (State.Stalled)
     {
@@ -79,6 +104,47 @@
     private OpenHandsNET.Client.Services.ClientEvent? _lastUser =>
         State.Events.LastOrDefault(e =>
             e.Kind == "MessageEvent" && e.Str("source") == "user");
+
+    /// <summary>SPEC-76 RF-003: grupo de eventos — steps (não-mensagem)
+    /// consecutivos colapsam quando a run está em estado terminal.</summary>
+    private sealed record EventGroup(
+        bool Collapsed, IReadOnlyList<ClientEvent> Events);
+
+    private bool IsTerminal => State.ExecutionStatus.ToUpperInvariant()
+        is "FINISHED" or "READY" or "ERROR" or "STOPPED" or "PAUSED";
+
+    private static bool IsStep(ClientEvent e) =>
+        e.Kind is not ("MessageEvent" or "ConversationStateUpdateEvent");
+
+    private IEnumerable<EventGroup> EventGroups()
+    {
+        if (!IsTerminal || State.Events.Count == 0)
+        {
+            yield return new(false, State.Events);
+            yield break;
+        }
+
+        var run = new List<ClientEvent>();
+        foreach (var e in State.Events)
+        {
+            if (IsStep(e))
+            {
+                run.Add(e);
+                continue;
+            }
+
+            if (run.Count > 0)
+            {
+                yield return new(run.Count >= 2, [.. run]);
+                run.Clear();
+            }
+            yield return new(false, [e]);
+        }
+        if (run.Count > 0)
+        {
+            yield return new(run.Count >= 2, [.. run]);
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

@@ -445,5 +445,8 @@
   "knowledge.approve": "approve",
   "knowledge.dismiss": "dismiss",
   "common.skip_to_content": "Skip to content",
-  "attention.feed": "Notifications"
+  "attention.feed": "Notifications",
+  "chat.worklog.steps": "{{count}} steps",
+  "chat.subchat_open": "open sub-conversation",
+  "ide.zen_mode": "Zen mode"
 }

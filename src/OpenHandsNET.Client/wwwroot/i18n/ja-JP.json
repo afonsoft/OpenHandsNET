@@ -160,5 +160,8 @@
   "knowledge.approve": "approve",
   "knowledge.dismiss": "dismiss",
   "common.skip_to_content": "コンテンツへスキップ",
-  "attention.feed": "通知"
+  "attention.feed": "通知",
+  "chat.worklog.steps": "{{count}} ステップ",
+  "chat.subchat_open": "サブ会話を開く",
+  "ide.zen_mode": "禅モード"
 }

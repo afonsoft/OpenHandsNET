@@ -1,0 +1,112 @@
+@* SPEC-76 RF-004: sub-conversas delegadas — painel expansível com thread
+   condensada do filho (GET delegations + events/search). Padrão Devin:
+   a sub-sessão aparece embutida no contexto da conversa pai. *@
+@using OpenHandsNET.Client.Services
+@inject OpenHandsNetApiClient Api
+@inject NavigationManager Nav
+@inject LocalizationService L
+
+@if (_delegations.Count > 0)
+{
+    <div class="subconv">
+        @foreach (var d in _delegations)
+        {
+            <div class="subconv-item">
+                <button class="subconv-head" @onclick="() => ToggleAsync(d)"
+                        aria-expanded="@(_open == d.ConversationId)">
+                    <span class="dot @DotClass(d.ExecutionStatus)"></span>
+                    <span class="subconv-title">@(d.Title ?? d.ConversationId[..8])</span>
+                    <span class="subconv-status">@d.ExecutionStatus</span>
+                    <Icon Name="chevron-right" Size="12" />
+                </button>
+                @if (_open == d.ConversationId)
+                {
+                    <div class="subconv-body">
+                        @if (_loading)
+                        {
+                            <div class="ev-card condense">@L["common.loading"]</div>
+                        }
+                        else if (_childEvents.Count == 0)
+                        {
+                            <div class="ev-card condense">—</div>
+                        }
+                        else
+                        {
+                            @foreach (var e in _childEvents)
+                            {
+                                <div class="ev-card condense subconv-ev">
+                                    <div class="ev-head">
+                                        <span>@e.Kind</span>
+                                        <em>@e.Source</em>
+                                    </div>
+                                    @if (Summary(e) is { } s)
+                                    {
+                                        <pre>@s</pre>
+                                    }
+                                </div>
+                            }
+                        }
+                        <a class="subconv-link" href="/conversations/@d.ConversationId">
+                            @L["chat.subchat_open"] →
+                        </a>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public string ConversationId { get; set; } = "";
+
+    private IReadOnlyList<DelegationItem> _delegations = [];
+    private string? _open;
+    private bool _loading;
+    private IReadOnlyList<ClientEvent> _childEvents = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { _delegations = await Api.GetDelegationsAsync(ConversationId); }
+        catch { /* delegations off/erro — painel fica oculto */ }
+    }
+
+    private async Task ToggleAsync(DelegationItem d)
+    {
+        if (_open == d.ConversationId)
+        {
+            _open = null;
+            return;
+        }
+
+        _open = d.ConversationId;
+        _loading = true;
+        try
+        {
+            var evs = await Api.GetEventsAsync(d.ConversationId, limit: 100);
+            _childEvents = evs.TakeLast(12).ToList();
+        }
+        catch { _childEvents = []; }
+        finally { _loading = false; }
+    }
+
+    private static string DotClass(string status) => status.ToUpperInvariant() switch
+    {
+        "RUNNING" => "running",
+        "WORKING" or "SETTING_UP_WORKSPACE" or "SETTING_UP_SKILLS"
+            or "SETTING_UP_GIT" => "working",
+        "WAITING_FOR_CONFIRMATION" => "waiting",
+        "ERROR" or "STOPPED" => "error",
+        _ => "idle",
+    };
+
+    /// <summary>Resumo de 1 linha por evento (bubble = texto, tool = kind).</summary>
+    private static string? Summary(ClientEvent e)
+    {
+        if (e.Kind == "MessageEvent")
+        {
+            var t = e.MessageText();
+            return t.Length > 160 ? t[..160] + "…" : t;
+        }
+        return e.Str("action") ?? e.Str("tool_name") ?? e.Kind;
+    }
+}

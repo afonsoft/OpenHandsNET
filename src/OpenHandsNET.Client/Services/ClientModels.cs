@@ -117,6 +117,17 @@ public sealed class AttentionListDto
     public IReadOnlyList<AttentionItemDto> Items { get; init; } = [];
 }
 
+/// <summary>SPEC-76: delegação (sub-conversa) — GET …/delegations.</summary>
+public sealed class DelegationItem
+{
+    public string ConversationId { get; init; } = "";
+    public string? ParentConversationId { get; init; }
+    public int DelegationDepth { get; init; }
+    public string ExecutionStatus { get; init; } = "";
+    public string Title { get; init; } = "";
+    public DateTimeOffset CreatedAt { get; init; }
+}
+
 /// <summary>Start-task DTO wire (WORKING → … → READY|ERROR).</summary>
 public sealed class StartTaskItem
 {

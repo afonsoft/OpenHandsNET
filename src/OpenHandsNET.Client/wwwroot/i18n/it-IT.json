@@ -160,5 +160,8 @@
   "knowledge.approve": "approva",
   "knowledge.dismiss": "scarta",
   "common.skip_to_content": "Salta al contenuto",
-  "attention.feed": "Notifiche"
+  "attention.feed": "Notifiche",
+  "chat.worklog.steps": "{{count}} passaggi",
+  "chat.subchat_open": "apri sotto-conversazione",
+  "ide.zen_mode": "Modalità zen"
 }
