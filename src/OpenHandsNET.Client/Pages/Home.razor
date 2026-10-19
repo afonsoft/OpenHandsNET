@@ -15,6 +15,12 @@
         <ChatComposer Placeholder="@L["composer.placeholder_new"]"
                       DraftKey="new" OnSend="OnComposerSendAsync" />
         <div class="row">
+            <div class="mode-toggle" role="group">
+                <button class="@(_mode == "agent" ? "on" : "")"
+                        @onclick='() => _mode = "agent"'>@L["home.mode_agent"]</button>
+                <button class="@(_mode == "ask" ? "on" : "")"
+                        @onclick='() => _mode = "ask"'>@L["home.mode_ask"]</button>
+            </div>
             <input placeholder="@L["home.repository_placeholder"]"
                    @bind="_repository" @bind:event="oninput" />
             <label title="@L["home.confirm_title"]">
@@ -71,6 +77,7 @@
     private IReadOnlyList<ConversationItem>? _conversations;
     private string _initialMessage = "";
     private string _repository = "";
+    private string _mode = "agent";
     private bool _confirmMode;
     private bool _starting;
     private string? _error;
@@ -92,6 +99,13 @@
     private async Task OnComposerSendAsync(string text)
     {
         _initialMessage = text;
+        // SPEC-60 RF-003: modo Ask — sessão read-only com citações.
+        if (_mode == "ask")
+        {
+            var s = await Api.CreateAskSessionAsync(_repository, text);
+            if (s is not null) { Nav.NavigateTo($"/ask/{s.Id}"); }
+            return;
+        }
         await StartAsync();
     }
 

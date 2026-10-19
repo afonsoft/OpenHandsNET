@@ -1,0 +1,108 @@
+@page "/ask/{Id:guid}"
+@using OpenHandsNET.Client.Services
+@inject OpenHandsNetApiClient Api
+@inject LocalizationService L
+@inject NavigationManager Nav
+
+<PageTitle>Ask — OpenHandsNET</PageTitle>
+
+<div class="ask-wrap">
+    <div class="ask-head">
+        <h2>@L["ask.title"]</h2>
+        @if (_session is not null)
+        {
+            <span class="meta">@_session.Repository</span>
+        }
+    </div>
+
+    @if (_session is null)
+    {
+        <p class="sub">@L["common.loading"]</p>
+    }
+    else
+    {
+        <div class="ask-messages">
+            @foreach (var m in _session.Messages)
+            {
+                <div class="ask-msg @m.Role">
+                    <div class="role">@m.Role</div>
+                    <div class="text">@m.Text</div>
+                    @if (m.Citations.Count > 0)
+                    {
+                        <div class="cites">
+                            @foreach (var c in m.Citations)
+                            {
+                                <span class="cite"
+                                      title="@c.Path:@c.StartLine-@c.EndLine">
+                                    @c.Path:@c.StartLine-@c.EndLine
+                                </span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            @if (_asking)
+            {
+                <div class="ask-msg assistant"><div class="text">…</div></div>
+            }
+        </div>
+
+        <div class="ask-composer">
+            <input placeholder="@L["ask.followup_placeholder"]"
+                   @bind="_question" @bind:event="oninput"
+                   @onkeydown="OnKey" disabled="@_asking" />
+            <button class="primary" @onclick="AskAsync"
+                    disabled="@(_asking || string.IsNullOrWhiteSpace(_question))">
+                @L["ask.ask"]
+            </button>
+            <button @onclick="PromoteAsync" disabled="@(_asking || _session.PromotedConversationId is not null)">
+                @(_session.PromotedConversationId is not null
+                    ? L["ask.promoted"] : L["ask.promote"])
+            </button>
+        </div>
+        @if (_error is not null)
+        {
+            <p class="sub" style="color:var(--ohn-red)">@_error</p>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private AskSessionItem? _session;
+    private string _question = "";
+    private bool _asking;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+        => _session = await Api.GetAskSessionAsync(Id);
+
+    private async Task OnKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") { await AskAsync(); }
+    }
+
+    private async Task AskAsync()
+    {
+        _asking = true;
+        _error = null;
+        try
+        {
+            var updated = await Api.SendAskMessageAsync(Id, _question);
+            if (updated is not null) { _session = updated; _question = ""; }
+            else { _error = L["ask.error"]; }
+        }
+        catch { _error = L["ask.error"]; }
+        _asking = false;
+    }
+
+    private async Task PromoteAsync()
+    {
+        var convId = await Api.PromoteAskSessionAsync(Id);
+        if (convId is not null)
+        {
+            Nav.NavigateTo($"/conversations/{convId}");
+        }
+    }
+}

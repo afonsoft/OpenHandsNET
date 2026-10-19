@@ -661,6 +661,157 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                     b.ToTable("events", (string)null);
                 });
 
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Indexing.AskSessionRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("MessagesJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("messages_json");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<Guid?>("PromotedConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("promoted_conversation_id");
+
+                    b.Property<Guid?>("RepoIndexId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("repo_index_id");
+
+                    b.Property<string>("Repository")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("repository");
+
+                    b.Property<string>("Title")
+                        .HasColumnType("text")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ask_sessions");
+
+                    b.ToTable("ask_sessions", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Indexing.CodeUnitRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("EndLine")
+                        .HasColumnType("integer")
+                        .HasColumnName("end_line");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("hash");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("path");
+
+                    b.Property<Guid>("RepoIndexId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("repo_index_id");
+
+                    b.Property<int>("StartLine")
+                        .HasColumnType("integer")
+                        .HasColumnName("start_line");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("text");
+
+                    b.HasKey("Id")
+                        .HasName("pk_code_units");
+
+                    b.HasIndex("RepoIndexId", "Path")
+                        .HasDatabaseName("ix_code_units_repo_index_id_path");
+
+                    b.ToTable("code_units", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Indexing.RepoIndexRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Branch")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("branch");
+
+                    b.Property<string>("CommitSha")
+                        .HasColumnType("text")
+                        .HasColumnName("commit_sha");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("text")
+                        .HasColumnName("error");
+
+                    b.Property<DateTimeOffset?>("IndexedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("indexed_at");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Repository")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("repository");
+
+                    b.Property<string>("StatsJson")
+                        .HasColumnType("text")
+                        .HasColumnName("stats_json");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_repo_indexes");
+
+                    b.ToTable("repo_indexes", (string)null);
+                });
+
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.ApiKeyRecord", b =>
                 {
                     b.Property<Guid>("Id")

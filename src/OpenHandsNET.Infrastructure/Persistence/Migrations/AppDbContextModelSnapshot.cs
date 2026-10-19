@@ -652,6 +652,157 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                     b.ToTable("events", (string)null);
                 });
 
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Indexing.AskSessionRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("MessagesJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("messages_json");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("org_id");
+
+                    b.Property<Guid?>("PromotedConversationId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("promoted_conversation_id");
+
+                    b.Property<Guid?>("RepoIndexId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("repo_index_id");
+
+                    b.Property<string>("Repository")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("repository");
+
+                    b.Property<string>("Title")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ask_sessions");
+
+                    b.ToTable("ask_sessions", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Indexing.CodeUnitRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<int>("EndLine")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("end_line");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("hash");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("path");
+
+                    b.Property<Guid>("RepoIndexId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("repo_index_id");
+
+                    b.Property<int>("StartLine")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("start_line");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("text");
+
+                    b.HasKey("Id")
+                        .HasName("pk_code_units");
+
+                    b.HasIndex("RepoIndexId", "Path")
+                        .HasDatabaseName("ix_code_units_repo_index_id_path");
+
+                    b.ToTable("code_units", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Indexing.RepoIndexRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Branch")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("branch");
+
+                    b.Property<string>("CommitSha")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("commit_sha");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("error");
+
+                    b.Property<DateTimeOffset?>("IndexedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("indexed_at");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Repository")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("repository");
+
+                    b.Property<string>("StatsJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("stats_json");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_repo_indexes");
+
+                    b.ToTable("repo_indexes", (string)null);
+                });
+
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.ApiKeyRecord", b =>
                 {
                     b.Property<Guid>("Id")

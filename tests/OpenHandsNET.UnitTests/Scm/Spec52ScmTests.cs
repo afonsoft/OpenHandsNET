@@ -45,7 +45,8 @@ public sealed class Spec52ScmTests : IAsyncDisposable
                 .UseSqlite(_conn).UseSnakeCaseNamingConvention().Options);
         _db.Database.EnsureCreated();
         _webhook = new GitHubWebhookService(_db, _secrets, _conversations,
-            _audit, NullLogger<GitHubWebhookService>.Instance);
+                        _audit, NullLogger<GitHubWebhookService>.Instance,
+            new FakeRepoIndexes());
         _connections = new ScmConnectionService(_db, _secrets, _audit,
             new FakeHttpFactory(), new FakeRegistry(),
             NullLogger<ScmConnectionService>.Instance);
@@ -495,4 +496,21 @@ public sealed class Spec52ScmTests : IAsyncDisposable
     {
         public HttpClient CreateClient(string name) => new();
     }
+}
+
+
+/// <summary>SPEC-60: índice inexistente — MarkStale no-op.</summary>
+internal sealed class FakeRepoIndexes
+    : OpenHandsNET.Application.Indexing.IRepoIndexService
+{
+    public System.Collections.Generic.IReadOnlyList<OpenHandsNET.Application.Indexing.RepoIndexInfo> Listed { get; } = [];
+    public string? StaleRepo { get; private set; }
+    public System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<OpenHandsNET.Application.Indexing.RepoIndexInfo>> ListAsync(System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult(Listed);
+    public System.Threading.Tasks.Task<OpenHandsNET.Application.Indexing.RepoIndexInfo> AddAsync(string repository, string? branch, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult(new OpenHandsNET.Application.Indexing.RepoIndexInfo(System.Guid.NewGuid(), null, repository, branch ?? "main", null, OpenHandsNET.Application.Indexing.RepoIndexStatus.Indexing, null, 0, 0, System.DateTimeOffset.UtcNow, null));
+    public System.Threading.Tasks.Task<OpenHandsNET.Application.Indexing.RepoIndexInfo?> GetAsync(System.Guid id, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<OpenHandsNET.Application.Indexing.RepoIndexInfo?>(null);
+    public System.Threading.Tasks.Task<OpenHandsNET.Application.Indexing.RepoIndexInfo?> GetByRepoAsync(string repository, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<OpenHandsNET.Application.Indexing.RepoIndexInfo?>(null);
+    public System.Threading.Tasks.Task<bool> RequestReindexAsync(System.Guid id, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult(false);
+    public System.Threading.Tasks.Task MarkStaleAsync(string repository, System.Threading.CancellationToken ct) { StaleRepo = repository; return System.Threading.Tasks.Task.CompletedTask; }
+    public System.Threading.Tasks.Task<bool> DeleteAsync(System.Guid id, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult(false);
+    public System.Threading.Tasks.Task<string?> ReadFileAsync(System.Guid id, string path, System.Threading.CancellationToken ct) => System.Threading.Tasks.Task.FromResult<string?>(null);
 }

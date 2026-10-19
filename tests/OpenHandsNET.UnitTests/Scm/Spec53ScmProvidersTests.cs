@@ -41,7 +41,8 @@ public sealed class Spec53ScmProvidersTests : IAsyncDisposable
                 .UseSqlite(_conn).UseSnakeCaseNamingConvention().Options);
         _db.Database.EnsureCreated();
         _webhook = new GitHubWebhookService(_db, _secrets, _conversations,
-            _audit, NullLogger<GitHubWebhookService>.Instance);
+                        _audit, NullLogger<GitHubWebhookService>.Instance,
+            new FakeRepoIndexes());
         _connections = new ScmConnectionService(_db, _secrets, _audit,
             new HttpFactory(), new FakeRegistry(),
             NullLogger<ScmConnectionService>.Instance);
@@ -329,3 +330,5 @@ public sealed class Spec53ScmProvidersTests : IAsyncDisposable
             CancellationToken ct) => throw new NotImplementedException();
     }
 }
+
+

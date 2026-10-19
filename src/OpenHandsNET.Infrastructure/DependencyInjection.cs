@@ -310,6 +310,19 @@ public static class DependencyInjection
             OpenHandsNET.Infrastructure.Identity.ApiKeyService>();
         services.AddScoped<OpenHandsNET.Application.Identity.IServiceUserService,
             OpenHandsNET.Infrastructure.Identity.ServiceUserService>();
+        // SPEC-60: repo index + ask mode.
+        services.AddScoped<OpenHandsNET.Application.Indexing.IRepoIndexService,
+            OpenHandsNET.Infrastructure.Indexing.RepoIndexService>();
+        services.AddScoped<OpenHandsNET.Application.Indexing.IRepoIndexer,
+            OpenHandsNET.Infrastructure.Indexing.RepoIndexService>();
+        services.AddScoped<OpenHandsNET.Application.Indexing.ICodeSearchStore,
+            OpenHandsNET.Infrastructure.Indexing.RepoIndexService>();
+        services.AddScoped<OpenHandsNET.Application.Indexing.IAskService,
+            OpenHandsNET.Infrastructure.Indexing.AskService>();
+        services.AddSingleton<OpenHandsNET.Application.Indexing.IRepoIndexQueue,
+            OpenHandsNET.Infrastructure.Indexing.RepoIndexQueue>();
+        services.AddHostedService<
+            OpenHandsNET.Infrastructure.Indexing.RepoIndexWorker>();
         services.AddScoped<OpenHandsNET.Application.Identity.IOrgService,
             OpenHandsNET.Infrastructure.Identity.OrgService>();
         services.AddScoped<OpenHandsNET.Application.Identity.IInvitationService,

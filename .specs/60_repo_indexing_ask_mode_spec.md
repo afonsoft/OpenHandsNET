@@ -141,3 +141,18 @@ plan→Agent; admin de índices.
 - Promote cria start-task Agent com o plano no initial_message.
 - Repo sem index → 400 `index_required`. FTS Postgres+SQLite cobertos
   por teste parametrizado. Suite verde; golden OpenAPI atualizado.
+
+
+## Delivered (evidência)
+
+- `Infrastructure/Indexing/`: `RepoIndexService` (clone shallow + limites +
+  indexignore + SecretRedactor + FTS5/ILIKE search), `CodeChunker`
+  (símbolos por decl-regex multi-lang + sliding window 60/15),
+  `AskService` (search → LLM → citações validadas → promote→plan).
+- `Api/Endpoints/IndexEndpoints.cs`: `/api/v1/repos*` e
+  `/api/v1/ask-sessions*` completos; `index_required`/`index_in_progress`.
+- Webhook SCM push → `MarkStaleAsync` (best-effort).
+- UI: toggle Ask|Agent na Home, `/ask/{id}` com citações,
+  `/admin/repos` (index/reindex/delete); i18n ×8 locales.
+- Migrations SQLite (`code_units_fts` FTS5 shadow) + Postgres.
+- Testes: `Spec60IndexTests` 13/13 verdes.

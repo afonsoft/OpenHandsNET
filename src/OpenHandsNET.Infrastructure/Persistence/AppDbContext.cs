@@ -95,6 +95,12 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
 
     /// <summary>Service users (SPEC-57).</summary>
     public DbSet<ServiceUserRecord> ServiceUsers => Set<ServiceUserRecord>();
+    /// <summary>SPEC-60: índices de repositório (Ask mode).</summary>
+    public DbSet<OpenHandsNET.Infrastructure.Indexing.RepoIndexRecord> RepoIndexes => Set<OpenHandsNET.Infrastructure.Indexing.RepoIndexRecord>();
+    /// <summary>SPEC-60: unidades de código indexadas.</summary>
+    public DbSet<OpenHandsNET.Infrastructure.Indexing.CodeUnitRecord> CodeUnits => Set<OpenHandsNET.Infrastructure.Indexing.CodeUnitRecord>();
+    /// <summary>SPEC-60: sessões Ask read-only.</summary>
+    public DbSet<OpenHandsNET.Infrastructure.Indexing.AskSessionRecord> AskSessions => Set<OpenHandsNET.Infrastructure.Indexing.AskSessionRecord>();
 
     /// <summary>Org-scoped memory entries (SPEC-30).</summary>
     public DbSet<MemoryRecord> MemoryRecords => Set<MemoryRecord>();
@@ -266,6 +272,17 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
         modelBuilder.Entity<ServiceUserRecord>()
             .HasQueryFilter(r =>
                 !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
+        modelBuilder.Entity<OpenHandsNET.Infrastructure.Indexing.RepoIndexRecord>()
+            .HasQueryFilter(r =>
+                !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
+        modelBuilder.Entity<OpenHandsNET.Infrastructure.Indexing.CodeUnitRecord>()
+            .HasQueryFilter(u =>
+                !_multiTenancy || CurrentOrgId == null || u.OrgId == CurrentOrgId);
+        modelBuilder.Entity<OpenHandsNET.Infrastructure.Indexing.AskSessionRecord>()
+            .HasQueryFilter(r =>
+                !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
+        modelBuilder.Entity<OpenHandsNET.Infrastructure.Indexing.CodeUnitRecord>()
+            .HasIndex(u => new { u.RepoIndexId, u.Path });
         modelBuilder.Entity<ApiKeyRecord>()
             .HasIndex(k => k.ServiceUserId);
     }

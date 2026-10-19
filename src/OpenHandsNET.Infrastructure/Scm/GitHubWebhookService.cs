@@ -22,7 +22,9 @@ public sealed class GitHubWebhookService(
     ISecretStore secrets,
     OpenHandsNET.Application.Conversations.IAppConversationService conversations,
     IAuditService audit,
-    ILogger<GitHubWebhookService> logger) : IScmWebhookService
+    ILogger<GitHubWebhookService> logger,
+    OpenHandsNET.Application.Indexing.IRepoIndexService repoIndexes)
+    : IScmWebhookService
 {
     /// <summary>Mention marker that triggers a conversation.</summary>
     public const string Mention = "@openhandsnet";
@@ -73,6 +75,23 @@ public sealed class GitHubWebhookService(
                     ScmKind.GitHub, deliveryId, payload, ct))
             {
                 return ScmWebhookResult.Duplicate;
+            }
+
+            // SPEC-60 RF-001: push → marca o índice do repo como stale
+            // (best-effort; indexador re-indexa sob demanda).
+            if (string.Equals(eventType, "push",
+                    StringComparison.OrdinalIgnoreCase)
+                && repository is not null)
+            {
+                try
+                {
+                    await repoIndexes.MarkStaleAsync(repository, ct);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex,
+                        "repo index stale mark failed for {Repo}", repository);
+                }
             }
 
             var mention = ParseMention(eventType, root, installationId);

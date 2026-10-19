@@ -897,4 +897,79 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
         var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(Json, ct);
         return doc.GetProperty("token").GetString();
     }
+
+    // ---- SPEC-60: repo index + ask sessions ---------------------------
+
+    public async Task<IReadOnlyList<RepoIndexItem>> ListRepoIndexesAsync(
+        CancellationToken ct = default) =>
+        (await GetOrNull<List<RepoIndexItem>>("/api/v1/repos", ct)) ?? [];
+
+    public async Task<RepoIndexItem?> AddRepoIndexAsync(
+        string repository, string? branch, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync("/api/v1/repos",
+            new { repository, branch }, Json, ct);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<RepoIndexItem>(Json, ct)
+            : null;
+    }
+
+    public async Task ReindexRepoAsync(Guid id, CancellationToken ct = default)
+        => await http.PostAsync($"/api/v1/repos/{id}/reindex", null, ct);
+
+    public async Task DeleteRepoIndexAsync(Guid id, CancellationToken ct = default)
+        => await http.DeleteAsync($"/api/v1/repos/{id}", ct);
+
+    public async Task<AskSessionItem?> CreateAskSessionAsync(
+        string repository, string question, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync("/api/v1/ask-sessions",
+            new { repository, question }, Json, ct);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<AskSessionItem>(Json, ct)
+            : null;
+    }
+
+    public Task<AskSessionItem?> GetAskSessionAsync(
+        Guid id, CancellationToken ct = default) =>
+        GetOrNull<AskSessionItem>($"/api/v1/ask-sessions/{id}", ct);
+
+    public async Task<AskSessionItem?> SendAskMessageAsync(
+        Guid id, string question, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync(
+            $"/api/v1/ask-sessions/{id}/messages",
+            new { question }, Json, ct);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<AskSessionItem>(Json, ct)
+            : null;
+    }
+
+    public async Task<Guid?> PromoteAskSessionAsync(
+        Guid id, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsync(
+            $"/api/v1/ask-sessions/{id}/promote", null, ct);
+        if (!resp.IsSuccessStatusCode) { return null; }
+        var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(Json, ct);
+        return doc.TryGetProperty("conversation_id", out var c)
+            ? c.GetGuid() : null;
+    }
 }
+
+/// <summary>SPEC-60: índice de repositório.</summary>
+public sealed record RepoIndexItem(
+    Guid Id, string Repository, string Branch, string? CommitSha,
+    string Status, string? Error, int UnitCount, int FileCount,
+    DateTimeOffset? IndexedAt);
+
+/// <summary>SPEC-60: sessão Ask com mensagens e citações.</summary>
+public sealed record AskSessionItem(
+    Guid Id, string Repository, string Title,
+    List<AskMessageItem> Messages, Guid? PromotedConversationId);
+
+public sealed record AskMessageItem(
+    string Role, string Text, List<AskCitationItem> Citations,
+    DateTimeOffset At);
+
+public sealed record AskCitationItem(string Path, int StartLine, int EndLine);
