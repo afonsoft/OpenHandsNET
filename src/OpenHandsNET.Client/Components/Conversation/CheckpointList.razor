@@ -133,7 +133,7 @@
     public async Task LoadAsync()
     {
         try { _items = await Api.ListCheckpointsAsync(ConversationId); }
-        catch { }
+        catch { /* best-effort — falha tolerada */ }
         StateHasChanged();
     }
 

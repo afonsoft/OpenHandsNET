@@ -83,7 +83,7 @@
             _results.Clear();
             _results.AddRange(found);
         }
-        catch { }
+        catch { /* busca best-effort — resultado parcial ok */ }
         finally { _busy = false; StateHasChanged(); }
     }
 

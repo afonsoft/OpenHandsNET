@@ -16,7 +16,7 @@ case "$arch" in
     *) echo "[surface:code-server] unsupported arch: $arch" >&2; exit 1 ;;
 esac
 
-if [ -x "$BIN_DIR/code-server" ]; then
+if [[ -x "$BIN_DIR/code-server" ]]; then
     echo "[surface:code-server] already installed"
     exit 0
 fi

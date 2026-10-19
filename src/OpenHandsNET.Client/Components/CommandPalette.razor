@@ -53,7 +53,7 @@
         {
             await JS.InvokeVoidAsync("ohnKeys.register", _ref);
         }
-        catch (JSException) { }
+        catch (JSException) { /* best-effort — falha tolerada */ }
     }
 
     /// <summary>Hotkey global (Ctrl+K / "/") — abre a palette.</summary>
@@ -68,7 +68,7 @@
         {
             _wasOpen = true;
             _query = "";
-            try { await _input.FocusAsync(); } catch (JSException) { }
+            try { await _input.FocusAsync(); } catch (JSException) { /* best-effort — falha tolerada */ }
         }
         else if (!Palette.IsOpen)
         {
@@ -106,7 +106,7 @@
         {
             await JS.InvokeVoidAsync("ohnKeys.unregister");
         }
-        catch (JSDisconnectedException) { }
+        catch (JSDisconnectedException) { /* best-effort — falha tolerada */ }
         _ref?.Dispose();
     }
 }

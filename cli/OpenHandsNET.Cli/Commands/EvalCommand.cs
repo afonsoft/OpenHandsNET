@@ -236,7 +236,7 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
         var baseline = Directory.EnumerateFiles(s.Baseline, "result.json",
                 SearchOption.AllDirectories)
             .Select(f => EvalResult.FromJson(File.ReadAllText(f)))
-            .Where(r => r is not null).Cast<EvalResult>()
+            .OfType<EvalResult>()
             .ToList();
         return baseline.Count == 0
             ? [] : Scorer.Regressions(results, baseline);
@@ -246,24 +246,24 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
     private sealed class NullBackend : IEvalBackend
     {
         public Task<string> CreateConversationAsync(
-            string t, string? r, string? m, CancellationToken ct) =>
+            string task, string? repo, string? model, CancellationToken ct) =>
             throw new InvalidOperationException("recorded mode");
-        public Task<string> WaitReadyAsync(string id, CancellationToken ct) =>
+        public Task<string> WaitReadyAsync(string taskId, CancellationToken ct) =>
             throw new InvalidOperationException("recorded mode");
         public Task RunSetupAsync(
-            string c, IReadOnlyList<string> cmds, CancellationToken ct) =>
+            string conversationId, IReadOnlyList<string> commands, CancellationToken ct) =>
             Task.CompletedTask;
         public Task<IReadOnlyList<JsonElement>> WatchAsync(
-            string c, TimeSpan t, CancellationToken ct) =>
+            string conversationId, TimeSpan timeout, CancellationToken ct) =>
             throw new InvalidOperationException("recorded mode");
         public Task<(int, string)> ExecAsync(
-            string c, string cmd, CancellationToken ct) =>
+            string conversationId, string command, CancellationToken ct) =>
             throw new InvalidOperationException("recorded mode");
         public Task<string?> ReadFileAsync(
-            string c, string p, CancellationToken ct) =>
+            string conversationId, string path, CancellationToken ct) =>
             throw new InvalidOperationException("recorded mode");
         public Task<(double, string)?> JudgeAsync(
-            string r, string t, CancellationToken ct) =>
+            string rubric, string transcript, CancellationToken ct) =>
             Task.FromResult<(double, string)?>(null);
     }
 }

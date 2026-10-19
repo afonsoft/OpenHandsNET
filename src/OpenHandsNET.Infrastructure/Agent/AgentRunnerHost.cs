@@ -59,7 +59,7 @@ public sealed class AgentRunnerHost(
                     await runner.RunAsync(interrupt.Token);
                 }
                 catch (OperationCanceledException)
-                {
+                { // best-effort — falha tolerada
                 }
                 catch (Exception ex)
                 {

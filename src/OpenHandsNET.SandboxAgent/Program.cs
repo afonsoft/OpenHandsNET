@@ -236,7 +236,7 @@ app.MapPost("/exec/stream", async (HttpContext http, ExecRequest req,
         {
             type = "exit",
             exit_code = result.ExitCode,
-            duration_ms = (long)sw.ElapsedMilliseconds,
+            duration_ms = sw.ElapsedMilliseconds,
             timed_out = result.TimedOut,
             truncated,
             std_out = result.StdOut,
@@ -566,6 +566,7 @@ namespace OpenHandsNET.SandboxAgent
             }
             catch (Exception) when (!ct.IsCancellationRequested)
             {
+                // timeout/exec falhou — resultado agregado abaixo
                 timedOut = true;
                 try { proc.Kill(entireProcessTree: true); } catch { }
             }

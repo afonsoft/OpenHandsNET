@@ -279,6 +279,7 @@ public sealed class ShareService(
         }
         catch (JsonException)
         {
+            // JSON de policy malformado — sem regras extras
         }
     }
 

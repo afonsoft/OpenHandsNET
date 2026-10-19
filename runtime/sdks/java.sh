@@ -4,7 +4,7 @@
 set -euo pipefail
 
 REQUESTED="${1:-21}"
-SUDO=""; [ "$(id -u)" -ne 0 ] && SUDO="sudo"
+SUDO=""; [[ "$(id -u)" -ne 0 ]] && SUDO="sudo"
 
 echo "[sdk:java] installing OpenJDK ${REQUESTED}…"
 $SUDO apt-get update

@@ -182,7 +182,7 @@
     private async void OnChanged()
     {
         try { await InvokeAsync(StateHasChanged); }
-        catch { }
+        catch { /* best-effort — falha tolerada */ }
     }
 
     /// <summary>SPEC-26: troca de modelo — vale a partir do próximo run.</summary>

@@ -56,7 +56,7 @@
                 StringComparison.Ordinal))
                 ? "npm test" : "dotnet test";
         }
-        catch { }
+        catch { /* best-effort — falha tolerada */ }
     }
 
     private async Task RunAsync()

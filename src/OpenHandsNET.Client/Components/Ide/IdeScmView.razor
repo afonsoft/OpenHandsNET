@@ -81,7 +81,7 @@
                 }
             }
         }
-        catch { }
+        catch { /* best-effort — falha tolerada */ }
     }
 
     private async Task OpenDiff(string rel) =>

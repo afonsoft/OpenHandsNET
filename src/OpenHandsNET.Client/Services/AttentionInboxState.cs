@@ -89,7 +89,7 @@ public sealed class AttentionInboxState(
             catch (Exception) { /* reconnect/cancel — retenta */ }
 
             try { await Task.Delay(3000, ct); }
-            catch (OperationCanceledException) { }
+            catch (OperationCanceledException) { /* cancelamento esperado */ }
         }
     }
 
@@ -106,7 +106,7 @@ public sealed class AttentionInboxState(
                 return;
             }
         }
-        catch (Exception) { }
+        catch (Exception) { /* best-effort — falha tolerada */ }
 
         var title = item.Title ?? item.ConversationId[..8];
         toasts.Warn($"{title} precisa de você");
@@ -122,7 +122,7 @@ public sealed class AttentionInboxState(
                 await _watch;
             }
         }
-        catch (Exception) { }
+        catch (Exception) { /* best-effort — falha tolerada */ }
 
         _cts.Dispose();
     }

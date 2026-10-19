@@ -226,7 +226,7 @@
 
         if (_quickOpen)
         {
-            try { await _qoInput.FocusAsync(); } catch { }
+            try { await _qoInput.FocusAsync(); } catch { /* best-effort — falha tolerada */ }
         }
     }
 
@@ -398,7 +398,7 @@
             _allPaths.AddRange(root.Where(f => !f.IsDirectory)
                 .Select(f => f.Path));
         }
-        catch { }
+        catch { /* best-effort — falha tolerada */ }
     }
 
     private async Task RefreshBranchAsync()
@@ -438,7 +438,7 @@
                     {
                         await Monaco.RevealLineAsync("ide-monaco", line);
                     }
-                    catch { }
+                    catch { /* best-effort — falha tolerada */ }
                 }));
         }
     }
@@ -446,7 +446,7 @@
     public async ValueTask DisposeAsync()
     {
         _self?.Dispose();
-        try { await Monaco.DisposeAsync("ide-monaco"); } catch { }
-        try { await Monaco.DisposeAsync("ide-diff"); } catch { }
+        try { await Monaco.DisposeAsync("ide-monaco"); } catch { /* best-effort — falha tolerada */ }
+        try { await Monaco.DisposeAsync("ide-diff"); } catch { /* best-effort — falha tolerada */ }
     }
 }

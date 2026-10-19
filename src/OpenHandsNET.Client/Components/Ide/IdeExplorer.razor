@@ -103,7 +103,7 @@
                 _flat.Add((f, 0));
             }
         }
-        catch { }
+        catch { /* best-effort — falha tolerada */ }
     }
 
     /// <summary>Decorations M/A/D a partir de git/changes.</summary>
@@ -136,7 +136,7 @@
                 }
             }
         }
-        catch { }
+        catch { /* best-effort — falha tolerada */ }
     }
 
     private async Task OnItemClick(FileItem entry)
@@ -165,7 +165,7 @@
                 children.OrderByDescending(c => c.IsDirectory)
                     .ThenBy(c => c.Path).Select(c => (c, depth)));
         }
-        catch { }
+        catch { /* best-effort — falha tolerada */ }
     }
 
     private void StartRename(FileItem entry)

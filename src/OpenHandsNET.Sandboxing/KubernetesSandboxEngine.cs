@@ -161,9 +161,9 @@ public sealed class KubernetesSandboxEngine(
 
     /// <inheritdoc />
     public async Task<EngineSandboxInfo?> InspectAsync(
-        string name, CancellationToken ct)
+        string containerId, CancellationToken ct)
     {
-        var pod = await ReadPodAsync(name, ct);
+        var pod = await ReadPodAsync(containerId, ct);
         return pod is null ? null : ToInfo(pod);
     }
 
@@ -316,28 +316,28 @@ public sealed class KubernetesSandboxEngine(
     }
 
     /// <inheritdoc />
-    public async Task PauseAsync(string name, CancellationToken ct)
+    public async Task PauseAsync(string containerId, CancellationToken ct)
     {
         // SPEC-49 RF-002: sem cgroup pause em pod — snapshot do spec no
         // ConfigMap + delete; o PVC de workspace é retido (resume recria).
-        var pod = await ReadPodAsync(name, ct)
+        var pod = await ReadPodAsync(containerId, ct)
             ?? throw new SandboxEngineException(
-                $"pod {name} not found", notFound: true);
+                $"pod {containerId} not found", notFound: true);
         await SaveSnapshotAsync(pod, ct);
         await _k8s.CoreV1.DeleteNamespacedPodAsync(
-            name, Ns, gracePeriodSeconds: 5, cancellationToken: ct);
+            containerId, Ns, gracePeriodSeconds: 5, cancellationToken: ct);
         logger.LogInformation(
-            "pod {Pod} slept (snapshot {Cm}, PVC retained)", name,
-            SleepConfigMapName(name));
+            "pod {Pod} slept (snapshot {Cm}, PVC retained)", containerId,
+            SleepConfigMapName(containerId));
     }
 
     /// <inheritdoc />
-    public Task UnpauseAsync(string name, CancellationToken ct) =>
-        RecreateFromSnapshotAsync(name, ct);
+    public Task UnpauseAsync(string containerId, CancellationToken ct) =>
+        RecreateFromSnapshotAsync(containerId, ct);
 
     /// <inheritdoc />
-    public Task StartAsync(string name, CancellationToken ct) =>
-        RecreateFromSnapshotAsync(name, ct);
+    public Task StartAsync(string containerId, CancellationToken ct) =>
+        RecreateFromSnapshotAsync(containerId, ct);
 
     private async Task RecreateFromSnapshotAsync(
         string name, CancellationToken ct)
@@ -454,28 +454,28 @@ public sealed class KubernetesSandboxEngine(
     }
 
     /// <inheritdoc />
-    public async Task StopAsync(string name, CancellationToken ct)
+    public async Task StopAsync(string containerId, CancellationToken ct)
     {
-        var pod = await ReadPodAsync(name, ct);
+        var pod = await ReadPodAsync(containerId, ct);
         if (pod is null)
         {
             // Sem pod e sem snapshot = gone de verdade (service marca
             // Missing). Snapshot presente = já dormindo → idempotente.
-            var cm = await ReadConfigMapAsync(SleepConfigMapName(name), ct);
+            var cm = await ReadConfigMapAsync(SleepConfigMapName(containerId), ct);
             if (cm is not null)
             {
                 return;
             }
 
             throw new SandboxEngineException(
-                $"pod {name} not found", notFound: true);
+                $"pod {containerId} not found", notFound: true);
         }
 
         // Stop também preserva workspace: snapshot + delete (resume =
         // StartAsync recria — paridade semântica com docker stop/start).
         await SaveSnapshotAsync(pod, ct);
         await _k8s.CoreV1.DeleteNamespacedPodAsync(
-            name, Ns, gracePeriodSeconds: 5, cancellationToken: ct);
+            containerId, Ns, gracePeriodSeconds: 5, cancellationToken: ct);
     }
 
     private async Task<V1ConfigMap?> ReadConfigMapAsync(
@@ -494,12 +494,12 @@ public sealed class KubernetesSandboxEngine(
     }
 
     /// <inheritdoc />
-    public async Task RemoveAsync(string name, CancellationToken ct)
+    public async Task RemoveAsync(string containerId, CancellationToken ct)
     {
         try
         {
             await _k8s.CoreV1.DeleteNamespacedPodAsync(
-                name, Ns, cancellationToken: ct);
+                containerId, Ns, cancellationToken: ct);
         }
         catch (k8s.Autorest.HttpOperationException e)
             when (e.Response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -510,7 +510,7 @@ public sealed class KubernetesSandboxEngine(
         try
         {
             await _k8s.CoreV1.DeleteNamespacedConfigMapAsync(
-                SleepConfigMapName(name), Ns, cancellationToken: ct);
+                SleepConfigMapName(containerId), Ns, cancellationToken: ct);
         }
         catch (k8s.Autorest.HttpOperationException e)
             when (e.Response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -530,6 +530,7 @@ public sealed class KubernetesSandboxEngine(
         catch (k8s.Autorest.HttpOperationException e)
             when (e.Response.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
+            // 404 esperado — PVC inexistente
         }
 
         var ko = k8sOptions.Value;

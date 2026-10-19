@@ -64,7 +64,7 @@ public sealed class SandboxAgentExecutor(
                 ? await _dockerExec.ExecAsync(sandbox, command, timeout, ct)
                 : await transport.ExecAsync(command, timeout, ct);
             yield return new ExecCompleted(
-                result, (long)sw.ElapsedMilliseconds, false);
+                result, sw.ElapsedMilliseconds, false);
             yield break;
         }
 
@@ -390,7 +390,7 @@ public sealed class SandboxAgentTransport(
                         root.TryGetProperty("timed_out", out var to)
                             && to.GetBoolean()),
                     root.TryGetProperty("duration_ms", out var dm)
-                        ? dm.GetInt64() : (long)sw.ElapsedMilliseconds,
+                        ? dm.GetInt64() : sw.ElapsedMilliseconds,
                     root.TryGetProperty("truncated", out var tr)
                         && tr.GetBoolean());
                 yield break;

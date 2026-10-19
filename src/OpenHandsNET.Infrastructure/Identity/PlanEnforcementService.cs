@@ -26,7 +26,7 @@ public sealed class PlanEnforcementService(
 
     /// <inheritdoc />
     public async Task<EffectivePlan> GetEffectivePlanAsync(
-        Guid? orgId, CancellationToken ct)
+        Guid? orgId, CancellationToken cancellationToken)
     {
         PlanRecord? plan = null;
         if (orgId is { } oid)
@@ -37,7 +37,7 @@ public sealed class PlanEnforcementService(
             var now = DateTimeOffset.UtcNow;
             var subs = await db.Subscriptions.AsNoTracking()
                 .Where(s => s.OrgId == oid && s.Status == "active")
-                .ToListAsync(ct);
+                .ToListAsync(cancellationToken);
             var subPlanId = subs
                 .Where(s => s.EndedAt is null || s.EndedAt > now)
                 .OrderByDescending(s => s.StartedAt)
@@ -46,16 +46,16 @@ public sealed class PlanEnforcementService(
             var orgPlanId = subPlanId ?? await db.Organizations.AsNoTracking()
                 .Where(o => o.Id == oid)
                 .Select(o => o.PlanId)
-                .FirstOrDefaultAsync(ct);
+                .FirstOrDefaultAsync(cancellationToken);
             if (orgPlanId is { } pid)
             {
                 plan = await db.Plans.AsNoTracking()
-                    .FirstOrDefaultAsync(p => p.Id == pid, ct);
+                    .FirstOrDefaultAsync(p => p.Id == pid, cancellationToken);
             }
         }
 
         plan ??= await db.Plans.AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Name == FreePlanName, ct);
+            .FirstOrDefaultAsync(p => p.Name == FreePlanName, cancellationToken);
         if (plan is null)
         {
             return new EffectivePlan(null, FreePlanName, PlanLimits.Empty);
@@ -75,9 +75,9 @@ public sealed class PlanEnforcementService(
 
     /// <inheritdoc />
     public async Task<EffectivePlan> GetEffectiveLimitsAsync(
-        Guid? orgId, Guid? userId, CancellationToken ct)
+        Guid? orgId, Guid? userId, CancellationToken cancellationToken)
     {
-        var plan = await GetEffectivePlanAsync(orgId, ct);
+        var plan = await GetEffectivePlanAsync(orgId, cancellationToken);
         if (orgId is not { } oid || userId is not { } uid)
         {
             return plan;
@@ -87,7 +87,7 @@ public sealed class PlanEnforcementService(
         var now = DateTimeOffset.UtcNow;
         var overrides = await db.UserUsageOverrides.AsNoTracking()
             .Where(o => o.OrgId == oid && o.UserId == uid)
-            .ToListAsync(ct);
+            .ToListAsync(cancellationToken);
         var active = overrides
             .Where(o => o.ExpiresAt is null || o.ExpiresAt > now)
             .OrderByDescending(o => o.CreatedAt)
@@ -105,13 +105,13 @@ public sealed class PlanEnforcementService(
         var tierId = await db.OrgMembers.AsNoTracking()
             .Where(m => m.OrgId == oid && m.UserId == uid)
             .Select(m => m.UsageTierId)
-            .FirstOrDefaultAsync(ct);
+            .FirstOrDefaultAsync(cancellationToken);
         if (tierId is { } tid)
         {
             var tierJson = await db.UsageTiers.AsNoTracking()
                 .Where(t => t.Id == tid)
                 .Select(t => t.LimitsJson)
-                .FirstOrDefaultAsync(ct);
+                .FirstOrDefaultAsync(cancellationToken);
             if (tierJson is { Length: > 0 })
             {
                 return plan with
@@ -128,19 +128,19 @@ public sealed class PlanEnforcementService(
 
     /// <inheritdoc cref="IPlanEnforcementService.CheckConversationCreateAsync(Guid?, CancellationToken)" />
     public Task<PlanLimitError?> CheckConversationCreateAsync(
-        Guid? orgId, CancellationToken ct) =>
-        CheckConversationCreateAsync(orgId, null, ct);
+        Guid? orgId, CancellationToken cancellationToken) =>
+        CheckConversationCreateAsync(orgId, null, cancellationToken);
 
     /// <inheritdoc />
     public async Task<PlanLimitError?> CheckConversationCreateAsync(
-        Guid? orgId, Guid? userId, CancellationToken ct)
+        Guid? orgId, Guid? userId, CancellationToken cancellationToken)
     {
         if (!options.Value.EnforcementEnabled)
         {
             return null;
         }
 
-        var plan = await GetEffectiveLimitsAsync(orgId, userId, ct);
+        var plan = await GetEffectiveLimitsAsync(orgId, userId, cancellationToken);
         if (plan.Limits.MaxConversationsPerDay is not { } daily)
         {
             return null;
@@ -153,7 +153,7 @@ public sealed class PlanEnforcementService(
                 && c.CreatedAtTicks >= todayStart
                 && c.ExecutionStatus
                     != nameof(Domain.Conversations.ConversationExecutionStatus.Archived),
-                ct);
+                cancellationToken);
         return used >= daily
             ? new PlanLimitError("max_conversations_per_day", daily, used)
             : null;
@@ -161,19 +161,19 @@ public sealed class PlanEnforcementService(
 
     /// <inheritdoc cref="IPlanEnforcementService.CheckRunStartAsync(Guid?, CancellationToken)" />
     public Task<PlanLimitError?> CheckRunStartAsync(
-        Guid? orgId, CancellationToken ct) =>
-        CheckRunStartAsync(orgId, null, ct);
+        Guid? orgId, CancellationToken cancellationToken) =>
+        CheckRunStartAsync(orgId, null, cancellationToken);
 
     /// <inheritdoc />
     public async Task<PlanLimitError?> CheckRunStartAsync(
-        Guid? orgId, Guid? userId, CancellationToken ct)
+        Guid? orgId, Guid? userId, CancellationToken cancellationToken)
     {
         if (!options.Value.EnforcementEnabled)
         {
             return null;
         }
 
-        var plan = await GetEffectiveLimitsAsync(orgId, userId, ct);
+        var plan = await GetEffectiveLimitsAsync(orgId, userId, cancellationToken);
         var limits = plan.Limits;
 
         if (limits.MaxConcurrentRuns is { } maxConcurrent)
@@ -185,7 +185,7 @@ public sealed class PlanEnforcementService(
                 where c.OrgId == orgId
                 select s.Status)
                 .CountAsync(st => st == nameof(SandboxStatus.Running)
-                    || st == nameof(SandboxStatus.Starting), ct);
+                    || st == nameof(SandboxStatus.Starting), cancellationToken);
             if (running >= maxConcurrent)
             {
                 return new PlanLimitError(
@@ -198,13 +198,13 @@ public sealed class PlanEnforcementService(
         {
             var tokens = await db.UsageRecords.AsNoTracking()
                 .Where(u => u.OrgId == orgId && u.Period == period)
-                .SumAsync(u => (long?)u.TokensUsed, ct) ?? 0;
+                .SumAsync(u => (long?)u.TokensUsed, cancellationToken) ?? 0;
             // SPEC-36: soma o buffer não-flushado — com write-path
             // bufferado o EF atrasa até 30s e o limite furaria.
             if (orgId is { } o)
             {
                 tokens += (await usageBuffer.GetPendingAsync(
-                    o, period, ct)).Tokens;
+                    o, period, cancellationToken)).Tokens;
             }
 
             if (tokens >= maxTokens)
@@ -230,7 +230,7 @@ public sealed class PlanEnforcementService(
                     s.Status,
                     s.CreatedAtTicks,
                     ExpiresTicks = s.ExpiresAtTicks ?? nowTicks,
-                }).ToListAsync(ct);
+                }).ToListAsync(cancellationToken);
             var seconds = (long)used.Sum(s =>
                 Math.Max(0, Math.Min(s.ExpiresTicks, nowTicks)
                     - Math.Max(s.CreatedAtTicks, periodStart))

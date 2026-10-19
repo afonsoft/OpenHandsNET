@@ -43,14 +43,14 @@ public static class DelegationEndpoints
                     current.User?.UserId.ToString(), org?.OrgId,
                     "app_conversation", id.ToString(),
                     metadata: new { categories = verdict.Categories });
-                return (IResult)OpenHandsNetProblemFactory.Create(
+                return OpenHandsNetProblemFactory.Create(
                     http, 403, "input_blocked");
             }
 
             try
             {
                 var res = await delegationService.DelegateAsync(id, req, ct);
-                return (IResult)Results.Created(
+                return Results.Created(
                     $"/api/v1/app-conversations/{res.ChildConversationId}", res);
             }
             catch (KeyNotFoundException)
@@ -60,7 +60,7 @@ public static class DelegationEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return (IResult)Results.BadRequest(new { error = ex.Message });
+                return Results.BadRequest(new { error = ex.Message });
             }
         });
 

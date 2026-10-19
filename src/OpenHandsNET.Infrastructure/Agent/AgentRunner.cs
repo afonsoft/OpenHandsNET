@@ -136,7 +136,7 @@ public sealed class AgentRunner(
                         CancellationToken.None);
                 }
             }
-            catch (OperationCanceledException) { }
+            catch (OperationCanceledException) { /* cancelamento esperado */ }
             catch (Exception) { /* heartbeat é best-effort */ }
         }, CancellationToken.None);
         try
@@ -169,7 +169,7 @@ public sealed class AgentRunner(
         {
             hbCts.Cancel();
             try { await heartbeat; }
-            catch (Exception) { }
+            catch (Exception) { /* best-effort — falha tolerada */ }
 
             // SPEC-07 RF-002: conexões MCP órfãs fecham com a conversa.
             if (mcp is not null)
@@ -1253,6 +1253,7 @@ public sealed class AgentRunner(
             }
             catch (OperationCanceledException)
             {
+                // cancelamento esperado ao parar a pump
             }
         }, CancellationToken.None);
         return new PumpHandle(pumpCts, pump);
@@ -1270,6 +1271,7 @@ public sealed class AgentRunner(
             }
             catch (AggregateException)
             {
+                // exceção agregada esperada no Wait do shutdown
             }
 
             cts.Dispose();

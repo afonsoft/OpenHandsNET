@@ -222,12 +222,12 @@ public sealed class KnowledgeGroomer(
     ILogger<KnowledgeGroomer> logger,
     IConfiguration cfg) : BackgroundService
 {
-    protected override async Task ExecuteAsync(CancellationToken ct)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var period = cfg.GetValue("Knowledge:GroomIntervalHours", 24);
         using var timer = new PeriodicTimer(
             TimeSpan.FromHours(Math.Clamp(period, 1, 24 * 30)));
-        while (await timer.WaitForNextTickAsync(ct))
+        while (await timer.WaitForNextTickAsync(stoppingToken))
         {
             try
             {
@@ -237,7 +237,7 @@ public sealed class KnowledgeGroomer(
                     .GetRequiredService<IKnowledgeService>();
                 var db2 = scope.ServiceProvider
                     .GetRequiredService<AppDbContext>();
-                var report = await svc.GroomAsync(ct);
+                var report = await svc.GroomAsync(stoppingToken);
                 foreach (var (a, b, sim) in report.Duplicates)
                 {
                     await svc.SuggestAsync(
@@ -245,7 +245,7 @@ public sealed class KnowledgeGroomer(
                         $"Entries {a} and {b} look duplicate "
                             + $"(similarity {sim:F2}) — consider merge.",
                         "org", null, SuggestionKind.Merge,
-                        "groom", null, [a, b], ct);
+                        "groom", null, [a, b], stoppingToken);
                 }
                 foreach (var (a, b) in report.Conflicts)
                 {
@@ -254,7 +254,7 @@ public sealed class KnowledgeGroomer(
                         $"Entries {a} and {b} may contradict "
                             + "each other — human review needed.",
                         "org", null, SuggestionKind.Conflict,
-                        "groom", null, [a, b], ct);
+                        "groom", null, [a, b], stoppingToken);
                 }
             }
             catch (Exception ex)

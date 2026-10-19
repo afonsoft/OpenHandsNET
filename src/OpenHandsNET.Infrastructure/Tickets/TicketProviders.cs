@@ -115,15 +115,15 @@ public sealed class LinearTicketProvider(
 
     /// <inheritdoc />
     public async Task<bool> VerifyAsync(
-        TicketConnection c, string? signatureOrSecret,
+        TicketConnection connection, string? signatureOrSecret,
         byte[] payload, CancellationToken ct)
     {
-        if (c.WebhookSecretRef is null)
+        if (connection.WebhookSecretRef is null)
         {
             return true; // sem segredo configurado, aceita (dev).
         }
         var secret = await Secrets.ResolveAsync(
-            "org", c.OrgId?.ToString() ?? "", c.WebhookSecretRef, ct);
+            "org", connection.OrgId?.ToString() ?? "", connection.WebhookSecretRef, ct);
         return secret is not null
             && FixedEquals(HmacHex(secret, payload), signatureOrSecret);
     }
@@ -234,10 +234,10 @@ public sealed class LinearTicketProvider(
 
     /// <inheritdoc />
     public async Task<TicketIssue?> GetIssueAsync(
-        TicketConnection c, string issueKey, CancellationToken ct)
+        TicketConnection connection, string issueKey, CancellationToken ct)
     {
-        var resp = await SendAsync(c, HttpMethod.Post,
-            c.ApiUrl is { Length: > 0 } ? c.ApiUrl : ApiBase,
+        var resp = await SendAsync(connection, HttpMethod.Post,
+            connection.ApiUrl is { Length: > 0 } ? connection.ApiUrl : ApiBase,
             new
             {
                 query = """
@@ -280,12 +280,12 @@ public sealed class LinearTicketProvider(
 
     /// <inheritdoc />
     public async Task AddCommentAsync(
-        TicketConnection c, string issueKey, string body,
+        TicketConnection connection, string issueKey, string body,
         CancellationToken ct)
     {
         // commentCreate exige o ID (uuid) da issue — resolve pelo identifier.
-        var idResp = await SendAsync(c, HttpMethod.Post,
-            c.ApiUrl is { Length: > 0 } ? c.ApiUrl : ApiBase,
+        var idResp = await SendAsync(connection, HttpMethod.Post,
+            connection.ApiUrl is { Length: > 0 } ? connection.ApiUrl : ApiBase,
             new
             {
                 query = "query($id: String!) { issue(id: $id) { id } }",
@@ -306,8 +306,8 @@ public sealed class LinearTicketProvider(
             logger.LogWarning("linear: issue {Key} não encontrada", issueKey);
             return;
         }
-        await SendAsync(c, HttpMethod.Post,
-            c.ApiUrl is { Length: > 0 } ? c.ApiUrl : ApiBase,
+        await SendAsync(connection, HttpMethod.Post,
+            connection.ApiUrl is { Length: > 0 } ? connection.ApiUrl : ApiBase,
             new
             {
                 query = """
@@ -323,12 +323,12 @@ public sealed class LinearTicketProvider(
 
     /// <inheritdoc />
     public async Task TransitionAsync(
-        TicketConnection c, string issueKey, string stateName,
+        TicketConnection connection, string issueKey, string stateName,
         CancellationToken ct)
     {
         // Busca uuid da issue + team, depois o stateId pelo nome.
-        var resp = await SendAsync(c, HttpMethod.Post,
-            c.ApiUrl is { Length: > 0 } ? c.ApiUrl : ApiBase,
+        var resp = await SendAsync(connection, HttpMethod.Post,
+            connection.ApiUrl is { Length: > 0 } ? connection.ApiUrl : ApiBase,
             new
             {
                 query = """
@@ -377,8 +377,8 @@ public sealed class LinearTicketProvider(
                 stateName, issueKey);
             return;
         }
-        await SendAsync(c, HttpMethod.Post,
-            c.ApiUrl is { Length: > 0 } ? c.ApiUrl : ApiBase,
+        await SendAsync(connection, HttpMethod.Post,
+            connection.ApiUrl is { Length: > 0 } ? connection.ApiUrl : ApiBase,
             new
             {
                 query = """
@@ -394,10 +394,10 @@ public sealed class LinearTicketProvider(
 
     /// <inheritdoc />
     public async Task<(bool Ok, string? Detail)> TestConnectionAsync(
-        TicketConnection c, CancellationToken ct)
+        TicketConnection connection, CancellationToken ct)
     {
-        var resp = await SendAsync(c, HttpMethod.Post,
-            c.ApiUrl is { Length: > 0 } ? c.ApiUrl : ApiBase,
+        var resp = await SendAsync(connection, HttpMethod.Post,
+            connection.ApiUrl is { Length: > 0 } ? connection.ApiUrl : ApiBase,
             new { query = "{ viewer { id name } }" }, ct);
         if (resp is null)
         {
@@ -492,15 +492,15 @@ public sealed class JiraTicketProvider(
 
     /// <inheritdoc />
     public async Task<bool> VerifyAsync(
-        TicketConnection c, string? signatureOrSecret,
+        TicketConnection connection, string? signatureOrSecret,
         byte[] payload, CancellationToken ct)
     {
-        if (c.WebhookSecretRef is null)
+        if (connection.WebhookSecretRef is null)
         {
             return true;
         }
         var secret = await Secrets.ResolveAsync(
-            "org", c.OrgId?.ToString() ?? "", c.WebhookSecretRef, ct);
+            "org", connection.OrgId?.ToString() ?? "", connection.WebhookSecretRef, ct);
         return secret is not null && FixedEquals(secret, signatureOrSecret);
     }
 
@@ -595,10 +595,10 @@ public sealed class JiraTicketProvider(
 
     /// <inheritdoc />
     public async Task<TicketIssue?> GetIssueAsync(
-        TicketConnection c, string issueKey, CancellationToken ct)
+        TicketConnection connection, string issueKey, CancellationToken ct)
     {
         using var doc = await GetJsonAsync(
-            c, $"{Base(c)}/issue/{Enc(issueKey)}?fields=summary," +
+            connection, $"{Base(connection)}/issue/{Enc(issueKey)}?fields=summary," +
                "description,labels,status,assignee", ct);
         if (doc is null)
         {
@@ -620,12 +620,12 @@ public sealed class JiraTicketProvider(
 
     /// <inheritdoc />
     public async Task AddCommentAsync(
-        TicketConnection c, string issueKey, string body,
+        TicketConnection connection, string issueKey, string body,
         CancellationToken ct)
     {
         // Jira Cloud exige comentário em ADF (Atlassian Document Format).
-        await SendAsync(c, HttpMethod.Post,
-            $"{Base(c)}/issue/{Enc(issueKey)}/comment",
+        await SendAsync(connection, HttpMethod.Post,
+            $"{Base(connection)}/issue/{Enc(issueKey)}/comment",
             new
             {
                 body = new
@@ -649,11 +649,11 @@ public sealed class JiraTicketProvider(
 
     /// <inheritdoc />
     public async Task TransitionAsync(
-        TicketConnection c, string issueKey, string stateName,
+        TicketConnection connection, string issueKey, string stateName,
         CancellationToken ct)
     {
         using var doc = await GetJsonAsync(
-            c, $"{Base(c)}/issue/{Enc(issueKey)}/transitions", ct);
+            connection, $"{Base(connection)}/issue/{Enc(issueKey)}/transitions", ct);
         if (doc is null
             || !doc.RootElement.TryGetProperty("transitions", out var trs))
         {
@@ -678,17 +678,17 @@ public sealed class JiraTicketProvider(
                 stateName, issueKey);
             return;
         }
-        await SendAsync(c, HttpMethod.Post,
-            $"{Base(c)}/issue/{Enc(issueKey)}/transitions",
+        await SendAsync(connection, HttpMethod.Post,
+            $"{Base(connection)}/issue/{Enc(issueKey)}/transitions",
             new { transition = new { id = transitionId } }, ct);
     }
 
     /// <inheritdoc />
     public async Task<(bool Ok, string? Detail)> TestConnectionAsync(
-        TicketConnection c, CancellationToken ct)
+        TicketConnection connection, CancellationToken ct)
     {
         using var doc = await GetJsonAsync(
-            c, $"{Base(c)}/myself", ct);
+            connection, $"{Base(connection)}/myself", ct);
         if (doc is null)
         {
             return (false, "auth or request failed");

@@ -34,6 +34,7 @@ public static class CursorPaginator
         }
         catch (FormatException)
         {
+            // cursor inválido — tratado como ausência
         }
 
         return false;
