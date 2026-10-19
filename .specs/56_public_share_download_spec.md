@@ -8,7 +8,7 @@
 | Type | `Feature / API + Frontend` |
 | Stack | `.NET 10 · Blazor WASM · EF Core` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Delivered` |
 | Ticket | `TBD` |
 | Depends on | `04` (events API), `10` (EF), `41` (render de eventos) |
 | Reference | competitive-analysis §6.1 (G5/G25); DeepWiki
@@ -123,3 +123,10 @@ API e CLI; filtros de redação garantidos por testes.
 - Teste prova que um evento com secret nunca aparece no payload público.
 - Zip contém os 4 artefatos; CLI `export` usa o endpoint.
 - Migrations + golden OpenAPI verdes.
+
+## 11. Delivered
+
+- `Api/Endpoints/ShareEndpoints.cs` — share links públicos +
+  download de trajectory.
+- EF migration `spec56_conversation_shares`.
+- PR: https://github.com/afonsoft/OpenHandsNET/pull/125

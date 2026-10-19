@@ -8,7 +8,7 @@
 | Type | `Feature / AI + API + Frontend` |
 | Stack | `.NET 10 · OmniRoute role `analysis` · EF Core · Blazor` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Delivered` |
 | Ticket | `TBD` |
 | Depends on | `02` (events), `23` (OmniRoute), `39` (eval — compartilha
   conceito de scoring) |
@@ -126,3 +126,11 @@ análise batch; stats agregados; UI dedicada.
 - Endpoint retorna insight; `suggested_prompt` presente quando a run
   teve dead-ends.
 - Stats agregam corretamente; suite verde; golden OpenAPI atualizado.
+
+## 11. Delivered
+
+- `Infrastructure/Insights/` + `Api/Endpoints/SessionInsightEndpoints.cs` —
+  `insight_reports`, `session_insights`; `SessionInsightService`
+  alimenta suggestions de knowledge (SPEC-63).
+- Migration tardia absorvida em `spec63_knowledge` (PR #140).
+- PR: https://github.com/afonsoft/OpenHandsNET/pull/137
