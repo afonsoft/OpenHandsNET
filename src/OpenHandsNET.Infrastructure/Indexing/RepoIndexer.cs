@@ -164,6 +164,8 @@ public sealed class RepoIndexer : IRepoIndexer
     public static List<CodeUnitDto> ChunkFile(Guid indexId, string path, string content)
     {
         var units = new List<CodeUnitDto>();
+        if (string.IsNullOrWhiteSpace(content)) return units;
+
         var lines = content.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
         if (lines.Length == 0) return units;
 
