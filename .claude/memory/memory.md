@@ -1,19 +1,17 @@
 # memory.md — estado corrente (max 100 linhas)
 
-## Sessão ativa — 2026-10-19
+## Sessão 2026-10-19 — CONCLUÍDA
 
-- Branch: `chore/specs-65-66-67` (a partir de `main` @ `56bd27f`)
-- Executando: SPECs 65/66/67 aprovadas (Epic #146, slices #147-149)
-- Entregue nesta branch:
-  - SPEC-65: 66 SPECs arquivadas em `docs/specs/`; renumbering 68/69;
-    refs `SPEC-53`→`SPEC-69` em 5 arquivos; índices atualizados (commit `0cd88c5`)
-  - SPEC-66: `.editorconfig` + `dotnet format` aplicado (561 arquivos);
-    lint gate no CI; job sonarcloud gated `SONAR_ENABLED`; badges README (commit `dba6ea0`)
-  - SPEC-67 + create-agent-harness: estrutura `.claude/` completa +
-    `docs/architecture/` (em andamento)
-- Pendente: create-readme, verificação (build+test), PR → merge squash
-- Bloqueio: #148 parcial — secret `SONAR_TOKEN` + variable `SONAR_ENABLED=true`
-  no repo para ativar job sonarcloud; coverage ainda fora de escopo
+- **PR #151 mergeado** (squash `949dab5`) — `main` sincronizada.
+- SPECs 65/66/67 entregues e arquivadas em `docs/specs/`:
+  - SPEC-65 (`0cd88c5`): arquivo + renumbering 68/69 + refs → #147 CLOSED
+  - SPEC-66 (`dba6ea0`): `.editorconfig`, format baseline (561 arqs),
+    lint gate CI, job sonarcloud gated, badges → #148 OPEN (parcial)
+  - SPEC-67: `.claude/` completo + `docs/architecture/` + CLAUDE.md → #149 CLOSED
+- Verificação: build 0w/0e · testes 851/851 · format verify ✓ · validate-harness ✓
+- CHANGELOG.md criado; README pt/en sincronizados.
+- Bloqueio: #148 — configurar `SONAR_TOKEN` (secret) + `SONAR_ENABLED=true`
+  (variable) para ativar análise SonarCloud; depois rodar `/sonarqube-autofix`.
 
 ## Fatos operacionais
 
