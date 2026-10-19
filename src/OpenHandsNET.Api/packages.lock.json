@@ -191,11 +191,12 @@
       },
       "StackExchange.Redis": {
         "type": "Direct",
-        "requested": "[2.9.32, )",
-        "resolved": "2.9.32",
-        "contentHash": "j5Rjbf7gWz5izrn0UWQy9RlQY4cQDPkwJfVqATnVsOa/+zzJrps12LOgacMsDl/Vit2f01cDiDkG/Rst8v2iGw==",
+        "requested": "[3.4.5, )",
+        "resolved": "3.4.5",
+        "contentHash": "LtbEuNmaW6N75tvLAlXoDGDJHTCwmrHFL8/9OeQknWoCWcZhUcUnPvG2ijSO7tTyC7XID9LskIu42spa0b/nMQ==",
         "dependencies": {
-          "Pipelines.Sockets.Unofficial": "2.2.8"
+          "RESPite": "3.4.5",
+          "System.IO.Hashing": "10.0.12"
         }
       },
       "System.Security.Cryptography.Pkcs": {
@@ -445,11 +446,6 @@
           "SQLitePCLRaw.core": "2.1.11"
         }
       },
-      "Microsoft.DotNet.HotReload.WebAssembly.Browser": {
-        "type": "Transitive",
-        "resolved": "10.0.112",
-        "contentHash": "1k5ylG+88HAS1Gy72U6BXo+TVGkdGSMsKeaf3shHs46JuxwSbT8adKMcv22XWEi6ERr/blPZJc8tb49LtasLGQ=="
-      },
       "Microsoft.EntityFrameworkCore": {
         "type": "Transitive",
         "resolved": "10.0.13",
@@ -607,15 +603,15 @@
           "OpenTelemetry.Api": "1.19.1"
         }
       },
-      "Pipelines.Sockets.Unofficial": {
-        "type": "Transitive",
-        "resolved": "2.2.8",
-        "contentHash": "zG2FApP5zxSx6OcdJQLbZDk2AVlN2BNQD6MorwIfV6gVj0RRxWPEp2LXAxqDGZqeNV1Zp0BNPcNaey/GXmTdvQ=="
-      },
       "prometheus-net": {
         "type": "Transitive",
         "resolved": "8.2.1",
         "contentHash": "3wVgdEPOCBF752s2xps5T+VH+c9mJK8S8GKEDg49084P6JZMumTZI5Te6aJ9MQpX0sx7om6JOnBpIi7ZBmmiDQ=="
+      },
+      "RESPite": {
+        "type": "Transitive",
+        "resolved": "3.4.5",
+        "contentHash": "EzMx67+IXC8lQRI78yeSBWKCTn9qvSIaale6XZ1RJLKpr2NJqmptgn3UqgguWqoeGUsoohiy3SWeiVLAj1n9DA=="
       },
       "Serilog": {
         "type": "Transitive",
@@ -770,6 +766,11 @@
           "Microsoft.IdentityModel.Tokens": "8.19.2"
         }
       },
+      "System.IO.Hashing": {
+        "type": "Transitive",
+        "resolved": "10.0.12",
+        "contentHash": "jDix4bBMYnpZdSPcnY+KDV6ik3SRMzpMKby/bZl/XUwIiflwRNAFZ0oOl61R/pSaveIJ8t1gs2BUlrGsPs/bcg=="
+      },
       "System.Reflection.MetadataLoadContext": {
         "type": "Transitive",
         "resolved": "7.0.0",
@@ -814,7 +815,6 @@
           "Markdig": "[1.4.0, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.13, )",
           "Microsoft.AspNetCore.SignalR.Client": "[10.0.13, )",
-          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.112, )",
           "OpenHandsNET.Application": "[1.0.0, )"
         }
       },
@@ -841,7 +841,7 @@
           "OpenHandsNET.Application": "[1.0.0, )",
           "OpenHandsNET.Sandboxing": "[1.0.0, )",
           "SQLitePCLRaw.bundle_e_sqlite3": "[3.0.5, )",
-          "StackExchange.Redis": "[2.9.32, )",
+          "StackExchange.Redis": "[3.4.5, )",
           "Ulid": "[1.4.1, )",
           "YamlDotNet": "[16.3.0, )",
           "prometheus-net.AspNetCore": "[8.2.1, )"
