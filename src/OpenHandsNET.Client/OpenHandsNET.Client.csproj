@@ -1,6 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
   <PropertyGroup>
     <OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>
+    <!-- Lockfile opt-out: the Blazor WASM SDK injects implicit pack references
+         (WebAssembly.Pack, ILLink.Tasks, HotReload.Browser) whose versions are
+         bound to the SDK vendor + workload-manifest + host architecture —
+         Canonical arm64 SDK and runner x64 SDK resolve them differently, so a
+         committed lockfile here fails locked-mode on toolchain drift, not on
+         real dependency changes. Real deps above stay visible to osv-scanner
+         and dependabot via csproj. -->
+    <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="OpenHandsNET.Client.Tests" />
