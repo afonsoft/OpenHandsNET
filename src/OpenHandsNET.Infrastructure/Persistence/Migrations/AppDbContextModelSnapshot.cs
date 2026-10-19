@@ -494,6 +494,14 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("created_via");
 
+                    b.Property<int>("DelegationDepth")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("delegation_depth");
+
+                    b.Property<string>("DelegationMetaJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("delegation_meta_json");
+
                     b.Property<string>("ExecutionStatus")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -525,6 +533,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("OrgId")
                         .HasColumnType("TEXT")
                         .HasColumnName("org_id");
+
+                    b.Property<Guid?>("ParentConversationId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("parent_conversation_id");
 
                     b.Property<bool>("PendingKickoff")
                         .HasColumnType("INTEGER")
@@ -607,6 +619,9 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ExecutionStatus")
                         .HasDatabaseName("ix_conversations_execution_status");
+
+                    b.HasIndex("ParentConversationId")
+                        .HasDatabaseName("ix_conversations_parent_conversation_id");
 
                     b.HasIndex("OrgId", "NeedsAttentionAtTicks")
                         .HasDatabaseName("ix_conversations_org_id_needs_attention_at_ticks");

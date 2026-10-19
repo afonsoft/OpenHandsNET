@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace OpenHandsNET.Infrastructure.Persistence.Migrations
+namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
 {
     /// <inheritdoc />
     public partial class spec62_managed_conversations : Migration
@@ -11,23 +11,23 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<Guid>(
-                name: "parent_conversation_id",
-                table: "conversations",
-                type: "TEXT",
-                nullable: true);
-
             migrationBuilder.AddColumn<int>(
                 name: "delegation_depth",
                 table: "conversations",
-                type: "INTEGER",
+                type: "integer",
                 nullable: false,
                 defaultValue: 0);
 
             migrationBuilder.AddColumn<string>(
                 name: "delegation_meta_json",
                 table: "conversations",
-                type: "TEXT",
+                type: "text",
+                nullable: true);
+
+            migrationBuilder.AddColumn<Guid>(
+                name: "parent_conversation_id",
+                table: "conversations",
+                type: "uuid",
                 nullable: true);
 
             migrationBuilder.CreateIndex(
@@ -44,15 +44,15 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                 table: "conversations");
 
             migrationBuilder.DropColumn(
-                name: "parent_conversation_id",
-                table: "conversations");
-
-            migrationBuilder.DropColumn(
                 name: "delegation_depth",
                 table: "conversations");
 
             migrationBuilder.DropColumn(
                 name: "delegation_meta_json",
+                table: "conversations");
+
+            migrationBuilder.DropColumn(
+                name: "parent_conversation_id",
                 table: "conversations");
         }
     }
