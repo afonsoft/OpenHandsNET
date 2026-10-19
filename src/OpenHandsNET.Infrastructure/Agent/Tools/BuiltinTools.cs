@@ -2,6 +2,8 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OpenHandsNET.Application.Agent;
+using OpenHandsNET.Application.Contracts;
+using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Infrastructure.Agent.Subagents;
 
 namespace OpenHandsNET.Infrastructure.Agent.Tools;
@@ -751,8 +753,10 @@ public static class BuiltinTools
             Schema("""
                 {"type":"object","properties":{
                   "action":{"type":"string",
-                    "enum":["goto","click","type","scroll","back","forward","screenshot","content"],
+                    "enum":["goto","click","type","scroll","back","forward","screenshot","content","totp"],
                     "description":"Browser action to perform"},
+                  "name":{"type":"string",
+                    "description":"TOTP secret name for totp action (resolves secret 'totp:<name>')"},
                   "url":{"type":"string","description":"URL for goto"},
                   "selector":{"type":"string",
                     "description":"CSS selector for click/type"},
@@ -771,6 +775,13 @@ public static class BuiltinTools
             }
 
             var actionName = args.GetProperty("action").GetString()!;
+            // SPEC-64 RF-004: TOTP — o código é computado aqui a
+            // partir do segredo 'totp:<name>'; o segredo nunca sai
+            // do vault e só o código efêmero vai ao input.
+            if (actionName.Equals("totp", StringComparison.OrdinalIgnoreCase))
+            {
+                return await BrowserTotpAsync(ctx, args, ct);
+            }
             if (!Enum.TryParse<BrowserActionKind>(
                     actionName, ignoreCase: true, out var kind))
             {
@@ -815,6 +826,55 @@ public static class BuiltinTools
                 })
                 : ToolResult.Error(result.Error ?? "browser action failed");
         });
+
+    /// <summary>
+    /// SPEC-64 RF-004: resolve <c>totp:{name}</c> e devolve o código
+    /// corrente. O segredo base32 nunca sai do vault; o retorno ao
+    /// LLM é só o código efêmero.
+    /// </summary>
+    private static async Task<ToolResult> BrowserTotpAsync(
+        ToolCallContext ctx, JsonElement args, CancellationToken ct)
+    {
+        if (!args.TryGetProperty("name", out var n)
+            || n.ValueKind != JsonValueKind.String
+            || string.IsNullOrWhiteSpace(n.GetString()))
+        {
+            return ToolResult.Error("totp requires name");
+        }
+        var secrets = ctx.Services.GetService<ISecretStore>();
+        if (secrets is null)
+        {
+            return ToolResult.Error("secret store unavailable");
+        }
+        var current = ctx.Services.GetService<ICurrentUserAccessor>();
+        var ownerId = current?.User?.UserId.ToString() ?? "user";
+        var b32 = await secrets.ResolveAsync(
+            "user", ownerId, $"totp:{n.GetString()}", ct);
+        if (b32 is null)
+        {
+            return ToolResult.Error(
+                $"totp secret 'totp:{n.GetString()}' not found");
+        }
+        string code;
+        try
+        {
+            code = BrowserProfiles.TotpGenerator.Generate(b32);
+        }
+        catch (ArgumentException)
+        {
+            return ToolResult.Error("stored totp secret is not valid base32");
+        }
+        var audit = ctx.Services.GetService<IAuditService>();
+        if (audit is not null)
+        {
+            await audit.RecordAsync("browser.totp_used",
+                actorUserId: ownerId, metadata: new
+                {
+                    secret = $"totp:{n.GetString()}",
+                }, cancellationToken: ct);
+        }
+        return ToolResult.Ok(new { code });
+    }
 
     /// <summary>Skill invocation — injects skill content as context (SPEC-11 RF-003).</summary>
     public static AgentTool InvokeSkill() => new(

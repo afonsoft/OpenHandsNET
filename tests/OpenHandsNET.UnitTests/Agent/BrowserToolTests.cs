@@ -40,6 +40,14 @@ public sealed class BrowserToolTests
         public Task CloseAsync(Guid conversationId, CancellationToken ct) =>
             Task.CompletedTask;
 
+        public Task<string?> CaptureStorageStateAsync(
+            Guid conversationId, CancellationToken ct) =>
+            Task.FromResult<string?>(null);
+
+        public Task SetStorageStateAsync(
+            Guid conversationId, string storageStateJson,
+            CancellationToken ct) => Task.CompletedTask;
+
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 

@@ -79,6 +79,18 @@
         ],
         "type": "object"
       },
+      "AttachRequest": {
+        "properties": {
+          "profile_id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_id"
+        ],
+        "type": "object"
+      },
       "AutomationUpsertRequest": {
         "description": "Body JSON do CRUD de automations (snake_case).",
         "properties": {
@@ -167,6 +179,34 @@
         },
         "required": [
           "budget"
+        ],
+        "type": "object"
+      },
+      "CaptureRequest": {
+        "properties": {
+          "domain": {
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "shared": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "domain"
         ],
         "type": "object"
       },
@@ -2676,6 +2716,74 @@
         ]
       }
     },
+    "/api/v1/app-conversations/{id}/browser/attach": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/app-conversations/{id:guid}/browser/attach",
+        "tags": [
+          "BrowserProfiles"
+        ]
+      }
+    },
+    "/api/v1/app-conversations/{id}/browser/capture": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaptureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "POST /api/v1/app-conversations/{id:guid}/browser/capture",
+        "tags": [
+          "BrowserProfiles"
+        ]
+      }
+    },
     "/api/v1/app-conversations/{id}/checkpoints": {
       "get": {
         "parameters": [
@@ -4176,6 +4284,65 @@
         "summary": "GET /api/v1/automations/{id:guid}/runs",
         "tags": [
           "Automations"
+        ]
+      }
+    },
+    "/api/v1/browser-profiles": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/browser-profiles",
+        "tags": [
+          "BrowserProfiles"
+        ]
+      }
+    },
+    "/api/v1/browser-profiles/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "DELETE /api/v1/browser-profiles/{id:guid}",
+        "tags": [
+          "BrowserProfiles"
+        ]
+      },
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "summary": "GET /api/v1/browser-profiles/{id:guid}",
+        "tags": [
+          "BrowserProfiles"
         ]
       }
     },
@@ -8419,6 +8586,9 @@
     },
     {
       "name": "SCM"
+    },
+    {
+      "name": "BrowserProfiles"
     }
   ]
 }

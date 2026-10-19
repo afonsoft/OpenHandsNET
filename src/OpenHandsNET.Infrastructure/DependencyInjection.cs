@@ -533,6 +533,8 @@ public static class DependencyInjection
             OpenHandsNET.Infrastructure.Agent.Browser.BrowserOptions>(
             configuration.GetSection(
                 OpenHandsNET.Infrastructure.Agent.Browser.BrowserOptions.Section));
+        services.AddScoped<OpenHandsNET.Application.BrowserProfiles.IBrowserProfileService,
+            OpenHandsNET.Infrastructure.BrowserProfiles.BrowserProfileService>();
         services.AddSingleton<OpenHandsNET.Application.Agent.IBrowserService,
             OpenHandsNET.Infrastructure.Agent.Browser.PlaywrightBrowserService>();
 

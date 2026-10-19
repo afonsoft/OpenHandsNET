@@ -241,6 +241,67 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                     b.ToTable("automation_runs", (string)null);
                 });
 
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.BrowserProfiles.BrowserProfileRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Ciphertext")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ciphertext");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Domain")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("domain");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("expires_at");
+
+                    b.Property<DateTimeOffset?>("LastUsedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Nonce")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("nonce");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("owner_id");
+
+                    b.Property<bool>("Shared")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("shared");
+
+                    b.HasKey("Id")
+                        .HasName("pk_browser_profiles");
+
+                    b.HasIndex("OwnerId", "Domain")
+                        .IsUnique()
+                        .HasDatabaseName("ix_browser_profiles_owner_id_domain");
+
+                    b.ToTable("browser_profiles", (string)null);
+                });
+
             modelBuilder.Entity("OpenHandsNET.Infrastructure.ChatOps.ChatChannelConfigRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1676,6 +1737,11 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("created_at");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("kind");
 
                     b.Property<string>("MetaJson")
                         .HasColumnType("TEXT")
