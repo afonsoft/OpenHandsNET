@@ -32,7 +32,8 @@ src/OpenHandsNET.Api             # /api/v1 + hubs SignalR + hosting WASM
 src/OpenHandsNET.Client          # Blazor WASM (base: open-webui-net Client)
 cli/OpenHandsNET.Cli             # `openhandsnet` CLI
 tests/                           # Unit · Integration (Testcontainers) · Client
-.specs/                          # SPECs SDD (fonte única de verdade)
+.specs/                          # SPECs SDD ativas (fonte única de verdade)
+docs/specs/                      # SPECs entregues (arquivo morto)
 migration-plan/                  # research + roadmap do port
 docs/reference/                  # baseline upstream + extratos de docs
 ```

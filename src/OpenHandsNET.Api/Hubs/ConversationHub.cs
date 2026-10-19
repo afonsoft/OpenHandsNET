@@ -118,7 +118,7 @@ public sealed class ConversationHub(
         await runnerHost.ResumeAsync(conversationId, ct);
 
     /// <summary>
-    /// SPEC-53 RF-002: Live Takeover - Operador assume o controle manual do terminal/browser.
+    /// SPEC-69 RF-002: Live Takeover - Operador assume o controle manual do terminal/browser.
     /// Pausa o agente para evitar conflitos de input/output no sandbox.
     /// </summary>
     public async Task AcquireControl(Guid conversationId, string surface, CancellationToken ct)
@@ -127,7 +127,7 @@ public sealed class ConversationHub(
     }
 
     /// <summary>
-    /// SPEC-53 RF-002: Live Takeover - Operador devolve o controle ao agente com sumário da intervenção.
+    /// SPEC-69 RF-002: Live Takeover - Operador devolve o controle ao agente com sumário da intervenção.
     /// Injeta HumanIntervenedObservation no stream e retoma a execução.
     /// </summary>
     public async Task ReleaseControl(

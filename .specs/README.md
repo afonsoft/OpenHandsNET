@@ -11,110 +11,41 @@ SPECs (Spec-Driven Development) do port do ecossistema **OpenHands** para
   09–13 cobrem lacunas identificadas para execução autônoma (Devin).
 - Cada arquivo: `0. Metadata` → `7. Task Plan` + `8. Deliverables` +
   `9. Referências` + `10. Guardrails` + `11. DoD`.
-- `Status`: `Draft` → `Approved` → `Done` (mover para `docs/specs/` ao entregar).
+- `Status`: `Draft` → `Approved` → `Done` → **mover para `docs/specs/`**
+  ao entregar (arquivo morto, `Status: Completed`). Apenas SPECs ativas
+  (`Draft`/`Approved`/`In implementation`) permanecem aqui.
+- Numeração única `NN_name_spec.md`; em colisão, renumera-se para o próximo
+  número livre e registra-se a origem (ver 68/69 abaixo).
 - Documentação em pt-BR; código/endpoints em inglês.
 - **Regra de licença**: upstream `enterprise/` e `OpenHands-Cloud/` são Polyform —
   as SPECs reproduzem conceitos/contratos públicos apenas (ver
   `migration-plan/research/risk-assessment.md`). Links para esses repos são
   sempre marcados "conceitos apenas".
 
-## Índice / capability map
+## Índice — SPECs ativas
 
-| SPEC | Domínio | Depende de | Issue |
+| SPEC | Domínio | Status | Issue |
 |---|---|---|---|
-| `01_architecture_overview.md` | Solução .NET, Clean Architecture, DI, hosting | — | [#2](https://github.com/afonsoft/OpenHandsNET/issues/2) |
-| `02_event_stream_spec.md` | Modelo de eventos V1 (`kind`, ULID, `parent_id`) + event store | 01 | [#3](https://github.com/afonsoft/OpenHandsNET/issues/3) |
-| `03_runtime_sandbox_spec.md` | `ISandboxService`, Docker.DotNet, workspace | 01 | [#4](https://github.com/afonsoft/OpenHandsNET/issues/4) |
-| `04_rest_and_signalr_api_spec.md` | API `/api/v1` (app-conversations, events, sandboxes…) + SignalR | 02, 03 | [#5](https://github.com/afonsoft/OpenHandsNET/issues/5) |
-| `05_devin_ui_integration_spec.md` | UI Blazor multi-pane estilo Devin (chat+terminal+browser+diff) | 04 | [#6](https://github.com/afonsoft/OpenHandsNET/issues/6) |
-| `06_cli_spec.md` | `openhandsnet` CLI (Spectre.Console): login, cloud, serve | 04 | [#7](https://github.com/afonsoft/OpenHandsNET/issues/7) |
-| `07_mcp_integration_spec.md` | MCP client + MCP OAuth + tool-call router | 04 | [#8](https://github.com/afonsoft/OpenHandsNET/issues/8) |
-| `08_enterprise_security_rbac.md` | OIDC, API keys `sk-*`, orgs, quota, billing, auditoria | 04 | [#9](https://github.com/afonsoft/OpenHandsNET/issues/9) |
-| `09_agent_engine_spec.md` | Loop ReAct: `IAgentLlmProvider` (SK), tools, confirmation mode | 02, 03 | [#10](https://github.com/afonsoft/OpenHandsNET/issues/10) |
-| `10_persistence_efcore_spec.md` | DbContext único, schema, migrations SQLite/Postgres | 01 | [#11](https://github.com/afonsoft/OpenHandsNET/issues/11) |
-| `11_skills_hooks_spec.md` | Skills (triggers/invoke) + hooks de ciclo de vida | 02, 10 | [#12](https://github.com/afonsoft/OpenHandsNET/issues/12) |
-| `12_git_scm_integration_spec.md` | Clone, changes/diff/log, `git_commit`, credenciais | 03, 10 | [#13](https://github.com/afonsoft/OpenHandsNET/issues/13) |
-| `13_devops_observability_spec.md` | Dockerfile, compose profiles, CI, Serilog+OTel | 01 | [#14](https://github.com/afonsoft/OpenHandsNET/issues/14) |
-| `14_enterprise_operations_spec.md` | Sizing de sandbox, DinD+egress, PG externo, doctor/support-bundle, warm pool, usage | 03, 06, 08, 10, 13 | [#29](https://github.com/afonsoft/OpenHandsNET/issues/29) |
-| `15_ui_mobile_and_smart_autonomy_spec.md` | Mobile UX (drawer, repo sem owner), autonomia smart/always-allow, repasse de credencial GH ao sandbox | 03, 04, 09, 12 | [#33](https://github.com/afonsoft/OpenHandsNET/issues/33) |
-| `16_persistent_sandbox_lifecycle_spec.md` | Sleep/wake (pause·stop·resume), wake-on-message, lease por atividade, GC de workspace | 03, 10, 14 | [#36](https://github.com/afonsoft/OpenHandsNET/issues/36) |
-| `17_runtime_image_blueprint_spec.md` | Imagem Ubuntu própria, sandbox-agent PID 1 (HTTP, deferred-init), blueprint `openhandsnet.yaml` + `.openhands/setup.sh`, SDK auto-detect, warm pool por imagem | 03, 12, 14, 16 | [#37](https://github.com/afonsoft/OpenHandsNET/issues/37) |
-| `18_browser_tool_and_switching_spec.md` | Browser tool (Playwright no worker, screenshots→BrowserTab) + `switch_profile`/`switch_acp_model` reais | 03, 04, 09, 14 | [#42](https://github.com/afonsoft/OpenHandsNET/issues/42) ✅ |
-| `19_egress_domain_allowlist_spec.md` | Egress `allowlist` real por domínio via proxy sidecar Squid dual-homed | 14 | [#43](https://github.com/afonsoft/OpenHandsNET/issues/43) |
-| `20_plan_enforcement_billing_spec.md` | Enforcement de planos (conversas/dia, runs concorrentes, tokens/mês, sandbox-s/mês) + write-path de usage metering + plans CRUD admin | 08, 14 | [#44](https://github.com/afonsoft/OpenHandsNET/issues/44) |
-| `21_client_completion_spec.md` | Admin UI (users/admins/audit/flags/plans/usage/support-bundle), Monaco (files+diff), pipeline Tailwind v4 | 05, 08, 14, 20 | [#45](https://github.com/afonsoft/OpenHandsNET/issues/45) ✅ |
-| `22_context_engine_compaction_spec.md` | Context engine: `IContextMeter`, `LlmSummarizingCondenser`, pruning, triggers (threshold/mid-turn/overflow/manual), ledger + promotion | 02, 09 | [#51](https://github.com/afonsoft/OpenHandsNET/issues/51) ✅ #57 |
-| `23_omniroute_model_catalog_routing_spec.md` | OmniRoute `/models` catalog, `IModelRouter` por role, retry/fallback/turn recovery, `llm_route` | 09, 22 | [#52](https://github.com/afonsoft/OpenHandsNET/issues/52) ✅ #58 |
-| `24_agent_activity_protocol_spec.md` | Sandbox-agent v2 (`/exec/stream`, `/proc`, `/activity`), kinds `command_output`/`tool_progress`/`files_changed`/`run_progress`/`work_summary`/`agent_diagnostic` | 03, 17, 02 | [#53](https://github.com/afonsoft/OpenHandsNET/issues/53) ✅ #59 |
-| `25_tools_skills_discovery_spec.md` | Repo discovery (`AGENTS.md`, `.openhands/skills`…), repo skills federadas, tools `search`/`file_read` v2/`file_edit` modes/`web_fetch`, MCP schema fidelity | 07, 09, 11, 24 | [#54](https://github.com/afonsoft/OpenHandsNET/issues/54) ✅ #60 |
-| `26_ui_ux_modernization_spec.md` | Temas dark/light/system, icon set SVG, markdown+ToolCallCard, command palette, notificações, responsivo (ref: open-webui fork) | 05, 21, 24 | [#55](https://github.com/afonsoft/OpenHandsNET/issues/55) ✅ #73 |
-| `27_cli_opencode_comparative_spec.md` | Análise comparativa CLI/agent-harness (opencode e pares) — backlog que originou 28–31 | 06, 09, 11, 22–25 | `TBD` (análise) |
-| `28_subagents_task_tool_spec.md` | Orquestração de subagentes via tool `task` (fork/merge de contexto) | 09, 22–25, 29 | #61 ✅ #70 |
-| `29_tool_permissions_spec.md` | Permissões por tool `allow`/`deny`/`ask` + plan mode | 09, 25 | #62 ✅ #67 |
-| `30_centralized_memory_spec.md` | Memória centralizada (escopos org + projeto) | 22, 25, 29 | #63 ✅ #68 |
-| `31_cli_parity_spec.md` | Paridade CLI: models/resume/stats/mcp/skills/export/attach/doctor preflight | 06, 20, 23–25 | #64 ✅ #72 |
-| `32_upstream_enterprise_gap_analysis.md` | Gap analysis vs upstream (Enterprise/Cloud/Agent-SDK) — origem de 33–39 | 27 | `TBD` (análise) |
-| `33_agent_hardening_spec.md` | `ISecurityAnalyzer` plugável, secrets by-ref, resume validation (`agent_contract`) | 09, 22, 23, 29 | #65 ✅ #69 |
-| `34_streaming_deltas_artifacts_spec.md` | `streaming_delta` efêmero (batcher+hub) + `IArtifactStore` workspace/S3 | 02, 24, 25 | #66 ✅ #71 |
-| `35_runtime_api_split_spec.md` | Runtime-API split: `ISandboxEngine` local/remote + `openhandsnet-runtime-api` | 03, 14, 16, 17 | #74 ✅ #79 |
-| `36_distributed_cache_backplane_spec.md` | `IDistributedCache` Redis/Valkey + backplane SignalR + `ICoordinationBus`/`IDistributedCounter` (consumidores pendentes) | 04, 13, 14, 34 | #75 ◐ #79 |
-| `37_kubernetes_runtime_spec.md` | `KubernetesSandboxEngine` (pods+Sysbox+PVC); Helm chart e doctor probe pendentes | 03, 14, 16, 17, 35 | #76 ◐ #79 |
-| `38_sandbox_host_routing_spec.md` | Routing `path\|host` (`{id}-{port}.{domain}`) p/ surfaces do sandbox | 03, 04, 14, 35/37 | #77 ✅ #79 |
-| `39_eval_harness_spec.md` | `openhandsnet eval` — runner headless + fixtures + scoring (parcial) | 06/31, 09, 22, 24, 28 | #78 ◐ #79 |
-| `40_sandbox_agent_server_surfaces_spec.md` | Surfaces do agent-server: gateway `/v1/chat/completions`, terminal/VSCode web, preview tokens, ACP mínimo | 03, 04, 08, 17, 24, 34, 38 | #81 |
-| `41_stream_chat_ux_spec.md` | Reasoning (`ThinkingSection` + `DeltaFrame.channel` + `ThinkingBlocks`), heartbeat+watchdog, ToolCallCard rico, copy, Pause/Resume | 02, 09, 24, 26, 34 | #99 |
-| `42_ide_workspace_spec.md` | Aba `ide` workbench (explorer+Monaco editável+SCM+search+tests+quick-open); write/search/commit API | 03, 05, 12, 21, 24 (soft 43) | #100 |
-| `43_checkpoints_revert_spec.md` | Snapshots por turno em git-dir separado no sandbox + `POST /checkpoints/{hash}/revert` + CheckpointList | 03, 12, 16, 24 | #101 |
-| `44_attention_inbox_spec.md` | Inbox de conversas aguardando usuário (confirm/question/failed) — projeção persistida + badge + filtro, push SignalR | 04, 09, 10, 29 | #102 |
-| `45_composer_spec.md` | Composer rico: @menções workspace, /slash (skills+builtins), drafts, histórico, uploads→path, edit-resend | 04, 12, 25 | #103 |
-| `46_i18n_spec.md` | `LocalizationService` JSON (port open-webui), en-US+pt-BR completos + 6 best-effort, parity test | 26 | #104 |
-| `47_automations_spec.md` | Schedules (interval/daily/weekly/once)→start-task, run history, run-now, hook triggers, tool `routine` | 04, 08, 10, 20, 25 | #105 |
-| `48_enterprise_security_hardening_spec.md` | `security_policies` por org (permissive/balanced/strict), analyzer override, `mcp__*` ask, resume fail-closed | 08, 09, 10, 29, 33 | #114 |
-| `49_kubernetes_runtime_completion_spec.md` | Warm pool k8s (`ClaimWarmAsync`), sleep/wake via PVC, Helm production (ingress/postgres/limits/HPA), kind+sysbox runbook | 16, 17, 35, 36, 37 | #115 |
-| `50_byor_llm_spec.md` | BYOR LiteLLM: virtual keys, permitted models, rotate, `byor_keys`, OmniRoute integration | 08, 20, 23 | #116 |
-| `51_openapi_contract_spec.md` | `/openapi/v1.json` gerado + golden snapshot drift guard + Scalar explorer opt-in | 04 | #117 |
-| `52_github_app_scm_spec.md` | GitHub App + `IScmProvider`: PRs, comments, @menção→start-task, commit status | 04, 12, 47, 10 | TBD |
-| `53_scm_providers_spec.md` | Providers GitLab/Bitbucket/Azure DevOps na mesma interface SCM | 52 | TBD |
-| `54_chatops_slack_spec.md` | Slack app: @menção/slash→sessão, thread sync, auto-triage, `IChatSink` | 04, 47, 52 | TBD |
-| `55_ticketing_triggers_spec.md` | Linear/Jira → start-task enriquecido + write-back (comment+transition) | 47, 52 | TBD |
-| `56_public_share_download_spec.md` | Share link público read-only + trajectory download zip | 04, 10, 41 | TBD |
-| `57_service_users_spec.md` | Service users `svc_*` + escopos RBAC + `create_as_user_id` | 08, 20 | TBD |
-| `58_scim_idp_groups_spec.md` | SCIM 2.0 subset + IdP-group→org/role + usage tiers | 08, 20 | TBD |
-| `59_edge_security_hardening_spec.md` | IP allowlist CIDR + `IInputGuard` (prompt-injection) + rate limit por ator | 08, 33, 57 | TBD |
-| `60_repo_indexing_ask_mode_spec.md` | Repo index (FTS/embeddings) + Ask mode read-only c/ citações + handoff plan→Agent | 04, 09, 22, 23 | TBD |
-| `61_session_insights_spec.md` | Insights pós-run: outcome/issues/custos/prompt sugerido + batch + stats | 02, 23, 39 | TBD |
-| `62_managed_conversations_spec.md` | Tool `delegate` (sessões-irmãs cross-sandbox) + coordinator wake + agregação | 28, 04, 16, 20 | TBD |
-| `63_knowledge_pipeline_spec.md` | Sugestões de memória + fila de revisão + dedup/conflict groom | 30, 61 | TBD |
-| `64_browser_profiles_spec.md` | Browser auth profiles (storage state) + site cookies/TOTP secrets | 18, 33, 16 | TBD |
+| `65_specs_hygiene_spec.md` | Arquivamento `docs/specs/`, colisões 52/53, metadata `Status` | `Approved` | #147 |
+| `66_quality_gates_automation_spec.md` | `.editorconfig` + `dotnet format` em CI + SonarQube | `Approved` | #148 |
+| `67_harness_structure_spec.md` | `docs/architecture/` + ADR thin-harness + `.claude/CONTEXT.md` | `Approved` | #149 |
 
+## Arquivo morto — `docs/specs/`
 
-Build order: `01 → (02 ∥ 03 ∥ 10 ∥ 13) → (04 ∥ 09 ∥ 11 ∥ 12) → (05 ∥ 06 ∥ 08) → 07 → 14 → 15 → 16 → 17 → (18 ∥ 19 ∥ 20) → 21 → (22 → 23 ∥ 24) → 25 → (26 ∥ 27) → (29 → (28 ∥ 33) ∥ 30 ∥ 31 ∥ 34)`.
+SPECs **01–64 + 68 + 69** entregues (66 documentos) foram movidas para
+[`docs/specs/`](../docs/specs/README.md) em 2026-10-19 (SPEC-65), com
+`Status: Completed` e evidência de entrega (PR/commit) no índice.
 
-Enterprise wave: `(35 → (36 ∥ 37 ∥ 38) ∥ 39) → 40` — entregue parcialmente
-no PR #79 (35/38 Done; 36/37/39 com pendências nos Status); 40 fecha os
-surfaces user-facing do agent-server.
-
-Open-WebUI wave (análise `afonsoft/open-webui` → port, MIT): `41 →
-(42 ∥ 43 ∥ 44 ∥ 45 ∥ 46 ∥ 47)` — 45 consome superfícies de 41; 42
-embebe CheckpointList de 43 (soft); 46 faz sweep de strings após as
-demais. **Todas mergeadas (#107–#113).**
-
-Enterprise-closing wave (gaps finais do `.specs/32` + débitos de 37):
-`48 → (49 ∥ 50 ∥ 51)` — 48 fecha a camada de política org (analyzer já
-existe global); 49 completa o caminho k8s; 50 implementa BYOR LiteLLM;
-51 publica o contrato OpenAPI.
-
-Competitive wave (análise `migration-plan/research/competitive-analysis-
-devin-openhands-cloud.md` — comparativo OpenHands Cloud × Devin Web ×
-OpenHandsNET): **Onda A** fluxo E2E `52 → (53 ∥ 54 ∥ 55) → 56`;
-**Onda B** enterprise readiness `(57 ∥ 58 ∥ 59)`; **Onda C**
-inteligência de produto `(60 ∥ 61 ∥ 62 ∥ 63 ∥ 64)` — 61 recomendado
-antes de 63; 57 antes de 59 (rate-limit por ator).
+> **Renumbering (2026-10-19)**: `52_nextgen_improvements` → **68** e
+> `53_enterprise_sandbox_hardening` → **69** para resolver colisões com
+> `52_github_app_scm` e `53_scm_providers`. Referências de código foram
+> atualizadas (`SPEC-53`→`SPEC-69` nos pontos enterprise).
 
 ## Fluxo
 
 `write-specs` → aprovação (gate) → `create-issues` → `execute-specs`/`tdd-spec`
-→ `qa-analyst` → `code-review-and-quality` → PR/merge.
+→ `qa-analyst` → `code-review-and-quality` → PR/merge → arquivar em
+`docs/specs/`.
 
 ## Fontes de verdade
 

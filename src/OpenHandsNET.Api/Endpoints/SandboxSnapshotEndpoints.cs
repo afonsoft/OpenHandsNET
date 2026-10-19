@@ -4,7 +4,7 @@ using OpenHandsNET.Application.Sandbox;
 namespace OpenHandsNET.Api.Endpoints;
 
 /// <summary>
-/// SPEC-53 RF-003: Endpoints de gerenciamento de snapshots físicos do sandbox
+/// SPEC-69 RF-003: Endpoints de gerenciamento de snapshots físicos do sandbox
 /// e reversão atômica de estado (Time-Travel).
 /// </summary>
 public static class SandboxSnapshotEndpoints

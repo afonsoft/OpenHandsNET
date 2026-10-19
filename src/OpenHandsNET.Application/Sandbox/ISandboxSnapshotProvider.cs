@@ -10,7 +10,7 @@ public sealed record SandboxSnapshotInfo(
     long SizeBytes = 0);
 
 /// <summary>
-/// SPEC-53 RF-003: Provedor de snapshots físicos de sandbox e time-travel rollback.
+/// SPEC-69 RF-003: Provedor de snapshots físicos de sandbox e time-travel rollback.
 /// Permite reverter o estado de disco/sandbox atômico durante a execução de tarefas.
 /// </summary>
 public interface ISandboxSnapshotProvider
