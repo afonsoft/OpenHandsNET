@@ -96,7 +96,6 @@ public sealed class SessionInsightService : ISessionInsightService
         };
 
         insightRecord.OrgId = conv.OrgId;
-        insightRecord.Outcome = outcome;
         insightRecord.IssuesJson = JsonSerializer.Serialize(issues);
         insightRecord.DeadEndsJson = JsonSerializer.Serialize(deadEnds);
         insightRecord.PhaseCostsJson = JsonSerializer.Serialize(phaseCosts);
