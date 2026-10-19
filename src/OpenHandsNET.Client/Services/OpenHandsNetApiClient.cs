@@ -293,7 +293,7 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
         string conversationId, CancellationToken ct = default)
     {
         var resp = await http.PostAsync(
-            $"/api/v1/app-conversations/{conversationId}/share",
+            $"/api/v1/app-conversations/{Uri.EscapeDataString(conversationId)}/share",
             content: null, ct);
         return resp.IsSuccessStatusCode
             ? await resp.Content.ReadFromJsonAsync<ShareLinkDto>(Json, ct)
@@ -324,7 +324,8 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
     public async Task<SharedConversationDto?> GetSharedConversationAsync(
         string token, CancellationToken ct = default)
     {
-        var resp = await http.GetAsync($"/api/v1/shared/{token}", ct);
+        var resp = await http.GetAsync(
+            $"/api/v1/shared/{Uri.EscapeDataString(token)}", ct);
         if (!resp.IsSuccessStatusCode)
         {
             return null;
@@ -357,7 +358,7 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
             string token, string pageId, CancellationToken ct = default)
     {
         var resp = await http.GetAsync(
-            $"/api/v1/shared/{token}/events"
+            $"/api/v1/shared/{Uri.EscapeDataString(token)}/events"
             + $"?page_id={Uri.EscapeDataString(pageId)}", ct);
         var items = new List<ClientEvent>();
         string? next = null;
@@ -809,7 +810,7 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
 
     private async Task<T?> GetOrNull<T>(string url, CancellationToken ct)
     {
-        var resp = await http.GetAsync(url, ct);
+        var resp = await http.GetAsync(new Uri(url, UriKind.Relative), ct);
         return resp.IsSuccessStatusCode
             ? await resp.Content.ReadFromJsonAsync<T>(Json, ct) : default;
     }

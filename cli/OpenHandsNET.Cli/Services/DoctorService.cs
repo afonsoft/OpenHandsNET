@@ -287,11 +287,23 @@ public sealed class DoctorService(HttpClient http)
         }
     }
 
+
+    private static string ResolveOnPath(string cmd)
+    {
+        foreach (var dir in (Environment.GetEnvironmentVariable("PATH")
+            ?? "").Split(Path.PathSeparator))
+        {
+            var full = Path.Combine(dir, cmd);
+            if (File.Exists(full)) { return full; }
+        }
+        return cmd;
+    }
+
     private static async Task<ProbeResult> ProbeDockerAsync(CancellationToken ct)
     {
         try
         {
-            var psi = new ProcessStartInfo("docker", "info --format {{.ServerVersion}}")
+            var psi = new ProcessStartInfo(ResolveOnPath("docker"), "info --format {{.ServerVersion}}")
             {
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,

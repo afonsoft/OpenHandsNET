@@ -575,7 +575,7 @@ public static class OpenAiGatewayEndpoints
         await http.Response.WriteAsync(JsonSerializer.Serialize(new
         {
             error = new { message, type, code },
-        }));
+        }), http.RequestAborted);
     }
 
     /// <summary>Erro de validação/execução mapeado p/ OpenAI.</summary>

@@ -8,12 +8,12 @@ SUDO=""; [ "$(id -u)" -ne 0 ] && SUDO="sudo"
 ARCH="$(dpkg --print-architecture)"   # amd64|arm64
 
 if [ "$REQUESTED" = "latest" ]; then
-    REQUESTED="$(curl -fsSL 'https://go.dev/dl/?mode=json' \
+    REQUESTED="$(curl -fsSL --proto '=https' --tlsv1.2 'https://go.dev/dl/?mode=json' \
         | jq -r '.[0].version' | sed 's/^go//')"
 fi
 
 echo "[sdk:go] installing Go ${REQUESTED} (${ARCH})…"
-curl -fsSL "https://go.dev/dl/go${REQUESTED}.linux-${ARCH}.tar.gz" -o /tmp/go.tgz
+curl -fsSL --proto '=https' --tlsv1.2 "https://go.dev/dl/go${REQUESTED}.linux-${ARCH}.tar.gz" -o /tmp/go.tgz
 $SUDO rm -rf /usr/local/go
 $SUDO tar -C /usr/local -xzf /tmp/go.tgz
 $SUDO ln -sf /usr/local/go/bin/go /usr/local/bin/go

@@ -23,7 +23,7 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: helm lint + template
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@bf6a7d304bc2fdb57e0331155b7ebf2c504acf0a # v4
       - run: |
           helm lint charts/openhandsnet
           helm template ohn charts/openhandsnet \
@@ -36,7 +36,7 @@ jobs:
             echo "no plaintext secrets"
 
       - name: create kind cluster
-        uses: helm/kind-action@v1
+        uses: helm/kind-action@0b5c88445f37b7e12a2ce1ecca7805b9046a74db # v1
 
       - name: install sysbox
         run: |

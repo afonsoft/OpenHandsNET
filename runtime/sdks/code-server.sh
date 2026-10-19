@@ -24,7 +24,7 @@ fi
 echo "[surface:code-server] installing ${VERSION} (${cs_arch})…"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-curl -fsSL \
+curl -fsSL --proto '=https' --tlsv1.2 \
     "https://github.com/coder/code-server/releases/download/v${VERSION}/code-server-${VERSION}-linux-${cs_arch}.tar.gz" \
     -o "$tmp/code-server.tar.gz"
 mkdir -p "$INSTALL_DIR" "$BIN_DIR"

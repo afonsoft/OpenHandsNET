@@ -56,7 +56,7 @@ postgres:
   externalSecretKey: "dsn"
   dev:
     enabled: false                # DEV ONLY — sem HA/backup
-    password: "openhandsnet-dev"  # dev only — trocar fora de dev
+    password: ""                  # obrigatório quando dev.enabled=true
 
 # Secrets de aplicação (LLM keys, connection strings…): referência a
 # Secret gerenciado fora do chart — nada de secret em values.

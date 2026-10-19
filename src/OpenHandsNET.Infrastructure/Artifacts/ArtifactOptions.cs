@@ -9,8 +9,8 @@ public sealed class ArtifactOptions
     /// <summary>Provider: <c>workspace</c> (default) ou <c>s3</c>.</summary>
     public string Provider { get; set; } = "workspace";
 
-    /// <summary>Raiz do provider workspace (default <c>/tmp/ohn-artifacts</c>).</summary>
-    public string WorkspaceRoot { get; set; } = "/tmp/ohn-artifacts";
+    /// <summary>Raiz do provider workspace (default <c>/var/lib/ohn-artifacts</c>).</summary>
+    public string WorkspaceRoot { get; set; } = "/var/lib/ohn-artifacts";
 
     /// <summary>
     /// SPEC-34 RF-003: dias de retenção para artefatos cujo sandbox foi

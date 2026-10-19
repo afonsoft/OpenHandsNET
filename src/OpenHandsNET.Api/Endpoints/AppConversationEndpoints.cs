@@ -582,7 +582,8 @@ public static class AppConversationEndpoints
                     "guard.input_blocked",
                     user?.UserId.ToString(), org2?.OrgId,
                     "app_conversation", null,
-                    metadata: new { categories = verdict.Categories });
+                    metadata: new { categories = verdict.Categories },
+                    cancellationToken: http.RequestAborted);
                 return OpenHandsNetProblemFactory.Create(
                     http, 403, "input_blocked");
             }
@@ -726,7 +727,8 @@ public static class AppConversationEndpoints
                 "guard.input_blocked",
                 current.User?.UserId.ToString(), org?.OrgId,
                 "app_conversation", id.ToString(),
-                metadata: new { categories = verdict.Categories });
+                metadata: new { categories = verdict.Categories },
+                cancellationToken: http.RequestAborted);
             return OpenHandsNetProblemFactory.Create(
                 http, 403, "input_blocked");
         }

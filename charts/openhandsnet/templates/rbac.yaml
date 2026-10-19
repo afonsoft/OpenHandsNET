@@ -14,7 +14,7 @@ metadata:
   namespace: {{ .Values.sandbox.namespace }}
 rules:
   - apiGroups: [""]
-    resources: ["pods", "pods/status", "pods/exec", "persistentvolumeclaims"]
+    resources: ["pods", "pods/status", "persistentvolumeclaims"]
     verbs: ["get", "list", "watch", "create", "delete", "patch"]
   # SPEC-49 RF-002: sleep snapshots (pod.json por sandbox).
   - apiGroups: [""]

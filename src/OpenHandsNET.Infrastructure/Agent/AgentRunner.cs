@@ -343,7 +343,7 @@ public sealed class AgentRunner(
                 var condensed = await condenser.CondenseAsync(
                     history, ids, s.Trigger, model,
                     cs => Context.CompactionService.EmitRequestAsync(
-                        events, conversationId, cs, pendingInstructions),
+                        events, conversationId, cs, pendingInstructions, ct),
                     ct);
                 if (condensed.Compacted)
                 {
@@ -962,7 +962,7 @@ public sealed class AgentRunner(
                     var midResult = await condenser.CondenseAsync(
                         history, ids, CompactionTrigger.MidTurn, model,
                         cs => Context.CompactionService.EmitRequestAsync(
-                            events, conversationId, cs, null), ct);
+                            events, conversationId, cs, null, ct), ct);
                     if (midResult.Compacted)
                     {
                         var midCond = await Context.CompactionService

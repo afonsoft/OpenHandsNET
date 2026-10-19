@@ -7,7 +7,7 @@ REQUESTED="${1:-10}"
 INSTALL_DIR="/usr/local/dotnet"
 
 echo "[sdk:dotnet] installing .NET SDK ${REQUESTED}…"
-curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+curl -fsSL --proto '=https' --tlsv1.2 https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
 chmod +x /tmp/dotnet-install.sh
 
 # Versão numérica simples → canal "<major>.0"; "x.y.z" → versão exata.

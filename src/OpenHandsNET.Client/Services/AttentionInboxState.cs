@@ -37,7 +37,7 @@ public sealed class AttentionInboxState(
         }
 
         await RefreshAsync(notifyNew: false);
-        _watch = Task.Run(() => WatchAsync(_cts.Token));
+        _watch = Task.Run(() => WatchAsync(_cts.Token), _cts.Token);
     }
 
     /// <summary>Refetch — chamável por componentes após ações locais.</summary>

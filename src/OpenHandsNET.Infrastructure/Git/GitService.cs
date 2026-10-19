@@ -64,7 +64,8 @@ public sealed class GitService(
             string envPrefix = "";
             if (token is not null)
             {
-                askPassPath = $"/tmp/.ohn-askpass-{Guid.NewGuid():N}";
+                askPassPath =
+                    $"/var/lib/ohn-secrets/.ohn-askpass-{Guid.NewGuid():N}";
                 await executor.WriteFileAsync(sandbox, askPassPath,
                     GitCredentialProvider.AskPassScript(token), ct);
                 await executor.ExecAsync(sandbox, $"chmod 700 '{askPassPath}'",

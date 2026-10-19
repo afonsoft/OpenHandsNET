@@ -280,7 +280,7 @@ public sealed class IdentityAdminService(AppDbContext db, IAuditService audit)
             db.OrgMembers.Remove(s);
             await audit.RecordAsync(
                 "idp.membership_revoked", userId.ToString(), s.OrgId,
-                "user", userId.ToString());
+                "user", userId.ToString(), cancellationToken: ct);
         }
 
         await db.SaveChangesAsync(ct);

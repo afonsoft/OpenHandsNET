@@ -142,7 +142,8 @@ public static class EdgeEndpoints
             "edge.ip_rule_created",
             current.User?.UserId.ToString(), null, "ip_rule",
             rec.Id.ToString(), null, null,
-            metadata: new { scope, cidr, action });
+            metadata: new { scope, cidr, action },
+            cancellationToken: ctx.RequestAborted);
         return Results.Ok(new
         {
             rec.Id,

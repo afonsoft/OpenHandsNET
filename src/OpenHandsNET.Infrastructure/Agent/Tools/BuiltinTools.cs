@@ -1432,12 +1432,12 @@ public static class BuiltinTools
         return string.Join('\n', lines);
     }
 
-    /// <summary>sha1(line)[..8] hex — endereçável e tolerante a drift.</summary>
+    /// <summary>sha256(line) hex — endereçável e tolerante a drift.</summary>
     internal static string LineHash(string line)
     {
         var bytes = System.Text.Encoding.UTF8.GetBytes(line);
         return Convert.ToHexString(
-            System.Security.Cryptography.SHA1.HashData(bytes))
+            System.Security.Cryptography.SHA256.HashData(bytes))
             .ToLowerInvariant();
     }
 

@@ -20,6 +20,8 @@ spec:
     spec:
       {{- if eq .Values.sandbox.provider "kubernetes" }}
       serviceAccountName: openhandsnet-runtime
+      # SA bound à Role sandbox-manager (necessário p/ gerir sandboxes).
+      automountServiceAccountToken: true
       {{- end }}
       containers:
         - name: api
