@@ -51,7 +51,7 @@ public class DelegationServiceTests : IDisposable
         await _db.Conversations.AddAsync(parent);
         await _db.SaveChangesAsync();
 
-        var req = new DelegateTaskRequest(TaskDescription = "Subtask 1");
+        var req = new DelegateTaskRequest("Subtask 1");
         var res = await _service.DelegateAsync(parentId, req);
 
         res.ShouldNotBeNull();
@@ -80,7 +80,7 @@ public class DelegationServiceTests : IDisposable
         await _db.Conversations.AddAsync(parent);
         await _db.SaveChangesAsync();
 
-        var req = new DelegateTaskRequest(TaskDescription = "Subtask nested");
+        var req = new DelegateTaskRequest("Subtask nested");
         await Should.ThrowAsync<InvalidOperationException>(async () =>
         {
             await _service.DelegateAsync(parentId, req);
