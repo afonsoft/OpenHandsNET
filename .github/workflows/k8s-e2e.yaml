@@ -42,7 +42,7 @@ jobs:
             echo "no plaintext secrets"
 
       - name: create kind cluster
-        uses: helm/kind-action@0b5c88445f37b7e12a2ce1ecca7805b9046a74db # v1
+        uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1
 
       - name: install sysbox
         run: |
