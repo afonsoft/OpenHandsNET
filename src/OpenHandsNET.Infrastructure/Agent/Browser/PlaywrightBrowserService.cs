@@ -119,7 +119,7 @@ public sealed class PlaywrightBrowserService(
             // Contexto morto (target closed / browser caiu) — descarta para a
             // próxima chamada recriar em vez de falhar para sempre.
             _contexts.TryRemove(conversationId, out _);
-            try { await entry.Context.CloseAsync(); } catch { }
+            try { await entry.Context.CloseAsync(); } catch { /* best-effort — falha tolerada */ }
             return BrowserResult.Fail($"browser action failed: {ex.Message}");
         }
     }
@@ -167,7 +167,7 @@ public sealed class PlaywrightBrowserService(
             && lazy.IsValueCreated)
         {
             var entry = await lazy.Value;
-            try { await entry.Context.CloseAsync(); } catch { }
+            try { await entry.Context.CloseAsync(); } catch { /* best-effort — falha tolerada */ }
         }
     }
 
@@ -186,7 +186,7 @@ public sealed class PlaywrightBrowserService(
 
         if (_browser is not null)
         {
-            try { await _browser.CloseAsync(); } catch { }
+            try { await _browser.CloseAsync(); } catch { /* best-effort — falha tolerada */ }
         }
 
         _playwright?.Dispose();

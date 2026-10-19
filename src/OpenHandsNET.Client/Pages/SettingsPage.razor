@@ -108,9 +108,9 @@
                 _agentType = GetStr(s, "agent_type") ?? "default";
             }
         }
-        catch { }
+        catch { /* best-effort — falha tolerada */ }
         try { _secrets = (await Api.ListSecretsAsync()).ToList(); }
-        catch { }
+        catch { /* best-effort — falha tolerada */ }
     }
 
     private static string? GetStr(JsonElement el, string name) =>

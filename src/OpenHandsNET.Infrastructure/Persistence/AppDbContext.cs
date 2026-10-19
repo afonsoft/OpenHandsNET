@@ -222,7 +222,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// <see cref="DateTimeOffset"/>; os espelhos são sincronizados aqui para
     /// que serviços continuem escrevendo apenas os campos DateTimeOffset.
     /// </summary>
-    public override Task<int> SaveChangesAsync(CancellationToken ct = default)
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         foreach (var entry in ChangeTracker.Entries())
         {
@@ -268,7 +268,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
                     break;
             }
         }
-        return base.SaveChangesAsync(ct);
+        return base.SaveChangesAsync(cancellationToken);
     }
 
     /// <inheritdoc />

@@ -17,7 +17,7 @@ namespace OpenHandsNET.Infrastructure.Agent;
 /// </summary>
 public sealed class OpenAiCompatLlmProvider(
     IHttpClientFactory httpFactory,
-    IOptions<AgentLlmOptions> options,
+    IOptions<AgentLlmOptions> agentOptions,
     ILogger<OpenAiCompatLlmProvider> logger) : IAgentLlmProvider
 {
     private static readonly JsonSerializerOptions Json = new()
@@ -26,7 +26,7 @@ public sealed class OpenAiCompatLlmProvider(
     };
 
     /// <inheritdoc />
-    public string ModelId => options.Value.Model;
+    public string ModelId => agentOptions.Value.Model;
 
     /// <inheritdoc />
     public Task<ModelInfo> GetModelInfoAsync(CancellationToken ct) =>
@@ -36,11 +36,11 @@ public sealed class OpenAiCompatLlmProvider(
     public async IAsyncEnumerable<LlmStreamChunk> ChatStreamAsync(
         IReadOnlyList<LlmMessage> messages,
         IReadOnlyList<ToolSchema> tools,
-        LlmOptions llmOptions,
+        LlmOptions options,
         [EnumeratorCancellation] CancellationToken ct)
     {
-        var cfg = options.Value;
-        var request = BuildRequest(messages, tools, llmOptions, cfg);
+        var cfg = agentOptions.Value;
+        var request = BuildRequest(messages, tools, options, cfg);
         var response = await SendWithRetryAsync(request, cfg, ct);
         await using var stream = await response.Content
             .ReadAsStreamAsync(ct);

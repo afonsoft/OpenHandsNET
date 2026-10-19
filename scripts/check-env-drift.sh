@@ -23,7 +23,7 @@ for s in $sections; do
     fi
 done
 
-if [ "$missing" -gt 0 ]; then
+if [[ "$missing" -gt 0 ]]; then
     echo "-> $missing seção(ões) sem documentação em .env.exemplo"
     exit 1
 fi

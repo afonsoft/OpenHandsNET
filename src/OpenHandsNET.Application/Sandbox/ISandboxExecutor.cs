@@ -29,7 +29,7 @@ public interface ISandboxExecutor
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var result = await ExecAsync(sandbox, command, timeout, ct);
         yield return new ExecCompleted(
-            result, (long)sw.ElapsedMilliseconds, false);
+            result, sw.ElapsedMilliseconds, false);
     }
 
     Task<string> ReadFileAsync(Domain.Sandbox.Sandbox sandbox, string path, CancellationToken ct);

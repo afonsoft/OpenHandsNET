@@ -19,9 +19,9 @@ else
     CHANNEL=""  # versão exata (x.y.z ou superior)
 fi
 
-SUDO=""; [ "$(id -u)" -ne 0 ] && SUDO="sudo"
+SUDO=""; [[ "$(id -u)" -ne 0 ]] && SUDO="sudo"
 $SUDO mkdir -p "$INSTALL_DIR"
-if [ -n "$CHANNEL" ]; then
+if [[ -n "$CHANNEL" ]]; then
     $SUDO /tmp/dotnet-install.sh --channel "$CHANNEL" --install-dir "$INSTALL_DIR"
 else
     $SUDO /tmp/dotnet-install.sh --version "$REQUESTED" --install-dir "$INSTALL_DIR"

@@ -95,7 +95,7 @@ public sealed class RedisDistributedLock(
                     }
                 }
             }
-            catch (OperationCanceledException) { }
+            catch (OperationCanceledException) { /* cancelamento esperado */ }
             catch (Exception e)
             {
                 // RF-004: renovação falhou por outage → perde o lease
@@ -116,7 +116,7 @@ public sealed class RedisDistributedLock(
                 {
                     await _renew;
                 }
-                catch (OperationCanceledException) { }
+                catch (OperationCanceledException) { /* cancelamento esperado */ }
             }
 
             if (_db is not null)

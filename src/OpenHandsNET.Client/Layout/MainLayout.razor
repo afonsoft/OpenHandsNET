@@ -168,7 +168,7 @@
                     return Task.CompletedTask;
                 })));
         }
-        catch (HttpRequestException) { }
+        catch (HttpRequestException) { /* best-effort — falha tolerada */ }
         return items;
     }
 
@@ -180,7 +180,7 @@
             await JS.InvokeVoidAsync("localStorage.setItem",
                 "ohn.sidebar", _collapsed ? "1" : "0");
         }
-        catch (JSException) { }
+        catch (JSException) { /* best-effort — falha tolerada */ }
     }
 
     private IEnumerable<ConversationItem> FilteredConvs()

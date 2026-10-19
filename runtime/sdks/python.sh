@@ -4,11 +4,11 @@
 set -euo pipefail
 
 REQUESTED="${1:-3.13}"
-SUDO=""; [ "$(id -u)" -ne 0 ] && SUDO="sudo"
+SUDO=""; [[ "$(id -u)" -ne 0 ]] && SUDO="sudo"
 SYSTEM_PY="$(python3 --version | awk '{print $2}' | cut -d. -f1,2)"
 
 echo "[sdk:python] installing Python ${REQUESTED}…"
-if [ "$REQUESTED" = "$SYSTEM_PY" ]; then
+if [[ "$REQUESTED" = "$SYSTEM_PY" ]]; then
     echo "[sdk:python] system python $SYSTEM_PY já presente"
 else
     $SUDO apt-get update

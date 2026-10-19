@@ -4,10 +4,10 @@
 set -euo pipefail
 
 REQUESTED="${1:-22}"
-SUDO=""; [ "$(id -u)" -ne 0 ] && SUDO="sudo"
+SUDO=""; [[ "$(id -u)" -ne 0 ]] && SUDO="sudo"
 
 echo "[sdk:node] installing Node.js ${REQUESTED}.x…"
-if [ "$REQUESTED" != "22" ]; then
+if [[ "$REQUESTED" != "22" ]]; then
     # Rebuild da fonte apt para a major pedida (a imagem já traz 22.x).
     $SUDO curl -fsSL "https://deb.nodesource.com/setup_${REQUESTED}.x" | $SUDO bash -
 fi

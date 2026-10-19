@@ -83,7 +83,7 @@ public sealed class DistributedAgentActivityBus(
             {
                 await t;
             }
-            catch (OperationCanceledException) { }
+            catch (OperationCanceledException) { /* cancelamento esperado */ }
         }
     }
 

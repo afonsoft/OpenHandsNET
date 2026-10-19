@@ -124,6 +124,6 @@ public sealed class ThemeService : IAsyncDisposable
                 await _selfRef.DisposeAsync();
             }
         }
-        catch (JSDisconnectedException) { }
+        catch (JSDisconnectedException) { /* best-effort — falha tolerada */ }
     }
 }

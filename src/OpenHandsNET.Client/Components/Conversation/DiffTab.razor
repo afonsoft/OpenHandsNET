@@ -151,7 +151,7 @@
         {
             await Monaco.DisposeAsync("diff-monaco");
         }
-        catch (JSException) { }
-        catch (JSDisconnectedException) { }
+        catch (JSException) { /* best-effort — falha tolerada */ }
+        catch (JSDisconnectedException) { /* best-effort — falha tolerada */ }
     }
 }

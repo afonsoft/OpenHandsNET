@@ -87,14 +87,14 @@
             // SPEC-26 RF-003: auto-scroll só quando o usuário está no fim.
             // JS é best-effort — bUnit strict lança exceção própria.
             try { await JS.InvokeVoidAsync("ohnChat.pin", _scroll); }
-            catch (Exception) { }
+            catch (Exception) { /* best-effort — falha tolerada */ }
         }
 
         if (State.Events.Count != _lastCount || State.LiveDeltas.Count > 0)
         {
             _lastCount = State.Events.Count;
             try { await JS.InvokeVoidAsync("ohnChat.scrollIfPinned", _scroll); }
-            catch (Exception) { }
+            catch (Exception) { /* best-effort — falha tolerada */ }
         }
     }
 

@@ -182,7 +182,7 @@ public static class PermissionRules
             }
         }
         catch (JsonException)
-        {
+        { // best-effort — falha tolerada
         }
 
         return [];

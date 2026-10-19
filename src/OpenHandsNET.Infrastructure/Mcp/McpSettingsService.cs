@@ -27,7 +27,7 @@ public sealed class McpSettingsService(AppDbContext db) : IMcpSettingsService
         string ownerId, CancellationToken ct = default) =>
         (await db.McpServers.Where(r => r.OwnerId == ownerId).ToListAsync(ct))
             .Select(r => Parse(r.ConfigJson))
-            .Where(c => c is not null).Cast<McpServerConfig>().ToList();
+            .OfType<McpServerConfig>().ToList();
 
     /// <inheritdoc />
     public async Task<McpServerConfig?> GetAsync(

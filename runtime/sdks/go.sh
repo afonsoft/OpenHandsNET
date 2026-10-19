@@ -4,10 +4,10 @@
 set -euo pipefail
 
 REQUESTED="${1:-latest}"
-SUDO=""; [ "$(id -u)" -ne 0 ] && SUDO="sudo"
+SUDO=""; [[ "$(id -u)" -ne 0 ]] && SUDO="sudo"
 ARCH="$(dpkg --print-architecture)"   # amd64|arm64
 
-if [ "$REQUESTED" = "latest" ]; then
+if [[ "$REQUESTED" = "latest" ]]; then
     REQUESTED="$(curl -fsSL --proto '=https' --tlsv1.2 'https://go.dev/dl/?mode=json' \
         | jq -r '.[0].version' | sed 's/^go//')"
 fi

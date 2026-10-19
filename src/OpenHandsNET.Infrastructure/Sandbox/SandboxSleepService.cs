@@ -46,7 +46,7 @@ public sealed class SandboxSleepService(
                 await SleepAsync(conversationId, cts.Token);
             }
             catch (OperationCanceledException)
-            {
+            { // best-effort — falha tolerada
             }
             catch (Exception ex)
             {
@@ -67,7 +67,7 @@ public sealed class SandboxSleepService(
     {
         if (_pending.TryRemove(conversationId, out var cts))
         {
-            try { cts.Cancel(); } catch (ObjectDisposedException) { }
+            try { cts.Cancel(); } catch (ObjectDisposedException) { /* best-effort — falha tolerada */ }
             cts.Dispose();
         }
     }

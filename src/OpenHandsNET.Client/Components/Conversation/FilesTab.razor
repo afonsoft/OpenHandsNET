@@ -86,7 +86,7 @@
                 _flat.Add((f, 0));
             }
         }
-        catch { }
+        catch { /* best-effort — falha tolerada */ }
     }
 
     private async Task OnItemClick(FileItem entry)
@@ -124,6 +124,6 @@
             await Monaco.DisposeAsync("file-monaco");
         }
         catch (JSException) { /* circuito fechado */ }
-        catch (JSDisconnectedException) { }
+        catch (JSDisconnectedException) { /* best-effort — falha tolerada */ }
     }
 }

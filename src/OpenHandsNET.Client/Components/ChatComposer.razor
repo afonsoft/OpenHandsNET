@@ -155,7 +155,7 @@
         ClosePopups();
         StateHasChanged();
         try { await JS.InvokeVoidAsync("ohnComposer.focus", _ta); }
-        catch (Exception) { }
+        catch (Exception) { /* best-effort — falha tolerada */ }
     }
 
     private async Task OnTextChanged()
@@ -167,7 +167,7 @@
                 $"ohn.draft.{DraftKey}", _text);
             await JS.InvokeVoidAsync("ohnComposer.grow", _ta);
         }
-        catch (Exception) { }
+        catch (Exception) { /* best-effort — falha tolerada */ }
 
         UpdatePopups();
     }
@@ -244,7 +244,7 @@
                 cmds.AddRange(ComposerSlash.FromSkills(
                     await Api.GetConversationSkillsAsync(ConversationId)));
             }
-            catch (Exception) { }
+            catch (Exception) { /* best-effort — falha tolerada */ }
         }
 
         return cmds;
@@ -434,7 +434,7 @@
                     $"ohn.draft.{DraftKey}");
                 await JS.InvokeVoidAsync("ohnComposer.grow", _ta);
             }
-            catch (Exception) { }
+            catch (Exception) { /* cleanup JS best-effort */ }
 
             _text = "";
             _histIdx = -1;

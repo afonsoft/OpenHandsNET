@@ -101,7 +101,7 @@ public static class AutomationEndpoints
                 { Status: "skipped" } when !fired =>
                     OpenHandsNetProblemFactory.Create(
                         ctx, 409, "automation run already in progress"),
-                _ => (IResult)Results.Accepted(null, new
+                _ => Results.Accepted(null, new
                 {
                     run_id = run.Id,
                     conversation_id = run.ConversationId,

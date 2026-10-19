@@ -181,6 +181,7 @@ public sealed class RepoContextLoader(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            // contexto opcional — falha não bloqueia a conversa
         }
 
         if (memory is not null && conv.OrgId is { } orgId)
