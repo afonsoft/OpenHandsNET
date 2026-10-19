@@ -132,8 +132,10 @@ public static class UploadEndpoints
     private static string Slugify(string name)
     {
         var s = name.Trim().Replace(' ', '-');
-        s = Regex.Replace(s, @"[^A-Za-z0-9._-]", "");
-        s = Regex.Replace(s, @"\.{2,}", ".");
+        s = Regex.Replace(s, @"[^A-Za-z0-9._-]", "",
+            RegexOptions.None, TimeSpan.FromMilliseconds(500));
+        s = Regex.Replace(s, @"\.{2,}", ".",
+            RegexOptions.None, TimeSpan.FromMilliseconds(500));
         return s.Trim('.', '-');
     }
 

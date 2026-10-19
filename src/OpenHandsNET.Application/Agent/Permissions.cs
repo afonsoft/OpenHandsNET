@@ -48,7 +48,8 @@ public sealed record AgentPermissionRule(
 
         var regex = "^" + Regex.Escape(Pattern).Replace("\\*", ".*") + "$";
         return Regex.IsMatch(toolName, regex,
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+            TimeSpan.FromMilliseconds(500));
     }
 }
 

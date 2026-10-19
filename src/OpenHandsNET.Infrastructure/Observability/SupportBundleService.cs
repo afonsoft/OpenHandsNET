@@ -187,7 +187,9 @@ public sealed class SupportBundleService(
         var redacted = SecretRedactor.Redact(line);
         // API-key-shaped values in logs must never survive the bundle.
         return System.Text.RegularExpressions.Regex.Replace(
-            redacted, @"sk-[A-Za-z0-9\-_]{8,}", "***");
+            redacted, @"sk-[A-Za-z0-9\-_]{8,}", "***",
+            System.Text.RegularExpressions.RegexOptions.None,
+            TimeSpan.FromMilliseconds(500));
     }
 
     private static async Task WriteJsonAsync(

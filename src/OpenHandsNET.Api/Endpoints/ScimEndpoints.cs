@@ -479,7 +479,7 @@ public static class ScimEndpoints
         // subset: userName eq "x" (única forma suportada)
         var m = System.Text.RegularExpressions.Regex.Match(
             filter, "userName\\s+eq\\s+\"([^\"]+)\"",
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
         return m.Success ? m.Groups[1].Value : null;
     }
 

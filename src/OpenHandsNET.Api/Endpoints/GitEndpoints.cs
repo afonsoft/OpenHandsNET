@@ -439,7 +439,8 @@ public static class GitEndpoints
             ? new System.Text.RegularExpressions.Regex(
                 "^" + System.Text.RegularExpressions.Regex.Escape(glob)
                     .Replace("\\*", ".*").Replace("\\?", ".") + "$",
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase,
+                TimeSpan.FromSeconds(1))
             : null;
 
         var matches = new List<object>();

@@ -289,7 +289,7 @@ public sealed class ExportCommand : AsyncCommand<ExportCommand.Settings>
     internal static string Redact(string text) =>
         System.Text.RegularExpressions.Regex.Replace(
             text, @"\{\{secret:[^}]+\}\}", "***",
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(500));
 }
 
 /// <summary>
