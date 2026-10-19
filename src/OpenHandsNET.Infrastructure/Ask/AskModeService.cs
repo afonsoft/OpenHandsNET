@@ -87,12 +87,11 @@ public sealed class AskModeService : IAskModeService
         var convId = Guid.NewGuid();
         _logger.LogInformation("Promoting ask session {SessionId} to agent conversation {ConvId}", request.SessionId, convId);
 
-        // Cria conversa persistida em modo ativo
-        var conv = new OpenHandsNET.Infrastructure.Persistence.Conversations.ConversationRecord
+        var conv = new OpenHandsNET.Infrastructure.Conversations.ConversationRecord
         {
             Id = convId,
             Title = request.Title ?? $"Investigation from Ask Session {request.SessionId:N}",
-            Status = "active",
+            ExecutionStatus = "READY",
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };
