@@ -4,14 +4,14 @@
   "meta": {
     "title": "OpenHandsNET — Runtime Architecture",
     "output": "runtime-architecture.html",
-    "quality_profile": "showcase",
+    "quality_profile": "standard",
     "repository": {
       "url": "https://github.com/afonsoft/OpenHandsNET",
       "provider": "github",
       "link_mode": "web",
-      "revision": "460694105b8ed8fe9f5036f3a500ae4e06a8cb04"
+      "revision": "5f862e09d0a55f93f93d812873dabd4c84886197"
     },
-    "viewBox": [1100, 680],
+    "viewBox": [1140, 700],
     "views": [
       { "id": "primary-path", "label": "Primary request path", "focus": ["wasm-client", "api", "infrastructure", "runtime-api", "sandbox-agent", "k8s"], "note": "User request flows from Blazor WASM through the API into the out-of-process sandbox runtime." },
       { "id": "layered-core", "label": "Layered core", "focus": ["api", "infrastructure", "app-domain", "db", "redis"], "note": "Api → Infrastructure → Application/Domain; EF Core persists to SQLite/PostgreSQL, Redis backs SignalR scale-out." },
@@ -19,35 +19,34 @@
     ]
   },
   "components": [
-    { "id": "wasm-client", "type": "frontend", "label": "OpenHandsNET.Client", "sublabel": "Blazor WebAssembly — chat · IDE · admin", "pos": [40, 290], "size": [160, 64], "sources": [{ "path": "src/OpenHandsNET.Client/Program.cs", "label": "WASM client" }] },
-    { "id": "cli", "type": "frontend", "label": "OpenHandsNET.Cli", "sublabel": "Spectre.Console — login/run/serve/eval", "pos": [40, 470], "size": [160, 64], "sources": [{ "path": "cli/OpenHandsNET.Cli/Program.cs", "label": "CLI" }] },
-    { "id": "api", "type": "backend", "label": "OpenHandsNET.Api", "sublabel": "Minimal APIs /api/v1 · SignalR hubs", "pos": [260, 290], "size": [160, 64], "tag": "OIDC + sk-*/svc_*", "sources": [{ "path": "src/OpenHandsNET.Api/Program.cs", "label": "API host" }] },
-    { "id": "app-domain", "type": "backend", "label": "Application + Domain", "sublabel": "contratos/DTOs · eventos V1", "pos": [260, 470], "size": [160, 64], "sources": [{ "path": "src/OpenHandsNET.Application/Agent/AgentContracts.cs", "label": "contracts" }, { "path": "src/OpenHandsNET.Domain/Events/EventBase.cs", "label": "V1 events" }] },
-    { "id": "infrastructure", "type": "backend", "label": "OpenHandsNET.Infrastructure", "sublabel": "EF Core · agent loop · secrets · webhooks", "pos": [480, 290], "size": [170, 64], "sources": [{ "path": "src/OpenHandsNET.Infrastructure/DependencyInjection.cs", "label": "infra" }] },
-    { "id": "runtime-api", "type": "backend", "label": "OpenHandsNET.RuntimeApi", "sublabel": "orquestração fora-de-processo", "pos": [710, 290], "size": [160, 64], "sources": [{ "path": "src/OpenHandsNET.RuntimeApi/Program.cs", "label": "runtime" }] },
-    { "id": "sandbox-agent", "type": "security", "label": "Sandboxing + SandboxAgent", "sublabel": "ISandboxEngine · PID1 HTTP · Squid egress", "pos": [710, 470], "size": [170, 64], "sources": [{ "path": "src/OpenHandsNET.Sandboxing/DockerSandboxEngine.cs", "label": "engine" }, { "path": "src/OpenHandsNET.SandboxAgent/Program.cs", "label": "PID1" }] },
-    { "id": "k8s", "type": "cloud", "label": "Docker / Kubernetes", "sublabel": "container runtime", "pos": [940, 470], "size": [140, 60] },
-    { "id": "db", "type": "database", "label": "SQLite / PostgreSQL", "sublabel": "EF Core 10 · migrations duplas", "pos": [480, 470], "size": [160, 60] },
-    { "id": "redis", "type": "messagebus", "label": "Redis / Valkey", "sublabel": "SignalR backplane · IDistributedCache", "pos": [480, 110], "size": [160, 60] },
-    { "id": "llm", "type": "external", "label": "LLM Gateways", "sublabel": "Semantic Kernel · OmniRoute · LiteLLM", "pos": [710, 110], "size": [160, 60] },
-    { "id": "scm", "type": "external", "label": "SCM Providers", "sublabel": "GitHub App · GitLab · Bitbucket · Azure DevOps", "pos": [260, 110], "size": [170, 60] }
+    { "id": "wasm-client", "type": "frontend", "label": "Client (Blazor WASM)", "sublabel": "chat · IDE · admin", "pos": [30, 320], "size": [160, 64], "sources": [{ "path": "src/OpenHandsNET.Client/Program.cs", "label": "WASM client" }] },
+    { "id": "cli", "type": "frontend", "label": "Cli (Spectre)", "sublabel": "login · run · serve · eval", "pos": [30, 460], "size": [160, 64], "sources": [{ "path": "cli/OpenHandsNET.Cli/Program.cs", "label": "CLI" }] },
+    { "id": "api", "type": "backend", "label": "Api", "sublabel": "Minimal /api/v1 · SignalR hubs", "pos": [230, 320], "size": [160, 64], "tag": "OIDC + sk-*/svc_*", "sources": [{ "path": "src/OpenHandsNET.Api/Program.cs", "label": "API host" }] },
+    { "id": "app-domain", "type": "backend", "label": "Application + Domain", "sublabel": "contratos · eventos V1", "pos": [230, 540], "size": [160, 64], "sources": [{ "path": "src/OpenHandsNET.Application/Agent/AgentContracts.cs", "label": "contracts" }, { "path": "src/OpenHandsNET.Domain/Events/EventBase.cs", "label": "V1 events" }] },
+    { "id": "infrastructure", "type": "backend", "label": "Infrastructure", "sublabel": "EF Core · agent loop · secrets", "pos": [450, 320], "size": [170, 64], "sources": [{ "path": "src/OpenHandsNET.Infrastructure/DependencyInjection.cs", "label": "infra" }] },
+    { "id": "runtime-api", "type": "backend", "label": "RuntimeApi", "sublabel": "orquestração fora-de-processo", "pos": [680, 320], "size": [160, 64], "sources": [{ "path": "src/OpenHandsNET.RuntimeApi/Program.cs", "label": "runtime" }] },
+    { "id": "sandbox-agent", "type": "security", "label": "Sandboxing + Agent", "sublabel": "ISandboxEngine · PID1 · Squid", "pos": [890, 320], "size": [170, 64], "sources": [{ "path": "src/OpenHandsNET.Sandboxing/DockerSandboxEngine.cs", "label": "engine" }, { "path": "src/OpenHandsNET.SandboxAgent/Program.cs", "label": "PID1" }] },
+    { "id": "k8s", "type": "cloud", "label": "Docker / K8s", "sublabel": "container runtime", "pos": [890, 540], "size": [140, 60] },
+    { "id": "db", "type": "database", "label": "SQLite / PostgreSQL", "sublabel": "EF Core 10", "pos": [450, 540], "size": [160, 60] },
+    { "id": "redis", "type": "messagebus", "label": "Redis / Valkey", "sublabel": "SignalR backplane", "pos": [450, 110], "size": [160, 60] },
+    { "id": "llm", "type": "external", "label": "LLM Gateways", "sublabel": "SK · OmniRoute · LiteLLM", "pos": [700, 110], "size": [160, 60] },
+    { "id": "scm", "type": "external", "label": "SCM Providers", "sublabel": "GitHub · GitLab · Bitbucket · ADO", "pos": [60, 110], "size": [180, 60] }
   ],
   "boundaries": [
-    { "kind": "region", "label": "Host process — ASP.NET Core", "wraps": ["api", "app-domain", "infrastructure"] },
-    { "kind": "security-group", "label": "Sandbox runtime — egress via Squid", "wraps": ["runtime-api", "sandbox-agent"] }
+    { "kind": "security-group", "label": "Sandbox runtime — egress via Squid", "wraps": ["runtime-api", "sandbox-agent", "k8s"] }
   ],
   "connections": [
-    { "id": "wasm-to-api", "from": "wasm-client", "to": "api", "label": "HTTP + SignalR", "variant": "emphasis" },
-    { "id": "cli-to-api", "from": "cli", "to": "api", "label": "HTTP + SignalR", "variant": "dashed" },
+    { "id": "wasm-to-api", "from": "wasm-client", "to": "api", "label": "HTTP+SignalR", "variant": "emphasis", "labelDy": -24 },
+    { "id": "cli-to-api", "from": "cli", "to": "api", "label": "HTTP+SignalR", "fromSide": "right", "toSide": "bottom", "variant": "dashed" },
     { "id": "api-to-infra", "from": "api", "to": "infrastructure", "variant": "emphasis" },
-    { "id": "infra-to-appdomain", "from": "infrastructure", "to": "app-domain", "label": "depends", "variant": "dashed", "fromSide": "bottom", "toSide": "right" },
-    { "id": "api-to-runtime", "from": "api", "to": "runtime-api", "variant": "emphasis" },
+    { "id": "infra-to-appdomain", "from": "infrastructure", "to": "app-domain", "label": "depends", "variant": "dashed", "fromSide": "bottom", "toSide": "top" },
+    { "id": "api-to-runtime", "from": "api", "to": "runtime-api", "variant": "emphasis", "fromSide": "top", "toSide": "top", "via": [[310, 255], [760, 255]] },
     { "id": "runtime-to-sandbox", "from": "runtime-api", "to": "sandbox-agent" },
-    { "id": "sandbox-to-k8s", "from": "sandbox-agent", "to": "k8s", "label": "Docker API" },
-    { "id": "infra-to-db", "from": "infrastructure", "to": "db", "label": "EF Core", "variant": "emphasis" },
-    { "id": "infra-to-redis", "from": "infrastructure", "to": "redis", "label": "backplane · cache", "fromSide": "top", "toSide": "bottom" },
+    { "id": "sandbox-to-k8s", "from": "sandbox-agent", "to": "k8s", "label": "Docker API", "fromSide": "bottom", "toSide": "top" },
+    { "id": "infra-to-db", "from": "infrastructure", "to": "db", "label": "EF Core", "fromSide": "bottom", "toSide": "top", "labelDx": 40, "labelDy": 60 },
+    { "id": "infra-to-redis", "from": "infrastructure", "to": "redis", "label": "backplane", "fromSide": "top", "toSide": "bottom", "labelDx": 70 },
     { "id": "infra-to-llm", "from": "infrastructure", "to": "llm", "label": "chat/embeddings", "variant": "dashed", "fromSide": "top", "toSide": "bottom" },
-    { "id": "infra-to-scm", "from": "infrastructure", "to": "scm", "label": "webhooks · git", "variant": "dashed", "fromSide": "top", "toSide": "right" }
+    { "id": "infra-to-scm", "from": "infrastructure", "to": "scm", "label": "webhooks · git", "variant": "dashed", "fromSide": "top", "toSide": "bottom" }
   ],
   "cards": [
     { "dot": "cyan", "title": "Clientes", "items": ["Blazor WASM hospedado pela própria Api", "CLI consome apenas contratos HTTP/SignalR"] },
