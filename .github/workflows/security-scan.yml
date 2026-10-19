@@ -1,0 +1,181 @@
+name: security-scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "31 6 * * 1"   # Monday 06:31 UTC — catches new CVEs on unchanged deps
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Scanners are installed pinned via `gh release download` (authenticated,
+  # 5000 req/hr) — the OmniRoute pattern. Unauthenticated api.github.com calls
+  # are rate-limited to 60/hr and silently no-op when throttled, which turns a
+  # security gate into a permanent self-skip.
+  secrets:
+    name: secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: install gitleaks (pinned, authenticated)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITLEAKS_VERSION: v8.30.1
+        run: |
+          mkdir -p "$HOME/.local/bin" /tmp/gl
+          gh release download "$GITLEAKS_VERSION" --repo gitleaks/gitleaks \
+            --pattern '*linux_x64.tar.gz' --dir /tmp/gl
+          tar -xzf /tmp/gl/*linux_x64.tar.gz -C "$HOME/.local/bin" gitleaks
+          "$HOME/.local/bin/gitleaks" version
+
+      - name: gitleaks scan (blocking)
+        run: '"$HOME/.local/bin/gitleaks" git --redact --verbose .'
+
+  workflow-audit:
+    name: workflow lint (actionlint + zizmor)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: install actionlint + zizmor (pinned)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTIONLINT_VERSION: v1.7.12
+          ZIZMOR_VERSION: "1.25.2"
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          bash <(curl -fsSL "https://raw.githubusercontent.com/rhysd/actionlint/${ACTIONLINT_VERSION}/scripts/download-actionlint.bash") \
+            "${ACTIONLINT_VERSION#v}" "$HOME/.local/bin"
+          pipx install "zizmor==$ZIZMOR_VERSION" || pip install --user "zizmor==$ZIZMOR_VERSION"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/actionlint" -version
+          zizmor --version
+
+      - name: actionlint (blocking)
+        run: '"$HOME/.local/bin/actionlint" -color'
+
+      - name: zizmor (blocking, SARIF artifact)
+        run: |
+          zizmor --format sarif .github/workflows > zizmor.sarif || true
+          # --offline keeps the gate deterministic (no remote-ref fetches);
+          # findings above medium/medium block — suppressions live in the repo.
+          zizmor --offline --min-severity=medium --min-confidence=medium .github/workflows
+
+      - name: upload zizmor SARIF
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: zizmor-sarif
+          path: zizmor.sarif
+          if-no-files-found: ignore
+          retention-days: 14
+
+  dependency-audit:
+    name: dependency vulnerabilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: setup dotnet 10
+        uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d # v5.0.0
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: restore (locked-mode)
+        run: dotnet restore OpenHandsNET.slnx --locked-mode
+
+      - name: dotnet vulnerable-package gate (blocking)
+        run: |
+          dotnet list OpenHandsNET.slnx package --vulnerable --include-transitive \
+            > /tmp/vuln.txt 2>&1 || true
+          cat /tmp/vuln.txt
+          if grep -qE "has the following vulnerable|Severity.*(High|Critical|Moderate|Low)" /tmp/vuln.txt; then
+            echo "::error::vulnerable packages found — bump or pin the affected PackageVersion."
+            exit 1
+          fi
+
+      - name: install osv-scanner (pinned, authenticated)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OSV_SCANNER_VERSION: v2.3.8
+        run: |
+          mkdir -p "$HOME/.local/bin" /tmp/osv
+          gh release download "$OSV_SCANNER_VERSION" --repo google/osv-scanner \
+            --pattern '*linux_amd64' --dir /tmp/osv
+          install -m 0755 /tmp/osv/*linux_amd64 "$HOME/.local/bin/osv-scanner"
+          "$HOME/.local/bin/osv-scanner" --version
+
+      - name: osv-scanner on lockfiles (blocking)
+        # packages.lock.json is a first-class osv-scanner input. A newly
+        # disclosed CVE on an unchanged dep can red this gate — the fix is to
+        # bump the dep, not to weaken the gate.
+        run: '"$HOME/.local/bin/osv-scanner" scan --recursive --skip-git .'
+
+  docker-lint:
+    name: hadolint (Dockerfiles)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: hadolint (pinned digest, failure-threshold=error)
+        run: |
+          for f in Dockerfile Dockerfile.runtime-api; do
+            echo "=== $f ==="
+            docker run --rm -i hadolint/hadolint@sha256:27086352fd5e1907ea2b934eb1023f217c5ae087992eb59fde121dce9c9ff21e \
+              hadolint --failure-threshold error - < "$f"
+          done
+
+  semgrep:
+    name: semgrep (advisory → blocking after baseline)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: semgrep/semgrep:1.181.0
+    steps:
+      - name: checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: semgrep scan (advisory; promotes to blocking once findings stabilize)
+        continue-on-error: true
+        run: |
+          semgrep scan --config p/owasp-top-ten --config p/secrets \
+            --sarif --output semgrep.sarif --metrics off || true
+          python -c "import json; d=json.load(open('semgrep.sarif')); print('semgrepFindings=%d' % len(d['runs'][0]['results']))" || echo "semgrepFindings=SKIP"
+
+      - name: upload SARIF
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: semgrep-sarif
+          path: semgrep.sarif
+          if-no-files-found: ignore
+          retention-days: 14

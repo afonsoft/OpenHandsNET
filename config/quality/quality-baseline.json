@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "seed": "2026-10-19 — first merged coverage measurement via ReportGenerator (unit+client+sandbox union merge: 43.1% lines / 33.6% branches). Integration tests add coverage on top in CI, so CI numbers sit above this floor. Tighten the baseline when a release lands a real improvement.",
+  "metrics": {
+    "coverageLines": { "value": 42.5, "slack": 0.5, "unit": "%" },
+    "coverageBranches": { "value": 33.0, "slack": 1.0, "unit": "%" }
+  }
+}

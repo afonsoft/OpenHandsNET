@@ -23,6 +23,11 @@ secrets*.json
 logs/
 *.log
 
+# Test coverage artifacts
+coverage/
+*.cobertura.xml
+.artifacts/
+
 # Tooling
 .vscode/*
 !.vscode/settings.json

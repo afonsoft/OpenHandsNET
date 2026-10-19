@@ -5,6 +5,14 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref (OmniRoute pattern): a new push makes
+# the queued check board stale, and each cancelled shard frees a hosted slot.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -14,12 +22,65 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: "1"
 
 jobs:
-  build-test:
-    name: build + test
+  # Change classification (OmniRoute pattern): the diff is classified once and
+  # downstream jobs only pay for what can actually break. A docs-only PR skips
+  # build/test/docker; a tests-only diff still runs tests but skips docker.
+  changes:
+    name: change classification
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.classify.outputs.code }}
+      docs: ${{ steps.classify.outputs.docs }}
+      workflow: ${{ steps.classify.outputs.workflow }}
+      docker: ${{ steps.classify.outputs.docker }}
+      testsOnly: ${{ steps.classify.outputs.testsOnly }}
     steps:
       - name: checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: reject PR that targets its own branch
+        if: github.event_name == 'pull_request'
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "$HEAD_REF" = "$BASE_REF" ]; then
+            echo "::error::PR targets its own head branch ($BASE_REF) — nothing can merge."
+            exit 1
+          fi
+
+      - id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            {
+              echo "code=true"; echo "docs=true"; echo "workflow=true"
+              echo "docker=true"; echo "testsOnly=false"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git diff --name-only "$BASE_SHA" "$HEAD_SHA" | \
+            bash scripts/classify-changes.sh
+
+  build-test:
+    name: build + test
+    needs: changes
+    # Draft PRs skip heavy jobs (ready_for_review re-triggers them).
+    if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.draft == false && needs.changes.outputs.code == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
 
       - name: setup dotnet 10
         uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d # v5.0.0
@@ -33,8 +94,10 @@ jobs:
           key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json', 'Directory.Packages.props') }}
           restore-keys: nuget-${{ runner.os }}-
 
-      - name: restore
-        run: dotnet restore OpenHandsNET.slnx
+      - name: restore (locked-mode)
+        # packages.lock.json is committed; locked-mode makes the restore
+        # byte-reproducible and fails loudly when the lockfile is stale.
+        run: dotnet restore OpenHandsNET.slnx --locked-mode
 
       - name: lint (dotnet format)
         run: dotnet format OpenHandsNET.slnx --verify-no-changes
@@ -42,22 +105,45 @@ jobs:
       - name: build (Release)
         run: dotnet build OpenHandsNET.slnx -c Release --no-restore
 
-      - name: unit + client tests
-        run: dotnet test tests/OpenHandsNET.UnitTests -c Release --no-build &&
-             dotnet test tests/OpenHandsNET.Client.Tests -c Release --no-build
+      - name: unit tests (coverage)
+        run: dotnet test tests/OpenHandsNET.UnitTests -c Release --no-build \
+               --collect:"XPlat Code Coverage" --results-directory coverage/unit
 
-      - name: integration tests (docker available on ubuntu-latest)
-        run: dotnet test tests/OpenHandsNET.IntegrationTests -c Release --no-build
+      - name: client tests (coverage)
+        run: dotnet test tests/OpenHandsNET.Client.Tests -c Release --no-build \
+               --collect:"XPlat Code Coverage" --results-directory coverage/client
+
+      - name: sandbox agent tests (coverage)
+        run: dotnet test tests/OpenHandsNET.SandboxAgent.Tests -c Release --no-build \
+               --collect:"XPlat Code Coverage" --results-directory coverage/sandbox
+
+      - name: integration tests (coverage; docker on ubuntu-latest)
+        run: dotnet test tests/OpenHandsNET.IntegrationTests -c Release --no-build \
+               --collect:"XPlat Code Coverage" --results-directory coverage/integration
 
       - name: env drift check
         run: ./scripts/check-env-drift.sh
 
+      - name: upload raw coverage
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-raw
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 7
+
   contracts:
     name: event contract (golden fixtures)
+    needs: changes
+    if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.draft == false && needs.changes.outputs.code == 'true') }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
 
       - name: setup dotnet 10
         uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d # v5.0.0
@@ -69,10 +155,17 @@ jobs:
 
   docker:
     name: docker image
+    needs: changes
+    # Runs when production code or the docker surface changed; pure docs/tests
+    # diffs cannot change the image.
+    if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.draft == false && (needs.changes.outputs.code == 'true' || needs.changes.outputs.docker == 'true')) }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
 
       - name: setup buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
@@ -93,17 +186,133 @@ jobs:
             docker compose -f docker-compose.yaml \
             -f docker-compose.postgres.yaml config -q
 
-  sonarcloud:
-    name: sonarcloud analysis
+  coverage:
+    name: coverage report + ratchet
+    needs: [changes, build-test]
+    if: ${{ !cancelled() && needs.build-test.result == 'success' }}
     runs-on: ubuntu-latest
-    # Ativar criando o repo variable SONAR_ENABLED=true e o secret SONAR_TOKEN
-    # (SonarCloud org afonsoft, projeto afonsoft_OpenHandsNET).
-    if: vars.SONAR_ENABLED == 'true'
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - name: checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: setup dotnet 10
+        uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d # v5.0.0
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: download raw coverage
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005053372dc801d8b # v4.3.0
+        with:
+          name: coverage-raw
+          path: coverage/
+
+      - name: merge + report (ReportGenerator)
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool
+          reportgenerator \
+            -reports:coverage/*/coverage.cobertura.xml \
+            -targetdir:coverage/report \
+            "-reporttypes:MarkdownSummaryGithub;JsonSummary;Cobertura"
+          cat coverage/report/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: collect metrics + ratchet vs baseline
+        run: |
+          python3 - <<'PY'
+          import json
+          s = json.load(open('coverage/report/Summary.json'))
+          out = {
+            "coverageLines": round(s["summary"]["linecoverage"], 2),
+            "coverageBranches": round(s["summary"]["branchcoverage"], 2),
+          }
+          import os; os.makedirs('.artifacts', exist_ok=True)
+          json.dump(out, open('.artifacts/metrics.json', 'w'))
+          print("collected:", out)
+          PY
+          python3 scripts/check-quality-ratchet.py \
+            --current .artifacts/metrics.json \
+            --summary .artifacts/quality-ratchet.md
+          cat .artifacts/quality-ratchet.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: upload merged coverage
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-report
+          path: coverage/report/
+          if-no-files-found: warn
+          retention-days: 14
+
+      # Sticky PR coverage comment (OmniRoute pattern): one marker comment,
+      # updated on every run — own-origin PRs only (token stays home on forks).
+      - name: PR coverage comment
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const fs = require("fs");
+            const marker = "<!-- openhandsnet-coverage-report -->";
+            let body = marker + "\n## Coverage report\n\n";
+            try {
+              body += fs.readFileSync("coverage/report/SummaryGithub.md", "utf8");
+            } catch {
+              body += "_coverage report unavailable for this run_\n";
+            }
+            try {
+              body += "\n" + fs.readFileSync(".artifacts/quality-ratchet.md", "utf8");
+            } catch {}
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number, per_page: 100,
+            });
+            const existing = comments.find((c) => c.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+  # PR test policy (OmniRoute): production code changed -> tests must change too.
+  # BLOCKING: the diff check is deterministic (no external state to flake on).
+  pr-test-policy:
+    name: PR test policy
+    needs: changes
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == false && needs.changes.outputs.code == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
+          persist-credentials: false
+
+      - name: validate source changes include tests
+        run: bash scripts/check-pr-test-policy.sh \
+               "${{ github.event.pull_request.base.sha }}" \
+               "${{ github.event.pull_request.head.sha }}"
+
+  sonarcloud:
+    name: sonarcloud analysis
+    needs: changes
+    # Ativar criando o repo variable SONAR_ENABLED=true e o secret SONAR_TOKEN
+    # (SonarCloud org afonsoft, projeto afonsoft_OpenHandsNET).
+    if: ${{ vars.SONAR_ENABLED == 'true' && (github.event_name != 'pull_request' || (github.event.pull_request.draft == false && needs.changes.outputs.code == 'true')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: setup java 17 (sonar scanner)
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
@@ -132,3 +341,86 @@ jobs:
 
       - name: sonar end
         run: dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+
+  # Admission verdict (OmniRoute pattern): ONE status check that branch
+  # protection requires. A job that was cancelled or skipped-by-design is
+  # evaluated explicitly — cancelled never reads as green.
+  admission-verdict:
+    name: Gate / CI
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - changes
+      - build-test
+      - contracts
+      - docker
+      - coverage
+      - pr-test-policy
+      - sonarcloud
+    steps:
+      - name: evaluate admission
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          needs = json.loads(os.environ["NEEDS_JSON"])
+          failed, cancelled = [], []
+          print("| Job | Result |", "|---|---|", sep="\n")
+          for name, data in sorted(needs.items()):
+              r = data["result"]
+              print(f"| {name} | {r} |")
+              if r == "failure": failed.append(name)
+              if r in ("cancelled", "startup_failure"): cancelled.append(name)
+          if cancelled:
+              print(f"::error::job(s) cancelled — no verdict reported: {', '.join(cancelled)}")
+          if failed:
+              print(f"::error::gate(s) failed: {', '.join(failed)}")
+          sys.exit(1 if (failed or cancelled) else 0)
+          PY
+
+  ci-summary:
+    name: CI Dashboard
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - changes
+      - build-test
+      - contracts
+      - docker
+      - coverage
+      - pr-test-policy
+      - sonarcloud
+      - admission-verdict
+    steps:
+      - name: generate dashboard
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          status() {
+            case "$1" in
+              success) echo "🟢 PASS" ;; failure) echo "🔴 FAIL" ;;
+              cancelled) echo "⚫ CANCELLED" ;; skipped) echo "⚪ SKIPPED" ;;
+              *) echo "🟡 $1" ;;
+            esac
+          }
+          {
+            echo "# CI Dashboard"; echo ""
+            # A cancelled job never reported a verdict — name them at the TOP.
+            CANCELLED=$(printf '%s' "$NEEDS_JSON" \
+              | jq -r 'to_entries | map(select(.value.result == "cancelled")) | .[].key' \
+              | sort | paste -sd", " - || true)
+            if [ -n "$CANCELLED" ]; then
+              echo "> ### ⚫ Cancelled — no verdict was reported"
+              echo "> \`$CANCELLED\`"
+              echo "> These did not fail; they never finished. If the cancellation came"
+              echo "> from a newer push, that run covers it — otherwise re-run them."
+              echo ""
+            fi
+            echo "| Job | Status |"; echo "|---|---|"
+            for j in changes build-test contracts docker coverage pr-test-policy sonarcloud admission-verdict; do
+              echo "| $j | $(status "$(printf '%s' "$NEEDS_JSON" | jq -r ".[\"$j\"].result // \"unknown\"")") |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
