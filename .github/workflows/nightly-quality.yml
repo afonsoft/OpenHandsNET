@@ -1,0 +1,186 @@
+name: nightly-quality
+
+# Exotic gates that are too expensive for every PR — mutation testing and live
+# OpenAPI fuzzing. Advisory-by-design for now (OmniRoute convention: a gate is
+# born advisory and is promoted to blocking once it proves stable), EXCEPT the
+# issue-on-failure job, which is the alerting half of the contract.
+on:
+  schedule:
+    - cron: "41 3 * * *"   # 03:41 UTC, off-peak, distinct from other nightlies
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-quality-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  stryker:
+    name: Stryker.NET mutation (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: setup dotnet 10
+        uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d # v5.0.0
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: install stryker
+        run: dotnet tool install --global dotnet-stryker
+
+      - name: restore + build test project
+        run: |
+          dotnet restore OpenHandsNET.slnx --locked-mode
+          dotnet build tests/OpenHandsNET.UnitTests -c Release --no-restore
+
+      # Advisory: mutation testing is expensive and flaky on edge cases. The
+      # report still lands as an artifact so mutation-score regressions can be
+      # trended; promote to blocking after a few stable weeks.
+      - name: run stryker (advisory)
+        continue-on-error: true
+        working-directory: tests/OpenHandsNET.UnitTests
+        run: dotnet stryker --reporter html --reporter json --reporter markdown
+
+      - name: upload mutation report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: stryker-report
+          path: tests/OpenHandsNET.UnitTests/StrykerOutput/
+          if-no-files-found: warn
+          retention-days: 14
+
+  schemathesis:
+    name: OpenAPI fuzz (schemathesis)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PORT: "18080"
+    steps:
+      - name: checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: setup dotnet 10
+        uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d # v5.0.0
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: build api
+        run: dotnet build src/OpenHandsNET.Api -c Release
+
+      - name: start api (isolated data dir)
+        run: |
+          mkdir -p "$RUNNER_TEMP/data"
+          DATA_DIR="$RUNNER_TEMP/data" ASPNETCORE_URLS="http://localhost:$PORT" \
+            dotnet src/OpenHandsNET.Api/bin/Release/net10.0/OpenHandsNET.Api.dll \
+            > server.log 2>&1 &
+          echo $! > server.pid
+          for _ in $(seq 1 60); do
+            if curl -sf "http://localhost:$PORT/api/v1/ready" >/dev/null; then echo "api up"; exit 0; fi
+            sleep 2
+          done
+          echo "::error::API did not become ready in 120s — see server.log"
+          tail -60 server.log || true
+          exit 1
+
+      - name: fetch openapi document
+        run: curl -sf "http://localhost:$PORT/openapi/v1.json" -o /tmp/openapi.json && head -c 300 /tmp/openapi.json
+
+      # pipx is preinstalled on ubuntu-latest and sidesteps the runner's
+      # PEP-668 externally-managed Python (plain `pip install --user` fails).
+      - name: install schemathesis
+        run: pipx install "schemathesis==4.3.8" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # Contract fuzz: schema-violating requests must not produce 5xx and
+      # schema-conforming requests must not be rejected. Fails loudly — this is
+      # a nightly, not a PR gate, so a red run pages via issue-on-failure.
+      - name: schemathesis run (blocking)
+        run: |
+          schemathesis run /tmp/openapi.json --url "http://localhost:$PORT" \
+            --max-examples 15 --workers 2 --checks all \
+            --suppress-health-check all --no-color
+
+      - name: stop api + upload logs
+        if: always()
+        run: |
+          kill "$(cat server.pid)" 2>/dev/null || true
+          tail -100 server.log >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: upload server log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: schemathesis-server-log
+          path: server.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # Opens/updates a tracking issue when any nightly gate fails; closes the loop
+  # by commenting when the branch goes green again (OmniRoute release-green
+  # pattern, simplified).
+  issue-on-failure:
+    name: alert on nightly failure
+    if: ${{ always() && github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [stryker, schemathesis]
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - name: evaluate results
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          FAILED=$(printf '%s' "$NEEDS_JSON" \
+            | jq -r 'to_entries | map(select(.value.result != "success" and .value.result != "skipped")) | .[].key' \
+            | paste -sd", " -)
+          echo "failed=$FAILED" >> "$GITHUB_ENV"
+          [ -z "$FAILED" ]
+
+      - name: ensure label exists
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create nightly-red --repo "${{ github.repository }}" \
+            --color B60205 --description "Nightly quality gate failure" \
+            2>/dev/null || true
+
+      - name: open tracking issue
+        if: failure()
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const needs = ${{ toJSON(needs) }};
+            const failed = Object.entries(needs)
+              .filter(([, v]) => v.result !== "success" && v.result !== "skipped")
+              .map(([k]) => k);
+            if (failed.length === 0) return;
+            const { owner, repo } = context.repo;
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const title = "nightly-quality failure: " + failed.join(", ");
+            const existing = (await github.rest.issues.listForRepo({
+              owner, repo, state: "open", labels: "nightly-red", per_page: 10,
+            })).data[0];
+            const body = [
+              "Nightly quality gate failed on `" + context.refName + "`.",
+              "",
+              "Failed jobs: " + failed.map((f) => "`" + f + "`").join(", "),
+              "",
+              "Run: " + runUrl,
+            ].join("\n");
+            if (existing) {
+              await github.rest.issues.createComment({ owner, repo, issue_number: existing.number, body });
+            } else {
+              await github.rest.issues.create({ owner, repo, title, body, labels: ["nightly-red"] });
+            }
