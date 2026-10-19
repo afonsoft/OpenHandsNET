@@ -106,20 +106,16 @@ jobs:
         run: dotnet build OpenHandsNET.slnx -c Release --no-restore
 
       - name: unit tests (coverage)
-        run: dotnet test tests/OpenHandsNET.UnitTests -c Release --no-build \
-               --collect:"XPlat Code Coverage" --results-directory coverage/unit
+        run: dotnet test tests/OpenHandsNET.UnitTests -c Release --no-build --collect:"XPlat Code Coverage" --results-directory coverage/unit
 
       - name: client tests (coverage)
-        run: dotnet test tests/OpenHandsNET.Client.Tests -c Release --no-build \
-               --collect:"XPlat Code Coverage" --results-directory coverage/client
+        run: dotnet test tests/OpenHandsNET.Client.Tests -c Release --no-build --collect:"XPlat Code Coverage" --results-directory coverage/client
 
       - name: sandbox agent tests (coverage)
-        run: dotnet test tests/OpenHandsNET.SandboxAgent.Tests -c Release --no-build \
-               --collect:"XPlat Code Coverage" --results-directory coverage/sandbox
+        run: dotnet test tests/OpenHandsNET.SandboxAgent.Tests -c Release --no-build --collect:"XPlat Code Coverage" --results-directory coverage/sandbox
 
       - name: integration tests (coverage; docker on ubuntu-latest)
-        run: dotnet test tests/OpenHandsNET.IntegrationTests -c Release --no-build \
-               --collect:"XPlat Code Coverage" --results-directory coverage/integration
+        run: dotnet test tests/OpenHandsNET.IntegrationTests -c Release --no-build --collect:"XPlat Code Coverage" --results-directory coverage/integration
 
       - name: env drift check
         run: ./scripts/check-env-drift.sh
@@ -217,7 +213,7 @@ jobs:
         run: |
           dotnet tool install --global dotnet-reportgenerator-globaltool
           reportgenerator \
-            -reports:coverage/*/coverage.cobertura.xml \
+            -reports:coverage/**/coverage.cobertura.xml \
             -targetdir:coverage/report \
             "-reporttypes:MarkdownSummaryGithub;JsonSummary;Cobertura"
           cat coverage/report/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY" || true
@@ -295,9 +291,7 @@ jobs:
           persist-credentials: false
 
       - name: validate source changes include tests
-        run: bash scripts/check-pr-test-policy.sh \
-               "${{ github.event.pull_request.base.sha }}" \
-               "${{ github.event.pull_request.head.sha }}"
+        run: bash scripts/check-pr-test-policy.sh "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}"
 
   sonarcloud:
     name: sonarcloud analysis
