@@ -258,7 +258,9 @@ app.Use(async (ctx, next) =>
         .PushProperty("trace_id", ctx.TraceIdentifier);
     var match = System.Text.RegularExpressions.Regex.Match(
         ctx.Request.Path.Value ?? "",
-        @"/app-conversations/([0-9a-fA-F-]{36})");
+        @"/app-conversations/([0-9a-fA-F-]{36})",
+        System.Text.RegularExpressions.RegexOptions.None,
+        TimeSpan.FromMilliseconds(500));
     using var convPush = match.Success
         ? Serilog.Context.LogContext
             .PushProperty("conversation_id", match.Groups[1].Value)

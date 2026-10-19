@@ -29,7 +29,8 @@ public sealed class RepoIndexer : IRepoIndexer
     // Regex para identificar declarações de métodos, classes, interfaces ou funções
     private static readonly Regex SymbolRegex = new(
         @"^\s*(?:public|private|protected|internal|static|async|abstract|virtual|override|class|interface|record|struct|enum|fn|def|function|func)\s+([a-zA-Z0-9_<>]+)",
-        RegexOptions.Compiled | RegexOptions.Multiline);
+        RegexOptions.Compiled | RegexOptions.Multiline,
+        TimeSpan.FromSeconds(1));
 
     public RepoIndexer(
         AppDbContext db,

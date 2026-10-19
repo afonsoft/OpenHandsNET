@@ -62,12 +62,14 @@ public static class AutonomyGuardrail
 
     private static readonly Regex ForcePush = new(
         @"\bgit\s+push\b[^|&;]*(--force\b|--force-with-lease\b|-[a-zA-Z]*f[a-zA-Z]*(\s|$))",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        RegexOptions.IgnoreCase | RegexOptions.Compiled,
+        TimeSpan.FromSeconds(1));
 
     private static readonly Regex SystemKillers = new(
         @"\b(mkfs[a-z0-9.]*|shutdown|reboot|poweroff|halt|fdisk|init\s+[06])\b|" +
         @"\bdd\b[^|&;]*\bof=/dev/|:\(\)\s*\{",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        RegexOptions.IgnoreCase | RegexOptions.Compiled,
+        TimeSpan.FromSeconds(1));
 
     private static bool IsDestructiveCommand(string command)
     {

@@ -493,7 +493,9 @@ public sealed class SlackChatOpsService(
 
     private static string StripMention(string text) =>
         System.Text.RegularExpressions.Regex.Replace(
-            text, "<@[A-Z0-9]+>", "").Trim();
+            text, "<@[A-Z0-9]+>", "",
+            System.Text.RegularExpressions.RegexOptions.None,
+            TimeSpan.FromMilliseconds(500)).Trim();
 
     private static string BuildPrompt(
         string text, bool isTriage, string channelId)

@@ -230,7 +230,8 @@ public sealed partial class SkillService(AppDbContext db) : ISkillService
     private static bool ContainsWord(string message, string keyword) =>
         Regex.IsMatch(message,
             $@"(?<![\w]){Regex.Escape(keyword)}(?![\w])",
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+            TimeSpan.FromMilliseconds(500));
 
     private static IReadOnlyList<SkillTrigger> ParseTriggers(string? json) =>
         json is null ? [] :
