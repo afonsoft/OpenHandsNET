@@ -58,20 +58,20 @@ public sealed class CloudCommand : AsyncCommand<CloudCommand.Settings>
             settings.ServerUrl, new CredentialStore(), ct: ct);
         var runner = new RunExecutor(api);
 
-        string? convId = null;
-        await AnsiConsole.Status().StartAsync("creating conversation…",
-            async ctx =>
+        var convId = await AnsiConsole.Status().StartAsync(
+            "creating conversation…", async ctx =>
             {
                 var created = await api.CreateConversationAsync(
                     task, settings.Repository,
                     confirmationMode: settings.ConfirmationMode, ct: ct);
                 var taskId = created.GetProperty("id").GetString()!;
-                (convId, var error) = await runner.WaitReadyAsync(
+                var (readyId, error) = await runner.WaitReadyAsync(
                     taskId, s => ctx.Status($"start-task: {s}"), ct);
                 if (error is not null)
                 {
                     throw new HttpRequestException(error);
                 }
+                return readyId;
             });
 
         if (convId is null)

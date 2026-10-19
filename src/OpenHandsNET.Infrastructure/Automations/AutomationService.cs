@@ -176,7 +176,7 @@ public sealed class AutomationService(
         var next = req.NextRunAt ?? rec.NextRunAt;
         var error = Validate(
             req.Name ?? rec.Name, req.Prompt ?? rec.Prompt, kind, time,
-            interval, kind == AutomationScheduleKinds.Once ? next : next);
+            interval, next);
         if (error is not null)
         {
             return (null, error);

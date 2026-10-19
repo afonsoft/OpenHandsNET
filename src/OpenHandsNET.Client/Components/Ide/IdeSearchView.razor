@@ -54,6 +54,7 @@
     private void QueueSearch()
     {
         _debounce?.Cancel();
+        _debounce?.Dispose();
         _debounce = new CancellationTokenSource();
         var token = _debounce.Token;
         _ = Task.Delay(400, token).ContinueWith(async t =>

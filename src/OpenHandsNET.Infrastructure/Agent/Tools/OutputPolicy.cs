@@ -123,7 +123,7 @@ public sealed class OutputPolicy(IOptions<AgentLlmOptions> options)
         {
             try
             {
-                var artifact = $"/tmp/ohn-artifacts/{actionId}.txt";
+                var artifact = $"/var/lib/ohn-artifacts/{actionId}.txt";
                 await executor.WriteFileAsync(
                     sandbox, artifact, full, ct);
                 mutated["artifact_path"] =

@@ -4,10 +4,6 @@ on:
   push:
     tags: ["v*"]
 
-permissions:
-  contents: write
-  packages: write
-
 env:
   IMAGE: ghcr.io/afonsoft/openhandsnet
   DOTNET_NOLOGO: "1"
@@ -16,6 +12,9 @@ jobs:
   image:
     name: container image → ghcr.io
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
     steps:
       - name: checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0

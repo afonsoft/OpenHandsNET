@@ -4,6 +4,8 @@ using System.Text.Json;
 
 using Microsoft.AspNetCore.Mvc.Testing;
 
+using OpenHandsNET.SandboxAgent;
+
 namespace OpenHandsNET.SandboxAgent.Tests;
 
 /// <summary>

@@ -129,11 +129,11 @@ public sealed class ApiKeyService(
                 await using var scope = scopeFactory.CreateAsyncScope();
                 var scoped = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 var row = await scoped.ApiKeys.IgnoreQueryFilters()
-                    .FirstOrDefaultAsync(k => k.Id == keyId);
+                    .FirstOrDefaultAsync(k => k.Id == keyId, cancellationToken);
                 if (row is not null)
                 {
                     row.LastUsedAt = DateTimeOffset.UtcNow;
-                    await scoped.SaveChangesAsync();
+                    await scoped.SaveChangesAsync(cancellationToken);
                 }
             }
             catch (Exception e)

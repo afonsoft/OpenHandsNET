@@ -236,7 +236,8 @@ public sealed class SlackChatOpsService(
                     {
                         channel = "webhook:slack",
                         categories = verdict.Categories,
-                    });
+                    },
+                    cancellationToken: ct);
                 return (ChatOpsResult.Blocked, null);
             }
 
@@ -294,11 +295,11 @@ public sealed class SlackChatOpsService(
                         var b = await db2.ChatThreadBindings
                             .IgnoreQueryFilters()
                             .FirstOrDefaultAsync(x => x.ConversationId == convId
-                                && x.ThreadTs == threadTs);
+                                && x.ThreadTs == threadTs, CancellationToken.None);
                         if (b is not null)
                         {
                             b.StatusMessageTs = statusTs;
-                            await db2.SaveChangesAsync();
+                            await db2.SaveChangesAsync(CancellationToken.None);
                         }
                     }
                 }

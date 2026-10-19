@@ -39,7 +39,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # GitHub CLI (repo oficial, pin de chave do apt)
 RUN mkdir -p -m 755 /etc/apt/keyrings \
-    && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+    && curl -fsSL --proto '=https' --tlsv1.2 https://cli.github.com/packages/githubcli-archive-keyring.gpg \
         -o /etc/apt/keyrings/githubcli-archive-keyring.gpg \
     && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
@@ -48,7 +48,11 @@ RUN mkdir -p -m 755 /etc/apt/keyrings \
     && rm -rf /var/lib/apt/lists/*
 
 # Node LTS (22.x) via NodeSource — agente precisa para tools web/npx.
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+ARG NODESOURCE_SETUP_SHA256=575583bbac2fccc0b5edd0dbc03e222d9f9dc8d724da996d22754d6411104fd1
+RUN curl -fsSL --proto '=https' --tlsv1.2 https://deb.nodesource.com/setup_22.x \
+        -o /tmp/nodesource-setup.sh \
+    && echo "${NODESOURCE_SETUP_SHA256}  /tmp/nodesource-setup.sh" | sha256sum -c - \
+    && bash /tmp/nodesource-setup.sh \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
@@ -62,7 +66,7 @@ RUN arch="$(dpkg --print-architecture)" \
         arm64) ttyd_arch=aarch64 ;; \
         *) echo "unsupported arch: $arch" >&2; exit 1 ;; \
     esac \
-    && curl -fsSL "https://github.com/tsl0922/ttyd/releases/download/${TTYD_VERSION}/ttyd.${ttyd_arch}" \
+    && curl -fsSL --proto '=https' --tlsv1.2 "https://github.com/tsl0922/ttyd/releases/download/${TTYD_VERSION}/ttyd.${ttyd_arch}" \
         -o /usr/local/bin/ttyd \
     && chmod +x /usr/local/bin/ttyd
 

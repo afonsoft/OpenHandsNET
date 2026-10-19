@@ -37,12 +37,15 @@ public sealed class RunExecutor(CloudApiClient api)
 
             if (status is "READY")
             {
-                return (t!.Value.GetProperty("app_conversation_id").GetString(), null);
+                return (t is { } ready
+                    ? ready.GetProperty("app_conversation_id").GetString()
+                    : null, null);
             }
 
             if (status is "ERROR")
             {
-                return (null, t!.Value.TryGetProperty("detail", out var d)
+                return (null, t is { } err
+                    && err.TryGetProperty("detail", out var d)
                     ? d.GetString() : "start task failed");
             }
 

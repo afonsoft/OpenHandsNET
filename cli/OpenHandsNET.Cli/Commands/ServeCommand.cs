@@ -9,6 +9,17 @@ namespace OpenHandsNET.Cli.Commands;
 /// </summary>
 public sealed class ServeCommand : AsyncCommand<ServeCommand.Settings>
 {
+
+    private static string ResolveOnPath(string cmd)
+    {
+        foreach (var dir in (Environment.GetEnvironmentVariable("PATH")
+            ?? "").Split(Path.PathSeparator))
+        {
+            var full = Path.Combine(dir, cmd);
+            if (File.Exists(full)) { return full; }
+        }
+        return cmd;
+    }
     public sealed class Settings : CommandSettings
     {
         [CommandOption("--port <PORT>")]
@@ -45,8 +56,8 @@ public sealed class ServeCommand : AsyncCommand<ServeCommand.Settings>
 
         var psi = api.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase)
             ? new System.Diagnostics.ProcessStartInfo(
-                "dotnet", $"run --project \"{api}\"")
-            : new System.Diagnostics.ProcessStartInfo("dotnet", $"\"{api}\"");
+                ResolveOnPath("dotnet"), $"run --project \"{api}\"")
+            : new System.Diagnostics.ProcessStartInfo(ResolveOnPath("dotnet"), $"\"{api}\"");
 
         foreach (var kv in env)
         {

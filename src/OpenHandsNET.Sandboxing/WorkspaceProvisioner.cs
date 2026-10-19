@@ -228,10 +228,22 @@ public sealed class WorkspaceProvisioner(
         await RunGitAsync(repoDir, token, ct, "checkout", "-b", workBranch);
     }
 
-    private static async Task RunGitAsync(
-        string workdir, string? token, CancellationToken ct, params string[] args)
+
+    private static string ResolveOnPath(string cmd)
     {
-        var psi = new ProcessStartInfo("git")
+        foreach (var dir in (Environment.GetEnvironmentVariable("PATH")
+            ?? "").Split(Path.PathSeparator))
+        {
+            var full = Path.Combine(dir, cmd);
+            if (File.Exists(full)) { return full; }
+        }
+        return cmd;
+    }
+
+    private static async Task RunGitAsync(
+            string workdir, string? token, CancellationToken ct, params string[] args)
+    {
+        var psi = new ProcessStartInfo(ResolveOnPath("git"))
         {
             RedirectStandardOutput = true,
             RedirectStandardError = true,
