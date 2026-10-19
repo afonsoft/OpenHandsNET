@@ -64,7 +64,7 @@ app.MapGet("/alive", () => Results.Ok(new
 {
     status = "ok",
     state = runtime.Status,
-    agent_version = runtime.AgentVersion,
+    agent_version = AgentState.AgentVersion,
     uptime_s = (long)(DateTimeOffset.UtcNow - runtime.StartedAt)
         .TotalSeconds,
     workspace = runtime.WorkspaceRoot,
@@ -372,8 +372,8 @@ app.MapGet("/surfaces", (HttpContext http) =>
 // ---- files (confinados ao workspace) ----
 app.MapGet("/files/{**path}", (string? path, HttpContext http) =>
 {
-    if (!Ready(http)) return Dormant(http);
-    if (!Authorized(http)) return Unauthorized(http);
+    if (!Ready()) return Dormant();
+    if (!Authorized(http)) return Unauthorized();
     var full = runtime.Resolve(path ?? "");
     if (full is null) return Results.BadRequest(new { error = "outside_workspace" });
     if (Directory.Exists(full))
@@ -400,8 +400,8 @@ app.MapGet("/files/{**path}", (string? path, HttpContext http) =>
 
 app.MapPut("/files/{**path}", async (string path, HttpContext http) =>
 {
-    if (!Ready(http)) return Dormant(http);
-    if (!Authorized(http)) return Unauthorized(http);
+    if (!Ready()) return Dormant();
+    if (!Authorized(http)) return Unauthorized();
     var full = runtime.Resolve(path);
     if (full is null) return Results.BadRequest(new { error = "outside_workspace" });
     Directory.CreateDirectory(Path.GetDirectoryName(full)!);
@@ -411,10 +411,10 @@ app.MapPut("/files/{**path}", async (string path, HttpContext http) =>
     return Results.NoContent();
 });
 
-bool Ready(HttpContext _) => runtime.Status == "ready";
-IResult Dormant(HttpContext _) =>
+bool Ready() => runtime.Status == "ready";
+IResult Dormant() =>
     Results.Json(new { error = "dormant" }, statusCode: 503);
-IResult Unauthorized(HttpContext _) =>
+IResult Unauthorized() =>
     Results.Json(new { error = "unauthorized" }, statusCode: 401);
 
 await app.RunAsync();
@@ -441,7 +441,7 @@ namespace OpenHandsNET.SandboxAgent
 
         /// <summary>Protocol version — &gt;=2 exposes /exec/stream + /proc +
         /// /activity; &gt;=3 exposes /surfaces (SPEC-40).</summary>
-        public int AgentVersion => 3;
+        public static int AgentVersion => 3;
         public DateTimeOffset StartedAt { get; } = DateTimeOffset.UtcNow;
         public string Status { get; set; }
         public string WorkspaceRoot { get; set; }
@@ -826,7 +826,7 @@ namespace OpenHandsNET.SandboxAgent
         {
             foreach (var s in _all)
             {
-                if (s.FlaggedOn(cfg[s.EnvFlag]))
+                if (SurfaceSupervisor.FlaggedOn(cfg[s.EnvFlag]))
                 {
                     s.Start();
                 }
@@ -843,7 +843,7 @@ namespace OpenHandsNET.SandboxAgent
 
             foreach (var s in _all)
             {
-                if (env.TryGetValue(s.EnvFlag, out var v) && s.FlaggedOn(v))
+                if (env.TryGetValue(s.EnvFlag, out var v) && SurfaceSupervisor.FlaggedOn(v))
                 {
                     s.Start();
                 }
@@ -884,7 +884,7 @@ namespace OpenHandsNET.SandboxAgent
         public bool Running => _proc is { HasExited: false };
 
         /// <summary>Flag env ("1"/"true") considerada ativa.</summary>
-        public bool FlaggedOn(string? v) =>
+        public static bool FlaggedOn(string? v) =>
             string.Equals(v, "1", StringComparison.OrdinalIgnoreCase)
             || string.Equals(v, "true", StringComparison.OrdinalIgnoreCase);
 

@@ -87,7 +87,7 @@ public sealed class AutomationService(
         return null;
     }
 
-    private void Reschedule(AutomationRecord a, DateTimeOffset now)
+    private static void Reschedule(AutomationRecord a, DateTimeOffset now)
     {
         a.NextRunAt = a.Enabled
             ? AutomationSchedule.ComputeNextRun(

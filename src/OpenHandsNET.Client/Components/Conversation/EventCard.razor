@@ -1,7 +1,6 @@
 @using OpenHandsNET.Client.Services
 @using OpenHandsNET.Client.Components
 @using System.Text.Json
-@inject MarkdownService Md
 @inject IJSRuntime JS
 @inject LocalizationService L
 
@@ -13,7 +12,7 @@
 {
     case "MessageEvent":
         <div class="msg @(Event.Role() == "user" ? "user" : "agent")">
-            <div class="md">@Md.Render(Event.MessageText())</div>
+            <div class="md">@MarkdownService.Render(Event.MessageText())</div>
             @* SPEC-41 RF-006: copy da saída de texto do agente. *@
             @if (Event.Role() != "user")
             {

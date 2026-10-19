@@ -68,7 +68,7 @@ public sealed class McpClientService(
                     "MCP server {Server} falhou no catálogo da conversa {Conv}",
                     cfg.Name, conversationId);
                 await ReportServerErrorAsync(
-                    conversationId, cfg.Name, ex, ct);
+                    conversationId, cfg.Name, ex);
             }
         }
 
@@ -157,7 +157,7 @@ public sealed class McpClientService(
         try
         {
             await using var client = await CreateClientAsync(
-                config, sandbox: null, conversationId: null, ct);
+                config, conversationId: null, ct);
             var tools = await client.ListToolsAsync(cancellationToken: ct);
             return new McpProbeResult(true, tools.Count, sw.ElapsedMilliseconds, null);
         }
@@ -211,7 +211,7 @@ public sealed class McpClientService(
         // SPEC-25 RF-004: state events mcp_servers (connecting → connected).
         await EmitServerStateAsync(
             conversationId, cfg.Name, "connecting", null, null, ct);
-        var client = await CreateClientAsync(cfg, null, conversationId, ct);
+        var client = await CreateClientAsync(cfg, conversationId, ct);
         RegisterDiagnostics(client, cfg.Name, conversationId);
         var conn = _conns.GetOrAdd(key, new Connection { Client = client });
         await EmitServerStateAsync(
@@ -289,8 +289,7 @@ public sealed class McpClientService(
         s.Length <= max ? s : s[..max] + "…";
 
     private async Task<McpClient> CreateClientAsync(
-        McpServerConfig cfg, Domain.Sandbox.Sandbox? sandbox,
-        Guid? conversationId, CancellationToken ct)
+        McpServerConfig cfg, Guid? conversationId, CancellationToken ct)
     {
         IClientTransport transport;
         if (cfg.Transport == McpTransport.Stdio)
@@ -409,7 +408,7 @@ public sealed class McpClientService(
     }
 
     private async Task ReportServerErrorAsync(
-        Guid conversationId, string server, Exception ex, CancellationToken ct)
+        Guid conversationId, string server, Exception ex)
     {
         try
         {

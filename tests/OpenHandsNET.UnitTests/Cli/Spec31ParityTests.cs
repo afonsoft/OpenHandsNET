@@ -98,7 +98,7 @@ public sealed class Spec31ParityTests
         var svc = new DoctorService(new HttpClient(new NullHandler()));
         var ws = Path.Combine(Path.GetTempPath(),
             $"ohn-pre-{Guid.NewGuid():N}");
-        var report = await svc.RunPreflightAsync(
+        var report = await DoctorService.RunPreflightAsync(
             "http://x", ws, CancellationToken.None);
         var names = report.Probes.Select(p => p.Name).ToList();
         names.ShouldContain("dns_public_domain");

@@ -487,7 +487,7 @@ public sealed class JiraTicketProvider(
                         ? token : $":{token}")));
     }
 
-    private string Base(TicketConnection c) =>
+    private static string Base(TicketConnection c) =>
         c.ApiUrl.TrimEnd('/') + "/rest/api/3";
 
     /// <inheritdoc />

@@ -175,7 +175,7 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
         WriteIndented = true,
     };
 
-    private List<EvalTask>? ResolveTasks(Settings s, out string suiteName)
+    private static List<EvalTask>? ResolveTasks(Settings s, out string suiteName)
     {
         var tasksDir = Path.Combine(s.EvalsDir, "tasks");
         var suitePath = Path.Combine(s.EvalsDir, "suites",
