@@ -33,6 +33,14 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     {
     }
 
+    /// <inheritdoc />
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        base.OnConfiguring(optionsBuilder);
+        optionsBuilder.ConfigureWarnings(w =>
+            w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+    }
+
     /// <summary>
     /// Org applied to org-scoped queries this session (set per request scope
     /// when multi-tenancy is enabled — SPEC-08 wires the accessor).
