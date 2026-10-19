@@ -149,5 +149,14 @@
   "admin.saved": "已保存",
   "admin.reset": "重置为 balanced",
   "admin.yes": "是",
-  "admin.no": "否"
+  "admin.no": "否",
+  "knowledge.title": "",
+  "knowledge.pending": "",
+  "knowledge.approved": "",
+  "knowledge.dismissed": "",
+  "knowledge.all": "",
+  "knowledge.groom": "",
+  "knowledge.empty": "",
+  "knowledge.approve": "",
+  "knowledge.dismiss": ""
 }

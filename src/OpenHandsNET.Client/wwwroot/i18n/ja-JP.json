@@ -149,5 +149,14 @@
   "admin.saved": "保存しました",
   "admin.reset": "balanced にリセット",
   "admin.yes": "はい",
-  "admin.no": "いいえ"
+  "admin.no": "いいえ",
+  "knowledge.title": "ナレッジ",
+  "knowledge.pending": "",
+  "knowledge.approved": "み",
+  "knowledge.dismissed": "",
+  "knowledge.all": "すべて",
+  "knowledge.groom": "グルーミング",
+  "knowledge.empty": "キューにはありません",
+  "knowledge.approve": "",
+  "knowledge.dismiss": ""
 }

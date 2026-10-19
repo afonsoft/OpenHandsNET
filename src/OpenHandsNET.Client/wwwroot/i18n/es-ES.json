@@ -149,5 +149,14 @@
   "admin.saved": "Guardado",
   "admin.reset": "Restablecer a balanced",
   "admin.yes": "Sí",
-  "admin.no": "No"
+  "admin.no": "No",
+  "knowledge.title": "Knowledge",
+  "knowledge.pending": "pendientes",
+  "knowledge.approved": "aprobadas",
+  "knowledge.dismissed": "descartadas",
+  "knowledge.all": "todas",
+  "knowledge.groom": "ejecutar groom",
+  "knowledge.empty": "No hay sugerencias en esta cola.",
+  "knowledge.approve": "aprobar",
+  "knowledge.dismiss": "descartar"
 }

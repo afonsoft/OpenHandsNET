@@ -326,6 +326,7 @@ app.MapScimEndpoints();
 app.MapEdgeEndpoints();
 app.MapAskAndIndexEndpoints();
 app.MapSessionInsightEndpoints();
+app.MapKnowledgeEndpoints();
 app.MapHub<ConversationHub>("/hubs/conversations");
 app.MapHealthChecks("/api/v1/health");
 app.MapHealthChecks("/api/v1/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
