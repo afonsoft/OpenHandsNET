@@ -82,6 +82,15 @@ public sealed class ConversationRecord : IOrgScoped
     /// <summary>SPEC-55: URL do ticket.</summary>
     public string? TicketUrl { get; set; }
 
+    /// <summary>SPEC-62 RF-001: ID da conversa coordenadora/pai em delegações cross-sandbox.</summary>
+    public Guid? ParentConversationId { get; set; }
+
+    /// <summary>SPEC-62 RF-001: Nível de profundidade da delegação (0 = raiz).</summary>
+    public int DelegationDepth { get; set; } = 0;
+
+    /// <summary>SPEC-62 RF-001: Metadados adicionais de delegação em JSON.</summary>
+    public string? DelegationMetaJson { get; set; }
+
     /// <summary>
     /// Espelho numérico de <see cref="CreatedAt"/> (UtcTicks) — SQLite não
     /// ordena DateTimeOffset; sincronizado no SaveChanges (ver AppDbContext).
