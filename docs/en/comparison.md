@@ -77,21 +77,43 @@ those features behind Polyform.
 | LLM proxy | LiteLLM | internal OmniRoute; BYOR LiteLLM in SPEC-50 |
 | Filestore | S3/GCS/MinIO | `IArtifactStore` workspace + S3 (SPEC-34) |
 | Multi-replica | Valkey | `IDistributedCache` + backplane + locks (SPEC-36) |
-| Deploy | Helm+KOTS+k0s | compose + basic Helm (full chart — SPEC-49 approved) |
+| Deploy | Helm+KOTS+k0s | compose + full Helm chart (SPEC-49) |
 | Automations | schedules | routines + webhook triggers + `routine` (SPEC-47) |
-| GitHub App | yes | **phase 3 — not implemented** |
-| OpenAPI | yes | **SPEC-51** |
+| GitHub App | yes | **GitHub App + verified webhooks + workspace PRs (SPEC-52)** |
+| OpenAPI | yes | published OpenAPI + golden snapshot (SPEC-51) |
+
+## Integrations (wave A)
+
+| | Cloud/Ent | OpenHandsNET |
+|---|---|---|
+| SCM | GitHub App | GitHub App + GitLab + Bitbucket + Azure DevOps via `IScmProvider` (SPECs 52–53) |
+| ChatOps | — | Slack app: mention/slash → session, thread sync, `IChatSink` auto-triage (SPEC-54) |
+| Ticketing | — | Linear + Jira webhooks → start-task + comment/transition write-back (SPEC-55) |
+| Share | — | public `/share/{token}` links + trajectory download (SPEC-56) |
+
+## Identity and edge (wave B)
+
+| | Cloud/Ent | OpenHandsNET |
+|---|---|---|
+| Service users | — | scoped `svc_*` identities + `created_as_user_id` impersonation (SPEC-57) |
+| Provisioning | SCIM Keycloak | SCIM 2.0 provider + `scim_*` tokens + IdP groups→role/tier (SPEC-58) |
+| Edge | external WAF | IP access rules + `IInputGuard` + per-actor rate limit (SPEC-59) |
+
+## Intelligence (wave C)
+
+| | Cloud/Ent | OpenHandsNET |
+|---|---|---|
+| Codebase | internal index | repo indexing + read-only Ask with citations (SPEC-60) |
+| Insights | analytics | session insights: cost/latency/tools/errors (SPEC-61) |
+| Knowledge | playbooks | suggestion queue + human review + auto-groom (SPEC-63) |
+| Browser | — | browser profiles: encrypted storage state + site cookies + TOTP (SPEC-64) |
 
 ## Known remaining gaps
 
-1. **SPEC-48** — per-org `security_policies` + fail-closed resume.
-2. **SPEC-49** — k8s warm-pool/sleep + complete Helm + real-cluster
-   validation.
-3. **SPEC-50** — BYOR LiteLLM (403 stubs today).
-4. **SPEC-51** — published OpenAPI + snapshot.
-5. **Phase 3 (no SPEC yet)** — GitHub App/auto-PR, SCM providers
-   GitLab/Bitbucket/AzureDevOps, KOTS-style installer (scoping decision),
-   analytics pipeline.
+1. **SPEC-62** — managed conversations / cross-sandbox delegation (in progress).
+2. KOTS-style installer (scoping decision) and analytics pipeline — no SPEC.
+3. PSP billing (Stripe-like) — metering exists; payment integration out
+   of scope.
 
 ## What OpenHandsNET has that upstream doesn't
 

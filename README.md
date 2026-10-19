@@ -5,10 +5,11 @@ Blazor WebAssembly** — agente autônomo de engenharia de software com conceito
 Cloud + Enterprise e UX inspirada no Devin Web, sobre a base de
 [`afonsoft/open-webui`](https://github.com/afonsoft/open-webui).
 
-> Status: **produto funcional** — SPECs 01–47 entregues (agente, sandbox,
-> API, UI completa, enterprise ops). SPECs 48–51 aprovadas fecham os gaps
-> restantes de paridade enterprise (org security policies, k8s warm-pool +
-> Helm, BYOR LiteLLM, contrato OpenAPI). English: [README.en.md](README.en.md).
+> Status: **produto funcional** — SPECs 01–64 entregues (agente, sandbox,
+> API, UI completa, enterprise ops, integrações SCM/ChatOps/ticketing,
+> identidade enterprise, edge security, indexing/insights/knowledge e
+> browser profiles). Em andamento: SPEC-62 (managed conversations).
+> English: [README.en.md](README.en.md).
 
 ## Visão
 
@@ -36,16 +37,16 @@ Cloud + Enterprise e UX inspirada no Devin Web, sobre a base de
 | Licença | MIT | Polyform (fechado) | **MIT** | Fechado (SaaS) |
 | Stack | Python + React | Python + k8s | **.NET 10 + Blazor WASM** | Proprietária |
 | Modelo de eventos | V1 `kind`/ULID | V1 + delta events | **V1 completo + `streaming_delta`** | Proprietário |
-| Sandbox | Docker | k8s + Sysbox multi-host | **Docker em prod; engine k8s — conclusão em SPEC-49** | Proprietário |
-| Warm pool / sleep-wake | Parcial | Sim | **Docker sim; k8s em SPEC-49** | Sim |
-| Roteamento LLM | Config estática | LiteLLM proxy | **OmniRoute catalog + roles; BYOR em SPEC-50** | Proprietário |
+| Sandbox | Docker | k8s + Sysbox multi-host | **Docker em prod; engine k8s (SPEC-49)** | Proprietário |
+| Warm pool / sleep-wake | Parcial | Sim | **Docker + k8s warm-pool (SPEC-49)** | Sim |
+| Roteamento LLM | Config estática | LiteLLM proxy | **OmniRoute catalog + roles + BYOR LiteLLM (SPEC-50)** | Proprietário |
 | Segurança | SecurityAnalyzer | IdP orgs + analyzer | **analyzer plugável + org policies (SPEC-48)** | Proprietário |
 | Secrets | LookupSecret by-ref | Idem | **by-reference (`SecretNamesJson`)** | Vault interno |
 | Memória | `.openhands/memory/` | Idem | **project + org scopes** | Knowledge/playbooks |
 | Subagentes | task tool | Idem | **`task` + presets + depth cap** | Sim |
-| Permissões | allow/deny/ask | Idem + org policy | **`allow/deny/ask` + plan mode; org em SPEC-48** | Proprietário |
+| Permissões | allow/deny/ask | Idem + org policy | **`allow/deny/ask` + plan mode + org policies (SPEC-48)** | Proprietário |
 | Artefatos | workspace | S3/GCS filestore | **workspace + S3 provider** | Proprietário |
-| Deploy | docker run/compose | Helm + KOTS/k0s | **compose + Helm base; chart completo em SPEC-49** | SaaS apenas |
+| Deploy | docker run/compose | Helm + KOTS/k0s | **compose + Helm chart (SPEC-49)** | SaaS apenas |
 | Multi-réplica | — | Valkey/Redis backplane | **`IDistributedCache` + backplane SignalR** | Sim |
 | UI | Agent Canvas (React) | Cloud UI | **Devin-like Blazor: chat, IDE, surfaces** | Referência de UX |
 | CLI | `openhands` TUI | cloud mode | **`openhandsnet` parity + eval + doctor** | `devin` API |
@@ -53,6 +54,17 @@ Cloud + Enterprise e UX inspirada no Devin Web, sobre a base de
 | Automações | webhooks GitHub | schedules internas | **routines + hook triggers + `routine` tool** | Devin automations |
 | API keys | — | `sk-*` + org binding | **`sk-*` + org binding + BYOR** | Sim |
 | Eval | benchmarks OSS | — | **`openhandsnet eval` + asserts + llm_judge** | — |
+| GitHub App | — | sim | **App + webhooks verificados + workspace PRs (SPEC-52)** | sim |
+| SCM providers | — | GitHub | **GitHub + GitLab + Bitbucket + Azure DevOps (SPEC-53)** | GitHub+ |
+| ChatOps | — | — | **Slack app: menção/slash → sessão, thread sync, auto-triage (SPEC-54)** | sim |
+| Ticketing | — | — | **Linear + Jira triggers → start-task + write-back (SPEC-55)** | sim |
+| Service users | — | — | **identidades `svc_*` com escopos + impersonation (SPEC-57)** | sim |
+| IdP/SCIM | — | Keycloak | **SCIM 2.0 + grupos IdP→role/tier, qualquer IdP (SPEC-58)** | SSO |
+| Edge security | — | — | **IP rules + input guard + rate limit por ator (SPEC-59)** | proprietário |
+| Repo indexing | — | — | **index + Ask read-only (SPEC-60)** | codebase context |
+| Session insights | — | — | **cost/latency/tool diagnostics (SPEC-61)** | sim |
+| Knowledge | playbooks | playbooks | **suggestion queue + human review + groom (SPEC-63)** | knowledge |
+| Browser profiles | — | — | **storage state criptografado + site cookies + TOTP (SPEC-64)** | sim |
 
 Legenda: **negrito** = estado atual do OpenHandsNET; "em SPEC-N" = aprovado,
 roadmap imediato.
@@ -76,11 +88,11 @@ Configuração por env vars com prefixo `OPENHANDSNET_` (ex.:
 ## Layout do repositório
 
 ```
-.specs/             SPECs SDD (51 módulos — comece por .specs/README.md)
+.specs/             SPECs SDD (60+ módulos — comece por .specs/README.md)
 migration-plan/     research (api-inventory, domains, risks) + roadmap
 docs/               guias (deployment, ui, api, features) — índice em docs/README.md
 docs/en/            documentação em inglês
-charts/openhandsnet Helm chart (k8s — chart completo na SPEC-49, aprovada)
+charts/openhandsnet Helm chart (k8s — SPEC-49)
 deploy/             manifests auxiliares (litellm, otelcol, prometheus)
 src/                Domain · Application · Infrastructure · Api · Client (WASM)
                     · Sandboxing · RuntimeApi · SandboxAgent · Eval

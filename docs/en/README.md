@@ -29,6 +29,21 @@ Documentation index (English). Versão em português na raiz: [`../README.md`](.
 - [ui/ux.md](ui/ux.md) — design system, themes, components (SPEC-26).
 - [ui/admin.md](ui/admin.md) — admin pages (SPEC-21).
 
+## Integrations and enterprise (pt-BR docs)
+
+- [features/scm.md](../features/scm.md) — GitHub App + GitLab/Bitbucket/Azure
+  DevOps, verified webhooks, workspace PRs (SPECs 52–53).
+- [features/chatops.md](../features/chatops.md) — Slack app: mention/slash →
+  session, thread sync, auto-triage (SPEC-54).
+- [features/tickets.md](../features/tickets.md) — Linear/Jira triggers →
+  start-task + write-back (SPEC-55).
+- [features/service-users.md](../features/service-users.md) — scoped `svc_*`
+  identities + impersonation (SPEC-57).
+- [features/knowledge.md](../features/knowledge.md) — suggestion queue,
+  human review, auto-groom (SPEC-63).
+- [features/browser-profiles.md](../features/browser-profiles.md) — encrypted
+  storage state, site cookies, TOTP (SPEC-64).
+
 ## Deployment
 
 - [deployment/local.md](deployment/local.md) — local quickstart.

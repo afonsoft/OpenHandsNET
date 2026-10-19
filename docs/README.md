@@ -29,6 +29,23 @@
 - [ui/ux.md](ui/ux.md) — design system, temas, componentes (SPEC-26).
 - [ui/admin.md](ui/admin.md) — páginas administrativas (SPEC-21).
 
+## Integrações e enterprise
+
+- [features/scm.md](features/scm.md) — GitHub App + GitLab/Bitbucket/Azure
+  DevOps, webhooks verificados, workspace PRs (SPECs 52–53).
+- [features/chatops.md](features/chatops.md) — Slack app: menção/slash →
+  sessão, thread sync, auto-triage (SPEC-54).
+- [features/tickets.md](features/tickets.md) — Linear/Jira triggers →
+  start-task + write-back (SPEC-55).
+- [features/service-users.md](features/service-users.md) — identidades
+  `svc_*` escopadas + impersonation (SPEC-57).
+- [deployment/identity.md](deployment/identity.md) — SCIM 2.0 + grupos
+  IdP→role/tier + usage tiers (SPEC-58).
+- [features/knowledge.md](features/knowledge.md) — suggestion queue,
+  human review, groom automático (SPEC-63).
+- [features/browser-profiles.md](features/browser-profiles.md) — storage
+  state criptografado, site cookies, TOTP (SPEC-64).
+
 ## Deployment
 
 - [deployment/local.md](deployment/local.md) — quickstart local.
