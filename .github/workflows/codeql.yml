@@ -36,10 +36,10 @@ jobs:
       - name: setup dotnet 10
         uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d # v5.0.0
         with:
-          dotnet-version: "10.0.x"
+          dotnet-version: "10.0.112"   # pinned: WASM lockfiles capture SDK-band implicit package versions — bump with lockfile regen
 
       - name: codeql init
-        uses: github/codeql-action/init@0499cd31cb744a2a8a2177f6d6b9ed09a8dac8f8 # v3.29.5
+        uses: github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
         with:
           languages: csharp
           queries: security-extended
@@ -49,6 +49,6 @@ jobs:
         run: dotnet build OpenHandsNET.slnx -c Release
 
       - name: codeql analyze
-        uses: github/codeql-action/analyze@0499cd31cb744a2a8a2177f6d6b9ed09a8dac8f8 # v3.29.5
+        uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
         with:
           category: "/language:csharp"
