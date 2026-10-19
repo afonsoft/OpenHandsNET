@@ -1,0 +1,69 @@
+@* SPEC-75 RF-005: dropdown do inbox de attention — sino com badge de
+   contagem + lista clicável; cada item navega para a conversa e fecha.
+   Estado compartilhado via AttentionInboxState (ticks SignalR). *@
+@using OpenHandsNET.Client.Services
+@inject AttentionInboxState Inbox
+@inject NavigationManager Nav
+@inject LocalizationService L
+@implements IDisposable
+
+<div class="attention-feed">
+    <button class="attention-badge @(_open ? "active" : "")"
+            @onclick="Toggle"
+            title="@(Inbox.Count == 0 ? L["attention.badge_empty"]
+                : L.T("attention.badge", ("count", Inbox.Count.ToString())))"
+            aria-label="@L["attention.badge"]"
+            aria-haspopup="menu" aria-expanded="@_open">
+        <Icon Name="bell" Size="16" />
+        @if (Inbox.Count > 0)
+        {
+            <span class="attention-count">@Inbox.Count</span>
+        }
+    </button>
+
+    @if (_open)
+    {
+        <div class="attention-drop" role="menu" aria-label="@L["attention.feed"]">
+            @if (Inbox.Items.Count == 0)
+            {
+                <div class="attention-empty">@L["attention.badge_empty"]</div>
+            }
+            else
+            {
+                @foreach (var item in Inbox.Items.Take(20))
+                {
+                    <button class="attention-item" role="menuitem"
+                            @onclick="() => OpenAsync(item.ConversationId)">
+                        <span class="dot attention attention-@item.Kind"></span>
+                        <span class="atxt">
+                            <span class="atitle">@(item.Title ?? item.ConversationId[..8])</span>
+                            @if (item.Excerpt is { Length: > 0 } ex)
+                            {
+                                <span class="aex">@ex</span>
+                            }
+                        </span>
+                        <span class="akind">@L[$"attention.kind_{item.Kind}"]</span>
+                    </button>
+                }
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private bool _open;
+
+    private void Toggle() => _open = !_open;
+
+    private void OpenAsync(string conversationId)
+    {
+        _open = false;
+        Nav.NavigateTo($"/conversations/{conversationId}");
+    }
+
+    protected override void OnInitialized() => Inbox.Changed += OnChanged;
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Inbox.Changed -= OnChanged;
+}

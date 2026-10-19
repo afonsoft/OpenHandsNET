@@ -10,11 +10,20 @@
 @inject IJSRuntime JS
 @implements IDisposable
 
+<a class="skip-link" href="#main-content">@L["common.skip_to_content"]</a>
 <div class="shell">
-    <aside class="sidebar @(_collapsed ? "collapsed" : "")">
+    @if (_mobileMenu)
+    {
+        <div class="sb-scrim" aria-hidden="true" @onclick="CloseMobile"></div>
+    }
+    <aside class="sidebar @(_collapsed ? "collapsed" : "") @(_mobileMenu ? "mobile-open" : "")"
+           role="@(_mobileMenu ? "dialog" : null)"
+           aria-modal="@(_mobileMenu ? "true" : null)"
+           @onkeydown="OnSidebarKeyDown">
         <div class="sb-head">
             <button class="icon-btn" @onclick="ToggleSidebar"
-                    aria-label="@L["sidebar.toggle"]" title="@L["sidebar.toggle"]">
+                    aria-label="@L["sidebar.toggle"]" title="@L["sidebar.toggle"]"
+                    aria-expanded="@(!_collapsed)">
                 <Icon Name="menu" Size="16" />
             </button>
             <span class="logo">OpenHandsNET</span>
@@ -76,13 +85,30 @@
         <div class="sb-foot">
             <ThemeToggle />
             <span class="grow"></span>
+            @if (_collapsed)
+            {
+                <button class="icon-btn" @onclick="ToggleSidebar"
+                        aria-label="@L["sidebar.toggle"]" title="@L["sidebar.toggle"]">
+                    <Icon Name="chevron-right" Size="16" />
+                </button>
+            }
             <a class="icon-btn" href="https://github.com/afonsoft/OpenHandsNET"
                target="_blank" title="@L["sidebar.repository"]" aria-label="@L["sidebar.repository"]">
                 <Icon Name="code" Size="16" />
             </a>
         </div>
     </aside>
-    <main class="content">
+    <main class="content" id="main-content" tabindex="-1">
+        <div class="mobile-topbar">
+            <button class="icon-btn" @onclick="OpenMobile"
+                    aria-label="@L["sidebar.toggle"]"
+                    aria-expanded="@_mobileMenu">
+                <Icon Name="menu" Size="16" />
+            </button>
+            <span class="logo">OpenHandsNET</span>
+            <span class="grow"></span>
+            <AttentionFeed />
+        </div>
         <OfflineBanner />
         @Body
     </main>
@@ -93,6 +119,7 @@
 
     private bool _isAdmin;
     private bool _collapsed;
+    private bool _mobileMenu;
     private bool _attentionOnly;
     private string _filter = "";
     private IReadOnlyList<ConversationItem> _convs = [];
@@ -116,8 +143,23 @@
         Nav.LocationChanged += OnNav;
     }
 
-    private void OnNav(object? s, LocationChangedEventArgs e) =>
+    private void OnNav(object? s, LocationChangedEventArgs e)
+    {
+        _mobileMenu = false;
         InvokeAsync(StateHasChanged);
+    }
+
+    private void OpenMobile() => _mobileMenu = true;
+
+    private void CloseMobile() => _mobileMenu = false;
+
+    private void OnSidebarKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            _mobileMenu = false;
+        }
+    }
 
     /// <summary>SPEC-44: ticks do inbox re-renderizam dots/badge.</summary>
     private void OnAttentionChanged() => InvokeAsync(StateHasChanged);

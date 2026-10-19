@@ -158,5 +158,7 @@
   "knowledge.groom": "run groom",
   "knowledge.empty": "No suggestions in this queue.",
   "knowledge.approve": "approve",
-  "knowledge.dismiss": "dismiss"
+  "knowledge.dismiss": "dismiss",
+  "common.skip_to_content": "跳到主要内容",
+  "attention.feed": "通知"
 }

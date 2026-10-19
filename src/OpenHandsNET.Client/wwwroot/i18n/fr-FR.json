@@ -158,5 +158,7 @@
   "knowledge.groom": "lancer le groom",
   "knowledge.empty": "Aucune suggestion dans cette file.",
   "knowledge.approve": "approuver",
-  "knowledge.dismiss": "rejeter"
+  "knowledge.dismiss": "rejeter",
+  "common.skip_to_content": "Aller au contenu",
+  "attention.feed": "Notifications"
 }

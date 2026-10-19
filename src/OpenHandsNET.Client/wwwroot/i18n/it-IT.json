@@ -158,5 +158,7 @@
   "knowledge.groom": "esegui groom",
   "knowledge.empty": "Nessun suggerimento in questa coda.",
   "knowledge.approve": "approva",
-  "knowledge.dismiss": "scarta"
+  "knowledge.dismiss": "scarta",
+  "common.skip_to_content": "Salta al contenuto",
+  "attention.feed": "Notifiche"
 }
