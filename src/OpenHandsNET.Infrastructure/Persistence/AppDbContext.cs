@@ -103,6 +103,8 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
 
     /// <summary>Service users (SPEC-57).</summary>
     public DbSet<ServiceUserRecord> ServiceUsers => Set<ServiceUserRecord>();
+    /// <summary>SPEC-63: fila de sugestões de conhecimento.</summary>
+    public DbSet<OpenHandsNET.Infrastructure.Knowledge.KnowledgeSuggestionRecord> KnowledgeSuggestions => Set<OpenHandsNET.Infrastructure.Knowledge.KnowledgeSuggestionRecord>();
     public DbSet<ScimTokenRecord> ScimTokens => Set<ScimTokenRecord>();
     public DbSet<IdpGroupMappingRecord> IdpGroupMappings => Set<IdpGroupMappingRecord>();
     public DbSet<UsageTierRecord> UsageTiers => Set<UsageTierRecord>();
@@ -289,6 +291,9 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
             .HasQueryFilter(r =>
                 !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
         modelBuilder.Entity<ServiceUserRecord>()
+            .HasQueryFilter(r =>
+                !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
+        modelBuilder.Entity<OpenHandsNET.Infrastructure.Knowledge.KnowledgeSuggestionRecord>()
             .HasQueryFilter(r =>
                 !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
         modelBuilder.Entity<ScimTokenRecord>()

@@ -661,6 +661,74 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                     b.ToTable("events", (string)null);
                 });
 
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Knowledge.KnowledgeSuggestionRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("content");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("text")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("RepoPath")
+                        .HasColumnType("text")
+                        .HasColumnName("repo_path");
+
+                    b.Property<string>("Resolution")
+                        .HasColumnType("text")
+                        .HasColumnName("resolution");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("scope");
+
+                    b.Property<string>("SourceConversationIdsJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("source_conversation_ids_json");
+
+                    b.Property<string>("SourceEntryIdsJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("source_entry_ids_json");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id")
+                        .HasName("pk_knowledge_suggestions");
+
+                    b.ToTable("knowledge_suggestions", (string)null);
+                });
+
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.ApiKeyRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -866,6 +934,69 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                     b.ToTable("byor_keys", (string)null);
                 });
 
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.CodeUnitRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("EndLine")
+                        .HasColumnType("integer")
+                        .HasColumnName("end_line");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("hash");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("path");
+
+                    b.Property<Guid>("RepoIndexId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("repo_index_id");
+
+                    b.Property<int>("StartLine")
+                        .HasColumnType("integer")
+                        .HasColumnName("start_line");
+
+                    b.Property<string>("SymbolName")
+                        .HasColumnType("text")
+                        .HasColumnName("symbol_name");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("text");
+
+                    b.HasKey("Id")
+                        .HasName("pk_code_units");
+
+                    b.HasIndex("RepoIndexId")
+                        .HasDatabaseName("ix_code_units_repo_index_id");
+
+                    b.HasIndex("RepoIndexId", "Path")
+                        .HasDatabaseName("ix_code_units_repo_index_id_path");
+
+                    b.ToTable("code_units", (string)null);
+                });
+
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.ConversationSkillRecord", b =>
                 {
                     b.Property<Guid>("ConversationId")
@@ -1063,6 +1194,43 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasDatabaseName("ix_idp_group_mappings_org_id_idp_group");
 
                     b.ToTable("idp_group_mappings", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.InsightReportRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("ScopeJson")
+                        .HasColumnType("text")
+                        .HasColumnName("scope_json");
+
+                    b.Property<string>("SummaryJson")
+                        .HasColumnType("text")
+                        .HasColumnName("summary_json");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id")
+                        .HasName("pk_insight_reports");
+
+                    b.HasIndex("OrgId")
+                        .HasDatabaseName("ix_insight_reports_org_id");
+
+                    b.ToTable("insight_reports", (string)null);
                 });
 
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.IpAccessRuleRecord", b =>
@@ -1394,6 +1562,61 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                     b.ToTable("plans", (string)null);
                 });
 
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.RepoIndexRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Branch")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("branch");
+
+                    b.Property<string>("CommitSha")
+                        .HasColumnType("text")
+                        .HasColumnName("commit_sha");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("FailureReason")
+                        .HasColumnType("text")
+                        .HasColumnName("failure_reason");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Repository")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("repository");
+
+                    b.Property<string>("StatsJson")
+                        .HasColumnType("text")
+                        .HasColumnName("stats_json");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_repo_indexes");
+
+                    b.HasIndex("OrgId", "Repository", "Branch")
+                        .HasDatabaseName("ix_repo_indexes_org_id_repository_branch");
+
+                    b.ToTable("repo_indexes", (string)null);
+                });
+
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.ScimTokenRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1514,6 +1737,67 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasName("pk_service_users");
 
                     b.ToTable("service_users", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.SessionInsightRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DeadEndsJson")
+                        .HasColumnType("text")
+                        .HasColumnName("dead_ends_json");
+
+                    b.Property<string>("IssuesJson")
+                        .HasColumnType("text")
+                        .HasColumnName("issues_json");
+
+                    b.Property<string>("LearningsJson")
+                        .HasColumnType("text")
+                        .HasColumnName("learnings_json");
+
+                    b.Property<string>("Model")
+                        .HasColumnType("text")
+                        .HasColumnName("model");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("outcome");
+
+                    b.Property<string>("PhaseCostsJson")
+                        .HasColumnType("text")
+                        .HasColumnName("phase_costs_json");
+
+                    b.Property<string>("SuggestedPrompt")
+                        .HasColumnType("text")
+                        .HasColumnName("suggested_prompt");
+
+                    b.HasKey("Id")
+                        .HasName("pk_session_insights");
+
+                    b.HasIndex("ConversationId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_session_insights_conversation_id");
+
+                    b.HasIndex("OrgId", "Outcome")
+                        .HasDatabaseName("ix_session_insights_org_id_outcome");
+
+                    b.ToTable("session_insights", (string)null);
                 });
 
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.SkillRecord", b =>

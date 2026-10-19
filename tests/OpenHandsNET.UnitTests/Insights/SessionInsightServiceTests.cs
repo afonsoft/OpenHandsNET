@@ -23,7 +23,7 @@ public class SessionInsightServiceTests : IDisposable
             .UseSnakeCaseNamingConvention().Options);
         _db.Database.EnsureCreated();
 
-        _service = new SessionInsightService(_db, NullLogger<SessionInsightService>.Instance);
+        _service = new SessionInsightService(_db, NullLogger<SessionInsightService>.Instance, null!);
     }
 
     public void Dispose()

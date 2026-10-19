@@ -46,8 +46,13 @@ public sealed class Spec54ChatOpsTests : IAsyncDisposable
                 .UseSqlite(_conn).UseSnakeCaseNamingConvention().Options);
         _db.Database.EnsureCreated();
         _connections = new ChatConnectionService(_db, _audit);
+        // contexts separados por scope (mesma connection) — o dedup
+        // cria um DbContext próprio; um singleton aqui reproduziria
+        // o bug de concorrência que o fix evita.
         var scopeFactory = new ServiceCollection()
-            .AddSingleton(_db).BuildServiceProvider()
+            .AddDbContext<AppDbContext>(o => o
+                .UseSqlite(_conn).UseSnakeCaseNamingConvention())
+            .BuildServiceProvider()
             .GetRequiredService<IServiceScopeFactory>();
         _svc = new SlackChatOpsService(_db, _secrets, _connections,
             _conversations, _events, new FakeRunnerHost(), _sink, _audit,

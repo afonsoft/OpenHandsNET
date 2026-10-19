@@ -149,5 +149,14 @@
   "admin.saved": "Gespeichert",
   "admin.reset": "Auf balanced zurücksetzen",
   "admin.yes": "Ja",
-  "admin.no": "Nein"
+  "admin.no": "Nein",
+  "knowledge.title": "Wissen",
+  "knowledge.pending": "ausstehend",
+  "knowledge.approved": "genehmigt",
+  "knowledge.dismissed": "verworfen",
+  "knowledge.all": "alle",
+  "knowledge.groom": "Groom ausführen",
+  "knowledge.empty": "Keine Vorschläge in dieser Warteschlange.",
+  "knowledge.approve": "genehmigen",
+  "knowledge.dismiss": "verwerfen"
 }
