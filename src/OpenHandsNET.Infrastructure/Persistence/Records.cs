@@ -370,3 +370,36 @@ public sealed class IpAccessRuleRecord
     public required Guid CreatedBy { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }
+
+/// <summary>SPEC-60 RF-001: Registro de índice de código por repositório.</summary>
+public sealed class RepoIndexRecord : IOrgScoped
+{
+    public required Guid Id { get; set; }
+    public Guid? OrgId { get; set; }
+    public required string Repository { get; set; }
+    public required string Branch { get; set; }
+    public string? CommitSha { get; set; }
+    /// <summary>indexing | ready | stale | failed</summary>
+    public required string Status { get; set; }
+    public string? StatsJson { get; set; }
+    public string? FailureReason { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+}
+
+/// <summary>SPEC-60 RF-001: Unidade de código extraída para FTS/busca vetorial.</summary>
+public sealed class CodeUnitRecord : IOrgScoped
+{
+    public required Guid Id { get; set; }
+    public Guid? OrgId { get; set; }
+    public required Guid RepoIndexId { get; set; }
+    public required string Path { get; set; }
+    public int StartLine { get; set; }
+    public int EndLine { get; set; }
+    /// <summary>symbol | chunk</summary>
+    public required string Kind { get; set; }
+    public string? SymbolName { get; set; }
+    public required string Text { get; set; }
+    public required string Hash { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}

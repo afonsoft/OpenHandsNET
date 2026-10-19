@@ -33,6 +33,14 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     {
     }
 
+    /// <inheritdoc />
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        base.OnConfiguring(optionsBuilder);
+        optionsBuilder.ConfigureWarnings(w =>
+            w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+    }
+
     /// <summary>
     /// Org applied to org-scoped queries this session (set per request scope
     /// when multi-tenancy is enabled — SPEC-08 wires the accessor).
@@ -186,6 +194,12 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<OpenHandsNET.Infrastructure.Tickets.TicketProjectConfigRecord>
         TicketProjectConfigs =>
             Set<OpenHandsNET.Infrastructure.Tickets.TicketProjectConfigRecord>();
+
+    /// <summary>SPEC-60 RF-001: Índices de código por repositório.</summary>
+    public DbSet<RepoIndexRecord> RepoIndexes => Set<RepoIndexRecord>();
+
+    /// <summary>SPEC-60 RF-001: Unidades de código (chunks/symbols) indexadas.</summary>
+    public DbSet<CodeUnitRecord> CodeUnits => Set<CodeUnitRecord>();
 
     /// <summary>ASP.NET DataProtection keys (PersistKeysToDbContext).</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();

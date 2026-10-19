@@ -228,6 +228,9 @@ builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationM
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<OpenHandsNET.Application.Common.Interfaces.IOutputCompactorService, OpenHandsNET.Infrastructure.Agent.OutputCompactorService>();
 builder.Services.AddSingleton<OpenHandsNET.Application.Sandbox.ISandboxSnapshotProvider, OpenHandsNET.Infrastructure.Sandbox.FileSystemSandboxSnapshotProvider>();
+builder.Services.AddScoped<OpenHandsNET.Application.Indexing.ICodeSearchStore, OpenHandsNET.Infrastructure.Indexing.EfCodeSearchStore>();
+builder.Services.AddScoped<OpenHandsNET.Application.Indexing.IRepoIndexer, OpenHandsNET.Infrastructure.Indexing.RepoIndexer>();
+builder.Services.AddScoped<OpenHandsNET.Application.Ask.IAskModeService, OpenHandsNET.Infrastructure.Ask.AskModeService>();
 builder.Services.AddScoped<OpenHandsNET.Application.Identity.ICurrentUserAccessor,
     OpenHandsNET.Api.Auth.HttpCurrentUserAccessor>();
 
@@ -320,6 +323,7 @@ app.MapTicketEndpoints();
 app.MapServiceUserEndpoints();
 app.MapScimEndpoints();
 app.MapEdgeEndpoints();
+app.MapAskAndIndexEndpoints();
 app.MapHub<ConversationHub>("/hubs/conversations");
 app.MapHealthChecks("/api/v1/health");
 app.MapHealthChecks("/api/v1/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
