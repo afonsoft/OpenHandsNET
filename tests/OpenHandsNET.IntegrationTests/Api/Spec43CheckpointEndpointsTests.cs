@@ -108,6 +108,9 @@ public sealed class Spec43CheckpointEndpointsTests : IDisposable
 
         var convId = await CreateReadyConversationAsync();
         var b = $"/api/v1/app-conversations/{convId}";
+        // SPEC-78 RF-001: arquivo único por run — resíduo de workspace
+        // reutilizado não pode contaminar snapshot/drift/revert.
+        var file = $"a-{Guid.NewGuid():N}.txt";
 
         // READY pode chegar um tick antes do container virar Running —
         // sonda /exec até 200 (máx 30s).
@@ -141,7 +144,7 @@ public sealed class Spec43CheckpointEndpointsTests : IDisposable
                 "apk/git init deve rodar dentro do sandbox");
 
         // Arquivo inicial + snapshot.
-        (await _http.PutAsJsonAsync($"{b}/file?path=/workspace/repo/a.txt",
+        (await _http.PutAsJsonAsync($"{b}/file?path=/workspace/repo/{file}",
             new { content_base64 = B64("v1") }))
             .StatusCode.ShouldBe(HttpStatusCode.OK);
 
@@ -159,7 +162,7 @@ public sealed class Spec43CheckpointEndpointsTests : IDisposable
                 && e.GetProperty("label").GetString() == "before-edit");
 
         // Edit pós-snapshot → drift.
-        (await _http.PutAsJsonAsync($"{b}/file?path=/workspace/repo/a.txt",
+        (await _http.PutAsJsonAsync($"{b}/file?path=/workspace/repo/{file}",
             new { content_base64 = B64("v2-CHANGED") }))
             .StatusCode.ShouldBe(HttpStatusCode.OK);
 
@@ -172,7 +175,7 @@ public sealed class Spec43CheckpointEndpointsTests : IDisposable
         drift.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         var body = await drift.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("conflicts").EnumerateArray()
-            .Select(e => e.GetString()).ShouldContain("a.txt");
+            .Select(e => e.GetString()).ShouldContain(file);
 
         // Revert com force → conteúdo volta a v1; pre-revert snapshot criado.
         var ok = await _http.PostAsJsonAsync(
@@ -184,7 +187,7 @@ public sealed class Spec43CheckpointEndpointsTests : IDisposable
             .ShouldNotBeNullOrEmpty();
 
         var read = await _http.GetFromJsonAsync<JsonElement>(
-            $"{b}/file?path=/workspace/repo/a.txt");
+            $"{b}/file?path=/workspace/repo/{file}");
         read.GetProperty("content").GetString().ShouldBe("v1");
     }
 

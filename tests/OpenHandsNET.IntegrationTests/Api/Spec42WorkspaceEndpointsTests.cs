@@ -218,7 +218,9 @@ public sealed class Spec42WorkspaceEndpointsTests : IDisposable
         if (!DockerUp()) { return; }
 
         var convId = await CreateReadyConversationAsync();
-        var file = "/workspace/repo/spec42.txt";
+        // SPEC-78 RF-001: path único por run — warm-pool pode reutilizar
+        // workspace com resíduo de execuções anteriores.
+        var file = $"/workspace/repo/spec42-{Guid.NewGuid():N}.txt";
 
         // Write novo → etag; read devolve mesmo etag.
         var w = await _http.PutAsJsonAsync(
@@ -256,39 +258,45 @@ public sealed class Spec42WorkspaceEndpointsTests : IDisposable
         var convId = await CreateReadyConversationAsync();
         var b = "/api/v1/app-conversations/" + convId;
 
+        // SPEC-78 RF-001: dir + needle únicos por run — resíduo de
+        // workspace reutilizado (warm-pool) não pode colidir no mkdir
+        // (409) nem duplicar o match da search (.Single()).
+        var dir = $"/workspace/repo/spec42dir-{Guid.NewGuid():N}";
+        var needle = $"SPEC42_NEEDLE_{Guid.NewGuid():N}";
+
         (await _http.PostAsJsonAsync($"{b}/files/mkdir",
-            new { path = "/workspace/repo/spec42dir" }))
+            new { path = dir }))
             .StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
         (await _http.PutAsJsonAsync(
-            $"{b}/file?path=/workspace/repo/spec42dir/needle.txt",
-            new { content_base64 = B64("alpha\nSPEC42_NEEDLE\nomega") }))
+            $"{b}/file?path={dir}/needle.txt",
+            new { content_base64 = B64($"alpha\n{needle}\nomega") }))
             .StatusCode.ShouldBe(HttpStatusCode.OK);
 
         (await _http.PostAsJsonAsync($"{b}/files/rename",
             new
             {
-                from = "/workspace/repo/spec42dir/needle.txt",
-                to = "/workspace/repo/spec42dir/renamed.txt"
+                from = $"{dir}/needle.txt",
+                to = $"{dir}/renamed.txt"
             }))
             .StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
         var search = await _http.GetFromJsonAsync<JsonElement>(
-            $"{b}/files/search?q=SPEC42_NEEDLE&glob=*.txt");
+            $"{b}/files/search?q={needle}&glob=*.txt");
         var match = search.GetProperty("matches").EnumerateArray().Single();
         match.GetProperty("path").GetString()
-            .ShouldBe("/workspace/repo/spec42dir/renamed.txt");
+            .ShouldBe($"{dir}/renamed.txt");
         match.GetProperty("line").GetInt32().ShouldBe(2);
         match.GetProperty("col").GetInt32().ShouldBe(1);
         match.GetProperty("preview").GetString()!
-            .ShouldContain("SPEC42_NEEDLE");
+            .ShouldContain(needle);
 
         (await _http.PostAsJsonAsync($"{b}/files/delete",
-            new { path = "/workspace/repo/spec42dir" }))
+            new { path = dir }))
             .StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
         (await _http.GetAsync($"{b}/file" +
-            "?path=/workspace/repo/spec42dir/renamed.txt"))
+            $"?path={dir}/renamed.txt"))
             .StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
