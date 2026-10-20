@@ -49,3 +49,21 @@
 ### Preferência do usuário (commits)
 - **Remover o trailer `Generated with [Devin](https://devin.ai)`** de
   todos os commits futuros (instrução direta 2026-10-20).
+
+## Fechamento (2026-10-20)
+
+- PRs mergeados: #211 (specs), #212 (SPEC-79 org-scope), #213 (SPEC-81
+  cluster_name), #214 (SPEC-82 lifecycle), #215 (SPEC-80 OpenAPI),
+  #216 (probes k8s + diagnostics), #217 (arquivar 79–82), #219
+  (nightly baseline).
+- Issues fechadas: #207–#210 + Epic #206. Issue #218 aberta com os
+  achados reais do fuzz (35 ops `ignored_auth`, 10 `not_a_server_error`,
+  fidelity debt) — exclusions do schemathesis apontam para ela.
+- k8s-e2e run 39479983940: **verde** (primeiro em dias) — SPEC-81 +
+  probes fix validados end-to-end.
+- Nightly 39480716981 dispatch pós-#219 — esperado verde com checks
+  reduzidos (schema/content-type conformance ativos).
+- Golden OpenAPI: 264 ops, 252 c/ 401, 12 anônimas, 0 params faltando.
+- Descoberta incidental: `KubernetesSandboxEngine` resolve eager no
+  startup e exige kubeconfig válido — testes com provider=kubernetes
+  precisam de `Sandbox:Kubernetes:KubeconfigPath` apontando arquivo.
