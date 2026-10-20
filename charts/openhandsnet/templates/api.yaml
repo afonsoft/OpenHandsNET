@@ -79,13 +79,13 @@ spec:
             {{- end }}
           readinessProbe:
             httpGet:
-              path: /api/v1/readiness
+              path: /api/v1/ready
               port: http
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /api/v1/healthz
+              path: /api/v1/health
               port: http
             initialDelaySeconds: 15
             periodSeconds: 20
