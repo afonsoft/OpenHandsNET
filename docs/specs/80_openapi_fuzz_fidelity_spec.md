@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Approved |
+| Status | Completed |
 | Gap key | GAP-automation-openapi-fidelity |
 | Type | Quality/Automation |
 | Fonte | nightly run `39396545419` + issue #203 (`nightly-red`) + golden `tests/OpenHandsNET.IntegrationTests/Golden/openapi-v1.json` |
