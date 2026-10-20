@@ -72,3 +72,16 @@ jobs:
           sleep 5
           curl -sf --retry 10 --retry-delay 5 \
             http://localhost:8080/api/v1/ready
+
+      - name: diagnostics on failure
+        if: failure()
+        run: |
+          kubectl get pods -n ohn -o wide || true
+          kubectl -n ohn describe deploy/openhandsnet-api || true
+          for p in $(kubectl -n ohn get pods -o name 2>/dev/null); do
+            echo "=== $p ==="
+            kubectl -n ohn describe "$p" | tail -30 || true
+            kubectl -n ohn logs "$p" --all-containers --tail=80 || true
+          done
+          kubectl get events -n ohn --sort-by=.lastTimestamp 2>/dev/null | \
+            tail -20 || true

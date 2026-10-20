@@ -63,7 +63,50 @@ public sealed class SystemEndpointsTests : IClassFixture<SystemEndpointsTests.Ap
             .GetBoolean().ShouldBeTrue();
     }
 
-
+    // Provider kubernetes não tem daemon docker no pod — /api/v1/readiness
+    // reporta docker como n/a e não degrada para 503 (k8s-e2e rollout).
+    [Fact]
+    public async Task Readiness_Does_Not_Require_Docker_When_Kubernetes()
+    {
+        // O engine k8s resolve eager no startup (warm pool) e exige um
+        // kubeconfig parseável fora de cluster.
+        var kubeconfig = Path.Combine(
+            Path.GetTempPath(), $"ohn-kubeconfig-{Guid.NewGuid():N}.yaml");
+        await File.WriteAllTextAsync(kubeconfig, """
+            apiVersion: v1
+            kind: Config
+            clusters:
+            - name: test
+              cluster:
+                server: https://127.0.0.1:6443
+            contexts:
+            - name: test
+              context:
+                cluster: test
+                user: test
+            current-context: test
+            users:
+            - name: test
+              user:
+                token: test
+            """);
+        await using var factory = new AppFactory
+        {
+            Extra = new Dictionary<string, string?>
+            {
+                ["Sandbox:Provider"] = "kubernetes",
+                ["Sandbox:Kubernetes:KubeconfigPath"] = kubeconfig,
+            },
+        };
+        var client = factory.CreateClient();
+        var res = await client.GetAsync("/api/v1/readiness");
+        res.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var json = await res.Content
+            .ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        json.GetProperty("status").GetString().ShouldBe("ready");
+        json.GetProperty("checks").GetProperty("docker").GetString()
+            .ShouldBe("n/a (provider=kubernetes)");
+    }
 
     /// <summary>Factory that points the app at a throwaway SQLite file.</summary>
     public class AppFactory : WebApplicationFactory<Program>

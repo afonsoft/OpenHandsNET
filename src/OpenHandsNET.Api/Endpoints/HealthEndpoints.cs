@@ -32,7 +32,16 @@ public static class HealthEndpoints
             // Provider=remote o substrate vive no runtime-api — o check é
             // o /healthz dele em vez do daemon local.
             string dockerStatus;
-            if ((sandbox.Value.Provider ?? "local").Equals("remote",
+            if ((sandbox.Value.Provider ?? "local").Equals("kubernetes",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                // Substrate é a API do cluster — não há daemon docker local
+                // no pod (o engine usa IKubernetes). Check por-proxy: a
+                // readiness real do provider kubernetes é exercitada via
+                // sandbox pod, não aqui.
+                dockerStatus = "n/a (provider=kubernetes)";
+            }
+            else if ((sandbox.Value.Provider ?? "local").Equals("remote",
                     StringComparison.OrdinalIgnoreCase))
             {
                 try
@@ -88,8 +97,12 @@ public static class HealthEndpoints
             var mux = sp.GetService<StackExchange.Redis.IConnectionMultiplexer>();
             checks["cache"] = mux is null ? "memory"
                 : mux.IsConnected ? "ok" : "degraded";
+            // kubernetes: o substrate é a API do cluster — a presença do pod
+            // já prova agendamento; dockerStatus "n/a" não degrada.
             var healthy = report.Status == HealthStatus.Healthy &&
-                          dockerStatus == "healthy";
+                          (dockerStatus == "healthy" ||
+                           dockerStatus.StartsWith("n/a",
+                               StringComparison.Ordinal));
 
             // SPEC-19: egress allowlist → o proxy compartilhado precisa estar
             // running (ausente do payload quando o modo não é allowlist).
