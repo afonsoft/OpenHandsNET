@@ -1,0 +1,61 @@
+flowchart TB
+    subgraph Client["👤 Cliente"]
+        WASM["🌐 OpenHandsNET.Client<br/>Blazor WASM — chat, IDE, admin"]
+        CLI["⌨️ OpenHandsNET.Cli<br/>Spectre.Console — login/run/serve/eval"]
+    end
+
+    subgraph Edge["🌐 API Edge"]
+        API["🚪 OpenHandsNET.Api<br/>Minimal APIs /api/v1 · SignalR hubs<br/>WASM hosting · auth OIDC+sk-*/svc_*"]
+    end
+
+    subgraph Core["⚙️ Núcleo"]
+        APP["📦 Application<br/>contratos/DTOs/interfaces"]
+        DOM["🧩 Domain<br/>eventos V1 · entidades — zero deps"]
+        INF["🏗️ Infrastructure<br/>EF Core Sqlite+PG · agent loop<br/>Docker.DotNet · secrets · webhooks<br/>SCM · knowledge · automations"]
+        APP --> DOM
+        INF --> APP
+    end
+
+    subgraph Runtime["⚡ Runtime / Sandbox"]
+        RTAPI["🎛️ OpenHandsNET.RuntimeApi<br/>orquestração fora-de-processo"]
+        SBOX["🛡️ OpenHandsNET.Sandboxing<br/>ISandboxEngine · Squid egress"]
+        AGT["🤖 OpenHandsNET.SandboxAgent<br/>PID1 HTTP no container"]
+        RTAPI --> SBOX --> AGT
+    end
+
+    subgraph Ext["☁️ Externo"]
+        GH[("🔗 GitHub App / GitLab /<br/>Bitbucket / Azure DevOps")]
+        LLM[("🧠 LLM gateways<br/>SK · OmniRoute · BYOR LiteLLM")]
+        K8S[("🐳 Docker / Kubernetes")]
+        CHAT[("📨 Slack · Linear · Jira · SCIM")]
+        DB[("💾 SQLite / PostgreSQL")]
+        REDIS[("⚡ Redis/Valkey backplane")]
+    end
+
+    WASM -->|"HTTP + SignalR"| API
+    CLI -->|"HTTP + SignalR"| API
+    API --> INF
+    API --> RTAPI
+    INF --> DOM
+    INF --> DB
+    API --> REDIS
+    INF --> K8S
+    SBOX --> K8S
+    INF --> GH
+    INF --> LLM
+    INF --> CHAT
+    EVAL["📊 OpenHandsNET.Eval<br/>harness de avaliação"] --> APP
+
+    classDef client fill:#87CEEB,stroke:#333,stroke-width:2px,color:darkblue
+    classDef edge fill:#90EE90,stroke:#333,stroke-width:2px,color:darkgreen
+    classDef core fill:#E6E6FA,stroke:#333,stroke-width:2px,color:darkblue
+    classDef runtime fill:#FFE4B5,stroke:#333,stroke-width:2px,color:black
+    classDef external fill:#D3D3D3,stroke:#333,stroke-width:2px,color:black
+    classDef eval fill:#FFB6C1,stroke:#DC143C,stroke-width:2px,color:black
+
+    class WASM,CLI client
+    class API edge
+    class APP,DOM,INF core
+    class RTAPI,SBOX,AGT runtime
+    class GH,LLM,K8S,CHAT,DB,REDIS external
+    class EVAL eval

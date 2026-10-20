@@ -63,6 +63,14 @@ formam o runtime separado (SPEC-35).
   Redis/Valkey para multi-réplica (SPEC-36).
 - Cache/locks distribuídos: `IDistributedCache` + `ICoordinationBus`.
 
+## Artefatos derivados
+
+- Fonte Mermaid canônica: [system_arch_overview.mmd](system_arch_overview.mmd)
+  (export: [system_arch_overview.svg](system_arch_overview.svg))
+- Runtime interativo (Archify): [runtime-architecture.html](runtime-architecture.html)
+  (spec: [runtime-architecture.json](runtime-architecture.json)) — diagrama
+  navegável com views, evidence links e export PNG/SVG/WebM.
+
 ## ADRs
 
-- [ADR-0001 — Estrutura do harness agente](0001-harness-structure.md)
+- [AD-0001 — Estrutura do harness agente](AD-0001-harness-structure.md)
