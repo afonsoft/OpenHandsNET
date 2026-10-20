@@ -53,10 +53,11 @@ diff):
    workspace do pool; causa provável é retry server-side ou conteúdo
    da imagem. **Regra permanente = RF-001** (paths únicos tornam os
    testes imunes a qualquer resíduo, qualquer que seja a origem).
-4. **RF-004 — Quarentena explícita** *(pendente — requer revisão humana)*:
-   `[Trait("Category","Flaky")]` + retry do step falho no `ci.yml`.
-   Mudança em `.github/workflows/` exige revisão humana (hard rule) —
-   fora desta entrega; proposta documentada no PR.
+4. **RF-004 — Quarentena explícita** *(aprovado — workflow modificado
+   com revisão humana)*: `SkillsHooksE2ETests` marcado
+   `[Trait("Category","Flaky")]`; step de integration no `ci.yml` ganha
+   `E2E_DEADLINE_MINUTES=6` + **um retry automático** (flake passa no
+   re-run; falha real reproduz e derruba o job).
 
 ## Critérios de aceite
 

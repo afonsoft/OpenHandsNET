@@ -66,7 +66,10 @@ public sealed class SkillsHooksE2ETests : IDisposable
         catch { return false; }
     }
 
+    // SPEC-78 RF-004: E2E sensível a timing (agent loop real + Docker) —
+    // marcado Flaky p/ quarentena/retry filtrado quando necessário.
     [Fact]
+    [Trait("Category", "Flaky")]
     public async Task Skills_Inject_InvokeSkill_Works_Hooks_Emit_Events()
     {
         if (!DockerUp()) return;

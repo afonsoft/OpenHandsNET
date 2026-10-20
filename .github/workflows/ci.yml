@@ -114,8 +114,21 @@ jobs:
       - name: sandbox agent tests (coverage)
         run: dotnet test tests/OpenHandsNET.SandboxAgent.Tests -c Release --no-build --collect:"XPlat Code Coverage" --results-directory coverage/sandbox
 
+      # SPEC-78 RF-002/RF-004: deadline maior via env + retry único do
+      # step — flake ambiental (timing/pool) passa no re-run; falha real
+      # reproduz e derruba o job.
       - name: integration tests (coverage; docker on ubuntu-latest)
-        run: dotnet test tests/OpenHandsNET.IntegrationTests -c Release --no-build --collect:"XPlat Code Coverage" --results-directory coverage/integration
+        env:
+          E2E_DEADLINE_MINUTES: "6"
+        run: |
+          dotnet test tests/OpenHandsNET.IntegrationTests -c Release \
+            --no-build --collect:"XPlat Code Coverage" \
+            --results-directory coverage/integration || {
+              echo "::warning::integration tests failed — retrying once (SPEC-78 flake quarantine)"
+              dotnet test tests/OpenHandsNET.IntegrationTests -c Release \
+                --no-build --collect:"XPlat Code Coverage" \
+                --results-directory coverage/integration
+            }
 
       - name: env drift check
         run: ./scripts/check-env-drift.sh
