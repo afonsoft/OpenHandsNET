@@ -43,6 +43,10 @@ jobs:
 
       - name: create kind cluster
         uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1
+        with:
+          # SPEC-81: o action default é "chart-testing"; os steps abaixo
+          # (`kind load docker-image`) assumem "kind".
+          cluster_name: kind
 
       - name: install sysbox
         run: |
