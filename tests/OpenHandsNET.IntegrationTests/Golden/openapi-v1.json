@@ -1757,6 +1757,19 @@
         ],
         "type": "object"
       }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "description": "API key \u0060sk-*\u0060 (header \u0060Authorization: Bearer\u0060).",
+        "scheme": "bearer",
+        "type": "http"
+      },
+      "cookie": {
+        "description": "Sess\u00E3o de browser.",
+        "in": "cookie",
+        "name": "openhandsnet_auth",
+        "type": "apiKey"
+      }
     }
   },
   "info": {
@@ -1781,6 +1794,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/acp/conversations",
@@ -1805,6 +1824,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/acp/conversations/{id:guid}",
@@ -1829,6 +1854,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/acp/conversations/{id:guid}/cancel",
@@ -1853,6 +1884,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/acp/conversations/{id:guid}/events",
@@ -1887,6 +1924,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/acp/conversations/{id:guid}/prompt",
@@ -1951,6 +1994,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/admin/audit",
@@ -1964,6 +2013,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/admin/feature-flags",
@@ -1987,6 +2042,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/admin/feature-flags/{name}",
@@ -2018,6 +2079,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "PUT /api/v1/admin/feature-flags/{name}",
@@ -2052,6 +2119,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "PUT /api/v1/admin/organizations/{org_id:guid}/plan",
@@ -2065,6 +2138,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/admin/plans",
@@ -2086,6 +2165,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/admin/plans",
@@ -2110,6 +2195,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/admin/plans/{id:guid}",
@@ -2142,6 +2233,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "PATCH /api/v1/admin/plans/{id:guid}",
@@ -2155,6 +2252,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/admin/super-admins",
@@ -2176,6 +2279,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/admin/super-admins",
@@ -2189,6 +2298,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/admin/super-admins/me",
@@ -2213,6 +2328,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/admin/super-admins/{uid:guid}",
@@ -2247,6 +2368,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/admin/users",
@@ -2260,6 +2387,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/admin/users/count",
@@ -2284,6 +2417,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/admin/users/{uid:guid}",
@@ -2307,6 +2446,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/",
@@ -2328,6 +2473,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/app-conversations/",
@@ -2355,6 +2506,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/attention",
@@ -2385,6 +2542,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/count",
@@ -2441,6 +2604,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/search",
@@ -2464,6 +2633,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/start-tasks/",
@@ -2486,6 +2661,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/start-tasks/count",
@@ -2527,6 +2708,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/start-tasks/search",
@@ -2551,6 +2738,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/start-tasks/{id:guid}",
@@ -2574,6 +2767,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/app-conversations/stream-start",
@@ -2598,6 +2797,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/app-conversations/{id:guid}",
@@ -2620,6 +2825,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}",
@@ -2652,6 +2863,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "PATCH /api/v1/app-conversations/{id:guid}",
@@ -2684,6 +2901,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}/artifacts/{*ref}",
@@ -2708,6 +2931,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/app-conversations/{id:guid}/attention/dismiss",
@@ -2742,6 +2971,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/app-conversations/{id:guid}/browser/attach",
@@ -2776,6 +3011,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/app-conversations/{id:guid}/browser/capture",
@@ -2800,6 +3041,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}/checkpoints",
@@ -2838,6 +3085,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/app-conversations/{id:guid}/checkpoints",
@@ -2870,6 +3123,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}/checkpoints/{hash}",
@@ -2918,6 +3177,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/app-conversations/{id:guid}/checkpoints/{hash}/revert",
@@ -2942,6 +3207,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}/context",
@@ -2982,6 +3253,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/app-conversations/{id:guid}/context/compact",
@@ -3006,6 +3283,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/app-conversations/{id:guid}/context/rescan",
@@ -3030,6 +3313,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}/download",
@@ -3064,6 +3353,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/app-conversations/{id:guid}/exec",
@@ -3096,6 +3391,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}/file",
@@ -3136,6 +3437,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "PUT /api/v1/app-conversations/{id:guid}/file",
@@ -3167,6 +3474,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}/files",
@@ -3201,6 +3514,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/app-conversations/{id:guid}/files/delete",
@@ -3235,6 +3554,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/app-conversations/{id:guid}/files/mkdir",
@@ -3269,6 +3594,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/app-conversations/{id:guid}/files/rename",
@@ -3307,6 +3638,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}/files/search",
@@ -3331,6 +3668,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}/git/changes",
@@ -3365,6 +3708,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/app-conversations/{id:guid}/git/commit",
@@ -3403,6 +3752,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}/git/diff",
@@ -3441,6 +3796,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}/git/file",
@@ -3477,6 +3838,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}/git/log",
@@ -3501,6 +3868,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}/hooks",
@@ -3525,6 +3898,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}/memory",
@@ -3559,6 +3938,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/app-conversations/{id:guid}/mode",
@@ -3583,6 +3968,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}/model",
@@ -3617,6 +4008,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "PATCH /api/v1/app-conversations/{id:guid}/permissions",
@@ -3651,6 +4048,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/app-conversations/{id:guid}/pull-request",
@@ -3675,6 +4078,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/app-conversations/{id:guid}/resume",
@@ -3709,6 +4118,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/app-conversations/{id:guid}/send-message",
@@ -3733,6 +4148,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/app-conversations/{id:guid}/share",
@@ -3755,6 +4176,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}/share",
@@ -3777,6 +4204,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/app-conversations/{id:guid}/share",
@@ -3801,6 +4234,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}/skills",
@@ -3825,6 +4264,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}/surfaces",
@@ -3859,6 +4304,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/app-conversations/{id:guid}/switch_acp_model",
@@ -3893,6 +4344,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/app-conversations/{id:guid}/switch_profile",
@@ -3917,6 +4374,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}/tools",
@@ -3941,6 +4404,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/app-conversations/{id:guid}/uploads",
@@ -3954,6 +4423,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/auth/accept_tos",
@@ -3979,6 +4454,7 @@
             "description": "OK"
           }
         },
+        "security": [],
         "summary": "POST /api/v1/auth/dev-login",
         "tags": [
           "OpenHandsNET.Api"
@@ -3990,6 +4466,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/auth/logout",
@@ -4003,6 +4485,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/auth/onboarding_status",
@@ -4016,6 +4504,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/authenticate",
@@ -4029,6 +4523,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/automations/",
@@ -4050,6 +4550,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/automations/",
@@ -4074,6 +4580,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/automations/hooks/{hookId:guid}",
@@ -4117,6 +4629,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/automations/runs",
@@ -4141,6 +4659,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/automations/{id:guid}",
@@ -4163,6 +4687,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/automations/{id:guid}",
@@ -4195,6 +4725,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "PATCH /api/v1/automations/{id:guid}",
@@ -4219,6 +4755,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/automations/{id:guid}/hooks",
@@ -4243,6 +4785,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/automations/{id:guid}/run-now",
@@ -4279,6 +4827,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/automations/{id:guid}/runs",
@@ -4292,6 +4846,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/browser-profiles",
@@ -4316,6 +4876,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/browser-profiles/{id:guid}",
@@ -4338,6 +4904,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/browser-profiles/{id:guid}",
@@ -4372,6 +4944,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/chat/channels/{connectionId:guid}/config",
@@ -4396,6 +4974,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/chat/connections/{id:guid}/test",
@@ -4411,6 +4995,7 @@
             "description": "OK"
           }
         },
+        "security": [],
         "summary": "GET /api/v1/config",
         "tags": [
           "System"
@@ -4441,6 +5026,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/conversation/{id:guid}/events",
@@ -4488,6 +5079,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/conversation/{id:guid}/events/count",
@@ -4561,6 +5158,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/conversation/{id:guid}/events/search",
@@ -4574,6 +5177,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/edge/check",
@@ -4587,6 +5196,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/git/credentials",
@@ -4610,6 +5225,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/git/credentials/{host}",
@@ -4641,6 +5262,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "PUT /api/v1/git/credentials/{host}",
@@ -4654,6 +5281,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/hooks",
@@ -4675,6 +5308,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/hooks",
@@ -4699,6 +5338,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/hooks/{id:guid}",
@@ -4731,6 +5376,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "PATCH /api/v1/hooks/{id:guid}",
@@ -4756,6 +5407,7 @@
             "description": "OK"
           }
         },
+        "security": [],
         "summary": "POST /api/v1/hooks/{token}",
         "tags": [
           "Automations"
@@ -4767,6 +5419,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/ip-rules/",
@@ -4778,6 +5436,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/ip-rules/",
@@ -4802,6 +5466,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/ip-rules/{id:guid}",
@@ -4815,6 +5485,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/keys/",
@@ -4836,6 +5512,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/keys/",
@@ -4849,6 +5531,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/keys/current",
@@ -4862,6 +5550,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/keys/llm/byor",
@@ -4873,6 +5567,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/keys/llm/byor",
@@ -4886,6 +5586,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/keys/llm/byor/permitted",
@@ -4915,6 +5621,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/keys/llm/byor/refresh",
@@ -4939,6 +5651,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/keys/{id:guid}",
@@ -4961,6 +5679,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/knowledge/entries",
@@ -4974,6 +5698,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/knowledge/groom",
@@ -5003,6 +5733,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/knowledge/suggestions",
@@ -5024,6 +5760,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/knowledge/suggestions",
@@ -5064,6 +5806,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/knowledge/suggestions/{id:guid}/approve",
@@ -5104,6 +5852,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/knowledge/suggestions/{id:guid}/dismiss",
@@ -5127,6 +5881,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/mcp/oauth/authorize",
@@ -5158,6 +5918,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/mcp/oauth/callback",
@@ -5181,6 +5947,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/mcp/oauth/disconnect",
@@ -5194,6 +5966,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/mcp/servers",
@@ -5215,6 +5993,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/mcp/servers",
@@ -5238,6 +6022,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/mcp/servers/{name}",
@@ -5261,6 +6051,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/mcp/test",
@@ -5284,6 +6080,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/mcp/tool-call",
@@ -5297,6 +6099,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/models",
@@ -5310,6 +6118,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/organizations/",
@@ -5331,6 +6145,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/organizations/",
@@ -5355,6 +6175,7 @@
             "description": "OK"
           }
         },
+        "security": [],
         "summary": "GET /api/v1/organizations/members/invite/accept",
         "tags": [
           "OpenHandsNET.Api"
@@ -5374,6 +6195,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/organizations/members/invite/accept",
@@ -5397,6 +6224,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/organizations/provision-user",
@@ -5421,6 +6254,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/organizations/{org_id:guid}",
@@ -5443,6 +6282,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/organizations/{org_id:guid}",
@@ -5475,6 +6320,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "PATCH /api/v1/organizations/{org_id:guid}",
@@ -5506,6 +6357,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/organizations/{org_id:guid}/members",
@@ -5530,6 +6387,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/organizations/{org_id:guid}/members/count",
@@ -5554,6 +6417,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/organizations/{org_id:guid}/members/invite",
@@ -5586,6 +6455,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/organizations/{org_id:guid}/members/invite",
@@ -5619,6 +6494,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/organizations/{org_id:guid}/members/invite/{inv_id:guid}",
@@ -5652,6 +6533,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/organizations/{org_id:guid}/members/{uid:guid}",
@@ -5693,6 +6580,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "PATCH /api/v1/organizations/{org_id:guid}/members/{uid:guid}",
@@ -5724,6 +6617,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/organizations/{org_id:guid}/memory",
@@ -5756,6 +6655,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/organizations/{org_id:guid}/memory/{key}",
@@ -5780,6 +6685,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/organizations/{org_id:guid}/plan",
@@ -5804,6 +6715,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/organizations/{org_id:guid}/quota",
@@ -5826,6 +6743,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/organizations/{org_id:guid}/quota",
@@ -5858,6 +6781,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "PUT /api/v1/organizations/{org_id:guid}/quota",
@@ -5882,6 +6811,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/organizations/{org_id:guid}/security-policy",
@@ -5920,6 +6855,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "PUT /api/v1/organizations/{org_id:guid}/security-policy",
@@ -5944,6 +6885,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/organizations/{org_id:guid}/settings",
@@ -5979,6 +6926,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "PATCH /api/v1/organizations/{org_id:guid}/settings",
@@ -6003,6 +6956,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/organizations/{org_id:guid}/usage",
@@ -6027,6 +6986,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/orgs/{org_id:guid}/chat-connections/",
@@ -6059,6 +7024,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/orgs/{org_id:guid}/chat-connections/",
@@ -6092,6 +7063,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/orgs/{org_id:guid}/chat-connections/{id:guid}",
@@ -6125,6 +7102,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/orgs/{org_id:guid}/chat-connections/{id:guid}/channels",
@@ -6149,6 +7132,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/orgs/{org_id:guid}/idp-mappings",
@@ -6171,6 +7160,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/orgs/{org_id:guid}/idp-mappings",
@@ -6204,6 +7199,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/orgs/{org_id:guid}/idp-mappings/{id:guid}",
@@ -6228,6 +7229,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/orgs/{org_id:guid}/ip-rules/",
@@ -6250,6 +7257,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/orgs/{org_id:guid}/ip-rules/",
@@ -6283,6 +7296,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/orgs/{org_id:guid}/ip-rules/{id:guid}",
@@ -6307,6 +7326,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/orgs/{org_id:guid}/scim-tokens",
@@ -6329,6 +7354,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/orgs/{org_id:guid}/scim-tokens",
@@ -6362,6 +7393,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/orgs/{org_id:guid}/scim-tokens/{id:guid}",
@@ -6386,6 +7423,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/orgs/{org_id:guid}/scm-connections/",
@@ -6418,6 +7461,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/orgs/{org_id:guid}/scm-connections/",
@@ -6451,6 +7500,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/orgs/{org_id:guid}/scm-connections/{id:guid}",
@@ -6475,6 +7530,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/orgs/{org_id:guid}/service-users/",
@@ -6507,6 +7568,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/orgs/{org_id:guid}/service-users/",
@@ -6540,6 +7607,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/orgs/{org_id:guid}/service-users/{id:guid}",
@@ -6581,6 +7654,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "PATCH /api/v1/orgs/{org_id:guid}/service-users/{id:guid}",
@@ -6614,6 +7693,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/orgs/{org_id:guid}/service-users/{id:guid}/keys",
@@ -6655,6 +7740,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/orgs/{org_id:guid}/service-users/{id:guid}/keys",
@@ -6697,6 +7788,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/orgs/{org_id:guid}/service-users/{id:guid}/keys/{key_id:guid}",
@@ -6721,6 +7818,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/orgs/{org_id:guid}/ticket-connections/",
@@ -6753,6 +7856,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/orgs/{org_id:guid}/ticket-connections/",
@@ -6786,6 +7895,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/orgs/{org_id:guid}/ticket-connections/{id:guid}",
@@ -6819,6 +7934,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/orgs/{org_id:guid}/ticket-connections/{id:guid}/projects",
@@ -6860,6 +7981,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/orgs/{org_id:guid}/ticket-connections/{id:guid}/projects",
@@ -6884,6 +8011,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/orgs/{org_id:guid}/usage-tiers",
@@ -6906,6 +8039,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/orgs/{org_id:guid}/usage-tiers",
@@ -6939,6 +8078,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/orgs/{org_id:guid}/usage-tiers/{id:guid}",
@@ -6970,6 +8115,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "PATCH /api/v1/orgs/{org_id:guid}/usage-tiers/{id:guid}",
@@ -6994,6 +8145,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/pending-messages",
@@ -7015,6 +8172,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/pending-messages",
@@ -7038,6 +8201,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/sandbox-specs/",
@@ -7062,6 +8231,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/sandbox-specs/{id:guid}",
@@ -7084,6 +8259,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/sandbox-specs/{id:guid}",
@@ -7114,6 +8295,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/sandboxes/",
@@ -7135,6 +8322,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/sandboxes/",
@@ -7165,6 +8358,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/sandboxes/search",
@@ -7189,6 +8388,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/sandboxes/{id:guid}",
@@ -7211,6 +8416,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/sandboxes/{id:guid}",
@@ -7235,6 +8446,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/sandboxes/{id:guid}/agent",
@@ -7259,6 +8476,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/sandboxes/{id:guid}/blueprint-log",
@@ -7283,6 +8506,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/sandboxes/{id:guid}/pause",
@@ -7317,6 +8546,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/sandboxes/{id:guid}/preview-token",
@@ -7341,6 +8576,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/sandboxes/{id:guid}/resume",
@@ -7351,9 +8592,26 @@
     },
     "/api/v1/sandboxes/{id}/settings/secrets": {
       "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/sandboxes/{id:guid}/settings/secrets",
@@ -7367,6 +8625,15 @@
         "parameters": [
           {
             "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
             "name": "name",
             "required": true,
             "schema": {
@@ -7377,6 +8644,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/sandboxes/{id:guid}/settings/secrets/{name}",
@@ -7401,6 +8674,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/scm/connections/{id:guid}/test",
@@ -7433,6 +8712,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/scm/github/callback",
@@ -7456,6 +8741,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/scm/github/manifest",
@@ -7469,6 +8760,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/secrets/",
@@ -7492,6 +8789,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/secrets/{name}",
@@ -7513,6 +8816,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/secrets/{name}",
@@ -7544,6 +8853,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "PUT /api/v1/secrets/{name}",
@@ -7557,6 +8872,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/settings",
@@ -7578,6 +8899,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/settings",
@@ -7603,6 +8930,7 @@
             "description": "OK"
           }
         },
+        "security": [],
         "summary": "GET /api/v1/shared/{token}",
         "tags": [
           "Sharing"
@@ -7646,6 +8974,7 @@
             "description": "OK"
           }
         },
+        "security": [],
         "summary": "GET /api/v1/shared/{token}/events",
         "tags": [
           "Sharing"
@@ -7657,6 +8986,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/skills",
@@ -7678,6 +9013,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/skills",
@@ -7702,6 +9043,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/skills/{id:guid}",
@@ -7724,6 +9071,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/skills/{id:guid}",
@@ -7756,6 +9109,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "PATCH /api/v1/skills/{id:guid}",
@@ -7769,6 +9128,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/support-bundle",
@@ -7803,6 +9168,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/tickets/connections/{id:guid}/run",
@@ -7827,6 +9198,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/tickets/connections/{id:guid}/test",
@@ -7868,6 +9245,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/tickets/{kind}/{issue_key}/comment",
@@ -7883,6 +9266,7 @@
             "description": "OK"
           }
         },
+        "security": [],
         "summary": "GET /api/v1/user",
         "tags": [
           "User"
@@ -7894,6 +9278,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/users/me/preferences",
@@ -7915,6 +9305,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "PUT /api/v1/users/me/preferences",
@@ -7939,6 +9335,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /api/v1/users/{id:guid}/usage-override",
@@ -7961,6 +9363,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/users/{id:guid}/usage-override",
@@ -7974,6 +9382,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/webhooks/chat/slack/commands",
@@ -7987,6 +9401,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/webhooks/chat/slack/events",
@@ -8000,6 +9420,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/webhooks/chat/slack/interactions",
@@ -8023,6 +9449,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/webhooks/conversations",
@@ -8057,6 +9489,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/webhooks/events/{conversationId:guid}",
@@ -8070,6 +9508,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/webhooks/mcp-oauth-state",
@@ -8093,6 +9537,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /api/v1/webhooks/scm/{kind}",
@@ -8106,6 +9556,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /api/v1/webhooks/secrets",
@@ -8121,6 +9577,7 @@
             "description": "OK"
           }
         },
+        "security": [],
         "summary": "POST /api/v1/webhooks/tickets/jira",
         "tags": [
           "OpenHandsNET.Api"
@@ -8134,6 +9591,7 @@
             "description": "OK"
           }
         },
+        "security": [],
         "summary": "POST /api/v1/webhooks/tickets/linear",
         "tags": [
           "OpenHandsNET.Api"
@@ -8147,6 +9605,7 @@
             "description": "OK"
           }
         },
+        "security": [],
         "summary": "POST /oauth/device/authorize",
         "tags": [
           "OpenHandsNET.Api"
@@ -8211,6 +9670,7 @@
             "description": "OK"
           }
         },
+        "security": [],
         "summary": "POST /oauth/device/token",
         "tags": [
           "OpenHandsNET.Api"
@@ -8231,6 +9691,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /oauth/device/verify",
@@ -8295,6 +9761,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /oauth/device/verify-authenticated",
@@ -8319,6 +9791,7 @@
             "description": "OK"
           }
         },
+        "security": [],
         "summary": "GET /oauth/oidc/login",
         "tags": [
           "OpenHandsNET.Api"
@@ -8330,6 +9803,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /oauth/oidc/offline/callback",
@@ -8343,6 +9822,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /scim/v2/Groups",
@@ -8354,6 +9839,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /scim/v2/Groups",
@@ -8378,6 +9869,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /scim/v2/Groups/{id:guid}",
@@ -8400,6 +9897,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "PUT /scim/v2/Groups/{id:guid}",
@@ -8413,6 +9916,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /scim/v2/ResourceTypes",
@@ -8426,6 +9935,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /scim/v2/Schemas",
@@ -8439,6 +9954,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /scim/v2/ServiceProviderConfig",
@@ -8461,6 +9982,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /scim/v2/Users",
@@ -8472,6 +9999,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /scim/v2/Users",
@@ -8496,6 +10029,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "DELETE /scim/v2/Users/{id:guid}",
@@ -8518,6 +10057,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "GET /scim/v2/Users/{id:guid}",
@@ -8540,6 +10085,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "PATCH /scim/v2/Users/{id:guid}",
@@ -8553,6 +10104,12 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         },
         "summary": "POST /v1/chat/completions",
@@ -8562,6 +10119,14 @@
       }
     }
   },
+  "security": [
+    {
+      "bearer": []
+    },
+    {
+      "cookie": []
+    }
+  ],
   "tags": [
     {
       "name": "System"

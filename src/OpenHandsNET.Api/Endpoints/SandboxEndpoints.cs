@@ -120,10 +120,11 @@ public static class SandboxEndpoints
                 : OpenHandsNetProblemFactory.Create(http, 404, $"Sandbox {id} not found"));
 
         // Secrets do sandbox: metadados apenas — valores nunca trafegam (SPEC-08).
-        sandboxes.MapGet("/{id:guid}/settings/secrets", () =>
+        // SPEC-80 RF-001: `id` recebido para o param aparecer no OpenAPI.
+        sandboxes.MapGet("/{id:guid}/settings/secrets", (Guid id) =>
             Results.Ok(Array.Empty<object>()));
         sandboxes.MapGet("/{id:guid}/settings/secrets/{name}",
-            (string name, HttpContext http) =>
+            (Guid id, string name, HttpContext http) =>
                 OpenHandsNetProblemFactory.Create(
                     http, 404, $"Secret {name} not found"));
 
