@@ -7,6 +7,12 @@ Enterprise) para **.NET 10 / C# 14 / Blazor WebAssembly**, com UX inspirada no
 Devin Web e componentes de chat/layout derivados de `afonsoft/open-webui`.
 Este arquivo é o ponto de entrada de agentes: carregado antes de cada sessão.
 
+**AI-Driven Development (ADD)**: o repositório opera em workflow
+*agent-first* — SPECs em `.specs/` seguem SDD (Spec-Driven Development)
+como artefato-fonte de verdade, mas escritas para agentes e executadas
+por agentes (issues → SPECs → implementação → testes → PRs), com revisão
+humana. Agentes são os desenvolvedores primários.
+
 ## Tech Stack
 
 | Camada | Tecnologia | Versão |

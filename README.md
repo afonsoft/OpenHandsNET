@@ -12,6 +12,12 @@ Blazor WebAssembly** — agente autônomo de engenharia de software com conceito
 Cloud + Enterprise e UX inspirada no Devin Web, sobre a base de
 [`afonsoft/open-webui`](https://github.com/afonsoft/open-webui).
 
+**AI-Driven Development (ADD)**: este projeto é desenvolvido por agentes —
+o processo é *agent-first* (issues, SPECs, implementação, testes, PRs).
+As SPECs seguem SDD (Spec-Driven Development) como artefato-fonte de
+verdade consumido e executado por agentes: SPECs escritas para agentes,
+executadas por agentes, revisadas por humanos.
+
 > Status: **produto funcional** — SPECs 01–64 + 68/69 entregues e
 > arquivadas em [`docs/specs/`](docs/specs/) (agente, sandbox, API, UI
 > completa, enterprise ops, integrações SCM/ChatOps/ticketing,
@@ -98,7 +104,7 @@ Configuração por env vars com prefixo `OPENHANDSNET_` (ex.:
 ## Layout do repositório
 
 ```
-.specs/             SPECs SDD (60+ módulos — comece por .specs/README.md)
+.specs/             SPECs SDD/ADD (60+ módulos — comece por .specs/README.md)
 migration-plan/     research (api-inventory, domains, risks) + roadmap
 docs/               guias (deployment, ui, api, features) — índice em docs/README.md
 docs/en/            documentação em inglês
