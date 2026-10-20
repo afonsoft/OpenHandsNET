@@ -112,45 +112,66 @@ public sealed class SkillsHooksE2ETests : IDisposable
         var convId = (await resp.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("app_conversation_id").GetString()!;
 
-        var deadline = DateTime.UtcNow.AddMinutes(3);
+        // SPEC-78 RF-002: deadline configurável (CI pode subir via
+        // E2E_DEADLINE_MINUTES) e poll barato de execution_status —
+        // varrer 200 eventos por rodada era caro e escondia o status.
+        var deadlineMin = int.TryParse(
+            Environment.GetEnvironmentVariable("E2E_DEADLINE_MINUTES"),
+            out var m) && m > 0 ? m : 5;
+        var deadline = DateTime.UtcNow.AddMinutes(deadlineMin);
+        var lastStatus = "unknown";
+        var sawFinished = false;
+        while (DateTime.UtcNow < deadline)
+        {
+            var conv = await _http.GetFromJsonAsync<JsonElement>(
+                $"/api/v1/app-conversations/{convId}");
+            lastStatus = conv.TryGetProperty("execution_status", out var es)
+                ? es.GetString() ?? "unknown" : "unknown";
+            if (lastStatus is "FINISHED" or "ERROR" or "STOPPED")
+            {
+                sawFinished = lastStatus == "FINISHED";
+                break;
+            }
+
+            await Task.Delay(1500);
+        }
+
+        // Evidência de falha: status final + cauda de eventos.
+        var eventsJson = await _http.GetFromJsonAsync<JsonElement>(
+            $"/api/v1/conversation/{convId}/events/search?limit=200");
+        var items = eventsJson.GetProperty("items").EnumerateArray().ToList();
+        var tail = string.Join("\n", items.TakeLast(8).Select(e =>
+            $"{e.GetProperty("kind").GetString()}: " +
+            $"{(e.ToString().Length > 200 ? e.ToString()[..200] : e.ToString())}"));
+
+        sawFinished.ShouldBeTrue(
+            $"run should finish — last status: {lastStatus}; tail:\n{tail}");
+
         var sawPromptSkill = false;
         var sawSkillContent = false;
         var sawMissingErr = false;
         var hookPoints = new HashSet<string>();
-        var sawFinished = false;
-        while (DateTime.UtcNow < deadline && !sawFinished)
+        foreach (var e in items)
         {
-            var events = await _http.GetFromJsonAsync<JsonElement>(
-                $"/api/v1/conversation/{convId}/events/search?limit=200");
-            foreach (var e in events.GetProperty("items").EnumerateArray())
+            var kind = e.GetProperty("kind").GetString();
+            switch (kind)
             {
-                var kind = e.GetProperty("kind").GetString();
-                switch (kind)
-                {
-                    case "SystemPromptEvent":
-                        if (e.ToString().Contains("E2E SKILL MARKER"))
-                            sawPromptSkill = true;
-                        break;
-                    case "ObservationEvent":
-                        var obs = e.ToString();
-                        if (obs.Contains("E2E SKILL MARKER")) sawSkillContent = true;
-                        if (obs.Contains("missing-skill") && obs.Contains("not found"))
-                            sawMissingErr = true;
-                        break;
-                    case "HookExecutionEvent":
-                        hookPoints.Add(e.GetProperty("hook_event_type").GetString()!);
-                        break;
-                    case "ConversationStateUpdateEvent"
-                        when e.ToString().Contains("finished"):
-                        sawFinished = true;
-                        break;
-                }
+                case "SystemPromptEvent":
+                    if (e.ToString().Contains("E2E SKILL MARKER"))
+                        sawPromptSkill = true;
+                    break;
+                case "ObservationEvent":
+                    var obs = e.ToString();
+                    if (obs.Contains("E2E SKILL MARKER")) sawSkillContent = true;
+                    if (obs.Contains("missing-skill") && obs.Contains("not found"))
+                        sawMissingErr = true;
+                    break;
+                case "HookExecutionEvent":
+                    hookPoints.Add(e.GetProperty("hook_event_type").GetString()!);
+                    break;
             }
-
-            if (!sawFinished) await Task.Delay(1500);
         }
 
-        sawFinished.ShouldBeTrue("run should finish");
         sawPromptSkill.ShouldBeTrue("always skill should be in system prompt");
         sawSkillContent.ShouldBeTrue("invoke_skill should return content_md");
         sawMissingErr.ShouldBeTrue("missing skill should be a non-fatal error");

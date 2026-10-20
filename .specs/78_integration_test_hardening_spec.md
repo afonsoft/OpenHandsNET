@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Draft |
+| Status | Approved → In implementation |
 | Gap key | CI-flake-integration-tests |
 | Type | Quality/Testing |
 | Fonte | falhas observadas no run `39352893002` (PR #197) e anteriores |
@@ -37,20 +37,26 @@ diff):
    (8 paths fixos), `Spec43CheckpointEndpointsTests` (3) e demais
    literais encontrados — mesma classe de bug.
 2. **RF-002 — E2E resiliente a timing**:
-   - deadline por env (`E2E_DEADLINE_MINUTES`, default 3 → 6 no CI);
+   - deadline por env (`E2E_DEADLINE_MINUTES`, default **5min** —
+     headroom sem mudar workflow; CI pode fixar 6+ via env);
    - poll do estado da conversa (`GET /app-conversations/{id}` →
      `execution_status`) em vez de varrer 200 eventos por rodada —
      barato e direto; eventos só consultados uma vez ao final para as
      demais asserções;
    - mensagem de falha com a cauda dos eventos observados (diagnóstico
      sem precisar baixar o log inteiro).
-3. **RF-003 — Sweep anti-contaminação**: assert/guard no pool — se o
-   warm-pool deve garantir workspace limpo por claim, teste de
-   invariante dedicado documenta a garantia; caso contrário, RF-001 é
-   a regra permanente (registrar decisão na SPEC).
-4. **RF-004 — Quarentena explícita**: flake conhecido mas não corrigido
-   → `[Trait("Category","Flaky")]` + retry automático do step
-   (`dotnet test` rerun failed) em vez de gate vermelho silencioso.
+3. **RF-003 — Sweep anti-contaminação**: **decisão registrada** —
+   investigado `DockerSandboxEngine.ClaimWarmAsync` +
+   `WorkspaceProvisioner`: o warm-pool já provê workspace único por
+   claim (`.warm/{guid}` criado fresco, movido para `{convId}` —
+   containers claimed não retornam ao pool). O 409 não vem de reúso de
+   workspace do pool; causa provável é retry server-side ou conteúdo
+   da imagem. **Regra permanente = RF-001** (paths únicos tornam os
+   testes imunes a qualquer resíduo, qualquer que seja a origem).
+4. **RF-004 — Quarentena explícita** *(pendente — requer revisão humana)*:
+   `[Trait("Category","Flaky")]` + retry do step falho no `ci.yml`.
+   Mudança em `.github/workflows/` exige revisão humana (hard rule) —
+   fora desta entrega; proposta documentada no PR.
 
 ## Critérios de aceite
 

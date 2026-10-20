@@ -166,12 +166,15 @@ public sealed class GitServiceTests : IAsyncLifetime
         changes0.Branch.ShouldBe("openhands/abc12345");
 
         // Agente modifica arquivo → aparece em changes + diff.
+        // SPEC-78 RF-001: nome único — workspace reutilizado não pode
+        // apresentar o untracked já commitado/consumido.
+        var novo = $"novo-{Guid.NewGuid():N}.txt";
         await _executor.ExecAsync(sb,
-            "echo novo >> /workspace/repo/seed.txt && echo x > /workspace/repo/novo.txt",
+            $"echo novo >> /workspace/repo/seed.txt && echo x > /workspace/repo/{novo}",
             TimeSpan.FromSeconds(15), CancellationToken.None);
         var changes = await _git.GetChangesAsync(sb, CancellationToken.None);
         changes.Modified.ShouldContain(f => f.Path == "seed.txt");
-        changes.Untracked.ShouldContain(f => f.Path == "novo.txt");
+        changes.Untracked.ShouldContain(f => f.Path == novo);
 
         var diff = await _git.GetDiffAsync(sb, null, CancellationToken.None);
         diff.ShouldNotBeNull();
