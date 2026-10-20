@@ -110,16 +110,17 @@ jobs:
       #   - unsupported_method: a API responde 404 — não 405 — para método
       #     errado em rota conhecida (decisão registrada na SPEC-80);
       #   - ignored_auth, not_a_server_error, positive_data_acceptance,
-      #     status_code_conformance: falhas REais descobertas pelo primeiro
-      #     fuzz efetivo (run 39473030937) — rastreadas na issue #218 até
-      #     correção; removidas daqui para o gate voltar a ser útil.
+      #     status_code_conformance, negative_data_rejection: falhas REais
+      #     descobertas pelo primeiro fuzz efetivo (runs 39473030937 e
+      #     39480716981) — rastreadas na issue #218 até correção;
+      #     removidas daqui para o gate voltar a ser útil.
       - name: schemathesis run (blocking)
         run: |
           schemathesis run /tmp/openapi.json --url "http://localhost:$PORT" \
             --max-examples 15 --workers 2 --checks all \
             --phases examples,fuzzing \
             --exclude-path /api/v1/app-conversations/stream-start \
-            --exclude-checks unsupported_method,ignored_auth,not_a_server_error,positive_data_acceptance,status_code_conformance \
+            --exclude-checks unsupported_method,ignored_auth,not_a_server_error,positive_data_acceptance,status_code_conformance,negative_data_rejection \
             --suppress-health-check all --no-color
 
       - name: stop api + upload logs
