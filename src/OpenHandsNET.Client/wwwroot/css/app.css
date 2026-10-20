@@ -684,6 +684,10 @@ details.ev-details summary { cursor: pointer; color: var(--ohn-fg-dim); font-siz
 .ide-tab-close { margin-left: 6px; opacity: .5; }
 .ide-tab-close:hover { opacity: 1; }
 .monaco-host { flex: 1; min-height: 0; }
+/* SPEC-77: iframe do code-server embutido no ide-main */
+.ide-vscode { flex: 1; min-height: 0; width: 100%; border: 0;
+    background: #1e1e1e; }
+.ide-activity-vscode { position: relative; }
 .ide-binary, .ide-test-out {
     flex: 1; overflow: auto; margin: 0; padding: 8px;
     font-size: 11.5px; white-space: pre-wrap;

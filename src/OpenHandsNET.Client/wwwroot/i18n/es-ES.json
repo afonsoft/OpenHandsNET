@@ -158,5 +158,6 @@
   "knowledge.groom": "ejecutar groom",
   "knowledge.empty": "No hay sugerencias en esta cola.",
   "knowledge.approve": "aprobar",
-  "knowledge.dismiss": "descartar"
+  "knowledge.dismiss": "descartar",
+  "ide.vscode": "VS Code (sandbox)"
 }

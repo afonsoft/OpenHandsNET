@@ -23,6 +23,15 @@
             </button>
         }
         <span class="ide-activity-spacer"></span>
+        @if (_vscodeAvailable)
+        {
+            <button role="tab" aria-pressed="@_useVscode"
+                    title="@L["ide.vscode"]" aria-label="@L["ide.vscode"]"
+                    class="ide-activity-vscode @(_useVscode ? "active" : "")"
+                    @onclick="ToggleVscodeAsync">
+                <Icon Name="code" Size="16" />
+            </button>
+        }
         <button role="tab" aria-pressed="@_zen" title="@L["ide.zen_mode"]"
                 class="@(_zen ? "active" : "")"
                 @onclick="() => _zen = !_zen">
@@ -55,6 +64,16 @@
     </div>
 
     <div class="ide-main">
+        @* SPEC-77 RF-002: VS Code web embutido — surface code-server do
+           sandbox, iframe com preview token. *@
+        @if (_useVscode && _vscodeUrl is { } vurl)
+        {
+            <iframe class="ide-vscode" src="@vurl"
+                    title="@L["ide.vscode"]"
+                    allow="clipboard-read; clipboard-write"></iframe>
+        }
+        else
+        {
         @* Tabs com dirty-dot — SPEC-42 RF-004. *@
         @if (_tabs.Count > 0)
         {
@@ -107,6 +126,7 @@
             <div class="empty-state">
                 @L["ide.empty_hint"]
             </div>
+        }
         }
 
         @* SPEC-42 RF-009: status bar. *@
@@ -175,6 +195,9 @@
     private int _line = 1, _col = 1;
     private int _dirtyCount;
     private bool _zen;
+    private bool _useVscode;
+    private bool _vscodeAvailable;
+    private string? _vscodeUrl;
     private string _branch = "";
     private DotNetObjectReference<IdeTab>? _self;
 
@@ -192,6 +215,32 @@
         _self = DotNetObjectReference.Create(this);
         await RefreshPathsAsync();
         await RefreshBranchAsync();
+        await RefreshVscodeAsync();
+    }
+
+    /// <summary>
+    /// SPEC-77 RF-002: surface vscode do sandbox — o URL já carrega o
+    /// preview token (expira ~15min; re-fetch a cada ativação).
+    /// </summary>
+    private async Task RefreshVscodeAsync()
+    {
+        try
+        {
+            var surfaces = await Api.GetSurfacesAsync(ConvId);
+            _vscodeUrl = surfaces.FirstOrDefault(
+                s => s.Name == "vscode" && s.Url is not null)?.Url;
+            _vscodeAvailable = _vscodeUrl is not null;
+        }
+        catch { _vscodeAvailable = false; _vscodeUrl = null; }
+    }
+
+    private async Task ToggleVscodeAsync()
+    {
+        _useVscode = !_useVscode;
+        if (_useVscode)
+        {
+            await RefreshVscodeAsync();
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

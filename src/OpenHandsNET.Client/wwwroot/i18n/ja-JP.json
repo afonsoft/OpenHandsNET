@@ -163,5 +163,6 @@
   "attention.feed": "通知",
   "chat.worklog.steps": "{{count}} ステップ",
   "chat.subchat_open": "サブ会話を開く",
-  "ide.zen_mode": "禅モード"
+  "ide.zen_mode": "禅モード",
+  "ide.vscode": "VS Code（サンドボックス）"
 }

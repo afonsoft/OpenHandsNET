@@ -448,5 +448,6 @@
   "attention.feed": "Notifications",
   "chat.worklog.steps": "{{count}} steps",
   "chat.subchat_open": "open sub-conversation",
-  "ide.zen_mode": "Zen mode"
+  "ide.zen_mode": "Zen mode",
+  "ide.vscode": "VS Code (sandbox)"
 }
