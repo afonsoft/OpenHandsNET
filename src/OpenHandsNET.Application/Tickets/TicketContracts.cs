@@ -182,21 +182,29 @@ public interface ITicketConnectionService
     Task<TicketConnection?> FindForWebhookAsync(
         TicketKind kind, string? workspaceId, CancellationToken ct);
 
-    /// <summary>Remove.</summary>
-    Task<bool> DeleteAsync(Guid id, CancellationToken ct);
+    /// <summary>
+    /// Remove se pertence à org (false = não encontrada ou fora da
+    /// org — SPEC-79).
+    /// </summary>
+    Task<bool> DeleteAsync(Guid id, Guid orgId, CancellationToken ct);
 
-    /// <summary>Upsert project config.</summary>
-    Task<TicketProjectConfig> SetProjectConfigAsync(
-        Guid connectionId, string projectKey,
+    /// <summary>
+    /// Upsert project config (null = connection fora da org — SPEC-79).
+    /// </summary>
+    Task<TicketProjectConfig?> SetProjectConfigAsync(
+        Guid connectionId, Guid orgId, string projectKey,
         string? repository, string? branch, CancellationToken ct);
 
     /// <summary>Project config por chave.</summary>
     Task<TicketProjectConfig?> GetProjectConfigAsync(
         Guid connectionId, string projectKey, CancellationToken ct);
 
-    /// <summary>Lista project configs da connection.</summary>
-    Task<IReadOnlyList<TicketProjectConfig>> ListProjectConfigsAsync(
-        Guid connectionId, CancellationToken ct);
+    /// <summary>
+    /// Lista project configs da connection (null = connection
+    /// inexistente ou fora da org — SPEC-79).
+    /// </summary>
+    Task<IReadOnlyList<TicketProjectConfig>?> ListProjectConfigsAsync(
+        Guid connectionId, Guid orgId, CancellationToken ct);
 }
 
 /// <summary>
