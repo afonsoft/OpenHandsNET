@@ -1,8 +1,13 @@
-# .specs/ — SPEC SDD do OpenHandsNET
+# .specs/ — SPECs SDD/ADD do OpenHandsNET
 
 SPECs (Spec-Driven Development) do port do ecossistema **OpenHands** para
 **.NET 10 / Blazor WASM**, seguindo o workflow afonsoft (`write-specs` →
 `create-issues` → `execute-specs`) e o template SDD de `afonsoft/open-webui`.
+
+O projeto opera em **AI-Driven Development (ADD)**: as SPECs SDD são o
+artefato-fonte de verdade, escritas *para* agentes e executadas *por*
+agentes — `execute-specs` é o caminho primário, com revisão humana nos
+gates (aprovação de SPEC, merge).
 
 ## Convenção
 

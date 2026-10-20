@@ -120,6 +120,15 @@ public sealed class SandboxService(
                     env.Add($"OHN_SESSION_KEY={sessionKey}");
                     env.Add("OHN_DEFERRED_INIT=false");
                     env.Add("OHN_WORKSPACE=/workspace");
+
+                    // SPEC-77 RF-001: VS Code web (code-server) sobe com o
+                    // container por default — instalador lazy sob demanda.
+                    // Blueprint pode desligar via env SANDBOX_VSCODE=0.
+                    if (!env.Any(e => e.StartsWith("SANDBOX_VSCODE=",
+                            StringComparison.Ordinal)))
+                    {
+                        env.Add("SANDBOX_VSCODE=1");
+                    }
                 }
             }
 

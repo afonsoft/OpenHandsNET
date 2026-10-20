@@ -82,5 +82,6 @@
   dos repos upstream analisados.
 - [reference/openhands-upstream/](reference/openhands-upstream/) — extratos
   das docs oficiais (cloud-api, OpenAPI events, cli).
-- `.specs/` (raiz do repo) — SPECs SDD, fonte primária de verdade.
+- `.specs/` (raiz do repo) — SPECs SDD/ADD, fonte primária de verdade
+  (workflow agent-first: ver "AI-Driven Development" no README).
 - `migration-plan/` — research + roadmap originais.

@@ -158,5 +158,6 @@
   "knowledge.groom": "Groom ausführen",
   "knowledge.empty": "Keine Vorschläge in dieser Warteschlange.",
   "knowledge.approve": "genehmigen",
-  "knowledge.dismiss": "verwerfen"
+  "knowledge.dismiss": "verwerfen",
+  "ide.vscode": "VS Code (Sandbox)"
 }
