@@ -80,3 +80,12 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | 65 | Specs hygiene | `0cd88c5` — arquivo `docs/specs/`, renumbering 68/69, índices | #147 |
 | 66 | Quality gates | `dba6ea0` — `.editorconfig`, lint gate CI, job sonarcloud gated, badges | #148 |
 | 67 | Harness structure | estrutura `.claude/` completa + `docs/architecture/` + CLAUDE.md seções | #149 |
+
+## Entregues em 2026-10-20 (gap-analysis 2026-10-19 layout / Epic #192 + SPEC-78)
+
+| SPEC | Título | Entrega | Issue |
+|---|---|---|---|
+| 75 | Layout shell — mobile drawer, rail, a11y | PR #196 | #193 |
+| 76 | Chat run UX — status pill, git chip, sub-conversas | PRs #196/#197 | #194 |
+| 77 | IDE workbench — VS Code web no sandbox | PR #197 | #195 |
+| 78 | Integration tests — hardening flakes CI | PRs #201/#204 | #199 |

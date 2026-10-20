@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Approved → In implementation |
+| Status | Completed |
 | Gap key | CI-flake-integration-tests |
 | Type | Quality/Testing |
 | Fonte | falhas observadas no run `39352893002` (PR #197) e anteriores |

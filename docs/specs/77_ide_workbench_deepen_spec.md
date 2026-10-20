@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | In implementation |
+| Status | Completed |
 | Gap key | GAP-architecture-ide-workbench |
 | Type | UX/Infra |
 | Fonte | direção do produto (afonsoft) + `SPEC-40` surfaces × `IdeTab` |

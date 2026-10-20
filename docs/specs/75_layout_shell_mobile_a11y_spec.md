@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Draft |
+| Status | Completed |
 | Gap key | GAP-architecture-layout-shell-mobile |
 | Type | UX/Layout |
 | Fonte | Análise comparativa `afonsoft/open-webui` (Open-WebUI+Code) × `src/OpenHandsNET.Client` |
