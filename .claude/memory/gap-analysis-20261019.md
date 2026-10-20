@@ -63,3 +63,38 @@
 ## Test evidence
 
 `dotnet test` @ `ca44522`: **851/851 pass** (Unit 587 · Integration 174 · Client 80 · SandboxAgent 10).
+
+---
+
+# Run 2 (2026-10-19, ~23:30 UTC) — layout parity open-webui
+
+## Trigger
+Pipeline architecture (Phase 5 handoff) + pedido do usuário: analisar
+layout de `afonsoft/open-webui` (Open-WebUI+Code) × OpenHandsNET.Client.
+
+## Sources
+- .specs/ (70–74 sonar), docs/architecture/ (overview, AD-0001, .mmd/.svg,
+  archify json+html — entregues nesta sessão, PR #189), CLAUDE.md, memory.
+
+## Candidatos → vereditos
+- GAP-architecture-layout-shell-mobile **CONFIRMADO** → SPEC-75 → #193
+- GAP-architecture-chat-run-ux **CONFIRMADO** → SPEC-76 → #194
+- GAP-architecture-ide-workbench **CONFIRMADO** → SPEC-77 → #195
+- sidebar folders/pinned/archived — REJEITADO (valor baixo agora)
+- CallOverlay/anexos/voz — REJEITADO (fora de escopo)
+- auth-gate no MainLayout — REJEITADO (auth é server-side/API keys)
+
+## Gate → execução
+Usuário aprovou ("sim. e pode executa-ça") → Epic #192 + slices
+#193-195 + implementação imediata.
+
+- **PR #196** (`feat/spec75-shell-mobile`): SPEC-75 completo — drawer
+  mobile (scrim/Escape/role=dialog), topbar mobile, expand no rodapé da
+  rail, skip-link, AttentionFeed dropdown (+2 testes bUnit) — e SPEC-76
+  parcial (status pill aria-live + git chip→diff tab).
+- Pendente SPEC-76: RunActivityFeed collapse, SubConversationPanel
+  (gated a `parent_id` na API). SPEC-77 inteira pendente (#195).
+
+## PRs abertos ao fim do run
+#189 (docs/architecture), #190 (signature guard test), #191
+(download-artifact SHA), #196 (SPEC-75/76).

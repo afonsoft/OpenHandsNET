@@ -158,5 +158,10 @@
   "knowledge.groom": "run groom",
   "knowledge.empty": "No suggestions in this queue.",
   "knowledge.approve": "approve",
-  "knowledge.dismiss": "dismiss"
+  "knowledge.dismiss": "dismiss",
+  "common.skip_to_content": "跳到主要内容",
+  "attention.feed": "通知",
+  "chat.worklog.steps": "{{count}} 个步骤",
+  "chat.subchat_open": "打开子对话",
+  "ide.zen_mode": "禅模式"
 }

@@ -443,5 +443,10 @@
   "knowledge.groom": "rodar groom",
   "knowledge.empty": "Nenhuma sugestão nesta fila.",
   "knowledge.approve": "aprovar",
-  "knowledge.dismiss": "descartar"
+  "knowledge.dismiss": "descartar",
+  "common.skip_to_content": "Pular para o conteúdo",
+  "attention.feed": "Notificações",
+  "chat.worklog.steps": "{{count}} passos",
+  "chat.subchat_open": "abrir sub-conversa",
+  "ide.zen_mode": "Modo zen"
 }
