@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Draft |
+| Status | Completed |
 | Gap key | GAP-architecture-chat-run-ux |
 | Type | UX/Layout |
 | Fonte | Análise comparativa `afonsoft/open-webui` × `ConversationPage`/`ChatPane` |

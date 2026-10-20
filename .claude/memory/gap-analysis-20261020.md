@@ -45,3 +45,7 @@
 
 - SPEC-66 sonar parte: depende `SONAR_HOST_URL`/`SONAR_TOKEN`+key (#148).
 - SPEC-72/73/74 sonar remediation: approved, issues #154–156 abertas.
+
+### Preferência do usuário (commits)
+- **Remover o trailer `Generated with [Devin](https://devin.ai)`** de
+  todos os commits futuros (instrução direta 2026-10-20).
