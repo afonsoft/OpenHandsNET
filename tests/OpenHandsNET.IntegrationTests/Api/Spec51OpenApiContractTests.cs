@@ -72,6 +72,101 @@ public sealed class Spec51OpenApiContractTests
     }
 
     [Fact]
+    public async Task Path_Template_Params_Are_Declared()
+    {
+        // SPEC-80 RF-001: todo `{param}` do path template precisa de uma
+        // entry em `parameters` (path-level ou op-level) — caso contrário
+        // o documento é inválido e ferramentas (schemathesis) falham
+        // com "Path parameter 'x' is not defined".
+        using var factory = CreateFactory();
+        using var http = factory.CreateClient();
+        var doc = await http.GetFromJsonAsync<JsonObject>(
+            "/openapi/v1.json");
+
+        var missing = new List<string>();
+        foreach (var (path, item) in doc!["paths"]!.AsObject())
+        {
+            var declared = new HashSet<string>(
+                StringComparer.Ordinal);
+            if (item!.AsObject().TryGetPropertyValue(
+                    "parameters", out var pathParams)
+                && pathParams is JsonArray pa)
+            {
+                foreach (var p in pa)
+                {
+                    var n = p?["name"]?.GetValue<string>();
+                    if (n is not null) { declared.Add(n); }
+                }
+            }
+            foreach (var (method, op) in item.AsObject())
+            {
+                if (method == "parameters") { continue; }
+                if (op?["parameters"] is JsonArray oa)
+                {
+                    foreach (var p in oa)
+                    {
+                        var n = p?["name"]?.GetValue<string>();
+                        if (n is not null) { declared.Add(n); }
+                    }
+                }
+            }
+            foreach (var ph in System.Text.RegularExpressions.Regex
+                .Matches(path, "\\{([^}]+)\\}"))
+            {
+                var name = ((System.Text.RegularExpressions.Match)ph)
+                    .Groups[1].Value;
+                if (!declared.Contains(name))
+                {
+                    missing.Add($"{path} → {{{name}}}");
+                }
+            }
+        }
+
+        missing.ShouldBeEmpty(
+            "path params sem declaração: " + string.Join(", ", missing));
+    }
+
+    [Fact]
+    public async Task Security_Schemes_And_401_Documented()
+    {
+        // SPEC-80 RF-002: bearer + cookie schemes, security global, e
+        // 401 documentado em toda operação não-anônima (schemathesis
+        // falhava com "undocumented 401" em massa).
+        using var factory = CreateFactory();
+        using var http = factory.CreateClient();
+        var doc = await http.GetFromJsonAsync<JsonObject>(
+            "/openapi/v1.json");
+
+        var schemes = doc!["components"]!["securitySchemes"]!.AsObject();
+        schemes.ContainsKey("bearer").ShouldBeTrue();
+        schemes.ContainsKey("cookie").ShouldBeTrue();
+        doc["security"].ShouldNotBeNull(
+            "security global ausente");
+
+        var missing401 = new List<string>();
+        foreach (var (path, item) in doc["paths"]!.AsObject())
+        {
+            foreach (var (method, op) in item!.AsObject())
+            {
+                if (method == "parameters") { continue; }
+                // anônimas (security: []) não precisam documentar 401.
+                if (op?["security"] is JsonArray { Count: 0 })
+                {
+                    continue;
+                }
+                if (op?["responses"]?["401"] is null)
+                {
+                    missing401.Add($"{method.ToUpperInvariant()} {path}");
+                }
+            }
+        }
+
+        missing401.ShouldBeEmpty(
+            "ops não-anônimas sem 401: " +
+            string.Join(", ", missing401));
+    }
+
+    [Fact]
     public async Task Contract_Matches_Golden_Snapshot()
     {
         using var factory = CreateFactory();

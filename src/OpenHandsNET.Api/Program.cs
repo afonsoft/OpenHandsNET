@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.OpenApi;
 
 using OpenHandsNET.Api.Endpoints;
 using OpenHandsNET.Api.Hubs;
@@ -119,12 +121,59 @@ builder.Services.AddOpenApi("v1", o =>
         doc.Info.Description =
             "Public REST surface (/api/v1, /api/acp, /v1 OpenAI-compat " +
             "gateway). Auth: cookie session or `Authorization: Bearer sk-*`.";
+        // SPEC-80 RF-002: esquemas de auth documentados + security global.
+        doc.Components ??= new OpenApiComponents();
+        doc.Components.SecuritySchemes ??=
+            new Dictionary<string, IOpenApiSecurityScheme>();
+        doc.Components.SecuritySchemes["bearer"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            Description = "API key `sk-*` (header `Authorization: Bearer`).",
+        };
+        doc.Components.SecuritySchemes["cookie"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.ApiKey,
+            In = ParameterLocation.Cookie,
+            Name = "openhandsnet_auth",
+            Description = "Sessão de browser.",
+        };
+        doc.Security =
+        [
+            new OpenApiSecurityRequirement
+            {
+                [new OpenApiSecuritySchemeReference("bearer", doc)] = [],
+            },
+            new OpenApiSecurityRequirement
+            {
+                [new OpenApiSecuritySchemeReference("cookie", doc)] = [],
+            },
+        ];
         return Task.CompletedTask;
     });
     o.AddOperationTransformer((op, ctx, _) =>
     {
         op.Summary ??= $"{ctx.Description.HttpMethod} " +
             $"/{ctx.Description.RelativePath}";
+        var meta = ctx.Description.ActionDescriptor?.EndpointMetadata;
+        var anonymous = meta?.OfType<IAllowAnonymous>().Any() == true;
+        if (anonymous)
+        {
+            // operações anônimas não herdam o security global.
+            op.Security = [];
+        }
+        else
+        {
+            // SPEC-80 RF-002: default-deny — endpoints sem AllowAnonymous
+            // exigem usuário autenticado (ICurrentUserAccessor lança 401 ou
+            // RequireAuthorization/perm:* aplica policy), então o contrato
+            // documenta 401/403 em toda operação não-anônima.
+            op.Responses ??= new OpenApiResponses();
+            op.Responses.TryAdd("401",
+                new OpenApiResponse { Description = "Unauthorized" });
+            op.Responses.TryAdd("403",
+                new OpenApiResponse { Description = "Forbidden" });
+        }
         return Task.CompletedTask;
     });
 });

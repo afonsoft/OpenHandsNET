@@ -103,10 +103,17 @@ jobs:
       # Contract fuzz: schema-violating requests must not produce 5xx and
       # schema-conforming requests must not be rejected. Fails loudly — this is
       # a nightly, not a PR gate, so a red run pages via issue-on-failure.
+      # SPEC-80: --phases sem `coverage` (4.3.8 crasha: TypeError unhashable
+      # 'list'); --exclude-path no SSE stream-start (não adequado a fuzz);
+      # --exclude-checks unsupported_method (a API responde 404 — não 405 —
+      # para método errado em rota conhecida; decisão registrada na SPEC-80).
       - name: schemathesis run (blocking)
         run: |
           schemathesis run /tmp/openapi.json --url "http://localhost:$PORT" \
             --max-examples 15 --workers 2 --checks all \
+            --phases examples,stateful,fuzzing \
+            --exclude-path /api/v1/app-conversations/stream-start \
+            --exclude-checks unsupported_method \
             --suppress-health-check all --no-color
 
       - name: stop api + upload logs

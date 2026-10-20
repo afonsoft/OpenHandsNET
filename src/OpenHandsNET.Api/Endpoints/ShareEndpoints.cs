@@ -109,7 +109,10 @@ public static class ShareEndpoints
         }).RequireAuthorization();
 
         // Public side — token IS the credential (SPEC-56 RF-001).
-        var shared = app.MapGroup("/api/v1/shared").WithTags("Sharing");
+        // SPEC-80: AllowAnonymous é metadata-only aqui (a rota já era
+        // pública); declara `security: []` no OpenAPI.
+        var shared = app.MapGroup("/api/v1/shared").WithTags("Sharing")
+            .AllowAnonymous();
 
         shared.MapGet("/{token}", async (
             string token, HttpContext http,
