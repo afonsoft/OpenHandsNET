@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Approved |
+| Status | Completed |
 | Gap key | GAP-automation-k8s-e2e-kind-name |
 | Type | Automation/CI |
 | Fonte | runs `k8s-e2e.yaml` falhos 2026-10-18/19/20 — `ERROR: no nodes found for cluster "kind"` |

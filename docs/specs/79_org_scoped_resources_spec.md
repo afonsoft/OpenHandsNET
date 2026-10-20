@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Approved |
+| Status | Completed |
 | Gap key | GAP-security-org-scoped-resources |
 | Type | Security |
 | Fonte | gap-analysis 2026-10-20 — evidência em `ChatOpsEndpoints.cs`, `TicketEndpoints.cs`, `ChatConnectionService.cs`, `PermissionPolicy.cs` |

@@ -89,3 +89,12 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | 76 | Chat run UX — status pill, git chip, sub-conversas | PRs #196/#197 | #194 |
 | 77 | IDE workbench — VS Code web no sandbox | PR #197 | #195 |
 | 78 | Integration tests — hardening flakes CI | PRs #201/#204 | #199 |
+
+## Entregues em 2026-10-20 (gap-analysis 2026-10-20 / Epic #206)
+
+| SPEC | Título | Entrega | Issue |
+|---|---|---|---|
+| 79 | Org-scoped resources — `org_id` escopa queries | PR #212 | #207 |
+| 80 | OpenAPI fuzz fidelity — security/params/401 | PR #215 | #208 |
+| 81 | k8s-e2e — `cluster_name: kind` | PR #213 | #209 |
+| 82 | Spec lifecycle hygiene — arquivo + guard | PR #214 | #210 |

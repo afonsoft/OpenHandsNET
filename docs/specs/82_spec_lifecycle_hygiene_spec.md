@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Approved |
+| Status | Completed |
 | Gap key | GAP-automation-spec-lifecycle |
 | Type | Automation/Docs |
 | Fonte | gap-analysis 2026-10-20 — `.specs/README.md:19` (regra de arquivo) vs AS-IS |

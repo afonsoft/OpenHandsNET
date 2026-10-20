@@ -36,10 +36,6 @@ gates (aprovação de SPEC, merge).
 | `72_sonar_critical_code_smells_spec.md` | SonarCloud — 121 smells BLOCKER/CRITICAL | `Approved` | #154 (Epic #152) |
 | `73_sonar_major_code_smells_spec.md` | SonarCloud — 243 smells MAJOR | `Approved` | #155 (Epic #152) |
 | `74_sonar_minor_code_smells_spec.md` | SonarCloud — 331 smells MINOR/INFO | `Approved` | #156 (Epic #152) |
-| `79_org_scoped_resources_spec.md` | Segurança — org_id escopa queries | `Approved` | #207 (Epic #206) |
-| `80_openapi_fuzz_fidelity_spec.md` | OpenAPI fuzz — nightly schemathesis verde | `Approved` | #208 (Epic #206) |
-| `81_k8s_e2e_kind_cluster_spec.md` | k8s-e2e — nome do cluster kind | `Approved` | #209 (Epic #206) |
-| `82_spec_lifecycle_hygiene_spec.md` | Spec lifecycle — arquivar + fechar slices | `Approved` | #210 (Epic #206) |
 
 ## Arquivo morto — `docs/specs/`
 
