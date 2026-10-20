@@ -111,13 +111,16 @@ public static class ChatOpsEndpoints
         });
 
         conns.MapDelete("/{id:guid}", async (
-            Guid id, IChatConnectionService svc, CancellationToken ct) =>
-            await svc.DeleteAsync(id, ct)
+            Guid org_id, Guid id, IChatConnectionService svc,
+            CancellationToken ct) =>
+            await svc.DeleteAsync(id, org_id, ct)
                 ? Results.NoContent() : Results.NotFound());
 
         conns.MapGet("/{id:guid}/channels", async (
-            Guid id, IChatConnectionService svc, CancellationToken ct) =>
-            Results.Ok(await svc.ListChannelConfigsAsync(id, ct)));
+            Guid org_id, Guid id, IChatConnectionService svc,
+            CancellationToken ct) =>
+            await svc.ListChannelConfigsAsync(id, org_id, ct) is { } list
+                ? Results.Ok(list) : Results.NotFound());
 
         // SPEC-54 RF-004: canal→repo + auto-triage.
         app.MapPost("/api/v1/chat/channels/{connectionId:guid}/config",

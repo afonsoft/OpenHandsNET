@@ -6072,6 +6072,15 @@
         "parameters": [
           {
             "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
             "name": "id",
             "required": true,
             "schema": {
@@ -6094,6 +6103,15 @@
     "/api/v1/orgs/{org_id}/chat-connections/{id}/channels": {
       "get": {
         "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
           {
             "in": "path",
             "name": "id",
@@ -6748,6 +6766,15 @@
         "parameters": [
           {
             "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
             "name": "id",
             "required": true,
             "schema": {
@@ -6772,6 +6799,15 @@
         "parameters": [
           {
             "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
             "name": "id",
             "required": true,
             "schema": {
@@ -6792,6 +6828,15 @@
       },
       "post": {
         "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
           {
             "in": "path",
             "name": "id",

@@ -74,10 +74,11 @@ public sealed class TicketConnectionService(
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
+    public async Task<bool> DeleteAsync(
+        Guid id, Guid orgId, CancellationToken ct)
     {
         var rec = await db.TicketConnections.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(c => c.Id == id, ct);
+            .FirstOrDefaultAsync(c => c.Id == id && c.OrgId == orgId, ct);
         if (rec is null)
         {
             return false;
@@ -91,10 +92,16 @@ public sealed class TicketConnectionService(
     }
 
     /// <inheritdoc />
-    public async Task<TicketProjectConfig> SetProjectConfigAsync(
-        Guid connectionId, string projectKey,
+    public async Task<TicketProjectConfig?> SetProjectConfigAsync(
+        Guid connectionId, Guid orgId, string projectKey,
         string? repository, string? branch, CancellationToken ct)
     {
+        if (!await db.TicketConnections.IgnoreQueryFilters()
+                .AnyAsync(c => c.Id == connectionId && c.OrgId == orgId,
+                    ct))
+        {
+            return null;
+        }
         var rec = await db.TicketProjectConfigs
             .FirstOrDefaultAsync(p => p.ConnectionId == connectionId
                 && p.ProjectKey == projectKey, ct);
@@ -122,9 +129,16 @@ public sealed class TicketConnectionService(
                 && p.ProjectKey == projectKey, ct))?.ToModel();
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<TicketProjectConfig>>
-        ListProjectConfigsAsync(Guid connectionId, CancellationToken ct) =>
-        (await db.TicketProjectConfigs.AsNoTracking()
-            .Where(p => p.ConnectionId == connectionId).ToListAsync(ct))
-            .Select(p => p.ToModel()).ToList();
+    public async Task<IReadOnlyList<TicketProjectConfig>?>
+        ListProjectConfigsAsync(
+            Guid connectionId, Guid orgId, CancellationToken ct)
+    {
+        var owns = await db.TicketConnections.IgnoreQueryFilters()
+            .AnyAsync(c => c.Id == connectionId && c.OrgId == orgId, ct);
+        return owns
+            ? (await db.TicketProjectConfigs.AsNoTracking()
+                .Where(p => p.ConnectionId == connectionId)
+                .ToListAsync(ct)).Select(p => p.ToModel()).ToList()
+            : null;
+    }
 }

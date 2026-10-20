@@ -73,23 +73,25 @@ public static class TicketEndpoints
         });
 
         conns.MapDelete("/{id:guid}", async (
-            Guid id, ITicketConnectionService svc,
+            Guid org_id, Guid id, ITicketConnectionService svc,
             CancellationToken ct) =>
-            await svc.DeleteAsync(id, ct)
+            await svc.DeleteAsync(id, org_id, ct)
                 ? Results.NoContent() : Results.NotFound());
 
         conns.MapGet("/{id:guid}/projects", async (
-            Guid id, ITicketConnectionService svc,
+            Guid org_id, Guid id, ITicketConnectionService svc,
             CancellationToken ct) =>
-            Results.Ok(await svc.ListProjectConfigsAsync(id, ct)));
+            await svc.ListProjectConfigsAsync(id, org_id, ct) is { } list
+                ? Results.Ok(list) : Results.NotFound());
 
         conns.MapPost("/{id:guid}/projects", async (
-            Guid id, TicketProjectConfigRequest body,
+            Guid org_id, Guid id, TicketProjectConfigRequest body,
             ITicketConnectionService svc,
             CancellationToken ct) =>
-            Results.Ok(await svc.SetProjectConfigAsync(
-                id, body.ProjectKey, body.SelectedRepository,
-                body.SelectedBranch, ct)));
+            await svc.SetProjectConfigAsync(
+                id, org_id, body.ProjectKey, body.SelectedRepository,
+                body.SelectedBranch, ct) is { } cfg
+                ? Results.Ok(cfg) : Results.NotFound());
 
         app.MapPost("/api/v1/tickets/connections/{id:guid}/test",
             async (

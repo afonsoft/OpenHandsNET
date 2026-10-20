@@ -68,10 +68,11 @@ public sealed class ChatConnectionService(
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
+    public async Task<bool> DeleteAsync(
+        Guid id, Guid orgId, CancellationToken ct)
     {
         var r = await db.ChatConnections.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(c => c.Id == id, ct);
+            .FirstOrDefaultAsync(c => c.Id == id && c.OrgId == orgId, ct);
         if (r is null)
         {
             return false;
@@ -118,11 +119,19 @@ public sealed class ChatConnectionService(
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<ChatChannelConfig>>
-        ListChannelConfigsAsync(Guid connectionId, CancellationToken ct) =>
-        (await db.ChatChannelConfigs.IgnoreQueryFilters()
-            .Where(c => c.ConnectionId == connectionId).ToListAsync(ct))
-            .OrderBy(c => c.ChannelId).Select(ToConfig).ToList();
+    public async Task<IReadOnlyList<ChatChannelConfig>?>
+        ListChannelConfigsAsync(
+            Guid connectionId, Guid orgId, CancellationToken ct)
+    {
+        var owns = await db.ChatConnections.IgnoreQueryFilters()
+            .AnyAsync(c => c.Id == connectionId && c.OrgId == orgId, ct);
+        return owns
+            ? (await db.ChatChannelConfigs.IgnoreQueryFilters()
+                .Where(c => c.ConnectionId == connectionId)
+                .ToListAsync(ct))
+                .OrderBy(c => c.ChannelId).Select(ToConfig).ToList()
+            : null;
+    }
 
     internal static ChatConnection ToModel(ChatConnectionRecord r) =>
         new(r.Id, r.OrgId, ChatKindExtensions.Parse(r.Kind) ?? ChatKind.Slack,

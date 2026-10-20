@@ -147,8 +147,11 @@ public interface IChatConnectionService
     Task<ChatConnection?> FindByTeamAsync(
         string teamId, CancellationToken ct);
 
-    /// <summary>Remove (false = não encontrada).</summary>
-    Task<bool> DeleteAsync(Guid id, CancellationToken ct);
+    /// <summary>
+    /// Remove se a connection pertence à org (false = não encontrada
+    /// ou fora da org — SPEC-79).
+    /// </summary>
+    Task<bool> DeleteAsync(Guid id, Guid orgId, CancellationToken ct);
 
     /// <summary>Upsert do canal→repo/autotriage (RF-004/RF-005).</summary>
     Task<ChatChannelConfig> SetChannelConfigAsync(
@@ -160,9 +163,12 @@ public interface IChatConnectionService
     Task<ChatChannelConfig?> GetChannelConfigAsync(
         Guid connectionId, string channelId, CancellationToken ct);
 
-    /// <summary>Configs de uma connection.</summary>
-    Task<IReadOnlyList<ChatChannelConfig>> ListChannelConfigsAsync(
-        Guid connectionId, CancellationToken ct);
+    /// <summary>
+    /// Configs de uma connection (null = connection inexistente ou
+    /// fora da org — SPEC-79).
+    /// </summary>
+    Task<IReadOnlyList<ChatChannelConfig>?> ListChannelConfigsAsync(
+        Guid connectionId, Guid orgId, CancellationToken ct);
 }
 
 /// <summary>
