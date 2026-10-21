@@ -67,3 +67,18 @@
 - Descoberta incidental: `KubernetesSandboxEngine` resolve eager no
   startup e exige kubeconfig válido — testes com provider=kubernetes
   precisam de `Sandbox:Kubernetes:KubeconfigPath` apontando arquivo.
+
+## Closeout final nightly (2026-10-20)
+
+- Nightly 39480716981 + 39484741372: falha residual — `1 failed` a nível
+  de operação com `3867/3867 passed` e `No issues found`.
+- Root cause encontrado reproduzindo local (schemathesis 4.3.8):
+  `POST /api/v1/sandboxes` provisiona infra real (pull+create) > 10s
+  request timeout → **network error** (não é check falho) → exit 1.
+- `--exclude-by` não casa method+path (DSL navega o objeto da operação;
+  `method`/`path` não são campos dele). Sem operationId no spec.
+- Fix PR #223: `jq 'del(.paths["/api/v1/sandboxes"].post)'` no spec
+  baixado — cirúrgico (GET /sandboxes segue fuzzado). Local: 262/262
+  ops, 3860 casos, exit 0. Nightly 39524733941 disparado p/ confirmar.
+- Lição: exit code ≠ checks — schemathesis conta erros de rede como
+  falha de operação mesmo com 0 issues.
