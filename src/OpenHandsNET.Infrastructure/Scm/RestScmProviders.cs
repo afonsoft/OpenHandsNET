@@ -392,9 +392,12 @@ public sealed class BitbucketScmProvider(
             $"/repositories/{repository}/commit/{sha}/statuses/build",
             new
             {
-                state = state == "failure" ? "FAILED"
-                    : state == "success" ? "SUCCESSFUL"
-                    : "INPROGRESS",
+                state = state switch
+                {
+                    "failure" => "FAILED",
+                    "success" => "SUCCESSFUL",
+                    _ => "INPROGRESS",
+                },
                 key = context,
                 url = targetUrl,
                 description,
@@ -564,8 +567,12 @@ public sealed class AzureDevOpsScmProvider(
             $"?{ApiVersion}",
             new
             {
-                state = state == "failure" ? "failed"
-                    : state == "success" ? "succeeded" : "pending",
+                state = state switch
+                {
+                    "failure" => "failed",
+                    "success" => "succeeded",
+                    _ => "pending",
+                },
                 context = new { name = context, genre = "openhandsnet" },
                 targetUrl,
                 description,

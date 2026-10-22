@@ -15,6 +15,7 @@ namespace OpenHandsNET.Infrastructure.Skills;
 /// </summary>
 public sealed partial class SkillService(AppDbContext db) : ISkillService
 {
+    private const string Builtin = "builtin";
     private const int MaxNameLength = 128;
     private const int MaxDescriptionLength = 1024;
     private const int MaxContentBytes = 32 * 1024;
@@ -81,7 +82,7 @@ public sealed partial class SkillService(AppDbContext db) : ISkillService
     {
         var r = await db.Skills.FindAsync([id], ct);
         if (r is null || !Visible(r, ownerId, null) ||
-            r.Source == "builtin")
+            r.Source == Builtin)
         {
             return null;
         }
@@ -120,7 +121,7 @@ public sealed partial class SkillService(AppDbContext db) : ISkillService
     public async Task<bool> DeleteAsync(Guid id, string? ownerId, CancellationToken ct)
     {
         var r = await db.Skills.FindAsync([id], ct);
-        if (r is null || r.Source == "builtin" ||
+        if (r is null || r.Source == Builtin ||
             (r.OwnerId is not null && r.OwnerId != ownerId))
         {
             return false;
@@ -191,14 +192,14 @@ public sealed partial class SkillService(AppDbContext db) : ISkillService
     }
 
     private static bool Visible(SkillRecord r, string? ownerId, string? orgId) =>
-        r.Source == "builtin" ||
+        r.Source == Builtin ||
         (r.OwnerId is null && r.OrgId is null) ||
         (r.OwnerId is not null && r.OwnerId == ownerId) ||
         (r.OrgId is not null && r.OrgId == orgId);
 
     private static int SourceOrder(string? source) => source switch
     {
-        "builtin" => 0,
+        Builtin => 0,
         "org" => 1,
         _ => 2,
     };
@@ -248,7 +249,7 @@ public sealed partial class SkillService(AppDbContext db) : ISkillService
         Triggers = ParseTriggers(r.TriggersJson),
         Source = r.Source switch
         {
-            "builtin" => SkillSource.Builtin,
+            Builtin => SkillSource.Builtin,
             "org" => SkillSource.Org,
             _ => SkillSource.User,
         },

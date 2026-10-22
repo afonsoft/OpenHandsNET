@@ -2,6 +2,8 @@ using OpenHandsNET.Cli.Commands;
 
 using Spectre.Console.Cli;
 
+const string StatusCommandName = "status";
+
 var app = new CommandApp();
 app.Configure(config =>
 {
@@ -49,24 +51,24 @@ app.Configure(config =>
     config.AddBranch("conversations", b =>
     {
         b.AddCommand<ConversationsListCommand>("list");
-        b.AddCommand<ConversationsStatusCommand>("status");
+        b.AddCommand<ConversationsStatusCommand>(StatusCommandName);
         b.AddCommand<ConversationsDeleteCommand>("delete");
         b.AddCommand<ResumeCommand>("resume");
     });
     config.AddBranch("scm", b =>
     {
-        b.AddCommand<ScmStatusCommand>("status");
+        b.AddCommand<ScmStatusCommand>(StatusCommandName);
         b.AddCommand<ScmConnectCommand>("connect");
         b.AddBranch("pr", pb => pb.AddCommand<ScmPrCreateCommand>("create"));
     });
     config.AddBranch("chat", b =>
     {
-        b.AddCommand<ChatStatusCommand>("status");
+        b.AddCommand<ChatStatusCommand>(StatusCommandName);
         b.AddCommand<ChatTestCommand>("test");
     });
     config.AddBranch("tickets", b =>
     {
-        b.AddCommand<TicketsStatusCommand>("status");
+        b.AddCommand<TicketsStatusCommand>(StatusCommandName);
         b.AddCommand<TicketsTestCommand>("test");
         b.AddCommand<TicketsRunCommand>("run");
     });

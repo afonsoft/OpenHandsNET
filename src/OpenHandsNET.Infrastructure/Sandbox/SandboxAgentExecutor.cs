@@ -50,7 +50,7 @@ public sealed class SandboxAgentExecutor(
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<ExecChunk> ExecStreamingAsync(
+    public async IAsyncEnumerable<IExecChunk> ExecStreamingAsync(
         DomainSandbox sandbox, string command, TimeSpan timeout,
         [System.Runtime.CompilerServices.EnumeratorCancellation]
         CancellationToken ct)
@@ -305,9 +305,12 @@ public sealed class SandboxAgentExecutor(
     {
         const string ws = "/workspace";
         var p = path.Replace('\\', '/');
-        return p.StartsWith(ws + "/", StringComparison.Ordinal)
-            ? p[(ws.Length + 1)..]
-            : p == ws ? "" : p.TrimStart('/');
+        if (p.StartsWith(ws + "/", StringComparison.Ordinal))
+        {
+            return p[(ws.Length + 1)..];
+        }
+
+        return p == ws ? "" : p.TrimStart('/');
     }
 
     /// <summary>Sessão bash persistente via <c>session_id</c> do /exec.</summary>
@@ -343,7 +346,7 @@ public sealed class SandboxAgentTransport(
     /// <c>POST /exec/stream</c> (SPEC-24 RF-002): SSE <c>{channel,text}</c>
     /// por chunk + <c>{type:"exit",…}</c> terminal.
     /// </summary>
-    public async IAsyncEnumerable<ExecChunk> ExecStreamAsync(
+    public async IAsyncEnumerable<IExecChunk> ExecStreamAsync(
         string command, TimeSpan timeout,
         [System.Runtime.CompilerServices.EnumeratorCancellation]
         CancellationToken ct,

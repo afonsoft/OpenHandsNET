@@ -245,7 +245,7 @@ public sealed class RunnerFallbackTests
         public Task<ModelInfo> GetModelInfoAsync(CancellationToken ct) =>
             Task.FromResult(new ModelInfo(ModelId, "mock"));
 
-        public async IAsyncEnumerable<LlmStreamChunk> ChatStreamAsync(
+        public async IAsyncEnumerable<ILlmStreamChunk> ChatStreamAsync(
             IReadOnlyList<LlmMessage> messages,
             IReadOnlyList<ToolSchema> tools, LlmOptions options,
             [System.Runtime.CompilerServices.EnumeratorCancellation]

@@ -58,14 +58,15 @@ public sealed class SessionInsightService : ISessionInsightService
 
         bool hasError = false;
 
-        foreach (var ev in events)
+        var flagged = events.Where(ev =>
+            ev.Payload.Contains("error", StringComparison.OrdinalIgnoreCase) ||
+            ev.Payload.Contains("fail", StringComparison.OrdinalIgnoreCase));
+        hasError = flagged.Any();
+        foreach (var ev in flagged)
         {
-            if (ev.Payload.Contains("error", StringComparison.OrdinalIgnoreCase) ||
-                ev.Payload.Contains("fail", StringComparison.OrdinalIgnoreCase))
-            {
-                hasError = true;
-                issues.Add(new SessionIssue("command_error", "medium", SecretRedactor.Redact(ev.Payload[..Math.Min(120, ev.Payload.Length)])));
-            }
+            issues.Add(new SessionIssue("command_error", "medium",
+                SecretRedactor.Redact(
+                    ev.Payload[..Math.Min(120, ev.Payload.Length)])));
         }
 
         string outcome = conv.ExecutionStatus switch
@@ -170,17 +171,18 @@ public sealed class SessionInsightService : ISessionInsightService
         double rate = total > 0 ? (double)(success + partial) / total : 1.0;
 
         var topIssues = new Dictionary<string, int>();
-        foreach (var r in all)
+        foreach (var issuesJson in all
+            .Where(r => !string.IsNullOrEmpty(r.IssuesJson))
+            .Select(r => r.IssuesJson!))
         {
-            if (string.IsNullOrEmpty(r.IssuesJson)) continue;
             try
             {
-                var issues = JsonSerializer.Deserialize<List<SessionIssue>>(r.IssuesJson);
+                var issues = JsonSerializer.Deserialize<List<SessionIssue>>(issuesJson);
                 if (issues != null)
                 {
-                    foreach (var i in issues)
+                    foreach (var kind in issues.Select(i => i.Kind))
                     {
-                        topIssues[i.Kind] = topIssues.GetValueOrDefault(i.Kind) + 1;
+                        topIssues[kind] = topIssues.GetValueOrDefault(kind) + 1;
                     }
                 }
             }

@@ -10,6 +10,7 @@ namespace OpenHandsNET.Api.Endpoints;
 /// <summary>Organization + membership + invitation + quota endpoints (SPEC-08 RF-005/006/007/010).</summary>
 public static class OrgEndpoints
 {
+    private const string PermEditOrgSettings = "perm:edit_org_settings";
     /// <summary>Map <c>/api/v1/organizations</c> endpoints.</summary>
     public static IEndpointRouteBuilder MapOrgEndpoints(this IEndpointRouteBuilder app)
     {
@@ -55,7 +56,7 @@ public static class OrgEndpoints
                 return Results.Unauthorized();
             var org = await orgs.UpdateAsync(user, org_id, req.Name, ct);
             return org is null ? Results.NotFound() : Results.Ok(org);
-        }).RequireAuthorization("perm:edit_org_settings");
+        }).RequireAuthorization(PermEditOrgSettings);
 
         g.MapDelete("/{org_id:guid}", async (
             Guid org_id, ICurrentUserAccessor current, IOrgService orgs,
@@ -161,7 +162,7 @@ public static class OrgEndpoints
                 return Results.Unauthorized();
             return await orgs.UpdateSettingsAsync(user, org_id, settings, ct)
                 ? Results.NoContent() : Results.NotFound();
-        }).RequireAuthorization("perm:edit_org_settings");
+        }).RequireAuthorization(PermEditOrgSettings);
 
         // SPEC-30 RF-004: org memory — leitura p/ membros, delete p/ admins.
         g.MapGet("/{org_id:guid}/memory", async (
@@ -196,7 +197,7 @@ public static class OrgEndpoints
             return await memory.ForgetOrgAsync(
                 org_id, key, user.UserId.ToString(), ct)
                 ? Results.NoContent() : Results.NotFound();
-        }).RequireAuthorization("perm:edit_org_settings");
+        }).RequireAuthorization(PermEditOrgSettings);
 
         // SPEC-48 RF-003: security policy por org — GET membros admin+
         // (view_org_settings), PUT edit_org_settings + audit diff.
@@ -261,7 +262,7 @@ public static class OrgEndpoints
                     .ToLowerInvariant(),
                 resume_strict = saved.ResumeStrict,
             });
-        }).RequireAuthorization("perm:edit_org_settings");
+        }).RequireAuthorization(PermEditOrgSettings);
 
         // Quota — manage_org_quota is instance-level (super-role only).
         g.MapGet("/{org_id:guid}/quota", async (

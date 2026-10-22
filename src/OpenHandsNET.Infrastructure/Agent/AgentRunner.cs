@@ -28,6 +28,8 @@ public sealed class AgentRunner(
     IServiceProvider services,
     ILogger<AgentRunner> logger) : IAgentRunner
 {
+    private const string Paused = "paused";
+    private const string Error = "error";
     private readonly Channel<MessageEvent> _incoming =
         Channel.CreateUnbounded<MessageEvent>();
     private readonly Dictionary<string, TaskCompletionSource<bool>> _confirms = new();
@@ -148,10 +150,10 @@ public sealed class AgentRunner(
         {
             // SPEC-24 RF-006: pausa/interrupção também fecha com summary.
             await activity.SummaryAsync(events, conversationId,
-                _pauseRequested ? "paused" : "interrupted", null,
+                _pauseRequested ? Paused : "interrupted", null,
                 CancellationToken.None);
             await SetStatusAsync(events, db, conv,
-                _pauseRequested ? "paused" : "idle",
+                _pauseRequested ? Paused : "idle",
                 _pauseRequested
                     ? ConversationExecutionStatus.Paused
                     : ConversationExecutionStatus.Running,
@@ -161,7 +163,7 @@ public sealed class AgentRunner(
             if (_pauseRequested)
             {
                 await AutoCheckpointAsync(services, sandbox,
-                    conversationId, "paused",
+                    conversationId, Paused,
                     CancellationToken.None);
             }
         }
@@ -270,11 +272,11 @@ public sealed class AgentRunner(
                 await events.AppendAsync(conversationId,
                     new AgentDiagnosticEvent
                     {
-                        Severity = "error",
+                        Severity = Error,
                         Code = rejection[..sep],
                         Message = rejection[(sep + 2)..],
                     }, CancellationToken.None);
-                await SetStatusAsync(events, db, conv, "error",
+                await SetStatusAsync(events, db, conv, Error,
                     ConversationExecutionStatus.Error, CancellationToken.None);
                 return;
             }
@@ -322,10 +324,23 @@ public sealed class AgentRunner(
 
             // SPEC-22: compaction — forced (manual/overflow/stop_length) ou
             // threshold avaliado pelo condenser. Modelo pode promover antes.
-            CompactionTrigger? forced = _compactRequested
-                ? CompactionTrigger.Manual
-                : overflowPending ? CompactionTrigger.Overflow
-                : stopLengthPending ? CompactionTrigger.StopLength : null;
+            CompactionTrigger? forced;
+            if (_compactRequested)
+            {
+                forced = CompactionTrigger.Manual;
+            }
+            else if (overflowPending)
+            {
+                forced = CompactionTrigger.Overflow;
+            }
+            else if (stopLengthPending)
+            {
+                forced = CompactionTrigger.StopLength;
+            }
+            else
+            {
+                forced = null;
+            }
             var pendingInstructions = _compactInstructions;
             _compactRequested = false;
             _compactInstructions = null;
@@ -402,7 +417,6 @@ public sealed class AgentRunner(
             var reasoning = new System.Text.StringBuilder();
             var calls = new SortedDictionary<int, (string id, string name,
                 System.Text.StringBuilder args)>();
-            string? finishReason = null;
             var responseId = "";
             // SPEC-34 RF-001: um item_id por iteração — deltas efêmeros e o
             // evento durável que os substitui compartilham o slot.
@@ -468,7 +482,6 @@ public sealed class AgentRunner(
                             calls[tcd.Index] = cur;
                             break;
                         case CompletionEnd end:
-                            finishReason = end.FinishReason;
                             responseId = end.ResponseId;
                             // SPEC-22 RF-001: calibração online do meter.
                             contextMeter.ObserveUsage(end.Usage.PromptTokens,
@@ -569,11 +582,11 @@ public sealed class AgentRunner(
                     Error = SecretRedactor.Redact(cex.Message),
                 }, CancellationToken.None);
                 await activity.DiagnosticAsync(events, conversationId,
-                    "error", "context_overflow",
+                    Error, "context_overflow",
                     SecretRedactor.Redact(cex.Message), CancellationToken.None);
                 await activity.SummaryAsync(events, conversationId,
-                    "error", "context overflow", CancellationToken.None);
-                await SetStatusAsync(events, db, conv, "error",
+                    Error, "context overflow", CancellationToken.None);
+                await SetStatusAsync(events, db, conv, Error,
                     ConversationExecutionStatus.Error, CancellationToken.None);
                 return;
             }
@@ -605,7 +618,7 @@ public sealed class AgentRunner(
                         ToolCallId = "",
                         Error = SecretRedactor.Redact(lce.Message),
                     }, CancellationToken.None);
-                    await SetStatusAsync(events, db, conv, "error",
+                    await SetStatusAsync(events, db, conv, Error,
                         ConversationExecutionStatus.Error,
                         CancellationToken.None);
                     return;
@@ -622,7 +635,7 @@ public sealed class AgentRunner(
                         Error = SecretRedactor.Redact(
                             $"route budget exceeded: {lce.Message}"),
                     }, CancellationToken.None);
-                    await SetStatusAsync(events, db, conv, "error",
+                    await SetStatusAsync(events, db, conv, Error,
                         ConversationExecutionStatus.Error,
                         CancellationToken.None);
                     return;
@@ -639,7 +652,7 @@ public sealed class AgentRunner(
                         ToolCallId = "",
                         Error = SecretRedactor.Redact(lce.Message),
                     }, CancellationToken.None);
-                    await SetStatusAsync(events, db, conv, "error",
+                    await SetStatusAsync(events, db, conv, Error,
                         ConversationExecutionStatus.Error,
                         CancellationToken.None);
                     return;
@@ -666,9 +679,9 @@ public sealed class AgentRunner(
                     Error = SecretRedactor.Redact(ex.Message),
                 }, CancellationToken.None);
                 await activity.SummaryAsync(events, conversationId,
-                    "error", SecretRedactor.Redact(ex.Message),
+                    Error, SecretRedactor.Redact(ex.Message),
                     CancellationToken.None);
-                await SetStatusAsync(events, db, conv, "error",
+                await SetStatusAsync(events, db, conv, Error,
                     ConversationExecutionStatus.Error, CancellationToken.None);
                 return;
             }
@@ -1155,7 +1168,7 @@ public sealed class AgentRunner(
         // SPEC-28 RF-004: interrupt/pause propaga p/ subagentes ativos.
         services.GetService<ISubagentHost>()?.AbortAll(conversationId);
         await SetStatusAsync(events, db, conv,
-            _pauseRequested ? "paused" : "idle",
+            _pauseRequested ? Paused : "idle",
             _pauseRequested
                 ? ConversationExecutionStatus.Paused
                 : ConversationExecutionStatus.Running,
@@ -1198,7 +1211,7 @@ public sealed class AgentRunner(
             await events.AppendAsync(conversationId, new InterruptEvent(),
                 CancellationToken.None);
             await SetStatusAsync(events, db, conv,
-                _pauseRequested ? "paused" : "idle",
+                _pauseRequested ? Paused : "idle",
                 _pauseRequested
                     ? ConversationExecutionStatus.Paused
                     : ConversationExecutionStatus.Running,
@@ -1227,7 +1240,7 @@ public sealed class AgentRunner(
             await events.AppendAsync(conversationId, new InterruptEvent(),
                 CancellationToken.None);
             await SetStatusAsync(events, db, conv,
-                _pauseRequested ? "paused" : "idle",
+                _pauseRequested ? Paused : "idle",
                 _pauseRequested
                     ? ConversationExecutionStatus.Paused
                     : ConversationExecutionStatus.Running,
@@ -1366,7 +1379,7 @@ public sealed class AgentRunner(
             "waiting_for_question" =>
                 attentionKind ?? Application.Conversations
                     .AttentionKinds.Question,
-            "error" or "stuck" =>
+            Error or "stuck" =>
                 Application.Conversations.AttentionKinds.Failed,
             _ => null,
         };
@@ -1519,11 +1532,11 @@ public sealed class AgentRunner(
                 await events.AppendAsync(conversationId,
                     new AgentDiagnosticEvent
                     {
-                        Severity = "error",
+                        Severity = Error,
                         Code = "resume_drift",
                         Message = msg,
                     }, CancellationToken.None);
-                await SetStatusAsync(events, db, conv, "error",
+                await SetStatusAsync(events, db, conv, Error,
                     ConversationExecutionStatus.Error, CancellationToken.None);
                 return false;
             }

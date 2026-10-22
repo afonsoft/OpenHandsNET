@@ -27,6 +27,7 @@ public sealed class McpOAuthService(
     IOptions<McpOptions> options,
     ILogger<McpOAuthService> logger) : IMcpOAuthService
 {
+    private const string Local = "local";
     private const string TokenScope = "mcp-oauth";
     private const string StateScope = "mcp-oauth-state";
     private static readonly TimeSpan StateTtl = TimeSpan.FromMinutes(10);
@@ -83,15 +84,15 @@ public sealed class McpOAuthService(
         string code, string state, Uri callbackUri, CancellationToken ct = default)
     {
         var pending = await LoadSecretAsync<PendingState>(
-            StateScope, "local", state, ct)
+            StateScope, Local, state, ct)
             ?? throw new InvalidOperationException("oauth state inválido/expirado");
-        await DeleteSecretAsync(StateScope, "local", state, ct);
+        await DeleteSecretAsync(StateScope, Local, state, ct);
         if (DateTimeOffset.UtcNow.UtcTicks > pending.ExpiresAtTicks)
         {
             throw new InvalidOperationException("oauth state expirado");
         }
 
-        var cfg = await settings.GetAsync("local", pending.Server, ct)
+        var cfg = await settings.GetAsync(Local, pending.Server, ct)
             ?? throw new InvalidOperationException(
                 $"mcp server '{pending.Server}' removido");
         if (cfg.OAuthTokenUrl is null || cfg.OAuthClientId is null)
@@ -112,7 +113,7 @@ public sealed class McpOAuthService(
             }), ct);
         resp.EnsureSuccessStatusCode();
         var token = await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
-        await StoreTokenAsync("local", pending.Server, token, ct);
+        await StoreTokenAsync(Local, pending.Server, token, ct);
         return pending.Server;
     }
 

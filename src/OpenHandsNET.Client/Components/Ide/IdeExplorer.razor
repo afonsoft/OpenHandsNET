@@ -129,9 +129,21 @@
                         ? ss.GetString() ?? "M" : "M";
                     if (p is not null)
                     {
-                        _git[$"/workspace/repo/{p}"] =
-                            st.Contains('D') ? "D"
-                            : st.Contains('A') || st.Contains('?') ? "A" : "M";
+                        string letter;
+                        if (st.Contains('D'))
+                        {
+                            letter = "D";
+                        }
+                        else if (st.Contains('A') || st.Contains('?'))
+                        {
+                            letter = "A";
+                        }
+                        else
+                        {
+                            letter = "M";
+                        }
+
+                        _git[$"/workspace/repo/{p}"] = letter;
                     }
                 }
             }

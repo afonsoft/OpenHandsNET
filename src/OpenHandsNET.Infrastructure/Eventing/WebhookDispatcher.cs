@@ -47,7 +47,7 @@ public sealed class WebhookDispatcher(
     private async Task SendWithRetryAsync(string endpoint, string payload, string eventId, CancellationToken ct)
     {
         var client = httpClientFactory.CreateClient("webhooks");
-        for (var attempt = 0; ; attempt++)
+        for (var attempt = 0; attempt <= Backoff.Length; attempt++)
         {
             try
             {

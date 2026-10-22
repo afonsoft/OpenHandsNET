@@ -50,7 +50,14 @@ public static class McpToolCatalog
         new(FullName(d.ServerName, d.ToolName),
             Truncate(d.Description), d.InputSchema);
 
-    private static string Truncate(string? s) =>
-        s is null ? "" :
-        s.Length <= MaxDescriptionLength ? s : s[..MaxDescriptionLength];
+    private static string Truncate(string? s)
+    {
+        if (s is null)
+        {
+            return "";
+        }
+
+        return s.Length <= MaxDescriptionLength
+            ? s : s[..MaxDescriptionLength];
+    }
 }

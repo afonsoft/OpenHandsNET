@@ -17,6 +17,14 @@ namespace OpenHandsNET.Api.Endpoints;
 /// </summary>
 public static class ScimEndpoints
 {
+    private const string Schemas = "schemas";
+    private const string TotalResults = "totalResults";
+    private const string Resources = "Resources";
+    private const string Unauthorized = "unauthorized";
+    private const string Active = "active";
+    private const string DisplayName = "displayName";
+    private const string PermEditOrgSettings = "perm:edit_org_settings";
+    private const string Value = "value";
     private const string ScimJson = "application/scim+json";
     private const string ErrorSchema =
         "urn:ietf:params:scim:api:messages:2.0:Error";
@@ -29,7 +37,7 @@ public static class ScimEndpoints
         // ---------- discovery (estático) ----------
         scim.MapGet("/ServiceProviderConfig", () => ScimOk(new JsonObject
         {
-            ["schemas"] = new JsonArray(
+            [Schemas] = new JsonArray(
                 "urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig"),
             ["patch"] = new JsonObject { ["supported"] = true },
             ["bulk"] = new JsonObject { ["supported"] = false },
@@ -47,15 +55,15 @@ public static class ScimEndpoints
         }));
         scim.MapGet("/ResourceTypes", () => ScimOk(new JsonObject
         {
-            ["totalResults"] = 2,
-            ["Resources"] = new JsonArray(
+            [TotalResults] = 2,
+            [Resources] = new JsonArray(
                 ResourceType("User", "/scim/v2/Users"),
                 ResourceType("Group", "/scim/v2/Groups")),
         }));
         scim.MapGet("/Schemas", () => ScimOk(new JsonObject
         {
-            ["totalResults"] = 2,
-            ["Resources"] = new JsonArray(
+            [TotalResults] = 2,
+            [Resources] = new JsonArray(
                 "urn:ietf:params:scim:schemas:core:2.0:User",
                 "urn:ietf:params:scim:schemas:core:2.0:Group"),
         }));
@@ -67,7 +75,7 @@ public static class ScimEndpoints
         {
             var orgId = await ResolveOrg(ctx, tokens, ct);
             if (orgId is null)
-                return ScimError(401, "unauthorized");
+                return ScimError(401, Unauthorized);
             var userName = ParseUserNameFilter(filter);
             if (filter is not null && userName is null)
                 return ScimError(400, "invalidFilter", "invalidFilter");
@@ -80,10 +88,10 @@ public static class ScimEndpoints
             var users = await q.Take(200).ToListAsync(ct);
             return ScimOk(new JsonObject
             {
-                ["schemas"] = new JsonArray(
+                [Schemas] = new JsonArray(
                     "urn:ietf:params:scim:api:messages:2.0:ListResponse"),
-                ["totalResults"] = users.Count,
-                ["Resources"] = new JsonArray(
+                [TotalResults] = users.Count,
+                [Resources] = new JsonArray(
                     users.Select(x => ToScimUser(x.u, x.m)).ToArray()),
             });
         }).DisableAntiforgery();
@@ -94,7 +102,7 @@ public static class ScimEndpoints
         {
             var orgId = await ResolveOrg(ctx, tokens, ct);
             if (orgId is null)
-                return ScimError(401, "unauthorized");
+                return ScimError(401, Unauthorized);
             var row = await db.Users.AsNoTracking()
                 .Join(db.OrgMembers.AsNoTracking(),
                     u => u.Id, m => m.UserId, (u, m) => new { u, m })
@@ -111,13 +119,13 @@ public static class ScimEndpoints
         {
             var orgId = await ResolveOrg(ctx, tokens, ct);
             if (orgId is null)
-                return ScimError(401, "unauthorized");
+                return ScimError(401, Unauthorized);
             var body = await JsonNode.ParseAsync(ctx.Request.Body, cancellationToken: ct);
             var userName = body?["userName"]?.GetValue<string>();
             if (string.IsNullOrWhiteSpace(userName))
                 return ScimError(400, "userName required", "invalidValue");
-            var active = body?["active"]?.GetValue<bool>() ?? true;
-            var displayName = body?["displayName"]?.GetValue<string>();
+            var active = body?[Active]?.GetValue<bool>() ?? true;
+            var displayName = body?[DisplayName]?.GetValue<string>();
 
             var existing = await db.Users.FirstOrDefaultAsync(
                 u => u.Email == userName, ct);
@@ -172,7 +180,7 @@ public static class ScimEndpoints
         {
             var orgId = await ResolveOrg(ctx, tokens, ct);
             if (orgId is null)
-                return ScimError(401, "unauthorized");
+                return ScimError(401, Unauthorized);
             var user = await db.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
             if (user is null || !await db.OrgMembers.AnyAsync(
                     m => m.OrgId == orgId && m.UserId == id, ct))
@@ -206,7 +214,7 @@ public static class ScimEndpoints
         {
             var orgId = await ResolveOrg(ctx, tokens, ct);
             if (orgId is null)
-                return ScimError(401, "unauthorized");
+                return ScimError(401, Unauthorized);
             var user = await db.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
             if (user is null || !await db.OrgMembers.AnyAsync(
                     m => m.OrgId == orgId && m.UserId == id, ct))
@@ -226,7 +234,7 @@ public static class ScimEndpoints
         {
             var orgId = await ResolveOrg(ctx, tokens, ct);
             if (orgId is null)
-                return ScimError(401, "unauthorized");
+                return ScimError(401, Unauthorized);
             var groups = await db.IdpGroupMappings.AsNoTracking()
                 .Where(m => m.OrgId == orgId).ToListAsync(ct);
             var arr = new JsonArray();
@@ -234,10 +242,10 @@ public static class ScimEndpoints
                 arr.Add(await ToScimGroupAsync(db, g, ct));
             return ScimOk(new JsonObject
             {
-                ["schemas"] = new JsonArray(
+                [Schemas] = new JsonArray(
                     "urn:ietf:params:scim:api:messages:2.0:ListResponse"),
-                ["totalResults"] = groups.Count,
-                ["Resources"] = arr,
+                [TotalResults] = groups.Count,
+                [Resources] = arr,
             });
         });
 
@@ -247,9 +255,9 @@ public static class ScimEndpoints
         {
             var orgId = await ResolveOrg(ctx, tokens, ct);
             if (orgId is null)
-                return ScimError(401, "unauthorized");
+                return ScimError(401, Unauthorized);
             var body = await JsonNode.ParseAsync(ctx.Request.Body, cancellationToken: ct);
-            var displayName = body?["displayName"]?.GetValue<string>();
+            var displayName = body?[DisplayName]?.GetValue<string>();
             if (string.IsNullOrWhiteSpace(displayName))
                 return ScimError(400, "displayName required", "invalidValue");
             if (await db.IdpGroupMappings.AnyAsync(
@@ -279,13 +287,13 @@ public static class ScimEndpoints
         {
             var orgId = await ResolveOrg(ctx, tokens, ct);
             if (orgId is null)
-                return ScimError(401, "unauthorized");
+                return ScimError(401, Unauthorized);
             var rec = await db.IdpGroupMappings.FirstOrDefaultAsync(
                 m => m.Id == id && m.OrgId == orgId, ct);
             if (rec is null)
                 return ScimError(404, $"group {id} not found");
             var body = await JsonNode.ParseAsync(ctx.Request.Body, cancellationToken: ct);
-            var displayName = body?["displayName"]?.GetValue<string>();
+            var displayName = body?[DisplayName]?.GetValue<string>();
             if (!string.IsNullOrWhiteSpace(displayName))
                 rec.IdpGroup = displayName;
             // PUT = replace members: remove idp-sourced memberships criadas
@@ -303,7 +311,7 @@ public static class ScimEndpoints
         {
             var orgId = await ResolveOrg(ctx, tokens, ct);
             if (orgId is null)
-                return ScimError(401, "unauthorized");
+                return ScimError(401, Unauthorized);
             var n = await db.IdpGroupMappings
                 .Where(m => m.Id == id && m.OrgId == orgId)
                 .ExecuteDeleteAsync(ct);
@@ -341,14 +349,14 @@ public static class ScimEndpoints
             {
                 return Results.BadRequest(new { error = e.Message });
             }
-        }).RequireAuthorization("perm:edit_org_settings");
+        }).RequireAuthorization(PermEditOrgSettings);
 
         admin.MapDelete("/idp-mappings/{id:guid}", async (
             Guid org_id, Guid id, IIdentityAdminService svc,
             CancellationToken ct) =>
             await svc.DeleteMappingAsync(org_id, id, ct)
                 ? Results.NoContent() : Results.NotFound())
-            .RequireAuthorization("perm:edit_org_settings");
+            .RequireAuthorization(PermEditOrgSettings);
 
         admin.MapGet("/usage-tiers", async (
             Guid org_id, IIdentityAdminService svc, CancellationToken ct) =>
@@ -369,7 +377,7 @@ public static class ScimEndpoints
                 ?? body["limits"]?.ToJsonString();
             return Results.Ok(await svc.CreateTierAsync(
                 org_id, name, limits, ct));
-        }).RequireAuthorization("perm:edit_org_settings");
+        }).RequireAuthorization(PermEditOrgSettings);
 
         admin.MapPatch("/usage-tiers/{id:guid}", async (
             Guid org_id, Guid id, HttpContext ctx,
@@ -382,14 +390,14 @@ public static class ScimEndpoints
                 body?["limits_json"]?.GetValue<string>()
                     ?? body?["limits"]?.ToJsonString(), ct);
             return r is null ? Results.NotFound() : Results.Ok(r);
-        }).RequireAuthorization("perm:edit_org_settings");
+        }).RequireAuthorization(PermEditOrgSettings);
 
         admin.MapDelete("/usage-tiers/{id:guid}", async (
             Guid org_id, Guid id, IIdentityAdminService svc,
             CancellationToken ct) =>
             await svc.DeleteTierAsync(org_id, id, ct)
                 ? Results.NoContent() : Results.NotFound())
-            .RequireAuthorization("perm:edit_org_settings");
+            .RequireAuthorization(PermEditOrgSettings);
 
         // scim_* token mint/revoke (admin)
         admin.MapGet("/scim-tokens", async (
@@ -448,7 +456,7 @@ public static class ScimEndpoints
                 body?["limits_json"]?.GetValue<string>()
                     ?? body?["limits"]?.ToJsonString(), expires, ct);
             return Results.Ok(r);
-        }).RequireAuthorization("perm:edit_org_settings");
+        }).RequireAuthorization(PermEditOrgSettings);
 
         app.MapDelete("/api/v1/users/{id:guid}/usage-override", async (
             Guid id, HttpContext ctx, IIdentityAdminService svc,
@@ -462,7 +470,7 @@ public static class ScimEndpoints
             return await svc.ClearUserOverrideAsync(
                     org?.OrgId ?? Guid.Empty, id, ct)
                 ? Results.NoContent() : Results.NotFound();
-        }).RequireAuthorization("perm:edit_org_settings");
+        }).RequireAuthorization(PermEditOrgSettings);
 
         return app;
     }
@@ -489,11 +497,11 @@ public static class ScimEndpoints
 
     private static bool? ExtractActive(JsonNode? body, JsonArray? ops)
     {
-        if (body?["active"] is JsonNode direct)
+        if (body?[Active] is JsonNode direct)
             return direct.GetValue<bool>();
         foreach (var op in ops ?? [])
         {
-            var v = op?["value"]?["active"];
+            var v = op?[Value]?[Active];
             if (v is not null)
                 return v.GetValue<bool>();
         }
@@ -508,7 +516,7 @@ public static class ScimEndpoints
         var desired = new HashSet<Guid>();
         foreach (var m in members ?? [])
         {
-            if (Guid.TryParse(m?["value"]?.GetValue<string>(), out var uid))
+            if (Guid.TryParse(m?[Value]?.GetValue<string>(), out var uid))
                 desired.Add(uid);
         }
         if (replace)
@@ -546,13 +554,13 @@ public static class ScimEndpoints
             .Select(m => m.UserId).ToListAsync(ct);
         var members = new JsonArray();
         foreach (var id in memberIds)
-            members.Add(new JsonObject { ["value"] = id.ToString() });
+            members.Add(new JsonObject { [Value] = id.ToString() });
         return new JsonObject
         {
-            ["schemas"] = new JsonArray(
+            [Schemas] = new JsonArray(
                 "urn:ietf:params:scim:schemas:core:2.0:Group"),
             ["id"] = g.Id.ToString(),
-            ["displayName"] = g.IdpGroup,
+            [DisplayName] = g.IdpGroup,
             ["members"] = members,
         };
     }
@@ -560,7 +568,7 @@ public static class ScimEndpoints
     private static JsonObject ResourceType(string name, string ep) =>
         new()
         {
-            ["schemas"] = new JsonArray(
+            [Schemas] = new JsonArray(
                 "urn:ietf:params:scim:schemas:core:2.0:ResourceType"),
             ["id"] = name,
             ["name"] = name,
@@ -570,20 +578,20 @@ public static class ScimEndpoints
     private static JsonObject ToScimUser(UserRecord u, OrgMemberRecord m) =>
         new()
         {
-            ["schemas"] = new JsonArray(
+            [Schemas] = new JsonArray(
                 "urn:ietf:params:scim:schemas:core:2.0:User"),
             ["id"] = u.Id.ToString(),
             ["userName"] = u.Email,
-            ["displayName"] = u.DisplayName,
-            ["active"] = u.DisabledAt is null,
+            [DisplayName] = u.DisplayName,
+            [Active] = u.DisabledAt is null,
             ["emails"] = new JsonArray(new JsonObject
             {
-                ["value"] = u.Email,
+                [Value] = u.Email,
                 ["primary"] = true,
             }),
             ["roles"] = new JsonArray(new JsonObject
             {
-                ["value"] = m.Role,
+                [Value] = m.Role,
             }),
         };
 
@@ -594,7 +602,7 @@ public static class ScimEndpoints
         int status, string detail, string? scimType = null) =>
         Results.Json(new JsonObject
         {
-            ["schemas"] = new JsonArray(ErrorSchema),
+            [Schemas] = new JsonArray(ErrorSchema),
             ["status"] = status.ToString(),
             ["detail"] = detail,
             ["scimType"] = scimType,

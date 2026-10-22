@@ -14,15 +14,16 @@ namespace OpenHandsNET.Api.Endpoints;
 /// </summary>
 public static class HookEndpoints
 {
+    private const string Hooks = "Hooks";
     /// <summary>Maps hook endpoints.</summary>
     public static IEndpointRouteBuilder MapHookEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/v1/hooks", ListAsync).WithTags("Hooks");
-        app.MapPost("/api/v1/hooks", CreateAsync).WithTags("Hooks");
-        app.MapPatch("/api/v1/hooks/{id:guid}", UpdateAsync).WithTags("Hooks");
-        app.MapDelete("/api/v1/hooks/{id:guid}", DeleteAsync).WithTags("Hooks");
+        app.MapGet("/api/v1/hooks", ListAsync).WithTags(Hooks);
+        app.MapPost("/api/v1/hooks", CreateAsync).WithTags(Hooks);
+        app.MapPatch("/api/v1/hooks/{id:guid}", UpdateAsync).WithTags(Hooks);
+        app.MapDelete("/api/v1/hooks/{id:guid}", DeleteAsync).WithTags(Hooks);
         app.MapGet("/api/v1/app-conversations/{id:guid}/hooks", ForConversationAsync)
-            .WithTags("Hooks");
+            .WithTags(Hooks);
         return app;
     }
 
@@ -56,15 +57,23 @@ public static class HookEndpoints
         Guid id, HookDto req, IHookService hooks,
         HttpContext http, CancellationToken ct)
     {
-        HookEvent? ev = req.Event is null ? null :
-            TryParseEvent(req.Event, out var e) ? e : (HookEvent?)null;
+        HookEvent? ev = null;
+        if (req.Event is not null && TryParseEvent(req.Event, out var e))
+        {
+            ev = e;
+        }
+
         if (req.Event is not null && ev is null)
         {
             return OpenHandsNetProblemFactory.Create(http, 400, "invalid event");
         }
 
-        HookAction? action = req.Action is null ? null :
-            TryParseAction(req.Action, out var a) ? a : (HookAction?)null;
+        HookAction? action = null;
+        if (req.Action is not null && TryParseAction(req.Action, out var a))
+        {
+            action = a;
+        }
+
         if (req.Action is not null && action is null)
         {
             return OpenHandsNetProblemFactory.Create(http, 400, "invalid action");

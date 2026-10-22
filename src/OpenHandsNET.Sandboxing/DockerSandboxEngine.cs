@@ -441,15 +441,11 @@ public sealed class DockerSandboxEngine(
                 $"http://{options.Value.AgentHost ?? "127.0.0.1"}:{hostPort}");
         }
 
-        if (nets is not null)
+        if (nets is not null
+            && nets.Values.FirstOrDefault(n =>
+                !string.IsNullOrEmpty(n.IPAddress)) is { IPAddress: { } ip })
         {
-            foreach (var net in nets.Values)
-            {
-                if (!string.IsNullOrEmpty(net.IPAddress))
-                {
-                    return new Uri($"http://{net.IPAddress}:{agentPort}");
-                }
-            }
+            return new Uri($"http://{ip}:{agentPort}");
         }
 
         return null;

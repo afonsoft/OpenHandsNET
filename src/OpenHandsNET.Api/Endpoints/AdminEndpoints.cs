@@ -10,6 +10,7 @@ namespace OpenHandsNET.Api.Endpoints;
 /// <summary>Instance admin endpoints: super-admins, users, audit, feature flags (SPEC-08 RF-008/011).</summary>
 public static class AdminEndpoints
 {
+    private const string PermManageSuperAdmins = "perm:manage_super_admins";
     /// <summary>Map <c>/api/v1/admin</c> endpoints.</summary>
     public static IEndpointRouteBuilder MapAdminEndpoints(this IEndpointRouteBuilder app)
     {
@@ -27,7 +28,7 @@ public static class AdminEndpoints
             if (config.GetValue("Auth:UserProvisioningEnabled", false))
                 return Results.Ok(await admins.ListAsync(ct));
             return (await authz.AuthorizeAsync(
-                ctx.User, null, "perm:manage_super_admins")).Succeeded
+                ctx.User, null, PermManageSuperAdmins)).Succeeded
                 ? Results.Ok(await admins.ListAsync(ct))
                 : Results.Forbid();
         }).RequireAuthorization();
@@ -53,13 +54,9 @@ public static class AdminEndpoints
             var user = current.User;
             if (user is null)
                 return Results.Unauthorized();
-            var granted = req.UserId is { } uid
-                ? await admins.GrantByUserIdAsync(uid, ct)
-                : req.Email is { } email
-                    ? await admins.GrantByEmailAsync(email, ct)
-                    : null;
+            var granted = await GrantAsync(req, admins, ct);
             return granted is null ? Results.NotFound() : Results.Ok(granted);
-        }).RequireAuthorization("perm:manage_super_admins");
+        }).RequireAuthorization(PermManageSuperAdmins);
 
         g.MapDelete("/super-admins/{uid:guid}", async (
             Guid uid, ICurrentUserAccessor current, ISuperAdminService admins,
@@ -77,7 +74,23 @@ public static class AdminEndpoints
             {
                 return Results.Conflict(new { detail = e.Message });
             }
-        }).RequireAuthorization("perm:manage_super_admins");
+        }).RequireAuthorization(PermManageSuperAdmins);
+
+        static async Task<object?> GrantAsync(
+            GrantRequest req, ISuperAdminService admins, CancellationToken ct)
+        {
+            if (req.UserId is { } uid)
+            {
+                return await admins.GrantByUserIdAsync(uid, ct);
+            }
+
+            if (req.Email is { } email)
+            {
+                return await admins.GrantByEmailAsync(email, ct);
+            }
+
+            return null;
+        }
 
         // Admin users
         g.MapGet("/users", async (
@@ -85,12 +98,12 @@ public static class AdminEndpoints
             IAdminUserService users, CancellationToken ct) =>
             Results.Ok(await users.ListUsersAsync(
                 q, page ?? 1, 50, ct)))
-            .RequireAuthorization("perm:manage_super_admins");
+            .RequireAuthorization(PermManageSuperAdmins);
 
         g.MapGet("/users/count", async (
             IAdminUserService users, CancellationToken ct) =>
             Results.Ok(new { count = await users.CountUsersAsync(ct) }))
-            .RequireAuthorization("perm:manage_super_admins");
+            .RequireAuthorization(PermManageSuperAdmins);
 
         g.MapDelete("/users/{uid:guid}", async (
             Guid uid, IAdminUserService users, CancellationToken ct) =>
@@ -104,7 +117,7 @@ public static class AdminEndpoints
             {
                 return Results.Conflict(new { detail = e.Message });
             }
-        }).RequireAuthorization("perm:manage_super_admins");
+        }).RequireAuthorization(PermManageSuperAdmins);
 
         // Audit trail query (RF-011) + CSV/JSON export.
         g.MapGet("/audit", async (
@@ -122,7 +135,7 @@ public static class AdminEndpoints
                 return Results.Text(csv, "text/csv");
             }
             return Results.Ok(new { items, total });
-        }).RequireAuthorization("perm:manage_super_admins");
+        }).RequireAuthorization(PermManageSuperAdmins);
 
         // Feature flags
         g.MapGet("/feature-flags", async (
@@ -149,7 +162,7 @@ public static class AdminEndpoints
         g.MapGet("/plans", async (
             IPlanAdminService plans, CancellationToken ct) =>
             Results.Ok(await plans.ListAsync(ct)))
-            .RequireAuthorization("perm:manage_super_admins");
+            .RequireAuthorization(PermManageSuperAdmins);
 
         g.MapPost("/plans", async (
             [FromBody] PlanCreateRequest req, IPlanAdminService plans,
@@ -158,7 +171,7 @@ public static class AdminEndpoints
                 req.Name, req.Limits ?? new(), req.MonthlyPriceUsd, ct)
                 is { } p ? Results.Created($"/api/v1/admin/plans/{p.Id}", p)
                 : Results.Conflict(new { detail = "plan name already exists" }))
-            .RequireAuthorization("perm:manage_super_admins");
+            .RequireAuthorization(PermManageSuperAdmins);
 
         g.MapPatch("/plans/{id:guid}", async (
             Guid id, [FromBody] PlanPatchRequest req,
@@ -166,7 +179,7 @@ public static class AdminEndpoints
             await plans.UpdateAsync(
                 id, req.Name, req.Limits, req.MonthlyPriceUsd, ct)
                 is { } p ? Results.Ok(p) : Results.NotFound())
-            .RequireAuthorization("perm:manage_super_admins");
+            .RequireAuthorization(PermManageSuperAdmins);
 
         g.MapDelete("/plans/{id:guid}", async (
             Guid id, IPlanAdminService plans, CancellationToken ct) =>
@@ -176,7 +189,7 @@ public static class AdminEndpoints
                 PlanDeleteError.NotFound => Results.NotFound(),
                 _ => Results.Conflict(
                     new { detail = "plan has active references" }),
-            }).RequireAuthorization("perm:manage_super_admins");
+            }).RequireAuthorization(PermManageSuperAdmins);
 
         // Atribuição de plano à org: encerra a subscrição ativa e abre outra.
         g.MapPut("/organizations/{org_id:guid}/plan", async (
@@ -184,7 +197,7 @@ public static class AdminEndpoints
             IPlanAdminService plans, CancellationToken ct) =>
             await plans.AssignOrgPlanAsync(org_id, req.PlanId, ct)
                 ? Results.NoContent() : Results.NotFound())
-            .RequireAuthorization("perm:manage_super_admins");
+            .RequireAuthorization(PermManageSuperAdmins);
 
         // SPEC-14 RF-004: diagnostics ZIP — readiness, redacted logs, counts,
         // versions and effective config (secrets masked by construction).
@@ -195,7 +208,7 @@ public static class AdminEndpoints
             var bytes = await svc.GenerateAsync(ct);
             return Results.File(bytes, "application/zip",
                 $"openhandsnet-support-{DateTimeOffset.UtcNow:yyyyMMdd-HHmmss}.zip");
-        }).RequireAuthorization("perm:manage_super_admins")
+        }).RequireAuthorization(PermManageSuperAdmins)
           .WithTags("Admin");
 
         return app;

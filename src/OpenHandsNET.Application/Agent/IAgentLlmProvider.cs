@@ -13,7 +13,7 @@ public interface IAgentLlmProvider
     /// Streams one completion: text/tool-call deltas followed by a terminal
     /// <see cref="CompletionEnd"/> carrying usage counters.
     /// </summary>
-    IAsyncEnumerable<LlmStreamChunk> ChatStreamAsync(
+    IAsyncEnumerable<ILlmStreamChunk> ChatStreamAsync(
         IReadOnlyList<LlmMessage> messages,
         IReadOnlyList<ToolSchema> tools,
         LlmOptions options, CancellationToken ct);

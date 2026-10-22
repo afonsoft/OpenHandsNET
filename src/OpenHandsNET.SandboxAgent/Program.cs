@@ -9,6 +9,9 @@ using OpenHandsNET.SandboxAgent;
 // como PID 1 do sandbox (sob tini). Estados: dormant → initializing → ready.
 // Auth: X-Session-Key (pronto) / X-Init-API-Key (bootstrap do init).
 
+const string StatusReady = "ready";
+const string StatusDormant = "dormant";
+const string StatusUnauthorized = "unauthorized";
 var builder = WebApplication.CreateSlimBuilder(args);
 builder.WebHost.UseUrls(
     builder.Configuration["OHN_AGENT_URL"] ?? "http://0.0.0.0:8000");
@@ -80,7 +83,7 @@ app.MapGet("/api/init", () => Results.Ok(new
 
 app.MapPost("/api/init", (HttpContext http, InitRequest req) =>
 {
-    if (runtime.Status == "ready")
+    if (runtime.Status == StatusReady)
     {
         return Results.Conflict(new { error = "already_initialized" });
     }
@@ -116,7 +119,7 @@ app.MapPost("/api/init", (HttpContext http, InitRequest req) =>
         }
 
         Directory.CreateDirectory(runtime.WorkspaceRoot);
-        runtime.Status = "ready";
+        runtime.Status = StatusReady;
         // SPEC-40 RF-002/003: surfaces opt-in via env do blueprint/init.
         surfaces.StartEnabled(req.Env);
 
@@ -124,27 +127,27 @@ app.MapPost("/api/init", (HttpContext http, InitRequest req) =>
     }
     catch (Exception ex)
     {
-        runtime.Status = "dormant";
+        runtime.Status = StatusDormant;
         return Results.Json(new { error = ex.Message }, statusCode: 500);
     }
 });
 
 // ---- guarded endpoints (ready + X-Session-Key) ----
 bool Authorized(HttpContext http) =>
-    runtime.Status == "ready" &&
+    runtime.Status == StatusReady &&
     runtime.SessionKey is not null &&
     http.Request.Headers["X-Session-Key"] == runtime.SessionKey;
 
 app.MapPost("/exec", async (HttpContext http, ExecRequest req, CancellationToken ct) =>
 {
-    if (runtime.Status != "ready")
+    if (runtime.Status != StatusReady)
     {
-        return Results.Json(new { error = "dormant" }, statusCode: 503);
+        return Results.Json(new { error = StatusDormant }, statusCode: 503);
     }
 
     if (!Authorized(http))
     {
-        return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+        return Results.Json(new { error = StatusUnauthorized }, statusCode: 401);
     }
 
     var timeout = TimeSpan.FromSeconds(
@@ -175,14 +178,14 @@ app.MapPost("/exec", async (HttpContext http, ExecRequest req, CancellationToken
 app.MapPost("/exec/stream", async (HttpContext http, ExecRequest req,
     CancellationToken ct) =>
 {
-    if (runtime.Status != "ready")
+    if (runtime.Status != StatusReady)
     {
-        return Results.Json(new { error = "dormant" }, statusCode: 503);
+        return Results.Json(new { error = StatusDormant }, statusCode: 503);
     }
 
     if (!Authorized(http))
     {
-        return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+        return Results.Json(new { error = StatusUnauthorized }, statusCode: 401);
     }
 
     http.Response.ContentType = "text/event-stream";
@@ -251,7 +254,7 @@ app.MapGet("/exec/sessions", (HttpContext http) =>
 {
     if (!Authorized(http))
     {
-        return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+        return Results.Json(new { error = StatusUnauthorized }, statusCode: 401);
     }
 
     return Results.Ok(runtime.Sessions.Select(kv => new
@@ -266,7 +269,7 @@ app.MapGet("/proc", (HttpContext http) =>
 {
     if (!Authorized(http))
     {
-        return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+        return Results.Json(new { error = StatusUnauthorized }, statusCode: 401);
     }
 
     return Results.Ok(ProbeProc());
@@ -276,7 +279,7 @@ app.MapGet("/activity", (HttpContext http) =>
 {
     if (!Authorized(http))
     {
-        return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+        return Results.Json(new { error = StatusUnauthorized }, statusCode: 401);
     }
 
     // Last-Event-ID → replay só do que o cliente ainda não viu.
@@ -341,7 +344,7 @@ app.MapDelete("/exec/sessions/{id}", (string id, HttpContext http) =>
 {
     if (!Authorized(http))
     {
-        return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+        return Results.Json(new { error = StatusUnauthorized }, statusCode: 401);
     }
 
     if (runtime.Sessions.TryRemove(id, out var s))
@@ -358,7 +361,7 @@ app.MapGet("/surfaces", (HttpContext http) =>
 {
     if (!Authorized(http))
     {
-        return Results.Json(new { error = "unauthorized" }, statusCode: 401);
+        return Results.Json(new { error = StatusUnauthorized }, statusCode: 401);
     }
 
     return Results.Ok(surfaces.Active().Select(s => new
@@ -411,11 +414,11 @@ app.MapPut("/files/{**path}", async (string path, HttpContext http) =>
     return Results.NoContent();
 });
 
-bool Ready() => runtime.Status == "ready";
+bool Ready() => runtime.Status == StatusReady;
 IResult Dormant() =>
-    Results.Json(new { error = "dormant" }, statusCode: 503);
+    Results.Json(new { error = StatusDormant }, statusCode: 503);
 IResult Unauthorized() =>
-    Results.Json(new { error = "unauthorized" }, statusCode: 401);
+    Results.Json(new { error = StatusUnauthorized }, statusCode: 401);
 
 await app.RunAsync();
 
@@ -428,6 +431,7 @@ namespace OpenHandsNET.SandboxAgent
     /// <summary>Deferred-init state + session key + workspace confinement.</summary>
     public sealed class AgentState
     {
+    private const string StatusReady = "ready";
         private const int ActivityCap = 200;
         private long _seq;
 
@@ -448,7 +452,11 @@ namespace OpenHandsNET.SandboxAgent
         public string? InitKey { get; }
         public bool Deferred { get; }
         public string? SessionKey { get; set; }
-        public bool Ready { set => Status = value ? "ready" : Status; }
+        public bool Ready
+        {
+            get => Status == StatusReady;
+            set => Status = value ? StatusReady : Status;
+        }
         public IReadOnlyDictionary<string, string> SessionEnv { get; set; } =
             new Dictionary<string, string>();
         public ConcurrentDictionary<string, BashSession> Sessions { get; } = new();
@@ -525,6 +533,7 @@ namespace OpenHandsNET.SandboxAgent
     /// <summary>Execução one-shot <c>bash -c</c> com timeout e cap de saída.</summary>
     public static class ExecOnce
     {
+    private const string Stdout = "stdout";
         private const int OutputCap = 2 * 1024 * 1024;
 
         public static async Task<CommandResult> RunAsync(
@@ -553,7 +562,7 @@ namespace OpenHandsNET.SandboxAgent
             var stdout = new StringBuilder();
             var stderr = new StringBuilder();
             var hitCap = false;
-            var outTask = PumpAsync(proc.StandardOutput, stdout, "stdout",
+            var outTask = PumpAsync(proc.StandardOutput, stdout, Stdout,
                 onChunk, () => hitCap = true);
             var errTask = PumpAsync(proc.StandardError, stderr, "stderr",
                 onChunk, () => hitCap = true);
@@ -596,7 +605,7 @@ namespace OpenHandsNET.SandboxAgent
         }
 
         internal static Task PumpAsync(StreamReader reader, StringBuilder sb) =>
-            PumpAsync(reader, sb, "stdout", null, null);
+            PumpAsync(reader, sb, Stdout, null, null);
 
         internal static async Task PumpAsync(
             StreamReader reader, StringBuilder sb, string channel,
@@ -632,6 +641,7 @@ namespace OpenHandsNET.SandboxAgent
     /// <summary>Sessão bash persistente (estado preservado entre comandos).</summary>
     public sealed class BashSession : IDisposable
     {
+    private const string Stdout = "stdout";
         private const string Marker = "__OHN_EXIT_";
         private readonly Process _proc;
         private readonly StringBuilder _out = new();
@@ -651,7 +661,7 @@ namespace OpenHandsNET.SandboxAgent
         {
             StartedAt = DateTimeOffset.UtcNow;
             _proc = Process.Start(ExecOnce.NewBash(workdir, env))!;
-            _ = Task.Run(() => Pump(_proc.StandardOutput, _out, "stdout"));
+            _ = Task.Run(() => Pump(_proc.StandardOutput, _out, Stdout));
             _ = Task.Run(() => Pump(_proc.StandardError, _err, "stderr"));
         }
 
@@ -773,14 +783,14 @@ namespace OpenHandsNET.SandboxAgent
                 var tap = _onChunk;
                 if (tap is not null)
                 {
-                    var combined = (channel == "stdout" ? _tailOut : _tailErr) + text;
+                    var combined = (channel == Stdout ? _tailOut : _tailErr) + text;
                     var emit = combined.Length > Holdback
                         ? combined[..^Holdback]
                         : null;
                     var tail = combined.Length > Holdback
                         ? combined[^Holdback..]
                         : combined;
-                    if (channel == "stdout")
+                    if (channel == Stdout)
                     {
                         _tailOut = tail;
                     }
@@ -812,6 +822,7 @@ namespace OpenHandsNET.SandboxAgent
     /// </summary>
     public sealed class SurfaceRegistry(AgentState state)
     {
+    private const string Stdout = "stdout";
         private readonly List<SurfaceSupervisor> _all = [];
 
         /// <summary>Registra uma surface (bind 0.0.0.0 dentro do container).</summary>

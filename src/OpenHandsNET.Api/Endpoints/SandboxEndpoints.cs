@@ -13,6 +13,7 @@ namespace OpenHandsNET.Api.Endpoints;
 /// </summary>
 public static class SandboxEndpoints
 {
+    private const string IdGuid = "/{id:guid}";
     /// <summary>Maps sandbox and sandbox-spec route groups.</summary>
     public static IEndpointRouteBuilder MapSandboxEndpoints(this IEndpointRouteBuilder app)
     {
@@ -38,7 +39,7 @@ public static class SandboxEndpoints
                 .Select(ToDto));
         });
 
-        sandboxes.MapGet("/{id:guid}", async (
+        sandboxes.MapGet(IdGuid, async (
             Guid id, ISandboxService svc, HttpContext http, CancellationToken ct) =>
             await svc.GetAsync(id, ct) is { } s
                 ? Results.Ok(ToDto(s))
@@ -60,7 +61,7 @@ public static class SandboxEndpoints
             Guid id, ISandboxService svc, HttpContext http, CancellationToken ct) =>
             await Safe(() => svc.ResumeAsync(id, ct), http));
 
-        sandboxes.MapDelete("/{id:guid}", async (
+        sandboxes.MapDelete(IdGuid, async (
             Guid id, ISandboxService svc, CancellationToken ct) =>
         {
             await svc.DeleteAsync(id, ct);
@@ -130,7 +131,7 @@ public static class SandboxEndpoints
 
         var specs = app.MapGroup("/api/v1/sandbox-specs").WithTags("Sandboxes");
 
-        specs.MapGet("/{id:guid}", async (
+        specs.MapGet(IdGuid, async (
             Guid id, ISandboxService svc, HttpContext http, CancellationToken ct) =>
             await svc.GetSpecAsync(id, ct) is { } s
                 ? Results.Ok(ToDto(s))
@@ -150,7 +151,7 @@ public static class SandboxEndpoints
                 $"/api/v1/sandbox-specs/{spec.Id}", ToDto(spec));
         });
 
-        specs.MapDelete("/{id:guid}", (Guid id, HttpContext http) =>
+        specs.MapDelete(IdGuid, (Guid id, HttpContext http) =>
             // specs são imutáveis no MVP — delete via upsert tombstone adiado.
             Results.NoContent());
 

@@ -32,27 +32,27 @@ public sealed record LlmMessage(
 public sealed record LlmToolCall(string Id, string Name, string ArgumentsJson);
 
 /// <summary>Streaming unit produced by <see cref="IAgentLlmProvider.ChatStreamAsync"/>.</summary>
-public abstract record LlmStreamChunk;
+public interface ILlmStreamChunk;
 
 /// <summary>Incremental text delta.</summary>
-public sealed record TextDelta(string Text) : LlmStreamChunk;
+public sealed record TextDelta(string Text) : ILlmStreamChunk;
 
 /// <summary>
 /// SPEC-41 RF-001: incremental reasoning delta (thinking models) — travels
 /// a parallel channel, never merged into content.
 /// </summary>
-public sealed record ReasoningDelta(string Text) : LlmStreamChunk;
+public sealed record ReasoningDelta(string Text) : ILlmStreamChunk;
 
 /// <summary>
 /// Incremental tool-call delta (OpenAI streaming shape): fragments accumulate
 /// per <see cref="ToolCallDelta.Index"/> until the completion ends.
 /// </summary>
 public sealed record ToolCallDelta(
-    int Index, string? Id, string? Name, string? ArgumentsFragment) : LlmStreamChunk;
+    int Index, string? Id, string? Name, string? ArgumentsFragment) : ILlmStreamChunk;
 
 /// <summary>Terminal chunk of one completion: usage counters + finish reason.</summary>
 public sealed record CompletionEnd(
-    LlmUsage Usage, string? FinishReason, string ResponseId) : LlmStreamChunk;
+    LlmUsage Usage, string? FinishReason, string ResponseId) : ILlmStreamChunk;
 
 /// <summary>Token accounting for one completion.</summary>
 public sealed record LlmUsage(int PromptTokens, int CompletionTokens, decimal? CostUsd);

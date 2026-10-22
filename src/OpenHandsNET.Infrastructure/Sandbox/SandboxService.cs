@@ -433,13 +433,8 @@ public sealed class SandboxService(
             .ToListAsync(ct))
             .ToHashSet(StringComparer.Ordinal);
 
-        foreach (var c in managed)
+        foreach (var c in managed.Where(c => !known.Contains(c.ContainerId)))
         {
-            if (known.Contains(c.ContainerId))
-            {
-                continue;
-            }
-
             logger.LogWarning(
                 "Removing orphan sandbox container {ContainerId}",
                 c.ContainerId[..12]);

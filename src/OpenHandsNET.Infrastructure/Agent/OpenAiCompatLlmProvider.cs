@@ -33,7 +33,7 @@ public sealed class OpenAiCompatLlmProvider(
         Task.FromResult(new ModelInfo(ModelId, "openai_compat"));
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<LlmStreamChunk> ChatStreamAsync(
+    public async IAsyncEnumerable<ILlmStreamChunk> ChatStreamAsync(
         IReadOnlyList<LlmMessage> messages,
         IReadOnlyList<ToolSchema> tools,
         LlmOptions options,
@@ -221,7 +221,7 @@ public sealed class OpenAiCompatLlmProvider(
             : new { role = m.Role, content = m.Content };
     }
 
-    private static IEnumerable<LlmStreamChunk> ParseChunk(string data)
+    private static IEnumerable<ILlmStreamChunk> ParseChunk(string data)
     {
         using var doc = JsonDocument.Parse(data);
         var root = doc.RootElement;

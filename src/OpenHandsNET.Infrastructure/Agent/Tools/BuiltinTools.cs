@@ -18,6 +18,8 @@ namespace OpenHandsNET.Infrastructure.Agent.Tools;
 /// </summary>
 public static class BuiltinTools
 {
+    private const string Project = "project";
+    private const string Content = "content";
     /// <summary>Creates the bash exec tool (risky — confirmation-gated).</summary>
     public static AgentTool Bash(TimeSpan timeout) => new(
         new ToolSchema("bash",
@@ -157,7 +159,7 @@ public static class BuiltinTools
                 }
 
                 await ctx.Executor.WriteFileAsync(ctx.Sandbox, path,
-                    args.GetProperty("content").GetString()!, ct);
+                    args.GetProperty(Content).GetString()!, ct);
                 await EmitPathsAsync(ctx, "file_write",
                     [(path, existed ? "modify" : "create")]);
                 return ToolResult.Ok(new { ok = true });
@@ -575,7 +577,7 @@ public static class BuiltinTools
         {
             var op = args.GetProperty("op").GetString()!;
             var scope = args.TryGetProperty("scope", out var sc)
-                ? sc.GetString() ?? "project" : "project";
+                ? sc.GetString() ?? Project : Project;
             var key = Slugify(args.GetProperty("key").GetString()!);
             var text = args.TryGetProperty("text", out var t)
                 ? t.GetString() : null;
@@ -661,7 +663,7 @@ public static class BuiltinTools
         lines.Add(line);
         await ctx.Executor.WriteFileAsync(ctx.Sandbox, index,
             string.Join('\n', lines) + "\n", ct);
-        return ToolResult.Ok(new { ok = true, key, scope = "project", path });
+        return ToolResult.Ok(new { ok = true, key, scope = Project, path });
     }
 
     private static async Task<ToolResult> RecallOrgAsync(
@@ -697,7 +699,7 @@ public static class BuiltinTools
             {
                 entries = new[]
                 {
-                    new { key, text = content, scope = "project" },
+                    new { key, text = content, scope = Project },
                 },
             });
         }
@@ -727,7 +729,7 @@ public static class BuiltinTools
         }
         catch (Exception) { /* sem INDEX */ }
 
-        return ToolResult.Ok(new { ok = true, key, scope = "project" });
+        return ToolResult.Ok(new { ok = true, key, scope = Project });
     }
 
     private static async Task<ToolResult> PromoteAsync(
@@ -981,7 +983,7 @@ public static class BuiltinTools
         {
             var query = args.GetProperty("query").GetString()!;
             var mode = args.TryGetProperty("mode", out var m)
-                ? m.GetString() ?? "content" : "content";
+                ? m.GetString() ?? Content : Content;
             var glob = args.TryGetProperty("glob", out var g)
                 ? g.GetString() : null;
             var path = args.TryGetProperty("path", out var p)
@@ -997,7 +999,7 @@ public static class BuiltinTools
             // não tem ripgrep (blueprints mínimas).
             var shell = ShellQuote(query);
             var globArg = glob is null ? "" : $" -g {ShellQuote(glob)}";
-            var ctxArg = mode == "content" && contextLines > 0
+            var ctxArg = mode == Content && contextLines > 0
                 ? $" -C{contextLines}" : "";
             var command = mode == "files"
                 ? $"cd {ShellQuote(dir)} 2>/dev/null && "

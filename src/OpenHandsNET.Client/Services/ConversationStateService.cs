@@ -247,15 +247,16 @@ public sealed class ConversationStateService : IAsyncDisposable
                         ExecutionStatus = es.GetString()!.ToUpperInvariant();
                     }
 
-                    PendingAction =
-                        v.TryGetProperty("pending_action", out var pa)
-                        && pa.ValueKind == JsonValueKind.Object
-                            ? new PendingActionInfo(
-                                pa.TryGetProperty("action_id", out var aid)
-                                    ? aid.GetString() ?? "" : "",
-                                pa.TryGetProperty("tool", out var t)
-                                    ? t.ToString() : pa.ToString())
-                            : PendingAction;
+                    if (v.TryGetProperty("pending_action", out var pa)
+                        && pa.ValueKind == JsonValueKind.Object)
+                    {
+                        PendingAction = new PendingActionInfo(
+                            pa.TryGetProperty("action_id", out var aid)
+                                ? aid.GetString() ?? "" : "",
+                            pa.TryGetProperty("tool", out var t)
+                                ? t.ToString() : pa.ToString());
+                    }
+
                     if (v.TryGetProperty("pending_action", out var pa2)
                         && pa2.ValueKind is JsonValueKind.Null)
                     {
@@ -355,27 +356,16 @@ public sealed class ConversationStateService : IAsyncDisposable
         }
 
         var items = new List<PlanItem>();
-        foreach (var prop in args.EnumerateObject())
+        foreach (var item in args.EnumerateObject()
+            .Where(p => p.Value.ValueKind == JsonValueKind.Array)
+            .SelectMany(p => p.Value.EnumerateArray()))
         {
-            if (prop.Value.ValueKind != JsonValueKind.Array)
+            var title = TitleOf(item);
+            var status = item.TryGetProperty("status", out var s)
+                ? s.GetString() ?? "pending" : "pending";
+            if (title.Length > 0)
             {
-                continue;
-            }
-
-            foreach (var item in prop.Value.EnumerateArray())
-            {
-                var title = item.TryGetProperty("title", out var t)
-                    ? t.GetString() ?? ""
-                    : item.TryGetProperty("task", out var t2)
-                        ? t2.GetString() ?? ""
-                        : item.ValueKind == JsonValueKind.String
-                            ? item.GetString() ?? "" : "";
-                var status = item.TryGetProperty("status", out var s)
-                    ? s.GetString() ?? "pending" : "pending";
-                if (title.Length > 0)
-                {
-                    items.Add(new PlanItem(title, status));
-                }
+                items.Add(new PlanItem(title, status));
             }
         }
 
@@ -383,6 +373,22 @@ public sealed class ConversationStateService : IAsyncDisposable
         {
             Plan = items;
         }
+    }
+
+    private static string TitleOf(JsonElement item)
+    {
+        if (item.TryGetProperty("title", out var t))
+        {
+            return t.GetString() ?? "";
+        }
+
+        if (item.TryGetProperty("task", out var t2))
+        {
+            return t2.GetString() ?? "";
+        }
+
+        return item.ValueKind == JsonValueKind.String
+            ? item.GetString() ?? "" : "";
     }
 
     public async ValueTask DisposeAsync()

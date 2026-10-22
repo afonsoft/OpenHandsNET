@@ -112,12 +112,11 @@ public static class AutonomyGuardrail
                 continue;
             }
 
-            foreach (var t in tokens.Skip(1).Where(x => !x.StartsWith('-')))
+            if (tokens.Skip(1)
+                .Where(x => !x.StartsWith('-'))
+                .Any(t => IsOutsideWorkspace(t) || t is "/" or "~" or "/*" or "$HOME"))
             {
-                if (IsOutsideWorkspace(t) || t is "/" or "~" or "/*" or "$HOME")
-                {
-                    return true;
-                }
+                return true;
             }
         }
 

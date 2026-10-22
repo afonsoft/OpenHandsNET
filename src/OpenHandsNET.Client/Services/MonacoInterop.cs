@@ -10,33 +10,34 @@ namespace OpenHandsNET.Client.Services;
 /// </summary>
 public sealed class MonacoInterop(IJSRuntime js)
 {
+    private const string Plaintext = "plaintext";
     /// <summary>Cria um editor readonly no host.</summary>
     public async Task<bool> CreateEditorAsync(
         string hostId, string value, string? language, bool readOnly = true,
         CancellationToken ct = default) =>
         await js.InvokeAsync<bool>("monacoInterop.createEditor", ct,
-            hostId, value, language ?? "plaintext", readOnly);
+            hostId, value, language ?? Plaintext, readOnly);
 
     /// <summary>Cria um diff editor (original HEAD × modified workspace).</summary>
     public async Task<bool> CreateDiffEditorAsync(
         string hostId, string original, string modified, string? language,
         CancellationToken ct = default) =>
         await js.InvokeAsync<bool>("monacoInterop.createDiffEditor", ct,
-            hostId, original, modified, language ?? "plaintext");
+            hostId, original, modified, language ?? Plaintext);
 
     /// <summary>Troca o conteúdo do editor simples.</summary>
     public async Task SetValueAsync(
         string hostId, string value, string? language,
         CancellationToken ct = default) =>
         await js.InvokeVoidAsync("monacoInterop.setValue", ct,
-            hostId, value, language ?? "plaintext");
+            hostId, value, language ?? Plaintext);
 
     /// <summary>Troca os dois lados do diff editor.</summary>
     public async Task SetDiffAsync(
         string hostId, string original, string modified, string? language,
         CancellationToken ct = default) =>
         await js.InvokeVoidAsync("monacoInterop.setDiff", ct,
-            hostId, original, modified, language ?? "plaintext");
+            hostId, original, modified, language ?? Plaintext);
 
     /// <summary>Libera editor + modelos.</summary>
     public async Task DisposeAsync(string hostId, CancellationToken ct = default) =>
@@ -108,8 +109,8 @@ public sealed class MonacoInterop(IJSRuntime js)
             ".toml" => "ini",
             ".ini" => "ini",
             ".gitignore" or ".env" => "ini",
-            ".txt" or ".log" => "plaintext",
+            ".txt" or ".log" => Plaintext,
             _ => path.EndsWith("Dockerfile", StringComparison.OrdinalIgnoreCase)
-                ? "dockerfile" : "plaintext",
+                ? "dockerfile" : Plaintext,
         };
 }

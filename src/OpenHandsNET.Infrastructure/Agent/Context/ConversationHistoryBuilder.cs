@@ -211,21 +211,36 @@ public sealed class ConversationHistoryBuilder(IServiceProvider services)
             var el = m.LlmMessage;
             var role = el.TryGetProperty("role", out var r)
                 ? r.GetString() ?? "user" : "user";
-            var content = el.TryGetProperty("content", out var c)
-                ? c.ValueKind == JsonValueKind.String
-                    ? c.GetString()
-                    : c.ValueKind == JsonValueKind.Array
-                        ? string.Concat(c.EnumerateArray().Select(b =>
-                            b.TryGetProperty("text", out var t)
-                                ? t.GetString() : null))
-                        : c.GetRawText()
-                : null;
+            var content = ContentText(el);
             return new LlmMessage(role, content);
         }
         catch (JsonException)
         {
             return new LlmMessage("user", m.LlmMessage.GetRawText());
         }
+    }
+
+    /// <summary>Extrai o texto de content (string | array de parts | raw).</summary>
+    private static string? ContentText(JsonElement el)
+    {
+        if (!el.TryGetProperty("content", out var c))
+        {
+            return null;
+        }
+
+        if (c.ValueKind == JsonValueKind.String)
+        {
+            return c.GetString();
+        }
+
+        if (c.ValueKind != JsonValueKind.Array)
+        {
+            return c.GetRawText();
+        }
+
+        return string.Concat(c.EnumerateArray().Select(b =>
+            b.TryGetProperty("text", out var t)
+                ? t.GetString() : null));
     }
 
     private static string? Flatten(JsonElement? el) => el switch

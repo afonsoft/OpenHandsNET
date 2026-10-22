@@ -81,13 +81,13 @@ public sealed class ChatTestCommand : AsyncCommand<ChatTestCommand.Settings>
         var ok = diag.ValueKind == System.Text.Json.JsonValueKind.Object
             && diag.TryGetProperty("ok", out var o)
             && o.GetBoolean();
+        var detail = diag.ValueKind == System.Text.Json.JsonValueKind.Object
+            && diag.TryGetProperty("detail", out var d)
+                ? Markup.Escape(d.GetString() ?? "")
+                : "sem detalhe";
         AnsiConsole.MarkupLine(
             ok ? "[green]OK[/] — connection alcançou o Slack."
-               : "[red]FALHOU[/] — " +
-                 (diag.ValueKind == System.Text.Json.JsonValueKind.Object
-                    && diag.TryGetProperty("detail", out var d)
-                        ? Markup.Escape(d.GetString() ?? "")
-                        : "sem detalhe"));
+               : $"[red]FALHOU[/] — {detail}");
         return ok ? 0 : 1;
     }
 }

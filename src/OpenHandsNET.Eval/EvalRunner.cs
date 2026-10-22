@@ -193,11 +193,7 @@ public sealed class EvalRunner(IEvalBackend backend, RecordingStore? recordings 
                     false, a.Weight,
                     $"cmd `{a.Cmd}` → exit {ev.ExecResults.GetValueOrDefault(a.Cmd!, -1)} (expect {a.Expect ?? 0})"),
                 "file_contains" => ev.FileContents.GetValueOrDefault(a.Path!) is { } content
-                    ? new AssertResult(a.Type,
-                        content.Contains(a.Pattern!, StringComparison.Ordinal),
-                        false, a.Weight,
-                        content.Contains(a.Pattern!, StringComparison.Ordinal)
-                            ? null : $"pattern not found in {a.Path}")
+                    ? FileContainsResult(a, content)
                     : new AssertResult(a.Type, false, false, a.Weight,
                         $"file not found: {a.Path}"),
                 "output_contains" => new AssertResult(a.Type,
@@ -236,6 +232,15 @@ public sealed class EvalRunner(IEvalBackend backend, RecordingStore? recordings 
                 $"{v.Score:F2} — {v.Rationale}")
             : new AssertResult(a.Type, false, true, a.Weight,
                 "no judge configured (skipped, excluded from gate)");
+    }
+
+    private static AssertResult FileContainsResult(
+        EvalAssert a, string content)
+    {
+        var found = content.Contains(
+            a.Pattern!, StringComparison.Ordinal);
+        return new AssertResult(a.Type, found, false, a.Weight,
+            found ? null : $"pattern not found in {a.Path}");
     }
 }
 

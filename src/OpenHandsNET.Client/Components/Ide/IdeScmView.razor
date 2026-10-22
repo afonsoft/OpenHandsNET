@@ -72,11 +72,21 @@
             {
                 foreach (var item in f.EnumerateArray())
                 {
-                    var p = item.ValueKind
-                        == System.Text.Json.JsonValueKind.String
-                        ? item.GetString()!
-                        : item.TryGetProperty("path", out var pp)
-                            ? pp.GetString()! : item.ToString();
+                    string p;
+                    if (item.ValueKind
+                        == System.Text.Json.JsonValueKind.String)
+                    {
+                        p = item.GetString()!;
+                    }
+                    else if (item.TryGetProperty("path", out var pp))
+                    {
+                        p = pp.GetString()!;
+                    }
+                    else
+                    {
+                        p = item.ToString();
+                    }
+
                     _files.Add(p);
                 }
             }

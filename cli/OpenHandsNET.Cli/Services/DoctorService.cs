@@ -10,6 +10,7 @@ namespace OpenHandsNET.Cli.Services;
 /// </summary>
 public sealed class DoctorService(HttpClient http)
 {
+    private const string Kubectl = "kubectl";
     /// <summary>One probe result: ok flag + detail for display.</summary>
     public sealed record ProbeResult(string Name, bool Ok, string Detail);
 
@@ -73,7 +74,7 @@ public sealed class DoctorService(HttpClient http)
         CancellationToken ct)
     {
         var (code, _) = await TryRunAsync(
-            "kubectl", "version --client=true -o json", ct);
+            Kubectl, "version --client=true -o json", ct);
         if (code < 0)
         {
             return new("k8s_cluster", false,
@@ -81,7 +82,7 @@ public sealed class DoctorService(HttpClient http)
         }
 
         var (ccode, cinfo) = await TryRunAsync(
-            "kubectl", "cluster-info --request-timeout=5s", ct);
+            Kubectl, "cluster-info --request-timeout=5s", ct);
         return ccode == 0
             ? new("k8s_cluster", true,
                 cinfo.Split('\n')[0].Trim())
@@ -93,7 +94,7 @@ public sealed class DoctorService(HttpClient http)
     private static async Task<ProbeResult> ProbeSysboxAsync(
         CancellationToken ct)
     {
-        var (code, _) = await TryRunAsync("kubectl",
+        var (code, _) = await TryRunAsync(Kubectl,
             "get runtimeclass sysbox-runc --request-timeout=5s", ct);
         if (code < 0)
         {
@@ -111,7 +112,7 @@ public sealed class DoctorService(HttpClient http)
     private static async Task<ProbeResult> ProbeStorageClassAsync(
         CancellationToken ct)
     {
-        var (code, output) = await TryRunAsync("kubectl",
+        var (code, output) = await TryRunAsync(Kubectl,
             "get storageclass --request-timeout=5s", ct);
         if (code < 0)
         {

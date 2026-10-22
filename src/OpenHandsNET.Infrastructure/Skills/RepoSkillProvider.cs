@@ -36,10 +36,16 @@ public sealed class RepoSkillProvider(ILogger<RepoSkillProvider> logger)
     /// </summary>
     public async Task<IReadOnlyList<Skill>> LoadAsync(
         RuntimeSandbox sandbox, ISandboxExecutor executor,
-        CancellationToken ct) =>
-        _cache.TryGetValue(sandbox.Id, out var cached)
-            ? cached
-            : _cache[sandbox.Id] = await ScanAsync(sandbox, executor, ct);
+        CancellationToken ct)
+    {
+        if (_cache.TryGetValue(sandbox.Id, out var cached))
+        {
+            return cached;
+        }
+
+        cached = _cache[sandbox.Id] = await ScanAsync(sandbox, executor, ct);
+        return cached;
+    }
 
     /// <summary>Drops the cached manifest (context rescan).</summary>
     public void Invalidate(Guid sandboxId) => _cache.TryRemove(sandboxId, out _);
@@ -62,9 +68,10 @@ public sealed class RepoSkillProvider(ILogger<RepoSkillProvider> logger)
                 continue; // dir ausente — normal.
             }
 
-            foreach (var e in entries.Where(e => e.IsDirectory))
+            foreach (var skillPath in entries
+                .Where(e => e.IsDirectory)
+                .Select(e => $"{RepoRoot}/{dir}/{e.Path.TrimEnd('/')}/SKILL.md"))
             {
-                var skillPath = $"{RepoRoot}/{dir}/{e.Path.TrimEnd('/')}/SKILL.md";
                 try
                 {
                     var md = await executor.ReadFileAsync(
@@ -80,7 +87,7 @@ public sealed class RepoSkillProvider(ILogger<RepoSkillProvider> logger)
                     {
                         Id = Guid.NewGuid(),
                         Name = name ?? Path.GetFileName(
-                            e.Path.TrimEnd('/')),
+                            skillPath.TrimEnd('/')),
                         Description = desc,
                         ContentMd = body,
                         Source = SkillSource.Repo,

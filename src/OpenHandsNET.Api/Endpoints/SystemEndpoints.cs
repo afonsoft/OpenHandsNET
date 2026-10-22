@@ -11,6 +11,7 @@ namespace OpenHandsNET.Api.Endpoints;
 /// </summary>
 public static class SystemEndpoints
 {
+    private const string Healthy = "Healthy";
     private static readonly string Version =
         Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion ?? "0.0.0-dev";
@@ -46,12 +47,12 @@ public static class SystemEndpoints
                 },
                 health = new
                 {
-                    status = "Healthy",
+                    status = Healthy,
                     checks = new[]
                     {
-                        new { name = "database", status = "Healthy" },
-                        new { name = "sandbox_engine", status = "Healthy" },
-                        new { name = "llm_gateway", status = "Healthy" }
+                        new { name = "database", status = Healthy },
+                        new { name = "sandbox_engine", status = Healthy },
+                        new { name = "llm_gateway", status = Healthy }
                     }
                 }
             };

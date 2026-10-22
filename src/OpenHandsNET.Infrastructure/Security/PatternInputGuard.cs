@@ -11,15 +11,16 @@ namespace OpenHandsNET.Infrastructure.Security;
 /// </summary>
 public sealed partial class PatternInputGuard : IInputGuard
 {
+    private const string PromptInjection = "prompt_injection";
     private sealed record Rule(Regex Rx, string Category, bool Block);
 
     private static readonly Rule[] Rules =
     [
         // injection clássica
-        new(IgnorePreviousRx(), "prompt_injection", true),
-        new(SystemPromptRx(), "prompt_injection", true),
-        new(YouAreNowRx(), "prompt_injection", true),
-        new(DisregardRx(), "prompt_injection", true),
+        new(IgnorePreviousRx(), PromptInjection, true),
+        new(SystemPromptRx(), PromptInjection, true),
+        new(YouAreNowRx(), PromptInjection, true),
+        new(DisregardRx(), PromptInjection, true),
         // exfiltração de segredos
         new(RevealSecretRx(), "exfiltration", true),
         new(ExfilNetRx(), "exfiltration", true),
@@ -27,7 +28,7 @@ public sealed partial class PatternInputGuard : IInputGuard
         new(ControlMarkupRx(), "control_markup", true),
         // heurísticas mais fracas → warn
         new(EncodedPayloadRx(), "control_markup", false),
-        new(ActAsRx(), "prompt_injection", false),
+        new(ActAsRx(), PromptInjection, false),
     ];
 
     /// <inheritdoc />
@@ -45,11 +46,12 @@ public sealed partial class PatternInputGuard : IInputGuard
             }
         }
 
-        var verdict = block
-            ? InputGuardVerdict.Block
-            : categories.Count > 0
-                ? InputGuardVerdict.Warn
-                : InputGuardVerdict.Allow;
+        var verdict = (block, categories.Count > 0) switch
+        {
+            (true, _) => InputGuardVerdict.Block,
+            (false, true) => InputGuardVerdict.Warn,
+            _ => InputGuardVerdict.Allow,
+        };
         // Motivo sem o conteúdo — só categorias + hash curto.
         var hash = Convert.ToHexString(
             System.Security.Cryptography.SHA256.HashData(

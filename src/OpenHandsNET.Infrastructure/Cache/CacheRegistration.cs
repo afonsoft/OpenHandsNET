@@ -219,8 +219,12 @@ public sealed class InMemoryCoordinationBus(
     {
         lock (_lock)
         {
-            (_subs.TryGetValue(channel, out var h)
-                ? h : _subs[channel] = []).Add(handler);
+            if (!_subs.TryGetValue(channel, out var h))
+            {
+                h = _subs[channel] = [];
+            }
+
+            h.Add(handler);
         }
 
         return Task.CompletedTask;

@@ -303,8 +303,12 @@
         var s = args.ValueKind == JsonValueKind.String
             ? args.GetString() ?? "" : args.ToString();
         s = s.Replace('\n', ' ').Trim();
-        return s.Length == 0 ? null
-            : s.Length > 80 ? s[..80] + "…" : s;
+        if (s.Length == 0)
+        {
+            return null;
+        }
+
+        return s.Length > 80 ? s[..80] + "…" : s;
     }
 
     /// <summary>SPEC-41 RF-006: copy → clipboard com feedback breve.</summary>
@@ -347,22 +351,39 @@
     private string ObsText()
     {
         var obs = Event.Get("observation");
-        return obs.ValueKind == JsonValueKind.String
-            ? obs.GetString() ?? ""
-            : obs.ValueKind == JsonValueKind.Object
-                ? obs.TryGetProperty("output", out var o)
-                    && o.ValueKind == JsonValueKind.String
-                        ? o.GetString() ?? ""
-                        : obs.TryGetProperty("final_message", out var fm)
-                            ? fm.GetString() ?? "" : Pretty(obs)
-            : "";
+        if (obs.ValueKind == JsonValueKind.String)
+        {
+            return obs.GetString() ?? "";
+        }
+
+        if (obs.ValueKind == JsonValueKind.Object)
+        {
+            if (obs.TryGetProperty("output", out var o)
+                && o.ValueKind == JsonValueKind.String)
+            {
+                return o.GetString() ?? "";
+            }
+
+            if (obs.TryGetProperty("final_message", out var fm))
+            {
+                return fm.GetString() ?? "";
+            }
+
+            return Pretty(obs);
+        }
+
+        return "";
     }
 
     private string StateText()
     {
         var v = Event.Get("value");
-        return v.ValueKind == JsonValueKind.String ? v.GetString() ?? L["event.state_update"]
-            : v.ValueKind == JsonValueKind.Object ? v.ToString() : L["event.state_update"];
+        return v.ValueKind switch
+        {
+            JsonValueKind.String => v.GetString() ?? L["event.state_update"],
+            JsonValueKind.Object => v.ToString(),
+            _ => L["event.state_update"],
+        };
     }
 
     private IEnumerable<(string path, string op)> FileChanges()

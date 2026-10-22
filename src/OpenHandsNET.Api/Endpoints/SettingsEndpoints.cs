@@ -15,6 +15,7 @@ namespace OpenHandsNET.Api.Endpoints;
 /// </summary>
 public static class SettingsEndpoints
 {
+    private const string Secrets = "Secrets";
     private const string SettingsKey = "settings";
     private const string SecretScope = "app";
     private const string SecretOwner = "system"; // SPEC-08 refina owner real
@@ -55,7 +56,7 @@ public static class SettingsEndpoints
             Results.Ok(await db.Secrets
                 .Where(s => s.Scope == SecretScope && s.OwnerId == SecretOwner)
                 .Select(s => new { name = s.Name })
-                .ToListAsync(ct))).WithTags("Secrets");
+                .ToListAsync(ct))).WithTags(Secrets);
 
         app.MapGet("/api/v1/secrets/{name}", async (
             string name, AppDbContext db, CancellationToken ct) =>
@@ -65,7 +66,7 @@ public static class SettingsEndpoints
                     Name = name,
                     CreatedAt = row.CreatedAt,
                 })
-                : Results.NotFound()).WithTags("Secrets");
+                : Results.NotFound()).WithTags(Secrets);
 
         app.MapPut("/api/v1/secrets/{name}", async (
             string name, JsonElement body, AppDbContext db,
@@ -92,7 +93,7 @@ public static class SettingsEndpoints
 
             await db.SaveChangesAsync(ct);
             return Results.NoContent();
-        }).WithTags("Secrets");
+        }).WithTags(Secrets);
 
         app.MapDelete("/api/v1/secrets/{name}", async (
             string name, AppDbContext db, CancellationToken ct) =>
@@ -104,7 +105,7 @@ public static class SettingsEndpoints
             }
 
             return Results.NoContent();
-        }).WithTags("Secrets");
+        }).WithTags(Secrets);
 
         return app;
     }

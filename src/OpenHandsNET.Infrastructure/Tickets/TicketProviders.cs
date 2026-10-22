@@ -20,6 +20,7 @@ public abstract class RestTicketProvider(
     ISecretStore secrets,
     ILogger logger)
 {
+    protected const string Issue = "issue";
     /// <summary>Secret store (tokens/webhook secrets por org).</summary>
     protected ISecretStore Secrets => secrets;
 
@@ -168,13 +169,18 @@ public sealed class LinearTicketProvider(
                     }
                     if (uf.TryGetProperty("assigneeId", out _))
                     {
-                        newAssignee = data
-                            .TryGetProperty("assignee", out var asg)
-                            ? asg.TryGetProperty("displayName", out var dn)
-                                ? dn.GetString()
-                                : asg.TryGetProperty("name", out var n)
-                                    ? n.GetString() : null
-                            : null;
+                        newAssignee = null;
+                        if (data.TryGetProperty("assignee", out var asg))
+                        {
+                            if (asg.TryGetProperty("displayName", out var dn))
+                            {
+                                newAssignee = dn.GetString();
+                            }
+                            else if (asg.TryGetProperty("name", out var n))
+                            {
+                                newAssignee = n.GetString();
+                            }
+                        }
                     }
                     if (uf.TryGetProperty("stateId", out _))
                     {
@@ -207,7 +213,7 @@ public sealed class LinearTicketProvider(
             if (type == "Comment" && action == "create")
             {
                 var body = Str(data, "body");
-                var key = data.TryGetProperty("issue", out var iss)
+                var key = data.TryGetProperty(Issue, out var iss)
                     ? Str(iss, "identifier") : null;
                 if (key is null)
                 {
@@ -220,7 +226,7 @@ public sealed class LinearTicketProvider(
                     null, null, null, body,
                     ProjectKey: ProjectOf(key),
                     Title: null, Description: null,
-                    Url: data.TryGetProperty("issue", out var i2)
+                    Url: data.TryGetProperty(Issue, out var i2)
                         ? Str(i2, "url") : null,
                     Labels: null, State: null, Assignee: null);
             }
@@ -261,7 +267,7 @@ public sealed class LinearTicketProvider(
             await resp.Content.ReadAsStreamAsync(ct),
             cancellationToken: ct);
         if (!doc.RootElement.TryGetProperty("data", out var d)
-            || !d.TryGetProperty("issue", out var i)
+            || !d.TryGetProperty(Issue, out var i)
             || i.ValueKind == JsonValueKind.Null)
         {
             return null;
@@ -298,7 +304,7 @@ public sealed class LinearTicketProvider(
                 await idResp.Content.ReadAsStreamAsync(ct),
                 cancellationToken: ct);
             uuid = doc.RootElement.TryGetProperty("data", out var d)
-                && d.TryGetProperty("issue", out var i)
+                && d.TryGetProperty(Issue, out var i)
                 ? Str(i, "id") : null;
         }
         if (uuid is null)
@@ -349,7 +355,7 @@ public sealed class LinearTicketProvider(
             await resp.Content.ReadAsStreamAsync(ct),
             cancellationToken: ct);
         if (!doc.RootElement.TryGetProperty("data", out var d)
-            || !d.TryGetProperty("issue", out var i)
+            || !d.TryGetProperty(Issue, out var i)
             || i.ValueKind == JsonValueKind.Null)
         {
             return;
@@ -360,14 +366,12 @@ public sealed class LinearTicketProvider(
             && t.TryGetProperty("states", out var st)
             && st.TryGetProperty("nodes", out var nodes))
         {
-            foreach (var s in nodes.EnumerateArray())
+            foreach (var s in nodes.EnumerateArray().Where(s =>
+                string.Equals(Str(s, "name"), stateName,
+                    StringComparison.OrdinalIgnoreCase)))
             {
-                if (string.Equals(Str(s, "name"), stateName,
-                        StringComparison.OrdinalIgnoreCase))
-                {
-                    stateId = Str(s, "id");
-                    break;
-                }
+                stateId = Str(s, "id");
+                break;
             }
         }
         if (uuid is null || stateId is null)
@@ -520,7 +524,7 @@ public sealed class JiraTicketProvider(
                 ? ts.GetRawText() : null;
 
             if (eventType == "jira:issue_updated"
-                && root.TryGetProperty("issue", out var issue))
+                && root.TryGetProperty(Issue, out var issue))
             {
                 var key = Str(issue, "key");
                 if (key is null)
@@ -568,7 +572,7 @@ public sealed class JiraTicketProvider(
             }
 
             if (eventType == "comment_created"
-                && root.TryGetProperty("issue", out var iss2))
+                && root.TryGetProperty(Issue, out var iss2))
             {
                 var key = Str(iss2, "key");
                 if (key is null)

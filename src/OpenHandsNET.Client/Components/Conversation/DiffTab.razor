@@ -100,8 +100,7 @@
                 {
                     var p = item.ValueKind == System.Text.Json.JsonValueKind.String
                         ? item.GetString()!
-                        : item.TryGetProperty("path", out var pp)
-                            ? pp.GetString()! : item.ToString();
+                        : PathOf(item);
                     _files.Add(p);
                 }
             }
@@ -140,10 +139,25 @@
     }
 
     private static string LineClass(string line) =>
-        line.StartsWith("+++") || line.StartsWith("---") ? "hunk"
-        : line.StartsWith('+') ? "add"
-        : line.StartsWith('-') ? "del"
-        : line.StartsWith("@@") ? "hunk" : "";
+        line switch
+        {
+            _ when line.StartsWith("+++") || line.StartsWith("---")
+                => "hunk",
+            _ when line.StartsWith('+') => "add",
+            _ when line.StartsWith('-') => "del",
+            _ when line.StartsWith("@@") => "hunk",
+            _ => "",
+        };
+
+    private static string PathOf(System.Text.Json.JsonElement item)
+    {
+        if (item.TryGetProperty("path", out var pp))
+        {
+            return pp.GetString()!;
+        }
+
+        return item.ToString();
+    }
 
     public async ValueTask DisposeAsync()
     {

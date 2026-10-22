@@ -10,16 +10,17 @@ namespace OpenHandsNET.Api.Endpoints;
 /// </summary>
 public static class SkillEndpoints
 {
+    private const string Skills = "Skills";
     /// <summary>Maps skill endpoints.</summary>
     public static IEndpointRouteBuilder MapSkillEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/v1/skills", ListAsync).WithTags("Skills");
-        app.MapPost("/api/v1/skills", CreateAsync).WithTags("Skills");
-        app.MapGet("/api/v1/skills/{id:guid}", GetAsync).WithTags("Skills");
-        app.MapPatch("/api/v1/skills/{id:guid}", UpdateAsync).WithTags("Skills");
-        app.MapDelete("/api/v1/skills/{id:guid}", DeleteAsync).WithTags("Skills");
+        app.MapGet("/api/v1/skills", ListAsync).WithTags(Skills);
+        app.MapPost("/api/v1/skills", CreateAsync).WithTags(Skills);
+        app.MapGet("/api/v1/skills/{id:guid}", GetAsync).WithTags(Skills);
+        app.MapPatch("/api/v1/skills/{id:guid}", UpdateAsync).WithTags(Skills);
+        app.MapDelete("/api/v1/skills/{id:guid}", DeleteAsync).WithTags(Skills);
         app.MapGet("/api/v1/app-conversations/{id:guid}/skills", ForConversationAsync)
-            .WithTags("Skills");
+            .WithTags(Skills);
         return app;
     }
 

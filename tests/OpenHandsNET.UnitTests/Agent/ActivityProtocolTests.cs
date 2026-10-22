@@ -59,7 +59,7 @@ public sealed class ActivityProtocolTests
             Guid.NewGuid(), Guid.Empty, null, null,
             OpenHandsNET.Domain.Sandbox.SandboxStatus.Running,
             null, DateTimeOffset.UtcNow, null, null);
-        var chunks = new List<ExecChunk>();
+        var chunks = new List<IExecChunk>();
         await foreach (var c in exec.ExecStreamingAsync(
             sandbox, "echo hi", TimeSpan.FromSeconds(5),
             CancellationToken.None))
@@ -85,7 +85,7 @@ public sealed class ActivityProtocolTests
         var transport = new SandboxAgentTransport(
             new FakeFactory(sse), new Uri("http://agent"), "k",
             agentVersion: 2);
-        var chunks = new List<ExecChunk>();
+        var chunks = new List<IExecChunk>();
         await foreach (var c in transport.ExecStreamAsync(
             "echo hi", TimeSpan.FromSeconds(5), CancellationToken.None))
         {

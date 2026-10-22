@@ -50,8 +50,19 @@ public sealed class ModelRouter(
         // tentado — ids ausentes da chain avançam para o primeiro fallback.
         var idx = chain.FindIndex(m =>
             string.Equals(m, current.Model, StringComparison.OrdinalIgnoreCase));
-        var next = idx < 0 ? chain[0]
-            : idx + 1 < chain.Count ? chain[idx + 1] : null;
+        string? next;
+        if (idx < 0)
+        {
+            next = chain[0];
+        }
+        else if (idx + 1 < chain.Count)
+        {
+            next = chain[idx + 1];
+        }
+        else
+        {
+            next = null;
+        }
         if (next is null
             || string.Equals(next, current.Model, StringComparison.OrdinalIgnoreCase))
         {
