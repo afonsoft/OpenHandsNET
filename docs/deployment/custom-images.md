@@ -30,13 +30,13 @@ prefixo — `Sandbox:AgentImagePrefixes` (default `openhandsnet/runtime`).
 
 ```yaml
 image: ghcr.io/openhandsnet/runtime:latest
-sdk: [ "dotnet:10", "node:22", "python:3.13" ]
+sdk: [ "dotnet:10", "node:22", "python:3.13", "chrome:stable" ]
 env: { DOTNET_CLI_TELEMETRY_OPTOUT: "1" }
 setup: .openhands/setup.sh   # default
 ```
 
 - `sdk` roda os installers pinados `/opt/ohn/sdks/{name}.sh` (dotnet, node,
-  python, java, go) — passwordless `sudo` restrito a eles.
+  python, java, go, **chrome**) — passwordless `sudo` restrito a eles.
 - sem `sdk:` → **auto-detect** por manifestos (`*.csproj`, `package.json`,
   `requirements.txt`, `pyproject.toml`, `pom.xml`, `go.mod`, `global.json`,
   `.nvmrc`).
@@ -62,6 +62,40 @@ docker push ghcr.io/openhandsnet/runtime:0.1.0
 A imagem é multi-stage: publica `openhandsnet-sandbox-agent` (single-file
 self-contained) e instala sobre `ubuntu:24.04` — git/gh/git-lfs, python3,
 node 22, toolchain de build, `tini` como init.
+
+## SDK chrome — Chrome for Testing + chrome-devtools-mcp
+
+`sdk: ["chrome:stable"]` (canal opcional: `stable|beta|dev|canary`) instala
+Chrome for Testing (binário arch-aware via `@puppeteer/browsers`), as
+deps de runtime e o **`chrome-devtools-mcp` global** (sem npx/rede no
+start da conversa). Requer Node ≥ 22.12 (a imagem runtime traz 22.x).
+Binário exposto em `/usr/local/bin/chrome` (symlink estável).
+
+Config MCP para a conversa (stdio roda **dentro** do sandbox via
+`docker exec` — ver `docs/specs/07_mcp_integration_spec.md`):
+
+```json
+{
+  "name": "chrome-devtools",
+  "transport": "stdio",
+  "command": "chrome-devtools-mcp",
+  "args": ["--headless", "--isolated",
+           "--chrome-arg=--no-sandbox",
+           "--executable-path=/usr/local/bin/chrome"],
+  "env": { "CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS": "1",
+           "CHROME_DEVTOOLS_MCP_NO_UPDATE_CHECKS": "1" },
+  "timeoutSeconds": 120
+}
+```
+
+- `--chrome-arg=--no-sandbox`: necessário em Docker comum (sem user
+  namespaces); sob sysbox (`Sandbox:DockerRuntime=sysbox-runc` /
+  `runtimeClassName`) pode omitir.
+- `--isolated` cria profile temporário por sessão (evita `Target closed`
+  e vazamento de cookies entre conversas).
+- Egress `deny`/`allowlist`: o MCP já vem pré-instalado — nenhuma rota
+  extra necessária para o servidor; páginas visitadas seguem o egress
+  normal do sandbox.
 
 ## Warm pool por imagem
 
