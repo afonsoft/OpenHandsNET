@@ -112,10 +112,14 @@ public sealed class HttpSandboxEngine(
         PostActionAsync(containerId, "stop", ct);
 
     /// <inheritdoc />
-    public async Task RemoveAsync(string containerId, CancellationToken ct)
+    public async Task RemoveAsync(
+        string containerId, CancellationToken ct,
+        Guid? workspaceConversationId = null)
     {
-        var res = await Client().DeleteAsync(
-            $"/runtime/v1/sandboxes/{containerId}", ct);
+        var uri = $"/runtime/v1/sandboxes/{containerId}" +
+            (workspaceConversationId is { } w
+                ? $"?workspace={w:N}" : "");
+        var res = await Client().DeleteAsync(uri, ct);
         if (res.StatusCode == HttpStatusCode.NotFound)
         {
             return; // idempotent delete

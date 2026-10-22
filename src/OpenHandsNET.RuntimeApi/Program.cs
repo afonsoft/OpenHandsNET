@@ -121,9 +121,14 @@ public sealed class RuntimeApiProgram
         });
 
         rt.MapDelete("/sandboxes/{id}", async (
-            string id, ISandboxEngine engine, CancellationToken ct) =>
+            string id, HttpContext http, ISandboxEngine engine,
+            CancellationToken ct) =>
         {
-            await engine.RemoveAsync(id, ct);
+            // SPEC-88: convId opcional → engine remove também o workspace
+            // externo (PVC k8s) junto com o pod.
+            Guid? workspace = Guid.TryParse(http.Request.Query["workspace"],
+                out var w) ? w : null;
+            await engine.RemoveAsync(id, ct, workspace);
             return Results.NoContent();
         });
 

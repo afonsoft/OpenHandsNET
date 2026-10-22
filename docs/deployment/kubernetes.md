@@ -33,6 +33,10 @@ NetworkPolicy default-deny interna.
   snapshot do spec no ConfigMap `ohn-sleep-{pod}` e deleta o pod; a PVC
   `ohn-ws-{conv}` é retida; resume recria o pod sobre o mesmo PVC →
   workspace preservado.
+- **Delete/archive de conversa** (SPEC-88): `DELETE /app-conversations`
+  remove o pod, o ConfigMap de sleep e a **PVC `ohn-ws-{conv}`** —
+  libera o volume junto com a conversa (histórico no banco preservado).
+  Orphan sweep remove PVCs via label `openhandsnet.conversation_id`.
 - **Runtime class**: `sandbox.runtimeClassName` (default `sysbox-runc`) —
   requisito para DinD dentro do sandbox. Sem `privileged:true`; a
   isolação vem do user-namespace do sysbox.

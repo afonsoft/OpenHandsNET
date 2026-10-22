@@ -368,7 +368,15 @@ public sealed class DockerSandboxEngine(
             containerId, new ContainerStopParameters(), ct));
 
     /// <inheritdoc />
-    public async Task RemoveAsync(string containerId, CancellationToken ct)
+    /// <remarks>
+    /// Workspace do provider docker é um bind do host — removido pelo
+    /// <c>WorkspaceProvisioner.RemoveWorkspace</c> (SPEC-88); o parâmetro
+    /// <c>workspaceConversationId</c> aplica-se apenas a workspaces
+    /// externos (PVC no k8s).
+    /// </remarks>
+    public async Task RemoveAsync(
+        string containerId, CancellationToken ct,
+        Guid? workspaceConversationId = null)
     {
         try
         {
