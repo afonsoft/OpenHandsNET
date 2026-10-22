@@ -12,6 +12,8 @@ namespace OpenHandsNET.Client.Services;
 /// </summary>
 public sealed class OpenHandsNetApiClient(HttpClient http)
 {
+    private const string Content = "content";
+    private const string Items = "items";
     private static readonly JsonSerializerOptions Json = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -58,7 +60,7 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
         var page = await http.GetFromJsonAsync<JsonElement>(
             "/api/v1/app-conversations/search?limit=100", ct);
         var items = new List<ConversationItem>();
-        if (page.TryGetProperty("items", out var arr))
+        if (page.TryGetProperty(Items, out var arr))
         {
             foreach (var el in arr.EnumerateArray())
             {
@@ -80,7 +82,7 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
         var page = await http.GetFromJsonAsync<JsonElement>(
             "/api/v1/app-conversations/search?attention=1&limit=100", ct);
         var items = new List<ConversationItem>();
-        if (page.TryGetProperty("items", out var arr))
+        if (page.TryGetProperty(Items, out var arr))
         {
             foreach (var el in arr.EnumerateArray())
             {
@@ -333,7 +335,7 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
 
         var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(Json, ct);
         var items = new List<ClientEvent>();
-        if (doc.TryGetProperty("items", out var arr))
+        if (doc.TryGetProperty(Items, out var arr))
         {
             foreach (var el in arr.EnumerateArray())
             {
@@ -366,7 +368,7 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
         {
             var doc = await resp.Content
                 .ReadFromJsonAsync<JsonElement>(Json, ct);
-            if (doc.TryGetProperty("items", out var arr))
+            if (doc.TryGetProperty(Items, out var arr))
             {
                 foreach (var el in arr.EnumerateArray())
                 {
@@ -400,7 +402,7 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
             + (pageId is null ? "" : $"&page_id={Uri.EscapeDataString(pageId)}");
         var page = await http.GetFromJsonAsync<JsonElement>(url, ct);
         var items = new List<ClientEvent>();
-        if (page.TryGetProperty("items", out var arr))
+        if (page.TryGetProperty(Items, out var arr))
         {
             foreach (var el in arr.EnumerateArray())
             {
@@ -444,12 +446,12 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
         var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
         if (doc.TryGetProperty("encoding", out var enc)
             && enc.GetString() == "base64"
-            && doc.TryGetProperty("content", out var _))
+            && doc.TryGetProperty(Content, out var _))
         {
             return "[binary file — base64 omitted]";
         }
 
-        return doc.TryGetProperty("content", out var c)
+        return doc.TryGetProperty(Content, out var c)
             ? c.GetString() ?? "" : "";
     }
 
@@ -475,12 +477,12 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
             && enc.GetString() == "base64")
         {
             return new FileReadResult(
-                doc.GetProperty("content").GetString() ?? "", etag,
+                doc.GetProperty(Content).GetString() ?? "", etag,
                 IsBinary: true);
         }
 
         return new FileReadResult(
-            doc.TryGetProperty("content", out var c)
+            doc.TryGetProperty(Content, out var c)
                 ? c.GetString() ?? "" : "", etag, IsBinary: false);
     }
 
@@ -714,7 +716,7 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
         }
 
         var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(Json, ct);
-        return doc.TryGetProperty("content", out var c) ? c.GetString() : null;
+        return doc.TryGetProperty(Content, out var c) ? c.GetString() : null;
     }
 
     public async Task<IReadOnlyList<JsonElement>> GetGitLogAsync(

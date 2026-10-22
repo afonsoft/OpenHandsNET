@@ -16,6 +16,7 @@ namespace OpenHandsNET.Cli.Commands;
 /// </summary>
 public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
 {
+    private const string RecordedMode = "recorded mode";
     /// <summary>CLI settings.</summary>
     public sealed class Settings : CommandSettings
     {
@@ -164,8 +165,12 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
             }
         }
 
-        return regressions.Count > 0 && s.Gate ? 2
-            : results.All(r => r.Pass) ? 0 : 1;
+        if (regressions.Count > 0 && s.Gate)
+        {
+            return 2;
+        }
+
+        return results.All(r => r.Pass) ? 0 : 1;
     }
 
     private static readonly JsonSerializerOptions Json = new()
@@ -246,21 +251,21 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
     {
         public Task<string> CreateConversationAsync(
             string task, string? repo, string? model, CancellationToken ct) =>
-            throw new InvalidOperationException("recorded mode");
+            throw new InvalidOperationException(RecordedMode);
         public Task<string> WaitReadyAsync(string taskId, CancellationToken ct) =>
-            throw new InvalidOperationException("recorded mode");
+            throw new InvalidOperationException(RecordedMode);
         public Task RunSetupAsync(
             string conversationId, IReadOnlyList<string> commands, CancellationToken ct) =>
             Task.CompletedTask;
         public Task<IReadOnlyList<JsonElement>> WatchAsync(
             string conversationId, TimeSpan timeout, CancellationToken ct) =>
-            throw new InvalidOperationException("recorded mode");
+            throw new InvalidOperationException(RecordedMode);
         public Task<(int, string)> ExecAsync(
             string conversationId, string command, CancellationToken ct) =>
-            throw new InvalidOperationException("recorded mode");
+            throw new InvalidOperationException(RecordedMode);
         public Task<string?> ReadFileAsync(
             string conversationId, string path, CancellationToken ct) =>
-            throw new InvalidOperationException("recorded mode");
+            throw new InvalidOperationException(RecordedMode);
         public Task<(double, string)?> JudgeAsync(
             string rubric, string transcript, CancellationToken ct) =>
             Task.FromResult<(double, string)?>(null);

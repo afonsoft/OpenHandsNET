@@ -207,7 +207,7 @@ public sealed class Spec28SubagentsTests
         public Task<ModelInfo> GetModelInfoAsync(CancellationToken ct) =>
             _parent.GetModelInfoAsync(ct);
 
-        public IAsyncEnumerable<LlmStreamChunk> ChatStreamAsync(
+        public IAsyncEnumerable<ILlmStreamChunk> ChatStreamAsync(
             IReadOnlyList<LlmMessage> messages, IReadOnlyList<ToolSchema> tools,
             LlmOptions options, CancellationToken ct) =>
             messages.Count > 0 && messages[0].Role == "system"

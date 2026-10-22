@@ -32,6 +32,21 @@ public static class McpEndpoints
         return app;
     }
 
+    private static string StatusOf(McpServerConfig cfg, bool authed)
+    {
+        if (!cfg.Enabled)
+        {
+            return "disabled";
+        }
+
+        if (cfg.OAuthAuthorizeUrl is not null && !authed)
+        {
+            return "auth_required";
+        }
+
+        return "configured";
+    }
+
     private sealed record ServerDto(
         McpServerConfig Config, string Status, bool Authenticated);
 
@@ -45,9 +60,7 @@ public static class McpEndpoints
             var authed = cfg.OAuthAuthorizeUrl is not null
                 && await oauth.IsAuthenticatedAsync(Owner, cfg.Name, ct);
             list.Add(new ServerDto(cfg,
-                Status: !cfg.Enabled ? "disabled"
-                    : cfg.OAuthAuthorizeUrl is not null && !authed
-                        ? "auth_required" : "configured",
+                Status: StatusOf(cfg, authed),
                 Authenticated: authed));
         }
 

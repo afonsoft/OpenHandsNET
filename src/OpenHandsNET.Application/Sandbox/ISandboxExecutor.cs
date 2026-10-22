@@ -21,7 +21,7 @@ public interface ISandboxExecutor
     /// implementation aggregates via <see cref="ExecAsync"/> — transports
     /// without streaming still work, just without incremental chunks.
     /// </summary>
-    async IAsyncEnumerable<ExecChunk> ExecStreamingAsync(
+    async IAsyncEnumerable<IExecChunk> ExecStreamingAsync(
         Domain.Sandbox.Sandbox sandbox, string command, TimeSpan timeout,
         [System.Runtime.CompilerServices.EnumeratorCancellation]
         CancellationToken ct)
@@ -114,14 +114,14 @@ public interface IBashSession : IAsyncDisposable
 public sealed record CommandResult(int ExitCode, string StdOut, string StdErr, bool TimedOut);
 
 /// <summary>Stream item of <see cref="ISandboxExecutor.ExecStreamingAsync"/> (SPEC-24).</summary>
-public abstract record ExecChunk;
+public interface IExecChunk;
 
 /// <summary>Live output on one channel (stdout/stderr).</summary>
-public sealed record OutputChunk(string Channel, string Text) : ExecChunk;
+public sealed record OutputChunk(string Channel, string Text) : IExecChunk;
 
 /// <summary>Terminal stream item carrying the aggregated result.</summary>
 public sealed record ExecCompleted(
-    CommandResult Result, long DurationMs, bool Truncated) : ExecChunk;
+    CommandResult Result, long DurationMs, bool Truncated) : IExecChunk;
 
 /// <summary>
 /// In-container agent heartbeat (SPEC-24 RF-007, <c>/alive</c> v2).

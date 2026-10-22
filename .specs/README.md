@@ -36,6 +36,7 @@ gates (aprovação de SPEC, merge).
 | `72_sonar_critical_code_smells_spec.md` | SonarCloud — 121 smells BLOCKER/CRITICAL | `Approved` | #154 (Epic #152) |
 | `73_sonar_major_code_smells_spec.md` | SonarCloud — 243 smells MAJOR | `Approved` | #155 (Epic #152) |
 | `74_sonar_minor_code_smells_spec.md` | SonarCloud — 331 smells MINOR/INFO | `Approved` | #156 (Epic #152) |
+| `89_sonar_deferred_refactors_spec.md` | Sonar — defer Lote D (S3776/S107/S3903/S1075) | `Draft` | gap-analysis 2026-10-22 |
 
 ## Arquivo morto — `docs/specs/`
 

@@ -289,17 +289,17 @@ public sealed class WarmPoolService(
 
     private async Task PrunePoolContainersAsync(CancellationToken ct)
     {
-        foreach (var c in await engine.ListPoolAsync(ct))
+        foreach (var id in (await engine.ListPoolAsync(ct)).Select(c => c.ContainerId))
         {
             try
             {
-                await engine.RemoveAsync(c.ContainerId, ct);
+                await engine.RemoveAsync(id, ct);
             }
             catch (Exception e) when (e is not OperationCanceledException)
             {
                 logger.LogDebug(e,
                     "warm pool prune of {ContainerId} skipped",
-                    c.ContainerId[..12]);
+                    id[..12]);
             }
         }
     }

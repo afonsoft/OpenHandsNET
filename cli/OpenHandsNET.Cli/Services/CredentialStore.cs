@@ -30,9 +30,18 @@ public sealed class CredentialStore
         public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 
         [JsonIgnore]
-        public string Masked => ApiKey is not null
-            ? $"sk-***{ApiKey[^Math.Min(4, ApiKey.Length)..]}"
-            : AccessToken is not null ? "***token" : "(none)";
+        public string Masked
+        {
+            get
+            {
+                if (ApiKey is not null)
+                {
+                    return $"sk-***{ApiKey[^Math.Min(4, ApiKey.Length)..]}";
+                }
+
+                return AccessToken is not null ? "***token" : "(none)";
+            }
+        }
     }
 
     private string FilePath => Path.Combine(_dir, "credentials.json");

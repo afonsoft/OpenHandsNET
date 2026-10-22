@@ -132,10 +132,18 @@ else
         await LoadConnectionsAsync();
     }
 
-    private static string? Str(JsonElement e, string prop) =>
-        e.TryGetProperty(prop, out var v)
-            && v.ValueKind == JsonValueKind.String
-            ? v.GetString()
-            : v.ValueKind is JsonValueKind.Number
-                ? v.GetRawText() : null;
+    private static string? Str(JsonElement e, string prop)
+    {
+        if (!e.TryGetProperty(prop, out var v))
+        {
+            return null;
+        }
+
+        return v.ValueKind switch
+        {
+            JsonValueKind.String => v.GetString(),
+            JsonValueKind.Number => v.GetRawText(),
+            _ => null,
+        };
+    }
 }

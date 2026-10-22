@@ -13,6 +13,7 @@ namespace OpenHandsNET.Api.Endpoints;
 /// </summary>
 public static class HealthEndpoints
 {
+    private const string Healthy = "healthy";
     /// <summary>Maps the detailed readiness endpoint.</summary>
     public static IEndpointRouteBuilder MapReadinessEndpoints(
         this IEndpointRouteBuilder app)
@@ -58,7 +59,7 @@ public static class HealthEndpoints
 
                     var res = await http.GetAsync("/healthz", ct);
                     dockerStatus = res.IsSuccessStatusCode
-                        ? "healthy" : $"runtime-api {(int)res.StatusCode}";
+                        ? Healthy : $"runtime-api {(int)res.StatusCode}";
                 }
                 catch (Exception ex)
                 {
@@ -70,7 +71,7 @@ public static class HealthEndpoints
                 try
                 {
                     await docker.System.PingAsync(ct);
-                    dockerStatus = "healthy";
+                    dockerStatus = Healthy;
                 }
                 catch (Exception ex)
                 {
@@ -100,7 +101,7 @@ public static class HealthEndpoints
             // kubernetes: o substrate é a API do cluster — a presença do pod
             // já prova agendamento; dockerStatus "n/a" não degrada.
             var healthy = report.Status == HealthStatus.Healthy &&
-                          (dockerStatus == "healthy" ||
+                          (dockerStatus == Healthy ||
                            dockerStatus.StartsWith("n/a",
                                StringComparison.Ordinal));
 
@@ -116,7 +117,7 @@ public static class HealthEndpoints
                         OpenHandsNET.Sandboxing.EgressProxyService
                             .ProxyName, ct);
                     proxyStatus = p.State is { Running: true }
-                        ? "healthy" : p.State?.Status ?? "unknown";
+                        ? Healthy : p.State?.Status ?? "unknown";
                 }
                 catch (Docker.DotNet.DockerContainerNotFoundException)
                 {
@@ -128,7 +129,7 @@ public static class HealthEndpoints
                 }
 
                 checks["egress_proxy"] = proxyStatus;
-                healthy &= proxyStatus == "healthy";
+                healthy &= proxyStatus == Healthy;
             }
             return Results.Json(new
             {

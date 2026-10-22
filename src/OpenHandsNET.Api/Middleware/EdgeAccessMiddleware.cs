@@ -64,7 +64,7 @@ public sealed class EdgeAccessMiddleware(
         var allows = applicable.Where(r => r.Action == "allow").ToList();
 
         var blocked = denies.Any(r => Matches(r.Cidr, ip));
-        if (!blocked && allows.Count > 0)
+        if (!blocked && allows.Any())
         {
             blocked = !allows.Any(r => Matches(r.Cidr, ip));
         }

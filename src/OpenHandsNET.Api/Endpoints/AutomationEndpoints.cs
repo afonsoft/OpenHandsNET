@@ -14,6 +14,9 @@ namespace OpenHandsNET.Api.Endpoints;
 /// </summary>
 public static class AutomationEndpoints
 {
+    private const string AutomationNotFound = "automation not found";
+    private const string AutomationsWrite = "automations:write";
+    private const string AutomationsRead = "automations:read";
     /// <summary>Maps automation + hook-trigger endpoints.</summary>
     public static IEndpointRouteBuilder MapAutomationEndpoints(
         this IEndpointRouteBuilder app)
@@ -28,7 +31,7 @@ public static class AutomationEndpoints
                 : Results.Ok((await svc.ListAsync(u.UserId, ct))
                     .Select(ToDto).ToList()))
             .RequireAuthorization()
-            .RequireScope("automations:read");
+            .RequireScope(AutomationsRead);
 
         g.MapPost("", async (
             AutomationUpsertRequest body, HttpContext ctx,
@@ -45,19 +48,24 @@ public static class AutomationEndpoints
                 : Results.Created(
                     $"/api/v1/automations/{info!.Id}", ToDto(info));
         }).RequireAuthorization()
-            .RequireScope("automations:write");
+            .RequireScope(AutomationsWrite);
 
         g.MapGet("/{id:guid}", async (
             Guid id, HttpContext ctx, ICurrentUserAccessor current,
             IAutomationService svc, CancellationToken ct) =>
-            current.User is not { } u
-                ? Results.Unauthorized()
-                : await svc.GetAsync(id, u.UserId, ct) is { } a
-                    ? Results.Ok(ToDto(a))
-                    : OpenHandsNetProblemFactory.Create(
-                        ctx, 404, "automation not found"))
+        {
+            if (current.User is not { } u)
+            {
+                return Results.Unauthorized();
+            }
+
+            return await svc.GetAsync(id, u.UserId, ct) is { } a
+                ? Results.Ok(ToDto(a))
+                : OpenHandsNetProblemFactory.Create(
+                    ctx, 404, AutomationNotFound);
+        })
             .RequireAuthorization()
-            .RequireScope("automations:read");
+            .RequireScope(AutomationsRead);
 
         g.MapPatch("/{id:guid}", async (
             Guid id, AutomationUpsertRequest body, HttpContext ctx,
@@ -70,23 +78,28 @@ public static class AutomationEndpoints
             return error switch
             {
                 "not found" => OpenHandsNetProblemFactory.Create(
-                    ctx, 404, "automation not found"),
+                    ctx, 404, AutomationNotFound),
                 not null => OpenHandsNetProblemFactory.Create(ctx, 400, error),
                 _ => Results.Ok(ToDto(info!)),
             };
         }).RequireAuthorization()
-            .RequireScope("automations:write");
+            .RequireScope(AutomationsWrite);
 
         g.MapDelete("/{id:guid}", async (
             Guid id, ICurrentUserAccessor current, IAutomationService svc,
             CancellationToken ct) =>
-            current.User is not { } u
-                ? Results.Unauthorized()
-                : await svc.DeleteAsync(id, u.UserId, ct)
-                    ? Results.NoContent()
-                    : Results.NotFound())
+        {
+            if (current.User is not { } u)
+            {
+                return Results.Unauthorized();
+            }
+
+            return await svc.DeleteAsync(id, u.UserId, ct)
+                ? Results.NoContent()
+                : Results.NotFound();
+        })
             .RequireAuthorization()
-            .RequireScope("automations:write");
+            .RequireScope(AutomationsWrite);
 
         g.MapPost("/{id:guid}/run-now", async (
             Guid id, HttpContext ctx, ICurrentUserAccessor current,
@@ -97,7 +110,7 @@ public static class AutomationEndpoints
             return run switch
             {
                 null => OpenHandsNetProblemFactory.Create(
-                    ctx, 404, "automation not found"),
+                    ctx, 404, AutomationNotFound),
                 { Status: "skipped" } when !fired =>
                     OpenHandsNetProblemFactory.Create(
                         ctx, 409, "automation run already in progress"),
@@ -109,7 +122,7 @@ public static class AutomationEndpoints
                 }),
             };
         }).RequireAuthorization()
-            .RequireScope("automations:write");
+            .RequireScope(AutomationsWrite);
 
         g.MapGet("/{id:guid}/runs", async (
             Guid id, int? take, ICurrentUserAccessor current,
@@ -120,7 +133,7 @@ public static class AutomationEndpoints
                         id, u.UserId, take ?? 50, ct))
                     .Select(ToRunDto).ToList()))
             .RequireAuthorization()
-            .RequireScope("automations:read");
+            .RequireScope(AutomationsRead);
 
         // histórico global do owner — antes de /{id} para não colidir.
         g.MapGet("/runs", async (
@@ -133,7 +146,7 @@ public static class AutomationEndpoints
                         u.UserId, from, to, take ?? 50, ct))
                     .Select(ToRunDto).ToList()))
             .RequireAuthorization()
-            .RequireScope("automations:read");
+            .RequireScope(AutomationsRead);
 
         g.MapPost("/{id:guid}/hooks", async (
             Guid id, HttpContext ctx, ICurrentUserAccessor current,
@@ -143,7 +156,7 @@ public static class AutomationEndpoints
             var (hook, token) = await svc.CreateHookAsync(id, u.UserId, ct);
             return hook is null
                 ? OpenHandsNetProblemFactory.Create(
-                    ctx, 404, "automation not found")
+                    ctx, 404, AutomationNotFound)
                 : Results.Created(
                     $"/api/v1/automations/hooks/{hook.Id}", new
                     {
@@ -153,18 +166,23 @@ public static class AutomationEndpoints
                         created_at = hook.CreatedAt,
                     });
         }).RequireAuthorization()
-            .RequireScope("automations:write");
+            .RequireScope(AutomationsWrite);
 
         g.MapDelete("/hooks/{hookId:guid}", async (
             Guid hookId, ICurrentUserAccessor current,
             IAutomationService svc, CancellationToken ct) =>
-            current.User is not { } u
-                ? Results.Unauthorized()
-                : await svc.DeleteHookAsync(hookId, u.UserId, ct)
-                    ? Results.NoContent()
-                    : Results.NotFound())
+        {
+            if (current.User is not { } u)
+            {
+                return Results.Unauthorized();
+            }
+
+            return await svc.DeleteHookAsync(hookId, u.UserId, ct)
+                ? Results.NoContent()
+                : Results.NotFound();
+        })
             .RequireAuthorization()
-            .RequireScope("automations:write");
+            .RequireScope(AutomationsWrite);
 
         // Trigger anônimo — rate-limit duplo (token 10/min + IP 60/min);
         // token inválido → 404 (não vaza existência). SPEC-47 RF-003/NFR.

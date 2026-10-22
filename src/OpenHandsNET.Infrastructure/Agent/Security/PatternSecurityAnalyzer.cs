@@ -38,20 +38,14 @@ public sealed partial class PatternSecurityAnalyzer : ISecurityAnalyzer
             return Task.FromResult(SecurityRisk.Low);
         }
 
-        foreach (var rx in HighRules)
+        if (HighRules.Any(rx => rx.IsMatch(payload)))
         {
-            if (rx.IsMatch(payload))
-            {
-                return Task.FromResult(SecurityRisk.High);
-            }
+            return Task.FromResult(SecurityRisk.High);
         }
 
-        foreach (var rx in MediumRules)
+        if (MediumRules.Any(rx => rx.IsMatch(payload)))
         {
-            if (rx.IsMatch(payload))
-            {
-                return Task.FromResult(SecurityRisk.Medium);
-            }
+            return Task.FromResult(SecurityRisk.Medium);
         }
 
         return Task.FromResult(SecurityRisk.Low);

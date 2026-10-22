@@ -414,4 +414,7 @@ app.MapFallbackToFile("index.html");
 await app.RunAsync();
 
 /// <summary>Entry point exposed for WebApplicationFactory-based integration tests.</summary>
-public partial class Program;
+public partial class Program
+{
+    private Program() { }
+}

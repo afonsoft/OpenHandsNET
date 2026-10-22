@@ -38,9 +38,19 @@ public sealed class LiteLlmAdminClient(
         using var doc = JsonDocument.Parse(res);
         var root = doc.RootElement;
         var key = root.TryGetProperty("key", out var k) ? k.GetString() : null;
-        var keyId = root.TryGetProperty("key_id", out var id)
-            ? id.GetString()
-            : root.TryGetProperty("token_id", out var t) ? t.GetString() : key;
+        string? keyId;
+        if (root.TryGetProperty("key_id", out var id))
+        {
+            keyId = id.GetString();
+        }
+        else if (root.TryGetProperty("token_id", out var t))
+        {
+            keyId = t.GetString();
+        }
+        else
+        {
+            keyId = key;
+        }
         var budgetId = root.TryGetProperty("budget_id", out var b)
             ? b.GetString() : null;
         if (string.IsNullOrEmpty(key))

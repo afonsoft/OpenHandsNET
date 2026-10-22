@@ -13,6 +13,7 @@ namespace OpenHandsNET.Api.Endpoints;
 /// </summary>
 public static class ServiceUserEndpoints
 {
+    private const string PermManageApiKeys = "perm:manage_api_keys";
     /// <summary>Map service-user endpoints.</summary>
     public static IEndpointRouteBuilder MapServiceUserEndpoints(
         this IEndpointRouteBuilder app)
@@ -22,7 +23,7 @@ public static class ServiceUserEndpoints
         g.MapGet("", async (
             Guid org_id, IServiceUserService svc, CancellationToken ct) =>
             Results.Ok(await svc.ListAsync(org_id, ct)))
-            .RequireAuthorization("perm:manage_api_keys")
+            .RequireAuthorization(PermManageApiKeys)
             .RequireScope(ApiScopes.AdminServiceUsers);
 
         g.MapPost("", async (
@@ -49,7 +50,7 @@ public static class ServiceUserEndpoints
             {
                 return Results.BadRequest(new { detail = e.Message });
             }
-        }).RequireAuthorization("perm:manage_api_keys")
+        }).RequireAuthorization(PermManageApiKeys)
           .RequireScope(ApiScopes.AdminServiceUsers);
 
         g.MapPatch("/{id:guid}", async (
@@ -73,7 +74,7 @@ public static class ServiceUserEndpoints
             {
                 return Results.BadRequest(new { detail = e.Message });
             }
-        }).RequireAuthorization("perm:manage_api_keys")
+        }).RequireAuthorization(PermManageApiKeys)
           .RequireScope(ApiScopes.AdminServiceUsers);
 
         g.MapDelete("/{id:guid}", async (
@@ -81,7 +82,7 @@ public static class ServiceUserEndpoints
             IServiceUserService svc, CancellationToken ct) =>
             await svc.DeleteAsync(org_id, id, ct)
                 ? Results.NoContent() : Results.NotFound())
-            .RequireAuthorization("perm:manage_api_keys")
+            .RequireAuthorization(PermManageApiKeys)
             .RequireScope(ApiScopes.AdminServiceUsers);
 
         g.MapPost("/{id:guid}/keys", async (
@@ -118,14 +119,14 @@ public static class ServiceUserEndpoints
             {
                 return Results.BadRequest(new { detail = e.Message });
             }
-        }).RequireAuthorization("perm:manage_api_keys")
+        }).RequireAuthorization(PermManageApiKeys)
           .RequireScope(ApiScopes.AdminServiceUsers);
 
         g.MapGet("/{id:guid}/keys", async (
             Guid org_id, Guid id,
             IServiceUserService svc, CancellationToken ct) =>
             Results.Ok(await svc.ListKeysAsync(org_id, id, ct)))
-            .RequireAuthorization("perm:manage_api_keys")
+            .RequireAuthorization(PermManageApiKeys)
             .RequireScope(ApiScopes.AdminServiceUsers);
 
         g.MapDelete("/{id:guid}/keys/{key_id:guid}", async (
@@ -133,7 +134,7 @@ public static class ServiceUserEndpoints
             IServiceUserService svc, CancellationToken ct) =>
             await svc.DeleteKeyAsync(org_id, id, key_id, ct)
                 ? Results.NoContent() : Results.NotFound())
-            .RequireAuthorization("perm:manage_api_keys")
+            .RequireAuthorization(PermManageApiKeys)
             .RequireScope(ApiScopes.AdminServiceUsers);
 
         return app;

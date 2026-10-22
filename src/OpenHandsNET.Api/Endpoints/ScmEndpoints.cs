@@ -15,6 +15,7 @@ namespace OpenHandsNET.Api.Endpoints;
 /// </summary>
 public static class ScmEndpoints
 {
+    private const string PermManageIntegrations = "perm:manage_integrations";
     private const int MaxWebhookPayload = 256 * 1024;
 
     /// <summary>Maps SCM endpoints.</summary>
@@ -50,7 +51,7 @@ public static class ScmEndpoints
                     kind = conn.Kind.ToWire(),
                     app_slug = conn.AppSlug,
                 });
-        }).RequireAuthorization("perm:manage_integrations");
+        }).RequireAuthorization(PermManageIntegrations);
 
         // Pull request a partir do workspace da conversa.
         app.MapPost("/api/v1/app-conversations/{id:guid}/pull-request",
@@ -102,7 +103,7 @@ public static class ScmEndpoints
             return user is null
                 ? Results.Unauthorized()
                 : Results.Ok(await svc.ListAsync(org_id, ct));
-        }).RequireAuthorization("perm:manage_integrations");
+        }).RequireAuthorization(PermManageIntegrations);
 
         conns.MapPost("", async (
             Guid org_id, [FromBody] ScmConnectionRequest req,
@@ -124,7 +125,7 @@ public static class ScmEndpoints
                 user.UserId.ToString(), ct,
                 req.ApiUrl, req.AuthKind, req.MetaJson);
             return Results.Ok(conn);
-        }).RequireAuthorization("perm:manage_integrations");
+        }).RequireAuthorization(PermManageIntegrations);
 
         // SPEC-53 RF-004: diagnóstico da connection (token + escopo).
         scm.MapPost("/connections/{id:guid}/test", async (
@@ -136,7 +137,7 @@ public static class ScmEndpoints
                 return Results.Unauthorized();
             var diag = await svc.TestAsync(id, ct);
             return Results.Ok(diag);
-        }).RequireAuthorization("perm:manage_integrations");
+        }).RequireAuthorization(PermManageIntegrations);
 
         conns.MapDelete("/{id:guid}", async (
             Guid org_id, Guid id, ICurrentUserAccessor current,
@@ -147,7 +148,7 @@ public static class ScmEndpoints
                 return Results.Unauthorized();
             return await svc.DeleteAsync(id, ct)
                 ? Results.NoContent() : Results.NotFound();
-        }).RequireAuthorization("perm:manage_integrations");
+        }).RequireAuthorization(PermManageIntegrations);
 
         // Webhook público (HMAC + idempotência; sem auth de usuário).
         app.MapPost("/api/v1/webhooks/scm/{kind}", async (
@@ -189,13 +190,18 @@ public static class ScmEndpoints
                         eventType = peek.RootElement
                             .TryGetProperty("eventType", out var et)
                                 ? et.GetString() : null;
-                        delivery = peek.RootElement
+                        delivery = null;
+                        if (peek.RootElement
                             .TryGetProperty("notificationId", out var nd)
-                            && nd.ValueKind == JsonValueKind.Number
-                                ? nd.GetInt32().ToString()
-                                : peek.RootElement.TryGetProperty(
-                                        "id", out var pid)
-                                    ? pid.ToString() : null;
+                            && nd.ValueKind == JsonValueKind.Number)
+                        {
+                            delivery = nd.GetInt32().ToString();
+                        }
+                        else if (peek.RootElement.TryGetProperty(
+                            "id", out var pid))
+                        {
+                            delivery = pid.ToString();
+                        }
                     }
                     catch (JsonException)
                     {

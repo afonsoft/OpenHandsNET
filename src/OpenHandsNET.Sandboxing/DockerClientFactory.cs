@@ -9,11 +9,18 @@ public static class DockerClientFactory
     public static IDockerClient Create()
     {
         var host = Environment.GetEnvironmentVariable("DOCKER_HOST");
-        var uri = host is null
-            ? (OperatingSystem.IsWindows()
+        Uri uri;
+        if (host is null)
+        {
+            uri = OperatingSystem.IsWindows()
                 ? new Uri("npipe://./pipe/docker_engine")
-                : new Uri("unix:///var/run/docker.sock"))
-            : new Uri(host);
+                : new Uri("unix:///var/run/docker.sock");
+        }
+        else
+        {
+            uri = new Uri(host);
+        }
+
         return new DockerClientBuilder().WithEndpoint(uri).Build();
     }
 }

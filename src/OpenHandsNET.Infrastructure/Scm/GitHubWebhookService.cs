@@ -26,6 +26,8 @@ public sealed class GitHubWebhookService(
     IAuditService audit,
     ILogger<GitHubWebhookService> logger) : IScmWebhookService
 {
+    private const string Repository = "repository";
+    private const string Comment = "comment";
     /// <summary>Mention marker that triggers a conversation.</summary>
     public const string Mention = "@openhandsnet";
 
@@ -50,7 +52,7 @@ public sealed class GitHubWebhookService(
             var installationId = root.TryGetProperty("installation", out var inst)
                 && inst.TryGetProperty("id", out var iid)
                     ? iid.GetRawText() : null;
-            var repository = root.TryGetProperty("repository", out var repo)
+            var repository = root.TryGetProperty(Repository, out var repo)
                 && repo.TryGetProperty("full_name", out var fn)
                     ? fn.GetString() : null;
 
@@ -221,7 +223,7 @@ public sealed class GitHubWebhookService(
         int? prNumber = null;
         long? inReplyTo = null;
 
-        if (root.TryGetProperty("repository", out var repo)
+        if (root.TryGetProperty(Repository, out var repo)
             && repo.TryGetProperty("full_name", out var fn))
         {
             repository = fn.GetString();
@@ -234,7 +236,7 @@ public sealed class GitHubWebhookService(
         switch (eventType)
         {
             case "issue_comment":
-                if (!root.TryGetProperty("comment", out var c1))
+                if (!root.TryGetProperty(Comment, out var c1))
                     return null;
                 body = c1.TryGetProperty("body", out var b1)
                     ? b1.GetString() : null;
@@ -251,7 +253,7 @@ public sealed class GitHubWebhookService(
                 break;
 
             case "pull_request_review_comment":
-                if (!root.TryGetProperty("comment", out var c2))
+                if (!root.TryGetProperty(Comment, out var c2))
                     return null;
                 body = c2.TryGetProperty("body", out var b2)
                     ? b2.GetString() : null;
@@ -439,12 +441,12 @@ public sealed class GitHubWebhookService(
                     && p.TryGetProperty("path_with_namespace", out var pn)
                         ? pn.GetString() : null;
             case ScmKind.Bitbucket:
-                return root.TryGetProperty("repository", out var r)
+                return root.TryGetProperty(Repository, out var r)
                     && r.TryGetProperty("full_name", out var fn)
                         ? fn.GetString() : null;
             case ScmKind.AzureDevOps:
                 return root.TryGetProperty("resource", out var res)
-                    && res.TryGetProperty("repository", out var rr)
+                    && res.TryGetProperty(Repository, out var rr)
                     && rr.TryGetProperty("name", out var rn)
                         ? rn.GetString() : null;
             default:
@@ -500,13 +502,13 @@ public sealed class GitHubWebhookService(
                 {
                     return null;
                 }
-                if (root.TryGetProperty("comment", out var bc)
+                if (root.TryGetProperty(Comment, out var bc)
                     && bc.TryGetProperty("content", out var bco))
                 {
                     body = bco.TryGetProperty("raw", out var raw)
                         ? raw.GetString() : null;
                 }
-                author = root.TryGetProperty("comment", out var bcc)
+                author = root.TryGetProperty(Comment, out var bcc)
                     && bcc.TryGetProperty("user", out var bu)
                     && bu.TryGetProperty("nickname", out var bn)
                         ? bn.GetString() : null;
@@ -527,7 +529,7 @@ public sealed class GitHubWebhookService(
                     return null;
                 }
                 // ms.vss-code.git-pullrequest-comment-event
-                if (!res.TryGetProperty("comment", out var ac))
+                if (!res.TryGetProperty(Comment, out var ac))
                 {
                     return null;
                 }

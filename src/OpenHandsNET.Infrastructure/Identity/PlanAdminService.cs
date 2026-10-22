@@ -9,13 +9,14 @@ namespace OpenHandsNET.Infrastructure.Identity;
 /// <summary>EF-backed <see cref="IPlanAdminService"/> (SPEC-20 RF-005).</summary>
 public sealed class PlanAdminService(AppDbContext db) : IPlanAdminService
 {
+    private const string Active = "active";
     /// <inheritdoc />
     public async Task<IReadOnlyList<PlanInfo>> ListAsync(CancellationToken ct)
     {
         var plans = await db.Plans.AsNoTracking()
             .OrderBy(p => p.Name).ToListAsync(ct);
         var inUseSubs = await db.Subscriptions.AsNoTracking()
-            .Where(s => s.Status == "active")
+            .Where(s => s.Status == Active)
             .Select(s => s.PlanId).Distinct().ToListAsync(ct);
         var inUseOrgs = await db.Organizations.AsNoTracking()
             .Where(o => o.PlanId != null)
@@ -97,7 +98,7 @@ public sealed class PlanAdminService(AppDbContext db) : IPlanAdminService
         }
 
         var inUse = await db.Subscriptions.AnyAsync(
-            s => s.PlanId == id && s.Status == "active", ct)
+            s => s.PlanId == id && s.Status == Active, ct)
             || await db.Organizations.AnyAsync(o => o.PlanId == id, ct);
         if (inUse)
         {
@@ -122,7 +123,7 @@ public sealed class PlanAdminService(AppDbContext db) : IPlanAdminService
 
         var now = DateTimeOffset.UtcNow;
         var active = await db.Subscriptions
-            .Where(s => s.OrgId == orgId && s.Status == "active")
+            .Where(s => s.OrgId == orgId && s.Status == Active)
             .ToListAsync(ct);
         foreach (var s in active)
         {
@@ -135,7 +136,7 @@ public sealed class PlanAdminService(AppDbContext db) : IPlanAdminService
             Id = Guid.NewGuid(),
             OrgId = orgId,
             PlanId = planId,
-            Status = "active",
+            Status = Active,
             StartedAt = now,
         });
         org.PlanId = planId;

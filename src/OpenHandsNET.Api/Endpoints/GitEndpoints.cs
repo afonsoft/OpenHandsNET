@@ -17,6 +17,8 @@ namespace OpenHandsNET.Api.Endpoints;
 /// </summary>
 public static class GitEndpoints
 {
+    private const string PathMustStayUnderWorkspace = "path must stay under /workspace";
+    private const string NoRepository = "no_repository";
     /// <summary>Maps the git/files proxy + credentials endpoints.</summary>
     public static IEndpointRouteBuilder MapGitEndpoints(this IEndpointRouteBuilder app)
     {
@@ -77,7 +79,7 @@ public static class GitEndpoints
 
         if (!await git.HasRepositoryAsync(sb, ct))
         {
-            return OpenHandsNetProblemFactory.Create(http, 404, "no_repository");
+            return OpenHandsNetProblemFactory.Create(http, 404, NoRepository);
         }
 
         return Results.Ok(await git.GetChangesAsync(sb, ct));
@@ -97,7 +99,7 @@ public static class GitEndpoints
 
         if (!await git.HasRepositoryAsync(sb, ct))
         {
-            return OpenHandsNetProblemFactory.Create(http, 404, "no_repository");
+            return OpenHandsNetProblemFactory.Create(http, 404, NoRepository);
         }
 
         if (string.Equals(format, "raw", StringComparison.OrdinalIgnoreCase))
@@ -136,7 +138,7 @@ public static class GitEndpoints
 
         if (!await git.HasRepositoryAsync(sb, ct))
         {
-            return OpenHandsNetProblemFactory.Create(http, 404, "no_repository");
+            return OpenHandsNetProblemFactory.Create(http, 404, NoRepository);
         }
 
         var content = await git.GetFileAtRefAsync(sb, path, @ref ?? "HEAD", ct);
@@ -160,7 +162,7 @@ public static class GitEndpoints
 
         if (!await git.HasRepositoryAsync(sb, ct))
         {
-            return OpenHandsNetProblemFactory.Create(http, 404, "no_repository");
+            return OpenHandsNetProblemFactory.Create(http, 404, NoRepository);
         }
 
         return Results.Ok(await git.GetLogAsync(sb, limit ?? 50, ct));
@@ -176,7 +178,7 @@ public static class GitEndpoints
         if (!IsValidWorkspacePath(dir))
         {
             return OpenHandsNetProblemFactory.Create(
-                http, 400, "path must stay under /workspace");
+                http, 400, PathMustStayUnderWorkspace);
         }
 
         var sb = await SandboxOfAsync(id, svc, http, ct);
@@ -203,7 +205,7 @@ public static class GitEndpoints
         if (path is null || !IsValidWorkspacePath(path))
         {
             return OpenHandsNetProblemFactory.Create(
-                http, 400, "path must stay under /workspace");
+                http, 400, PathMustStayUnderWorkspace);
         }
 
         var sb = await SandboxOfAsync(id, svc, http, ct);
@@ -267,7 +269,7 @@ public static class GitEndpoints
         if (!IsValidWorkspacePath(path))
         {
             return OpenHandsNetProblemFactory.Create(
-                http, 400, "path must stay under /workspace");
+                http, 400, PathMustStayUnderWorkspace);
         }
 
         byte[] bytes;
@@ -352,11 +354,14 @@ public static class GitEndpoints
         var r = await executor.ExecAsync(sb,
             $"mv -- '{Escape(body.From)}' '{Escape(body.To)}'",
             TimeSpan.FromSeconds(15), ct);
-        return r.ExitCode == 0
-            ? Results.NoContent()
-            : OpenHandsNetProblemFactory.Create(
-                http, 400, r.StdErr.Trim() is { Length: > 0 } e
-                    ? e : "rename failed");
+        if (r.ExitCode == 0)
+        {
+            return Results.NoContent();
+        }
+
+        var err = r.StdErr.Trim() is { Length: > 0 } e
+            ? e : "rename failed";
+        return OpenHandsNetProblemFactory.Create(http, 400, err);
     }
 
     /// <summary>SPEC-42 RF-001: <c>rm -rf</c> — raiz do workspace proibida.</summary>
@@ -369,7 +374,7 @@ public static class GitEndpoints
         if (p is null || !IsValidWorkspacePath(p) || p.Length <= "/workspace/".Length)
         {
             return OpenHandsNetProblemFactory.Create(
-                http, 400, "path must stay under /workspace");
+                http, 400, PathMustStayUnderWorkspace);
         }
 
         var sb = await SandboxOfAsync(id, svc, http, ct);
@@ -382,11 +387,14 @@ public static class GitEndpoints
         var r = await executor.ExecAsync(sb,
             $"rm -rf -- '{Escape(p)}'",
             TimeSpan.FromSeconds(15), ct);
-        return r.ExitCode == 0
-            ? Results.NoContent()
-            : OpenHandsNetProblemFactory.Create(
-                http, 400, r.StdErr.Trim() is { Length: > 0 } e
-                    ? e : "delete failed");
+        if (r.ExitCode == 0)
+        {
+            return Results.NoContent();
+        }
+
+        var err = r.StdErr.Trim() is { Length: > 0 } e
+            ? e : "delete failed";
+        return OpenHandsNetProblemFactory.Create(http, 400, err);
     }
 
     /// <summary>
@@ -507,7 +515,7 @@ public static class GitEndpoints
 
         if (!await git.HasRepositoryAsync(sb, ct))
         {
-            return OpenHandsNetProblemFactory.Create(http, 404, "no_repository");
+            return OpenHandsNetProblemFactory.Create(http, 404, NoRepository);
         }
 
         var r = await git.CommitAsync(sb, body.Message, body.Files, ct);
@@ -525,7 +533,7 @@ public static class GitEndpoints
         if (path is null || !IsValidWorkspacePath(path))
         {
             return OpenHandsNetProblemFactory.Create(
-                http, 400, "path must stay under /workspace");
+                http, 400, PathMustStayUnderWorkspace);
         }
 
         var sb = await SandboxOfAsync(id, svc, http, ct);
@@ -537,11 +545,14 @@ public static class GitEndpoints
 
         var r = await executor.ExecAsync(
             sb, command(path), TimeSpan.FromSeconds(15), ct);
-        return r.ExitCode == 0
-            ? Results.NoContent()
-            : OpenHandsNetProblemFactory.Create(
-                http, 400, r.StdErr.Trim() is { Length: > 0 } e
-                    ? e : "operation failed");
+        if (r.ExitCode == 0)
+        {
+            return Results.NoContent();
+        }
+
+        var err = r.StdErr.Trim() is { Length: > 0 } e
+            ? e : "operation failed";
+        return OpenHandsNetProblemFactory.Create(http, 400, err);
     }
 
     private static async Task<string?> TryReadEtagAsync(
@@ -639,9 +650,19 @@ public static class GitEndpoints
     {
         var kind = body.TryGetProperty("kind", out var k)
             ? k.GetString() ?? "token" : "token";
-        var secret = body.TryGetProperty("token", out var t)
-            ? t.GetString()
-            : body.TryGetProperty("ssh_key", out var s) ? s.GetString() : null;
+        string? secret;
+        if (body.TryGetProperty("token", out var t))
+        {
+            secret = t.GetString();
+        }
+        else if (body.TryGetProperty("ssh_key", out var s))
+        {
+            secret = s.GetString();
+        }
+        else
+        {
+            secret = null;
+        }
         if (string.IsNullOrEmpty(secret))
         {
             return OpenHandsNetProblemFactory.Create(

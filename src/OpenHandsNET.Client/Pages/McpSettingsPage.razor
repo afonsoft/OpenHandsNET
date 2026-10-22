@@ -39,11 +39,7 @@
                     var name = cfg.GetProperty("name").GetString() ?? "?";
                     var transport = cfg.TryGetProperty("transport", out var tr)
                         ? tr.GetString() : "stdio";
-                    var endpoint = cfg.TryGetProperty("url", out var u)
-                        && u.ValueKind == JsonValueKind.String
-                            ? u.GetString()
-                            : cfg.TryGetProperty("command", out var c)
-                                ? c.GetString() : "-";
+                    var endpoint = EndpointOf(cfg);
                     var status = s.TryGetProperty("status", out var st)
                         ? st.GetString() : "?";
                     <tr>
@@ -214,14 +210,28 @@
                     .GetProperty("name").GetString() == name)
                 .GetProperty("config");
             var r = await Api.ProbeMcpServerAsync(cfg);
-            _probeResults[name] = r.GetProperty("ok").GetBoolean()
+            var ok = r.GetProperty("ok").GetBoolean();
+            var error = r.TryGetProperty("error", out var e)
+                ? e.GetString() : L["mcp.probe_unknown"];
+            _probeResults[name] = ok
                 ? L.T("mcp.probe_ok", ("count", r.GetProperty("tools_count").GetInt32().ToString()), ("ms", r.GetProperty("latency_ms").GetInt64().ToString()))
-                : $"erro: {(r.TryGetProperty("error", out var e)
-                    ? e.GetString() : L["mcp.probe_unknown"])}";
+                : $"erro: {error}";
         }
         catch (Exception ex)
         {
             _probeResults[name] = L.T("mcp.probe_failed", ("error", ex.Message));
         }
+    }
+
+    private static string EndpointOf(JsonElement cfg)
+    {
+        if (cfg.TryGetProperty("url", out var u)
+            && u.ValueKind == JsonValueKind.String)
+        {
+            return u.GetString() ?? "-";
+        }
+
+        return cfg.TryGetProperty("command", out var c)
+            ? c.GetString() ?? "-" : "-";
     }
 }

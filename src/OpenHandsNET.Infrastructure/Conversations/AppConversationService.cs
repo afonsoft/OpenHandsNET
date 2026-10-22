@@ -615,6 +615,13 @@ public sealed class AppConversationService(
                 el.TryGetProperty("text", out var t) ? t.GetString() : c?.ToString())
             .Where(s => !string.IsNullOrEmpty(s))!);
 
-    private static string? Truncate(string? s, int max) =>
-        s is null ? null : s.Length <= max ? s : s[..max];
+    private static string? Truncate(string? s, int max)
+    {
+        if (s is null)
+        {
+            return null;
+        }
+
+        return s.Length <= max ? s : s[..max];
+    }
 }

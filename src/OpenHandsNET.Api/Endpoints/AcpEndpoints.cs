@@ -92,11 +92,14 @@ public static class AcpEndpoints
             if (await convs.ValidateSendMessageAsync(id, ct) is { } err)
             {
                 return OpenHandsNetProblemFactory.Create(http,
-                    err is SendMessageError.NotFound ? 404
-                        : err is SendMessageError.Gone ? 410
-                        : err is SendMessageError.ServiceUnavailable ? 503
-                        : 409,
-                    $"conversation {id}: {err}");
+                err switch
+                {
+                    SendMessageError.NotFound => 404,
+                    SendMessageError.Gone => 410,
+                    SendMessageError.ServiceUnavailable => 503,
+                    _ => 409,
+                },
+                $"conversation {id}: {err}");
             }
 
             await events.AppendAsync(id, new MessageEvent

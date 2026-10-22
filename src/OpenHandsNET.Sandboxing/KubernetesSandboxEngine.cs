@@ -64,6 +64,7 @@ public sealed class KubernetesSandboxEngine(
     ILogger<KubernetesSandboxEngine> logger,
     IKubernetes? kubernetes = null) : ISandboxEngine
 {
+    private const string Workspace = "workspace";
     private readonly IKubernetes _k8s = kubernetes ?? new Kubernetes(
         k8sOptions.Value.KubeconfigPath is { } kc
             ? KubernetesClientConfiguration.BuildConfigFromConfigFile(kc)
@@ -147,7 +148,7 @@ public sealed class KubernetesSandboxEngine(
         [
             new V1Volume
             {
-                Name = "workspace",
+                Name = Workspace,
                 PersistentVolumeClaim =
                     new V1PersistentVolumeClaimVolumeSource
                     {
@@ -156,7 +157,7 @@ public sealed class KubernetesSandboxEngine(
             },
         ];
         pod.Spec.Containers[0].VolumeMounts =
-            [new V1VolumeMount("/workspace", "workspace")];
+            [new V1VolumeMount("/workspace", Workspace)];
     }
 
     /// <inheritdoc />
@@ -254,10 +255,10 @@ public sealed class KubernetesSandboxEngine(
             };
             pod.Spec.NodeName = null; // libera scheduling livre
             pod.Spec.Volumes = free.Spec.Volumes?
-                .Where(v => v.Name != "workspace").ToList();
+                .Where(v => v.Name != Workspace).ToList();
             pod.Spec.Containers[0].VolumeMounts =
                 free.Spec.Containers[0].VolumeMounts?
-                    .Where(m => m.Name != "workspace").ToList();
+                    .Where(m => m.Name != Workspace).ToList();
 
             if (request.WorkspaceConversationId is { } ws)
             {

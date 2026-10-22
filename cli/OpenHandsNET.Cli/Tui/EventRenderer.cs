@@ -37,11 +37,21 @@ public static class EventRenderer
             case "ObservationEvent":
                 var obs = e.TryGetProperty("observation", out var o)
                     ? o : default;
-                var output = obs.ValueKind == JsonValueKind.String
-                    ? obs.GetString()
-                    : obs.ValueKind == JsonValueKind.Object
-                        && obs.TryGetProperty("output", out var o2)
-                            ? o2.GetString() : null;
+                string? output;
+                if (obs.ValueKind == JsonValueKind.String)
+                {
+                    output = obs.GetString();
+                }
+                else if (obs.ValueKind == JsonValueKind.Object
+                    && obs.TryGetProperty("output", out var o2))
+                {
+                    output = o2.GetString();
+                }
+                else
+                {
+                    output = null;
+                }
+
                 if (output is { Length: > 0 })
                 {
                     AnsiConsole.MarkupLine(

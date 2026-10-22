@@ -38,7 +38,7 @@ public sealed class MockLlmProvider : IAgentLlmProvider
         Task.FromResult(new ModelInfo(ModelId, "mock"));
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<LlmStreamChunk> ChatStreamAsync(
+    public async IAsyncEnumerable<ILlmStreamChunk> ChatStreamAsync(
         IReadOnlyList<LlmMessage> messages,
         IReadOnlyList<ToolSchema> tools,
         LlmOptions options,

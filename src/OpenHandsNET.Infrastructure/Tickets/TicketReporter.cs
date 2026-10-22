@@ -55,12 +55,12 @@ public sealed class TicketReporter(
             var safe = summary is null
                 ? null
                 : Agent.SecretRedactor.Redact(summary);
+            var prNote = pullRequestUrl is null
+                ? "" : $" PR: {pullRequestUrl}";
             var text = success
                 ? $"OpenHandsNET: run finished — " +
                   $"{safe ?? "see conversation"}." +
-                  (pullRequestUrl is null
-                      ? "" : $" PR: {pullRequestUrl}") +
-                  $" Conversation: {conversationId}"
+                  $"{prNote} Conversation: {conversationId}"
                 : $"OpenHandsNET: run failed — " +
                   $"conversation {conversationId}.";
             await provider.AddCommentAsync(

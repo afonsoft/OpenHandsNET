@@ -186,10 +186,13 @@ public sealed class SkillsCommand : AsyncCommand<SkillsCommand.Settings>
             foreach (var t in tools.EnumerateArray())
             {
                 var name = t.GetProperty("name").GetString() ?? "";
-                var source = name.StartsWith("mcp__", StringComparison.Ordinal)
-                    ? "mcp"
-                    : name is "invoke_skill" or "task" ? "skills"
-                    : "builtin";
+                var source = name switch
+                {
+                    _ when name.StartsWith("mcp__", StringComparison.Ordinal)
+                        => "mcp",
+                    "invoke_skill" or "task" => "skills",
+                    _ => "builtin",
+                };
                 if (!settings.All && source == "builtin")
                 {
                     continue;
@@ -411,18 +414,35 @@ public sealed class McpListCommand : AsyncCommand<McpListCommand.Settings>
                 table.AddRow(
                     s.TryGetProperty("name", out var n)
                         ? n.GetString() ?? "" : "",
-                    s.TryGetProperty("transport", out var t)
-                        ? t.GetString() ?? ""
-                        : s.TryGetProperty("type", out var t2)
-                            ? t2.GetString() ?? "" : "",
-                    (s.TryGetProperty("url", out var u) ? u.GetString()
-                        : s.TryGetProperty("command", out var c)
-                            ? c.GetString() : null) ?? "");
+                    ServerTransport(s),
+                    ServerTarget(s));
             }
         }
 
         AnsiConsole.Write(table);
         return 0;
+    }
+
+    private static string ServerTransport(JsonElement s)
+    {
+        if (s.TryGetProperty("transport", out var t))
+        {
+            return t.GetString() ?? "";
+        }
+
+        return s.TryGetProperty("type", out var t2)
+            ? t2.GetString() ?? "" : "";
+    }
+
+    private static string ServerTarget(JsonElement s)
+    {
+        if (s.TryGetProperty("url", out var u))
+        {
+            return u.GetString() ?? "";
+        }
+
+        return s.TryGetProperty("command", out var c)
+            ? c.GetString() ?? "" : "";
     }
 }
 
@@ -470,12 +490,14 @@ public sealed class McpTestCommand : AsyncCommand<McpTestCommand.Settings>
         var probe = await api.ProbeMcpAsync(target.Value, ct);
         var ok = probe.TryGetProperty("ok", out var o) && o.GetBoolean();
         var detail = probe.TryGetProperty("error", out var e)
-            ? e.GetString()
-            : probe.TryGetProperty("tools", out var t)
-                ? $"{t.GetArrayLength()} tools" : "connected";
+            ? e.GetString() : ProbeDetail(probe);
         AnsiConsole.MarkupLine(ok
             ? $"[green]✓[/] {settings.Name}: {detail}"
             : $"[red]✗[/] {settings.Name}: {detail}");
         return ok ? 0 : 1;
     }
+
+    private static string ProbeDetail(JsonElement probe) =>
+        probe.TryGetProperty("tools", out var t)
+            ? $"{t.GetArrayLength()} tools" : "connected";
 }

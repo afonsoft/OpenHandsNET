@@ -117,9 +117,14 @@ else
         _checkResult = r.GetRawText();
     }
 
-    private static string? Str(JsonElement e, string prop) =>
-        e.TryGetProperty(prop, out var v)
-            ? v.ValueKind == JsonValueKind.String
-                ? v.GetString() : v.GetRawText()
-            : null;
+    private static string? Str(JsonElement e, string prop)
+    {
+        if (!e.TryGetProperty(prop, out var v))
+        {
+            return null;
+        }
+
+        return v.ValueKind == JsonValueKind.String
+            ? v.GetString() : v.GetRawText();
+    }
 }

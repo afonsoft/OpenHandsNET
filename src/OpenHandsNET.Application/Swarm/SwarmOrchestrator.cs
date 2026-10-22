@@ -20,7 +20,9 @@ public class SwarmOrchestrator : ISwarmOrchestrator
     {
         if (definition.MaxDepth > 3)
         {
-            throw new ArgumentOutOfRangeException(nameof(definition.MaxDepth), "Max depth cannot exceed 3 in swarm execution.");
+            throw new ArgumentOutOfRangeException(
+                nameof(definition),
+                "Max depth cannot exceed 3 in swarm execution.");
         }
 
         // Simulação da orquestração de sub-agentes paralelos inspirada no upstream OpenHands e Devin Web

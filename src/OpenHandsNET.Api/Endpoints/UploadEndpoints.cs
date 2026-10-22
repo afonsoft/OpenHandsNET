@@ -87,7 +87,8 @@ public static class UploadEndpoints
         var du = await executor.ExecAsync(sb,
             $"du -sm -- '{dir}' 2>/dev/null || echo 0",
             TimeSpan.FromSeconds(15), ct);
-        if (long.TryParse(du.StdOut.Trim().Split('\t', ' ')[0],
+        if (long.TryParse(du.StdOut.Trim().Split(
+                ['\t', ' '], StringSplitOptions.None)[0],
                 out var mb)
             && mb * 1024 * 1024 + file.Length > MaxDirBytes)
         {

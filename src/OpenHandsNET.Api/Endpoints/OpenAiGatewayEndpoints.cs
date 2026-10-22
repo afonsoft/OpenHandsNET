@@ -21,6 +21,8 @@ namespace OpenHandsNET.Api.Endpoints;
 /// </summary>
 public static class OpenAiGatewayEndpoints
 {
+    private const string Stopped = "STOPPED";
+    private const string ChatCompletionChunk = "chat.completion.chunk";
     private static readonly HashSet<string> Rejected = new(
         StringComparer.OrdinalIgnoreCase)
         { "tools", "functions", "response_format" };
@@ -191,18 +193,33 @@ public static class OpenAiGatewayEndpoints
             return null;
         }
 
-        var text = m.TryGetProperty("content", out var c)
-            ? c.ValueKind == JsonValueKind.String
-                ? c.GetString() ?? ""
-                : c.ValueKind == JsonValueKind.Array
-                    ? string.Concat(c.EnumerateArray()
-                        .Where(p => p.TryGetProperty("type", out var t)
-                            && t.GetString() == "text")
-                        .Select(p => p.TryGetProperty("text", out var tx)
-                            ? tx.GetString() : ""))
-                    : ""
-            : "";
+        var text = MessageText(m);
         return (r.GetString() ?? "user", text);
+    }
+
+    /// <summary>Extrai o texto de uma mensagem OpenAI (content string|array).</summary>
+    private static string MessageText(JsonElement m)
+    {
+        if (!m.TryGetProperty("content", out var c))
+        {
+            return "";
+        }
+
+        if (c.ValueKind == JsonValueKind.String)
+        {
+            return c.GetString() ?? "";
+        }
+
+        if (c.ValueKind != JsonValueKind.Array)
+        {
+            return "";
+        }
+
+        return string.Concat(c.EnumerateArray()
+            .Where(p => p.TryGetProperty("type", out var t)
+                && t.GetString() == "text")
+            .Select(p => p.TryGetProperty("text", out var tx)
+                ? tx.GetString() : ""));
     }
 
     /// <summary>Cria conversa efêmera com a mensagem e espera READY.</summary>
@@ -268,8 +285,12 @@ public static class OpenAiGatewayEndpoints
         {
             throw new GatewayException(
                 $"conversation {convId}: {error}",
-                Status: error is SendMessageError.NotFound ? 404
-                    : error is SendMessageError.Gone ? 410 : 409,
+                Status: error switch
+                {
+                    SendMessageError.NotFound => 404,
+                    SendMessageError.Gone => 410,
+                    _ => 409,
+                },
                 Type: "invalid_request_error");
         }
 
@@ -297,7 +318,7 @@ public static class OpenAiGatewayEndpoints
         var status = await WaitTerminalAsync(
             conversations, convId, notBefore, ct);
         var (text, usage) = await AggregateAsync(events, convId, ct);
-        var finish = status is "FINISHED" or "STOPPED" or "PAUSED"
+        var finish = status is "FINISHED" or Stopped or "PAUSED"
             ? "stop" : "error";
         http.Response.ContentType = "application/json";
         await http.Response.WriteAsync(JsonSerializer.Serialize(new
@@ -350,7 +371,7 @@ public static class OpenAiGatewayEndpoints
         await WriteChunkAsync(new
         {
             id,
-            @object = "chat.completion.chunk",
+            @object = ChatCompletionChunk,
             created,
             model,
             choices = new[]
@@ -383,7 +404,7 @@ public static class OpenAiGatewayEndpoints
                 await WriteChunkAsync(new
                 {
                     id,
-                    @object = "chat.completion.chunk",
+                    @object = ChatCompletionChunk,
                     created,
                     model,
                     choices = new[]
@@ -412,7 +433,7 @@ public static class OpenAiGatewayEndpoints
             await WriteChunkAsync(new
             {
                 id,
-                @object = "chat.completion.chunk",
+                @object = ChatCompletionChunk,
                 created,
                 model,
                 choices = new[]
@@ -430,7 +451,7 @@ public static class OpenAiGatewayEndpoints
         await WriteChunkAsync(new
         {
             id,
-            @object = "chat.completion.chunk",
+            @object = ChatCompletionChunk,
             created,
             model,
             choices = new[]
@@ -439,7 +460,7 @@ public static class OpenAiGatewayEndpoints
                 {
                     index = 0,
                     delta = new { },
-                    finish_reason = status is "FINISHED" or "STOPPED"
+                    finish_reason = status is "FINISHED" or Stopped
                         or "PAUSED" ? "stop" : "error",
                 },
             },
@@ -466,7 +487,7 @@ public static class OpenAiGatewayEndpoints
         CancellationToken ct)
     {
         static bool IsTerminal(string s) => s is "FINISHED" or "ERROR"
-            or "STOPPED" or "PAUSED" or "ARCHIVED";
+            or Stopped or "PAUSED" or "ARCHIVED";
 
         // Fase 1 — ativação do run (janela de graça cobre o spin-up).
         // Estado terminal só conta se UpdatedAt >= notBefore: senão é o
@@ -476,14 +497,14 @@ public static class OpenAiGatewayEndpoints
         {
             var conv = await svc.GetAsync(convId, ct);
             var status = conv?.ExecutionStatus.ToString()
-                .ToUpperInvariant() ?? "STOPPED";
+                .ToUpperInvariant() ?? Stopped;
             if (status is "RUNNING" or "STARTING")
             {
                 break;
             }
 
             if (conv is not null && IsTerminal(status)
-                && status is not "STOPPED"
+                && status is not Stopped
                 && conv.UpdatedAt >= notBefore)
             {
                 return status; // run desta request terminou já na fase 1.
@@ -498,9 +519,9 @@ public static class OpenAiGatewayEndpoints
         {
             var conv = await svc.GetAsync(convId, ct);
             var status = conv?.ExecutionStatus.ToString()
-                .ToUpperInvariant() ?? "STOPPED";
+                .ToUpperInvariant() ?? Stopped;
             if (IsTerminal(status)
-                && (status is "STOPPED" or "ARCHIVED"
+                && (status is Stopped or "ARCHIVED"
                     || conv!.UpdatedAt >= notBefore))
             {
                 return status;
@@ -579,7 +600,7 @@ public static class OpenAiGatewayEndpoints
     }
 
     /// <summary>Erro de validação/execução mapeado p/ OpenAI.</summary>
-    private sealed class GatewayException(
+    public sealed class GatewayException(
         string message, int Status = 400,
         string Type = "invalid_request_error", string? Code = null)
         : Exception(message)

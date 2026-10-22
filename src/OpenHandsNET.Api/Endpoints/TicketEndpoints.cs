@@ -12,6 +12,7 @@ namespace OpenHandsNET.Api.Endpoints;
 /// </summary>
 public static class TicketEndpoints
 {
+    private const string PermManageIntegrations = "perm:manage_integrations";
     /// <summary>Mapeia os endpoints.</summary>
     public static void MapTicketEndpoints(this WebApplication app)
     {
@@ -44,7 +45,7 @@ public static class TicketEndpoints
 
         var conns = app.MapGroup(
             "/api/v1/orgs/{org_id:guid}/ticket-connections")
-            .RequireAuthorization("perm:manage_integrations");
+            .RequireAuthorization(PermManageIntegrations);
 
         conns.MapGet("", async (
             Guid org_id, ITicketConnectionService svc,
@@ -107,7 +108,7 @@ public static class TicketEndpoints
                 }
                 var (ok, detail) = await p.TestConnectionAsync(c, ct);
                 return Results.Ok(new { ok, detail });
-            }).RequireAuthorization("perm:manage_integrations");
+            }).RequireAuthorization(PermManageIntegrations);
 
         app.MapPost("/api/v1/tickets/connections/{id:guid}/run",
             async (
@@ -116,7 +117,7 @@ public static class TicketEndpoints
             {
                 var r = await svc.RunAsync(id, body.IssueKey, ct);
                 return MapResult(r);
-            }).RequireAuthorization("perm:manage_integrations");
+            }).RequireAuthorization(PermManageIntegrations);
 
         app.MapPost("/api/v1/tickets/{kind}/{issue_key}/comment",
             async (
@@ -141,7 +142,7 @@ public static class TicketEndpoints
                 }
                 await p.AddCommentAsync(c, issue_key, body.Body, ct);
                 return Results.Ok(new { ok = true });
-            }).RequireAuthorization("perm:manage_integrations");
+            }).RequireAuthorization(PermManageIntegrations);
     }
 
     private static async Task<byte[]> ReadBody(HttpRequest req)

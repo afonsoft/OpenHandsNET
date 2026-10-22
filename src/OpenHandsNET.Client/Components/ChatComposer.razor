@@ -414,10 +414,14 @@
                 parts.Length > 1 ? parts[1] : "");
         }
 
+        var sb = new System.Text.StringBuilder(text);
         foreach (var a in _attachments)
         {
-            text += "\n\n" + L.T("composer.attachment_tag", ("path", a.Path));
+            sb.Append("\n\n").Append(
+                L.T("composer.attachment_tag", ("path", a.Path)));
         }
+
+        text = sb.ToString();
 
         Sending = true;
         try

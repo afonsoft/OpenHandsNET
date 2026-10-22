@@ -25,6 +25,7 @@ public sealed class ScmConnectionService(
     IScmProviderRegistry providers,
     ILogger<ScmConnectionService> logger) : IScmConnectionService
 {
+    private const string Write = "write";
     private const string GitHubManifestConversionUrl =
         "https://api.github.com/app-manifests/{0}/conversions";
 
@@ -38,10 +39,10 @@ public sealed class ScmConnectionService(
         @public = false,
         default_permissions = new
         {
-            contents = "write",
-            pull_requests = "write",
-            issues = "write",
-            statuses = "write",
+            contents = Write,
+            pull_requests = Write,
+            issues = Write,
+            statuses = Write,
             metadata = "read",
         },
         default_events = new[]

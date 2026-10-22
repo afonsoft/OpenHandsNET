@@ -33,10 +33,10 @@ public sealed class Spec41StreamChatUxTests
             NullLogger<OpenAiCompatLlmProvider>.Instance);
     }
 
-    private static async Task<List<LlmStreamChunk>> CollectAsync(
+    private static async Task<List<ILlmStreamChunk>> CollectAsync(
         OpenAiCompatLlmProvider p)
     {
-        var chunks = new List<LlmStreamChunk>();
+        var chunks = new List<ILlmStreamChunk>();
         await foreach (var c in p.ChatStreamAsync(
             [LlmMessage.User("hi")], [], new LlmOptions(),
             CancellationToken.None))

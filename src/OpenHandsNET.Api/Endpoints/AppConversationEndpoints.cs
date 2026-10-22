@@ -21,6 +21,7 @@ namespace OpenHandsNET.Api.Endpoints;
 /// </summary>
 public static class AppConversationEndpoints
 {
+    private const string IdGuid = "/{id:guid}";
     /// <summary>Maps the app-conversations route group.</summary>
     public static IEndpointRouteBuilder MapAppConversationEndpoints(
         this IEndpointRouteBuilder app)
@@ -92,7 +93,7 @@ public static class AppConversationEndpoints
             return Results.Ok(items.Select(ToDto));
         });
 
-        group.MapGet("/{id:guid}", async (
+        group.MapGet(IdGuid, async (
             Guid id, IAppConversationService svc, HttpContext http,
             CancellationToken ct) =>
             await svc.GetAsync(id, ct) is { } c
@@ -152,14 +153,14 @@ public static class AppConversationEndpoints
             }).ToList());
         }).RequireAuthorization();
 
-        group.MapPatch("/{id:guid}", async (
+        group.MapPatch(IdGuid, async (
             Guid id, PatchConversationRequest body,
             IAppConversationService svc, HttpContext http, CancellationToken ct) =>
             await svc.UpdateAsync(id, body.Title, body.Tags, body.Pinned, ct) is { } c
                 ? Results.Ok(ToDto(c))
                 : OpenHandsNetProblemFactory.Create(http, 404, $"Conversation {id} not found"));
 
-        group.MapDelete("/{id:guid}", async (
+        group.MapDelete(IdGuid, async (
             Guid id, IAppConversationService svc, HttpContext http,
             CancellationToken ct) =>
             await svc.DeleteAsync(id, ct)
@@ -518,7 +519,7 @@ public static class AppConversationEndpoints
         tasks.MapGet("/count", async (
             string? status, IStartTaskService svc, CancellationToken ct) =>
             Results.Ok(await svc.CountAsync(ParseStatus(status), ct)));
-        tasks.MapGet("/{id:guid}", async (
+        tasks.MapGet(IdGuid, async (
             Guid id, IStartTaskService svc, HttpContext http,
             CancellationToken ct) =>
             await svc.GetAsync(id, ct) is { } t

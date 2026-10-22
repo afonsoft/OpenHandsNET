@@ -127,14 +127,7 @@ public sealed class PublicEventFilter : IPublicEventFilter
             return true;
         }
 
-        foreach (var suffix in DeniedSuffixes)
-        {
-            if (name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return DeniedSuffixes.Any(suffix =>
+            name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
     }
 }

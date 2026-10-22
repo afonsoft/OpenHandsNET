@@ -113,18 +113,8 @@ public sealed class PermissionEvaluator
     }
 
     private static AgentPermissionRule? Match(
-        IReadOnlyList<AgentPermissionRule> rules, string toolName)
-    {
-        foreach (var r in rules)
-        {
-            if (r.Matches(toolName))
-            {
-                return r;
-            }
-        }
-
-        return null;
-    }
+        IReadOnlyList<AgentPermissionRule> rules, string toolName) =>
+        rules.FirstOrDefault(r => r.Matches(toolName));
 
     private static IReadOnlyList<AgentPermissionRule> Sort(
         IReadOnlyList<AgentPermissionRule>? rules) =>

@@ -65,10 +65,8 @@ public sealed class EfCodeSearchStore : ICodeSearchStore
             if (c.SymbolName != null && c.SymbolName.Contains(query, StringComparison.OrdinalIgnoreCase)) score += 10.0;
             if (c.Path.Contains(query, StringComparison.OrdinalIgnoreCase)) score += 5.0;
 
-            foreach (var t in terms)
-            {
-                if (c.Text.Contains(t, StringComparison.OrdinalIgnoreCase)) score += 1.0;
-            }
+            score += terms.Count(t => c.Text.Contains(
+                t, StringComparison.OrdinalIgnoreCase));
 
             var snippet = c.Text.Length > 300 ? c.Text[..300] + "..." : c.Text;
             var dto = new CodeUnitDto(c.Id, c.RepoIndexId, c.Path, c.StartLine, c.EndLine, c.Kind, c.SymbolName, c.Text, c.Hash);
