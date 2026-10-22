@@ -61,14 +61,10 @@ this together with untrusted repositories.
 | Mode | Behaviour |
 |---|---|
 | `unrestricted` (default) | standard bridge — full outbound |
-| `allowlist` | isolated internal network + `EGRESS_ALLOWLIST` env hint |
+| `allowlist` | isolated internal network + Squid proxy sidecar (SPEC-19) |
 | `deny` | isolated internal network — no outbound route at all |
 
-`deny`/`allowlist` attach sandboxes to the
-`openhandsnet-egress-isolated` docker network (`internal: true` → no
-outbound). Today `allowlist` and `deny` isolate identically — the allowlist
-is propagated as `EGRESS_ALLOWLIST`/`EGRESS_MODE` env for a future
-proxy-sidecar enforcer; **per-host filtering is not yet implemented**.
+Mecânica do proxy em `egress-allowlist.md`.
 
 ```bash
 OPENHANDSNET_Sandbox__EgressMode=deny
