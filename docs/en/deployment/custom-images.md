@@ -34,13 +34,14 @@ by prefix — `Sandbox:AgentImagePrefixes` (default
 
 ```yaml
 image: ghcr.io/openhandsnet/runtime:latest
-sdk: [ "dotnet:10", "node:22", "python:3.13" ]
+sdk: [ "dotnet:10", "node:22", "python:3.13", "chrome:stable" ]
 env: { DOTNET_CLI_TELEMETRY_OPTOUT: "1" }
 setup: .openhands/setup.sh   # default
 ```
 
 - `sdk` runs the pinned `/opt/ohn/sdks/{name}.sh` installers (dotnet,
-  node, python, java, go) — passwordless `sudo` restricted to them.
+  node, python, java, go, **chrome**) — passwordless `sudo` restricted
+  to them.
 - No `sdk:` → **auto-detect** from manifests (`*.csproj`,
   `package.json`, `requirements.txt`, `pyproject.toml`, `pom.xml`,
   `go.mod`, `global.json`, `.nvmrc`).
@@ -68,6 +69,40 @@ docker push ghcr.io/openhandsnet/runtime:0.1.0
 The image is multi-stage: publishes `openhandsnet-sandbox-agent`
 (single-file self-contained) and installs over `ubuntu:24.04` — git,
 gh, git-lfs, python3, node 22, build toolchain, `tini` as init.
+
+## Chrome SDK — Chrome for Testing + chrome-devtools-mcp
+
+`sdk: ["chrome:stable"]` (optional channel: `stable|beta|dev|canary`)
+installs Chrome for Testing (arch-aware binary via `@puppeteer/browsers`),
+the runtime deps and a **global `chrome-devtools-mcp`** (no npx/network
+at conversation start). Requires Node ≥ 22.12 (the runtime image ships
+22.x). The binary is exposed at `/usr/local/bin/chrome` (stable symlink).
+
+MCP config for the conversation (stdio runs **inside** the sandbox via
+`docker exec` — see `docs/specs/07_mcp_integration_spec.md`):
+
+```json
+{
+  "name": "chrome-devtools",
+  "transport": "stdio",
+  "command": "chrome-devtools-mcp",
+  "args": ["--headless", "--isolated",
+           "--chrome-arg=--no-sandbox",
+           "--executable-path=/usr/local/bin/chrome"],
+  "env": { "CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS": "1",
+           "CHROME_DEVTOOLS_MCP_NO_UPDATE_CHECKS": "1" },
+  "timeoutSeconds": 120
+}
+```
+
+- `--chrome-arg=--no-sandbox`: required on plain Docker (no user
+  namespaces); under sysbox (`Sandbox:DockerRuntime=sysbox-runc` /
+  `runtimeClassName`) it can be omitted.
+- `--isolated` uses a temporary profile per session (avoids `Target
+  closed` and cookie leakage between conversations).
+- Egress `deny`/`allowlist`: the MCP is preinstalled — no extra routes
+  needed for the server itself; visited pages follow the sandbox's
+  normal egress.
 
 ## Per-image warm pool
 
