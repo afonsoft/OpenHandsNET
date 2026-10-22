@@ -98,3 +98,13 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | 80 | OpenAPI fuzz fidelity — security/params/401 | PR #215 | #208 |
 | 81 | k8s-e2e — `cluster_name: kind` | PR #213 | #209 |
 | 82 | Spec lifecycle hygiene — arquivo + guard | PR #214 | #210 |
+
+## Entregues em 2026-10-22 (gap-analysis 2026-10-22 — docs enterprise upstream)
+
+| SPEC | Título | Entrega |
+|---|---|---|
+| 83 | Troubleshooting runbook — doc operacional (support bundle, componente→sintoma) | PR #226 |
+| 84 | Deployment sizing — peak sandboxes → VM/node pools | PR #226 |
+| 85 | External PostgreSQL — PG ≥16.4 + UTF8 + divergência topologia | PR #226 |
+| 86 | `Sandbox:DockerRuntime` — sysbox-runc fora de k8s (HostConfig.Runtime + testes) | PR #226 |
+| 87 | Helm image loader — DaemonSet pre-pull opt-in | PR #226 |

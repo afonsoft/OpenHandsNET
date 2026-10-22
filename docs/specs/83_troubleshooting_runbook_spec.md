@@ -8,7 +8,7 @@
 | Type | `Documentation` |
 | Stack | `docs/` (pt-BR + mirror `docs/en/`) |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Draft` |
+| Status | `Completed (PR #226, 4733e92)` |
 | Ticket | `gap-analysis 2026-10-22` · `GAP-documentation-troubleshooting-runbook` |
 | Depends on | `14` (support-bundle + doctor), `35`/`37` (runtime split/k8s) — já entregues |
 | Reference | `docs.openhands.dev/enterprise/troubleshooting` (conceitos apenas) |

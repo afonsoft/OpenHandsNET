@@ -8,7 +8,7 @@
 | Type | `Documentation` |
 | Stack | `docs/` (pt-BR + mirror `docs/en/`) |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Draft` |
+| Status | `Completed (PR #226, 4733e92)` |
 | Ticket | `gap-analysis 2026-10-22` · `GAP-documentation-deployment-sizing` |
 | Depends on | `14` (perf limits), `37`/`49` (k8s runtime), `35` (runtime split) |
 | Reference | `docs.openhands.dev/enterprise/sizing-guide` (conceitos apenas) |

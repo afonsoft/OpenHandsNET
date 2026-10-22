@@ -8,7 +8,7 @@
 | Type | `Documentation` (fix) |
 | Stack | `docs/` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Draft` |
+| Status | `Completed (PR #226, 4733e92)` |
 | Ticket | `gap-analysis 2026-10-22` · `GAP-documentation-external-postgres-reqs` |
 | Depends on | `14` RF-003 (external postgres doc) — entregue |
 | Reference | `docs.openhands.dev/enterprise/external-postgres` (conceitos apenas) |

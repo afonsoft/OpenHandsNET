@@ -8,7 +8,7 @@
 | Type | `Infrastructure / Chart` |
 | Stack | `Helm 3 · k8s DaemonSet` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Draft` |
+| Status | `Completed (PR #226, 4733e92)` |
 | Ticket | `gap-analysis 2026-10-22` · `GAP-automation-image-prepull-daemonset` |
 | Depends on | `37`/`49` (k8s runtime) — entregues |
 | Reference | `docs.openhands.dev/enterprise/architecture` — "Image Loader" DaemonSet (conceitos apenas) |

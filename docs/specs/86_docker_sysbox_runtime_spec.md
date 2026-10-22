@@ -8,7 +8,7 @@
 | Type | `Implementation + Documentation` |
 | Stack | `.NET 10 · Docker.DotNet` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Draft` |
+| Status | `Completed (PR #226, 4733e92)` |
 | Ticket | `gap-analysis 2026-10-22` · `GAP-implementation-docker-runtime-sysbox` |
 | Depends on | `14` RF-002 (DinD sidecar), `37`/`49` (sysbox em k8s) — entregues |
 | Reference | `docs.openhands.dev/enterprise/docker-in-sandbox` (conceitos apenas) |

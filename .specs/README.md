@@ -36,17 +36,12 @@ gates (aprovação de SPEC, merge).
 | `72_sonar_critical_code_smells_spec.md` | SonarCloud — 121 smells BLOCKER/CRITICAL | `Approved` | #154 (Epic #152) |
 | `73_sonar_major_code_smells_spec.md` | SonarCloud — 243 smells MAJOR | `Approved` | #155 (Epic #152) |
 | `74_sonar_minor_code_smells_spec.md` | SonarCloud — 331 smells MINOR/INFO | `Approved` | #156 (Epic #152) |
-| `83_troubleshooting_runbook_spec.md` | Docs — runbook operacional consolidado | `Draft` | gap-analysis 2026-10-22 |
-| `84_deployment_sizing_guide_spec.md` | Docs — sizing por peak sandboxes | `Draft` | gap-analysis 2026-10-22 |
-| `85_external_postgres_requirements_spec.md` | Docs — PG ≥16 + UTF8 | `Draft` | gap-analysis 2026-10-22 |
-| `86_docker_sysbox_runtime_spec.md` | Sandboxing — `DockerRuntime` (sysbox) | `Draft` | gap-analysis 2026-10-22 |
-| `87_image_prepull_daemonset_spec.md` | Helm — image loader DaemonSet | `Draft` | gap-analysis 2026-10-22 |
 
 ## Arquivo morto — `docs/specs/`
 
 SPECs entregues ficam em [`docs/specs/`](../docs/specs/README.md), com
 `Status: Completed` e evidência de entrega (PR/commit) no índice —
-incluindo 65/66/67 (2026-10-19) e 75–78 (2026-10-20).
+incluindo 65/66/67 (2026-10-19), 75–78 (2026-10-20) e 83–87 (2026-10-22).
 Guard: `scripts/check-spec-lifecycle.sh` falha se uma SPEC com status
 terminal permanecer aqui (SPEC-82).
 
