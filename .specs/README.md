@@ -36,7 +36,6 @@ gates (aprovação de SPEC, merge).
 | `72_sonar_critical_code_smells_spec.md` | SonarCloud — 121 smells BLOCKER/CRITICAL | `Approved` | #154 (Epic #152) |
 | `73_sonar_major_code_smells_spec.md` | SonarCloud — 243 smells MAJOR | `Approved` | #155 (Epic #152) |
 | `74_sonar_minor_code_smells_spec.md` | SonarCloud — 331 smells MINOR/INFO | `Approved` | #156 (Epic #152) |
-| `88_conversation_cleanup_spec.md` | Sandboxing — cleanup container+PVC ao excluir/arquivar conversa | `Draft` | requisito mantenedor 2026-10-22 |
 
 ## Arquivo morto — `docs/specs/`
 

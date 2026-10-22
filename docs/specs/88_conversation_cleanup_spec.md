@@ -8,7 +8,7 @@
 | Type | `Infrastructure / bugfix` |
 | Stack | `.NET 10 · Docker.DotNet · k8s SDK · runtime-api` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Draft` |
+| Status | `Completed (PR #228, f09d8eb)` |
 | Ticket | requisito direto do mantenedor (2026-10-22) |
 | Depends on | `14` RF-006 (workspace lifecycle), `35` (runtime split), `37`/`49` (k8s) |
 | Reference | `docs.openhands.dev/enterprise/architecture` — runtimes teardown (conceitos) |

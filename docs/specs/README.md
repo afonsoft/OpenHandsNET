@@ -108,3 +108,4 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | 85 | External PostgreSQL — PG ≥16.4 + UTF8 + divergência topologia | PR #226 |
 | 86 | `Sandbox:DockerRuntime` — sysbox-runc fora de k8s (HostConfig.Runtime + testes) | PR #226 |
 | 87 | Helm image loader — DaemonSet pre-pull opt-in | PR #226 |
+| 88 | Conversation cleanup — remove container + PVC ao excluir/arquivar | PR #228 |
