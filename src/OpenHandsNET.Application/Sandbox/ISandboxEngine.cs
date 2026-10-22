@@ -56,8 +56,15 @@ public interface ISandboxEngine
     /// <summary>docker stop.</summary>
     Task StopAsync(string containerId, CancellationToken ct);
 
-    /// <summary>docker rm -f (idempotent).</summary>
-    Task RemoveAsync(string containerId, CancellationToken ct);
+    /// <summary>
+    /// Removes the sandbox runtime (idempotent). Engines with external
+    /// workspaces (k8s PVC) also delete the workspace when
+    /// <paramref name="workspaceConversationId"/> is provided — or derive
+    /// it from container labels as a fallback.
+    /// </summary>
+    Task RemoveAsync(
+        string containerId, CancellationToken ct,
+        Guid? workspaceConversationId = null);
 }
 
 /// <summary>

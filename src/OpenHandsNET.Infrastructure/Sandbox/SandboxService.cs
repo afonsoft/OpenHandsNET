@@ -311,7 +311,10 @@ public sealed class SandboxService(
 
         if (record.ContainerId is not null)
         {
-            await engine.RemoveAsync(record.ContainerId, ct);
+            // SPEC-88: convId explícito — engines com workspace externo
+            // (PVC k8s) liberam o volume junto com o sandbox.
+            await engine.RemoveAsync(
+                record.ContainerId, ct, record.ConversationId);
         }
 
         Telemetry.OpenNetTelemetry.SandboxSeconds

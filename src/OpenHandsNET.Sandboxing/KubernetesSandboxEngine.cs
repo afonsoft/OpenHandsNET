@@ -494,8 +494,19 @@ public sealed class KubernetesSandboxEngine(
     }
 
     /// <inheritdoc />
-    public async Task RemoveAsync(string containerId, CancellationToken ct)
+    public async Task RemoveAsync(
+        string containerId, CancellationToken ct,
+        Guid? workspaceConversationId = null)
     {
+        // SPEC-88: convId explícito (conversa deletada — cobre sandbox
+        // dormindo, pod já removido) ou fallback por label (orphan sweep).
+        var convId = workspaceConversationId;
+        if (convId is null)
+        {
+            var pod = await ReadPodAsync(containerId, ct);
+            convId = TryGetConversationId(pod?.Metadata?.Labels);
+        }
+
         try
         {
             await _k8s.CoreV1.DeleteNamespacedPodAsync(
@@ -517,7 +528,44 @@ public sealed class KubernetesSandboxEngine(
         {
             // idempotent
         }
+
+        if (convId is { } cid)
+        {
+            var pvc = WorkspacePvcName(cid);
+            try
+            {
+                await _k8s.CoreV1.DeleteNamespacedPersistentVolumeClaimAsync(
+                    pvc, Ns, cancellationToken: ct);
+                logger.LogInformation(
+                    "workspace PVC {Pvc} removed with sandbox {Pod}",
+                    pvc, containerId);
+            }
+            catch (k8s.Autorest.HttpOperationException e)
+                when (e.Response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                // idempotent — PVC já removida
+            }
+        }
     }
+
+    /// <summary>
+    /// SPEC-88: workspace PVC name — same format as create
+    /// (<c>ohn-ws-{conversationId:N}</c>). Internal static for unit tests.
+    /// </summary>
+    internal static string WorkspacePvcName(Guid conversationId) =>
+        $"ohn-ws-{conversationId:N}";
+
+    /// <summary>
+    /// SPEC-88: extracts <c>openhandsnet.conversation_id</c> from pod
+    /// labels — fallback path for sweeps without an explicit conv id.
+    /// </summary>
+    internal static Guid? TryGetConversationId(
+        IDictionary<string, string>? labels) =>
+        labels is not null
+            && labels.TryGetValue(EngineLabels.ConversationId, out var v)
+            && Guid.TryParse(v, out var id)
+                ? id
+                : null;
 
     private async Task EnsurePvcAsync(string name, CancellationToken ct)
     {
