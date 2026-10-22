@@ -21,6 +21,14 @@ sandbox:
   workspaceStorageClass: ""       # default do cluster
   workspacePvcSize: 4Gi
   warmPoolImages: ""              # "img:2;outra:1" — dormant pods/imagem
+  # SPEC-87: DaemonSet opt-in que pré-puxa imagens de sandbox em todo
+  # node do pool — cold start e imagens custom não pagam o pull no
+  # primeiro uso. Vazio = [image.repository:image.tag].
+  imageLoader:
+    enabled: false
+    images: []
+    nodeSelector: {}              # ex.: label do sandbox pool
+    tolerations: []               # ex.: taint do sandbox pool
 
 cache:
   provider: memory              # redis quando deployment.replicas > 1

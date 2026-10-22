@@ -4,7 +4,32 @@ Both features are **opt-in and off by default** — enabling either weakens
 isolation. Do not enable them in shared/production environments without a
 threat-model review.
 
-## Docker-in-Docker (`Sandbox__EnableDinD`)
+## Docker-in-Docker — pick a mechanism
+
+| Mechanism | Isolation | Requirement |
+|---|---|---|
+| `DockerRuntime=sysbox-runc` (SPEC-86) | **strong** — userns remapping, no privileged, daemon is a child of the sandbox | sysbox installed on the host; kernel ≥ 6.3 recommended |
+| `EnableDinD` | medium — privileged `docker:27-dind` **sidecar** | none |
+| `DockerSocketMount` | **weakest** — full control of the host daemon | none |
+
+### Sysbox runtime (`Sandbox__DockerRuntime`, SPEC-86)
+
+With [Sysbox](https://github.com/nestybox/sysbox) installed on the host,
+sandboxes run under `sysbox-runc`: in-container "root" maps to a regular
+host user and the agent can start `dockerd` **inside its own sandbox** —
+no sidecar, no `privileged`. Same posture as the k8s provider
+(`runtimeClassName`) and upstream enterprise.
+
+```bash
+OPENHANDSNET_Sandbox__DockerRuntime=sysbox-runc
+# keep EnableDinD OFF — not needed with sysbox
+```
+
+Verify with `docker inspect -f '{{.HostConfig.Runtime}}' <sandbox>`.
+Host kernels older than 6.3 may hit sysbox failures — prefer Ubuntu
+24.04+ (upstream's hardened-runtime requirement).
+
+### DinD sidecar (`Sandbox__EnableDinD`)
 
 When on, each sandbox gets a privileged `docker:27-dind` **sidecar**
 sharing the sandbox network namespace. The agent sees
