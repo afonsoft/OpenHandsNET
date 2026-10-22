@@ -22,11 +22,26 @@ OPENHANDSNET_Database__ConnectionString="Host=db.example.com;Port=5432;Database=
 
 ## Requirements
 
-- PostgreSQL 16+ recommended (17 tested).
+- PostgreSQL 16+ recommended (17 tested) — parity with the upstream
+  minimum (16.4); EF Core 10/Npgsql cover 16/17.
+- **UTF8 encoding on all databases** — other encodings break migrations
+  at install/upgrade:
+
+```sql
+SELECT datname, pg_encoding_to_char(encoding) AS encoding FROM pg_database;
+CREATE DATABASE openhandsnet WITH ENCODING 'UTF8';
+```
+
 - A dedicated role; DDL rights are needed for migrations.
 - TLS (`SSL Mode=Require`) on any non-localhost deployment.
 - Keep the connection string out of `.env` in production — use
   `envFrom`/`existingSecret` on K8s or your orchestrator's secret store.
+
+> **Divergence vs upstream**: OpenHands uses 5 databases (`openhands`,
+> `bitnami_keycloak`, `litellm`, `runtime_api_db`, `automations`).
+> OpenHandsNET uses **one** application database plus an optional
+> `litellm` db created by `deploy/postgres-init/00-litellm-db.sh` in the
+> enterprise compose; create it manually on k8s when enabling the proxy.
 
 ## Notes
 

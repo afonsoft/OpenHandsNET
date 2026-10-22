@@ -4,6 +4,27 @@ Production deployments should point OpenHandsNET at an **existing**
 PostgreSQL instance instead of the bundled container. Everything is driven
 by the standard EF Core connection options — no code changes required.
 
+## Requisitos
+
+- **PostgreSQL ≥ 16.4** (17 suportado) — paridade com o mínimo upstream;
+  EF Core 10/Npgsql cobrem 16 e 17.
+- **Encoding UTF8 em todos os databases** — LATIN1/outros quebram
+  migrations no install/upgrade. Verifique e force na criação:
+
+```sql
+SELECT datname, pg_encoding_to_char(encoding) AS encoding FROM pg_database;
+CREATE DATABASE openhandsnet WITH ENCODING 'UTF8';
+```
+
+- TLS (`SSL Mode=Require`/`VerifyFull`) em qualquer deploy não-localhost.
+
+> **Divergência vs upstream** (hard rule 4): o upstream usa 5 databases —
+> `openhands`, `bitnami_keycloak`, `litellm`, `runtime_api_db`,
+> `automations`. O OpenHandsNET usa **um** database de aplicação
+> (`openhandsnet`) + `litellm` opcional criado por
+> `deploy/postgres-init/00-litellm-db.sh` no compose enterprise. Em k8s,
+> crie o db `litellm` manualmente se o chart habilitar o proxy.
+
 ## Connection
 
 ```bash

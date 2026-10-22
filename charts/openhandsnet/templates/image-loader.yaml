@@ -1,0 +1,45 @@
+# SPEC-87: image loader — DaemonSet opt-in que pré-puxa as imagens de
+# sandbox em todo node do pool. Um pod dormindo por imagem por node;
+# o pull acontece no agendamento do pod (cache do containerd/quay fica
+# quente para cold starts e imagens custom fora do warm pool).
+{{- if .Values.sandbox.imageLoader.enabled }}
+{{- $images := .Values.sandbox.imageLoader.images }}
+{{- if not $images }}
+{{- $images = list (printf "%s:%s" .Values.image.repository .Values.image.tag) }}
+{{- end }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: openhandsnet-image-loader
+  labels:
+    app.kubernetes.io/name: openhandsnet
+    app.kubernetes.io/component: image-loader
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: openhandsnet
+      app.kubernetes.io/component: image-loader
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: openhandsnet
+        app.kubernetes.io/component: image-loader
+    spec:
+      {{- with .Values.sandbox.imageLoader.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.sandbox.imageLoader.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        {{- range $images }}
+        - name: {{ . | replace "/" "-" | replace ":" "-" | trunc 63 }}
+          image: {{ . }}
+          command: ["sleep", "infinity"]
+          resources:
+            requests: { cpu: 1m, memory: 8Mi }
+            limits:   { cpu: 10m, memory: 16Mi }
+        {{- end }}
+{{- end }}

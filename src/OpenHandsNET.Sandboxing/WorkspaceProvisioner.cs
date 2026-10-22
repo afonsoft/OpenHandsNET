@@ -78,6 +78,14 @@ public sealed class SandboxOptions
     public bool EnableDinD { get; set; }
 
     /// <summary>
+    /// SPEC-86: OCI runtime for sandbox containers (e.g. <c>sysbox-runc</c>).
+    /// Null/empty = daemon default (<c>runc</c>). With sysbox, in-sandbox
+    /// Docker works without the privileged DinD sidecar — same posture as
+    /// <c>runtimeClassName</c> on the kubernetes provider.
+    /// </summary>
+    public string? DockerRuntime { get; set; }
+
+    /// <summary>
     /// Weaker-isolation alternative to DinD: bind-mounts the host docker
     /// socket into the sandbox. Ignored when <see cref="EnableDinD"/> is on.
     /// </summary>

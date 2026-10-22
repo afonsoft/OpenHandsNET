@@ -70,6 +70,9 @@
   BYOR LiteLLM (SPEC-20/50).
 - [deployment/sandbox-sizing.md](deployment/sandbox-sizing.md) — sizing e
   limites.
+- [deployment/troubleshooting.md](deployment/troubleshooting.md) — runbook
+  operacional: support bundle, componente→sintoma, checks de primeira
+  conversa (SPEC-83).
 
 ## API
 

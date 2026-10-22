@@ -69,6 +69,27 @@ curl -sf http://localhost:8080/api/v1/ready
 `.github/workflows/k8s-e2e.yaml` (manual workflow_dispatch): kind +
 sysbox + helm lint/template + smoke — does not run on PR CI (cost).
 
+## Image loader (SPEC-87)
+
+Opt-in (`sandbox.imageLoader.enabled=true`): a DaemonSet
+`openhandsnet-image-loader` pre-pulls sandbox images on **every node**
+(one `sleep infinity` pod per image — the pull happens at scheduling).
+Unlike the warm pool (which covers *runtime latency* for the default
+image), the loader covers **cold starts and custom images**: without it,
+the first sandbox on a fresh node pays the full pull.
+
+```bash
+helm install ohn charts/openhandsnet -n ohn \
+  --set sandbox.imageLoader.enabled=true \
+  --set sandbox.imageLoader.images[0]=ghcr.io/openhandsnet/runtime:0.1.0 \
+  --set sandbox.imageLoader.nodeSelector.pool=sandbox
+```
+
+Without `images:` it defaults to `image.repository:image.tag`. The
+`nodeSelector`/`tolerations` props point the loader at the (tainted)
+sandbox pool. Cost: 1 sleeping pod per node per image, minimal requests
+(1m CPU / 8Mi).
+
 ## Compose → K8s mapping (reference)
 
 | Compose | Kubernetes |

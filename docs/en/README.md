@@ -68,6 +68,9 @@ Documentation index (English). Versão em português na raiz: [`../README.md`](.
   BYOR LiteLLM (SPEC-20/50).
 - [deployment/sandbox-sizing.md](deployment/sandbox-sizing.md) — sizing
   profiles and limits.
+- [deployment/troubleshooting.md](deployment/troubleshooting.md) —
+  operations runbook: support bundle, component→symptom, first-conversation
+  checks (SPEC-83).
 
 ## API
 

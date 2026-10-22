@@ -92,28 +92,7 @@ public sealed class DockerSandboxEngine(
             [EngineLabels.Owner] = options.Value.InstanceOwner,
         };
 
-        var hostConfig = new HostConfig
-        {
-            Memory = request.MemoryBytes,
-            NanoCPUs = request.NanoCpus,
-            PidsLimit = request.PidsLimit,
-            Binds = binds,
-            AutoRemove = false,
-        };
-        if (request.IsAgentImage && options.Value.PublishAgentPort)
-        {
-            // Docker Desktop / daemon remoto: publica 8000; HostIP 0.0.0.0
-            // quando Sandbox:AgentHost aponta para um host acessível.
-            hostConfig.PortBindings = new Dictionary<string, IList<PortBinding>>
-            {
-                ["8000/tcp"] = [new PortBinding
-                {
-                    HostIP = options.Value.AgentHost is null
-                        ? "127.0.0.1" : "0.0.0.0",
-                    HostPort = "",
-                }],
-            };
-        }
+        var hostConfig = BuildHostConfig(request, options.Value, binds);
 
         var container = await docker.Containers.CreateContainerAsync(
             new CreateContainerParameters
@@ -163,6 +142,46 @@ public sealed class DockerSandboxEngine(
             "engine started sandbox container {ContainerId} (image {Image})",
             container.ID[..12], request.Image);
         return info;
+    }
+
+    /// <summary>
+    /// Builds the sandbox <see cref="HostConfig"/> — limits, binds, optional
+    /// OCI runtime (SPEC-86) and agent port publishing. Internal static so
+    /// unit tests can verify the mapping without a Docker daemon.
+    /// </summary>
+    internal static HostConfig BuildHostConfig(
+        EngineCreateRequest request, SandboxOptions options,
+        IList<string> binds)
+    {
+        var hostConfig = new HostConfig
+        {
+            Memory = request.MemoryBytes,
+            NanoCPUs = request.NanoCpus,
+            PidsLimit = request.PidsLimit,
+            Binds = binds,
+            AutoRemove = false,
+        };
+        if (!string.IsNullOrWhiteSpace(options.DockerRuntime))
+        {
+            // SPEC-86: sysbox-runc etc. — stronger in-sandbox isolation
+            // (userns) without the privileged DinD sidecar.
+            hostConfig.Runtime = options.DockerRuntime;
+        }
+        if (request.IsAgentImage && options.PublishAgentPort)
+        {
+            // Docker Desktop / daemon remoto: publica 8000; HostIP 0.0.0.0
+            // quando Sandbox:AgentHost aponta para um host acessível.
+            hostConfig.PortBindings = new Dictionary<string, IList<PortBinding>>
+            {
+                ["8000/tcp"] = [new PortBinding
+                {
+                    HostIP = options.AgentHost is null
+                        ? "127.0.0.1" : "0.0.0.0",
+                    HostPort = "",
+                }],
+            };
+        }
+        return hostConfig;
     }
 
     /// <inheritdoc />
