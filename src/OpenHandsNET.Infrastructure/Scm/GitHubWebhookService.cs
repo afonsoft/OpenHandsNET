@@ -10,6 +10,7 @@ using OpenHandsNET.Application.Conversations;
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Application.Scm;
 using OpenHandsNET.Infrastructure.Persistence;
+using OpenHandsNET.Infrastructure.Security;
 
 namespace OpenHandsNET.Infrastructure.Scm;
 
@@ -578,23 +579,29 @@ public sealed class GitHubWebhookService(
         return null;
     }
 
-    private static string BuildPrompt(
+    // SPEC-91: todo texto derivado do payload entra envelopado; o
+    // cabeçalho estrutural e ids validados (nº do PR como int) ficam fora.
+    internal static string BuildPrompt(
         ScmMentionContext mention)
     {
+        var src = $"github:{mention.Repository}"
+            + (mention.PullRequestNumber is { } pr ? $"#{pr}" : "");
+        var env = new UntrustedInput.Envelope();
         var sb = new StringBuilder();
         sb.Append("[SCM trigger: github webhook]\n");
-        sb.Append($"Repository: {mention.Repository}\n");
+        sb.Append($"Repository: {env.Wrap(mention.Repository, src, "repository")}\n");
         if (mention.PullRequestNumber is { } n)
         {
-            sb.Append($"Pull request: #{n} ({mention.PullRequestUrl})\n");
+            sb.Append($"Pull request: #{n} ({env.Wrap(mention.PullRequestUrl, src, "pull_request.url")})\n");
         }
         if (mention.Branch is not null)
         {
-            sb.Append($"Branch: {mention.Branch}\n");
+            sb.Append($"Branch: {env.Wrap(mention.Branch, src, "branch")}\n");
         }
-        sb.Append($"Mentioned by: {mention.CommentAuthor}\n");
+        sb.Append($"Mentioned by: {env.Wrap(mention.CommentAuthor, src, "comment.author")}\n");
         sb.Append("Instruction:\n");
-        sb.Append(mention.CommentBody.Replace(Mention, "").Trim());
+        sb.Append(env.Wrap(mention.CommentBody.Replace(Mention, "").Trim(),
+            src, "comment.body"));
         return sb.ToString();
     }
 }

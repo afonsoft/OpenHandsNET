@@ -431,7 +431,7 @@ namespace OpenHandsNET.SandboxAgent
     /// <summary>Deferred-init state + session key + workspace confinement.</summary>
     public sealed class AgentState
     {
-    private const string StatusReady = "ready";
+        private const string StatusReady = "ready";
         private const int ActivityCap = 200;
         private long _seq;
 
@@ -533,7 +533,7 @@ namespace OpenHandsNET.SandboxAgent
     /// <summary>Execução one-shot <c>bash -c</c> com timeout e cap de saída.</summary>
     public static class ExecOnce
     {
-    private const string Stdout = "stdout";
+        private const string Stdout = "stdout";
         private const int OutputCap = 2 * 1024 * 1024;
 
         public static async Task<CommandResult> RunAsync(
@@ -641,7 +641,7 @@ namespace OpenHandsNET.SandboxAgent
     /// <summary>Sessão bash persistente (estado preservado entre comandos).</summary>
     public sealed class BashSession : IDisposable
     {
-    private const string Stdout = "stdout";
+        private const string Stdout = "stdout";
         private const string Marker = "__OHN_EXIT_";
         private readonly Process _proc;
         private readonly StringBuilder _out = new();
@@ -822,7 +822,7 @@ namespace OpenHandsNET.SandboxAgent
     /// </summary>
     public sealed class SurfaceRegistry(AgentState state)
     {
-    private const string Stdout = "stdout";
+        private const string Stdout = "stdout";
         private readonly List<SurfaceSupervisor> _all = [];
 
         /// <summary>Registra uma surface (bind 0.0.0.0 dentro do container).</summary>

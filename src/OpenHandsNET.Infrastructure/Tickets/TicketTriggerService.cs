@@ -7,6 +7,7 @@ using OpenHandsNET.Application.Conversations;
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Application.Tickets;
 using OpenHandsNET.Infrastructure.Persistence;
+using OpenHandsNET.Infrastructure.Security;
 
 namespace OpenHandsNET.Infrastructure.Tickets;
 
@@ -224,40 +225,45 @@ public sealed class TicketTriggerService(
                 .FirstOrDefaultAsync(ct);
     }
 
+    // SPEC-91: campos vindos do payload do ticket entram envelopados;
+    // o texto do template (definido pelo operador) fica fora.
     internal static string RenderPrompt(
         string? template, TicketWebhookEvent ev,
         string? repo, string? branch)
     {
+        var src = $"ticket:{ev.IssueKey}";
+        var env = new UntrustedInput.Envelope();
         var labels = ev.Labels is null
             ? "" : string.Join(", ", ev.Labels);
         if (template is not null)
         {
             return template
-                .Replace("{identifier}", ev.IssueKey)
-                .Replace("{title}", ev.Title ?? "")
-                .Replace("{description}", ev.Description ?? "")
-                .Replace("{labels}", labels)
-                .Replace("{url}", ev.Url ?? "")
-                .Replace("{comment}", ev.CommentBody ?? "");
+                .Replace("{identifier}", env.Wrap(ev.IssueKey, src, "key"))
+                .Replace("{title}", env.Wrap(ev.Title, src, "title"))
+                .Replace("{description}", env.Wrap(ev.Description, src, "description"))
+                .Replace("{labels}", env.Wrap(labels, src, "labels"))
+                .Replace("{url}", env.Wrap(ev.Url, src, "url"))
+                .Replace("{comment}", env.Wrap(ev.CommentBody, src, "comment"));
         }
         var sb = new System.Text.StringBuilder();
-        sb.Append("Ticket ").Append(ev.IssueKey);
+        sb.Append("Ticket ").Append(env.Wrap(ev.IssueKey, src, "key"));
         if (ev.Title is not null)
         {
-            sb.Append(": ").Append(ev.Title);
+            sb.Append(": ").Append(env.Wrap(ev.Title, src, "title"));
         }
         sb.Append('\n');
         if (ev.Description is not null)
         {
-            sb.Append('\n').Append(ev.Description).Append('\n');
+            sb.Append('\n').Append(env.Wrap(ev.Description, src, "description")).Append('\n');
         }
         if (labels.Length > 0)
         {
-            sb.Append("\nLabels: ").Append(labels);
+            sb.Append("\nLabels: ").Append(env.Wrap(labels, src, "labels"));
         }
         if (ev.CommentBody is not null)
         {
-            sb.Append("\n\nTrigger comment: ").Append(ev.CommentBody);
+            sb.Append("\n\nTrigger comment: ")
+                .Append(env.Wrap(ev.CommentBody, src, "comment"));
         }
         if (repo is not null)
         {
