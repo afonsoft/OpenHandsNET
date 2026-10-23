@@ -1,0 +1,3 @@
+en-US.json:admin.chat_connect_hint:single-brace
+pt-BR.json:admin.chat_connect_hint:single-brace
+src/OpenHandsNET.Client/Components/AttentionFeed.razor:L[attention.badge]
