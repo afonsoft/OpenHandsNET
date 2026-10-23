@@ -13,6 +13,7 @@ using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Domain.Events;
 using OpenHandsNET.Infrastructure.Persistence;
 using OpenHandsNET.Infrastructure.Scm;
+using OpenHandsNET.Infrastructure.Security;
 
 namespace OpenHandsNET.Infrastructure.ChatOps;
 
@@ -201,7 +202,9 @@ public sealed class SlackChatOpsService(
             {
                 // Reply no thread → send-message na conversa existente.
                 await AppendUserMessageAsync(
-                    bound.ConversationId, StripMention(text), ct);
+                    bound.ConversationId,
+                    UntrustedInput.Wrap(StripMention(text),
+                        $"slack:{channelId}", "message.text"), ct);
                 return (ChatOpsResult.Processed, null);
             }
 
@@ -370,7 +373,9 @@ public sealed class SlackChatOpsService(
             ownerUserId.Value, connection.OrgId,
             new CreateConversationRequest(
                 new InitialMessage("user",
-                    [$"[Slack /openhandsnet by {userId}] {text}"],
+                    [$"[Slack /openhandsnet by {userId}] "
+                        + UntrustedInput.Wrap(text,
+                            $"slack:{channelId}", "command.text")],
                     Run: true),
                 config?.SelectedRepository,
                 AgentType: null, LlmModel: null, SandboxSpecId: null),
@@ -497,6 +502,7 @@ public sealed class SlackChatOpsService(
             System.Text.RegularExpressions.RegexOptions.None,
             TimeSpan.FromMilliseconds(500)).Trim();
 
+    // SPEC-91: texto do Slack é conteúdo externo — entra envelopado.
     private static string BuildPrompt(
         string text, bool isTriage, string channelId)
     {
@@ -505,7 +511,8 @@ public sealed class SlackChatOpsService(
             ? "[Slack auto-triage: classify bug/question/feature and act or answer]\n"
             : "[Slack trigger]\n");
         sb.Append($"Channel: {channelId}\nInstruction:\n");
-        sb.Append(StripMention(text));
+        sb.Append(UntrustedInput.Wrap(
+            StripMention(text), $"slack:{channelId}", "message.text"));
         return sb.ToString();
     }
 }
