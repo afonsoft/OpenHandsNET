@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Approved |
+| Status | Completed |
 | Issue | #157 |
 | Type | Security |
 | Sonar type | VULNERABILITY |

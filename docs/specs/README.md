@@ -120,3 +120,10 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | 93 | Perf/loadtest harness — mock LLM OpenAI-compat + rps/conversations/subagents | PR #242 |
 | 94 | WASM boot resilience — `boot.js` + `/framework-assets` mirror (proxies corporativos) | PR #243 |
 | 92 | Client drift guards — css-classes, form-a11y, i18n parity/placeholders + baseline ratchet | PR #241 |
+
+## Entregues (Epic #152 — SonarCloud remediation)
+
+| SPEC | Título | Entrega |
+|---|---|---|
+| 70 | SonarCloud vulnerabilities — 52 issues / 16 regras (41 fix + 11 won't-fix justificadas) | PRs #159/#160 |
+| 71 | SonarCloud bugs — 32 issues / 7 regras | PRs #159/#160 |

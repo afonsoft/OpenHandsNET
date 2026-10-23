@@ -31,8 +31,8 @@ gates (aprovação de SPEC, merge).
 
 | SPEC | Domínio | Status | Issue |
 |---|---|---|---|
-| `70_sonar_vulnerabilities_spec.md` | SonarCloud — 52 vulnerabilities (16 regras) | `Approved` | #157 (Epic #152) |
-| `71_sonar_bugs_spec.md` | SonarCloud — 32 bugs (7 regras) | `Approved` | #153 (Epic #152) |
+| `70_sonar_vulnerabilities_spec.md` | SonarCloud — 52 vulnerabilities (16 regras) | `Completed` | PRs #159/#160 · #157 (Epic #152) |
+| `71_sonar_bugs_spec.md` | SonarCloud — 32 bugs (7 regras) | `Completed` | PRs #159/#160 · #153 (Epic #152) |
 | `72_sonar_critical_code_smells_spec.md` | SonarCloud — 121 smells BLOCKER/CRITICAL | `Approved` | #154 (Epic #152) |
 | `73_sonar_major_code_smells_spec.md` | SonarCloud — 243 smells MAJOR | `Approved` | #155 (Epic #152) |
 | `74_sonar_minor_code_smells_spec.md` | SonarCloud — 331 smells MINOR/INFO | `Approved` | #156 (Epic #152) |

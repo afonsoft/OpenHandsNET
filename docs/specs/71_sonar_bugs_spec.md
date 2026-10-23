@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Approved |
+| Status | Completed |
 | Issue | #153 |
 | Type | Bugfix |
 | Sonar type | BUG |
