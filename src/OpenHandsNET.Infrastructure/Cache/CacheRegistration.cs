@@ -221,7 +221,8 @@ public sealed class InMemoryCoordinationBus(
         {
             if (!_subs.TryGetValue(channel, out var h))
             {
-                h = _subs[channel] = [];
+                h = [];
+                _subs[channel] = h;
             }
 
             h.Add(handler);

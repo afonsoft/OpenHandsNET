@@ -43,7 +43,8 @@ public sealed class RepoSkillProvider(ILogger<RepoSkillProvider> logger)
             return cached;
         }
 
-        cached = _cache[sandbox.Id] = await ScanAsync(sandbox, executor, ct);
+        cached = await ScanAsync(sandbox, executor, ct);
+        _cache[sandbox.Id] = cached;
         return cached;
     }
 

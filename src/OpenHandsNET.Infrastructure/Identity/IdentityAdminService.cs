@@ -193,7 +193,7 @@ public sealed class IdentityAdminService(AppDbContext db, IAuditService audit)
             rec.CreatedAt = DateTimeOffset.UtcNow;
         rec.LimitsJson = limitsJson;
         rec.ExpiresAt = expiresAt;
-        if (rec.CreatedBy == default)
+        if (rec.CreatedBy == Guid.Empty)
             rec.CreatedBy = actorId;
         if (db.Entry(rec).State == EntityState.Detached)
             db.UserUsageOverrides.Add(rec);

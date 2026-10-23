@@ -12,6 +12,8 @@ namespace OpenHandsNET.RuntimeApi;
 /// </summary>
 public sealed class RuntimeApiProgram
 {
+    private RuntimeApiProgram() { }
+
     /// <summary>App entrypoint.</summary>
     public static void Main(string[] args)
     {

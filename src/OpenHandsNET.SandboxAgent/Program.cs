@@ -577,7 +577,7 @@ namespace OpenHandsNET.SandboxAgent
             {
                 // timeout/exec falhou — resultado agregado abaixo
                 timedOut = true;
-                try { proc.Kill(entireProcessTree: true); } catch { }
+                try { proc.Kill(entireProcessTree: true); } catch { /* best-effort — processo já pode ter saído */ }
             }
 
             await Task.WhenAll(outTask, errTask);
@@ -809,7 +809,7 @@ namespace OpenHandsNET.SandboxAgent
 
         public void Dispose()
         {
-            try { _proc.Kill(entireProcessTree: true); } catch { }
+            try { _proc.Kill(entireProcessTree: true); } catch { /* best-effort — processo já pode ter saído */ }
             _proc.Dispose();
         }
     }
