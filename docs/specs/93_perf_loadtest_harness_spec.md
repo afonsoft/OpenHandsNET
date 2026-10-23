@@ -8,7 +8,7 @@
 | Type | `Infra / Tooling` |
 | Stack | `.NET 10 · ASP.NET Core · SignalR · Python 3 (aiohttp)` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Completed` |
 | Ticket | #236 (Epic #231) · análise `afonsoft/open-webui` (2026-10-22) |
 | Depends on | — |
 | Reference | `open-webui` `tools/perf/` (`mock_ollama.py`, `loadtest.py`, README) |

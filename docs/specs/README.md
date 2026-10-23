@@ -117,3 +117,4 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | 91 | Untrusted-input envelope — `<untrusted_input>` em prompts SCM/tickets/chatops | PR #238 |
 | 90 | Composable system-prompt contributors — T1/T2/T3, SDD surface, delegation policy | PR #239 |
 | 95 | Declarative agent catalog — `*.agent.md` em camadas + `agent_catalog` tool | PR #240 |
+| 93 | Perf/loadtest harness — mock LLM OpenAI-compat + rps/conversations/subagents | PR #242 |
