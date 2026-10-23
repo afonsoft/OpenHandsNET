@@ -96,8 +96,9 @@ async def hub_connect(base: str, token: str, session):
             if token else {}) as r:
         r.raise_for_status()
         neg = await r.json()
-    ws_url = (neg["url"].replace("http://", "ws://")
-              .replace("https://", "wss://"))
+    ws_url = neg["url"].replace("https://", "wss://")
+    if ws_url.startswith("http://"):
+        ws_url = "ws" + ws_url[4:]  # NOSONAR — loopback test client only
     ws_url += ("&" if "?" in ws_url else "?") + "id=" + neg["connectionToken"]
     ws = await session.ws_connect(ws_url)
     await ws.send_str(json.dumps(
@@ -185,78 +186,81 @@ async def _start_conv(session, base, token, prompt):
         return await r.json()
 
 
+async def _conv_run(session, base, token, args, stats, sem):
+    async with sem:
+        t0 = time.monotonic()
+        try:
+            await _start_conv(
+                session, base, token, f"__words__{args.words}")
+            ws, _ = await hub_connect(base, token, session)
+            try:
+                ttft, _ = await hub_first_event(ws, args.timeout)
+                stats.ttft.append(ttft * 1000)
+            finally:
+                await ws.close()
+            stats.tokens += args.words
+            stats.rec("conversation-run",
+                      (time.monotonic() - t0) * 1000)
+        except Exception as e:                       # noqa: BLE001
+            stats.err(err_class(e))
+
+
 async def scenario_conversations(args, base, token, stats):
     total = args.users * args.convs_per_user * args.rounds
     sem = asyncio.Semaphore(args.workers)
-    done = 0
-
     async with aiohttp.ClientSession() as session:
-        async def one(i):
-            nonlocal done
-            async with sem:
-                t0 = time.monotonic()
-                try:
-                    conv = await _start_conv(
-                        session, base, token, f"__words__{args.words}")
-                    ws, _ = await hub_connect(base, token, session)
-                    try:
-                        ttft, _ = await hub_first_event(ws, args.timeout)
-                        stats.ttft.append(ttft * 1000)
-                    finally:
-                        await ws.close()
-                    stats.tokens += args.words
-                    stats.rec("conversation-run",
-                              (time.monotonic() - t0) * 1000)
-                    done += 1
-                except Exception as e:               # noqa: BLE001
-                    stats.err(err_class(e))
-        await asyncio.gather(*(one(i) for i in range(total)))
+        await asyncio.gather(*(
+            _conv_run(session, base, token, args, stats, sem)
+            for _ in range(total)))
 
 
 # ---------- scenario: subagents ----------
 
+async def _count_done(session, base, token, cid, want, timeout_s):
+    """Poll /delegations até `want` filhos terminais ou timeout."""
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        async with session.get(
+                f"{base}/api/v1/app-conversations/{cid}/delegations",
+                headers=hdrs(token)) as r:
+            if r.status == 200:
+                items = await r.json()
+                if isinstance(items, dict):
+                    items = items.get("items", [])
+                done = sum(1 for d in items
+                           if d.get("status") in
+                           ("completed", "failed", "done"))
+                if done >= want:
+                    return done
+        await asyncio.sleep(0.5)
+    return 0
+
+
+async def _sub_run(session, base, token, args, stats, sem, counts):
+    async with sem:
+        try:
+            conv = await _start_conv(
+                session, base, token, f"__task__{args.fanout} fan out")
+            cid = conv.get("conversation_id") or conv.get("id")
+            counts["spawned"] += args.fanout
+            got = await _count_done(session, base, token, cid,
+                                    args.fanout, args.timeout)
+            counts["completed"] += got
+            counts["orphans"] += max(0, args.fanout - got)
+            stats.rec("subagent-fanout", args.fanout * 1000.0)
+        except Exception as e:                       # noqa: BLE001
+            stats.err(err_class(e))
+
+
 async def scenario_subagents(args, base, token, stats):
-    spawned = completed = orphans = 0
+    counts = {"spawned": 0, "completed": 0, "orphans": 0}
     sem = asyncio.Semaphore(args.workers)
-
     async with aiohttp.ClientSession() as session:
-        async def one(i):
-            nonlocal spawned, completed, orphans
-            async with sem:
-                try:
-                    conv = await _start_conv(
-                        session, base, token,
-                        f"__task__{args.fanout} fan out")
-                    cid = conv.get("conversation_id") or conv.get("id")
-                    spawned += args.fanout
-                    # poll delegations until terminal or timeout
-                    deadline = time.monotonic() + args.timeout
-                    got = 0
-                    while time.monotonic() < deadline:
-                        async with session.get(
-                                f"{base}/api/v1/app-conversations/{cid}"
-                                "/delegations",
-                                headers=hdrs(token)) as r:
-                            if r.status == 200:
-                                items = await r.json()
-                                if isinstance(items, dict):
-                                    items = items.get("items", [])
-                                got = sum(
-                                    1 for d in items
-                                    if d.get("status") in
-                                    ("completed", "failed", "done"))
-                                if got >= args.fanout:
-                                    break
-                        await asyncio.sleep(0.5)
-                    completed += got
-                    orphans += max(0, args.fanout - got)
-                    stats.rec("subagent-fanout", args.fanout * 1000.0)
-                except Exception as e:               # noqa: BLE001
-                    stats.err(err_class(e))
-        await asyncio.gather(*(one(i) for i in range(args.fanout_conv)))
-
-    print(f"subagents: spawned={spawned} completed={completed} "
-          f"orphans={orphans}")
+        await asyncio.gather(*(
+            _sub_run(session, base, token, args, stats, sem, counts)
+            for _ in range(args.fanout_conv)))
+    print(f"subagents: spawned={counts['spawned']} "
+          f"completed={counts['completed']} orphans={counts['orphans']}")
 
 
 # ---------- main ----------

@@ -96,7 +96,8 @@ def _plan(messages: list, rid: str):
     return ("text", " ".join(f"w{i}" for i in range(n)), delay)
 
 
-async def models(request: web.Request) -> web.Response:
+async def models(  # NOSONAR — aiohttp exige coroutine handler
+        request: web.Request) -> web.Response:
     return web.json_response({"object": "list", "data": [{
         "id": MODEL, "object": "model",
         "created": int(time.time()), "owned_by": "mock"}]})
