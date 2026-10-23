@@ -1,10 +1,17 @@
 # memory.md — estado corrente (max 100 linhas)
 
+## Sessão 2026-10-22 (cont.) — CONCLUÍDA
+
+- Retomada da grizzled-cocoa: memória commitada (`18a12ed`) + SPECs
+  90-95 **Approved** com issues — Epic **#231**, slices #232-237
+  (`87b66f8`). Ordem: #232(91)→#233(90)→#234(95, dep.90)→#235/236/237.
+- #235 (SPEC-92) toca `.github/workflows/` → revisão humana.
+
 ## Sessão 2026-10-22 — CONCLUÍDA
 
 - **PR #230 mergeado** (`41ca7ca`, merge commit) — `main` sincronizada.
 - Análise `afonsoft/open-webui` (clone local HEAD `553dfe1`) → 6 SPECs
-  `Draft` em `.specs/` (90-95), índice atualizado:
+  em `.specs/` (90-95), índice atualizado:
   - 90: pipeline componível de system prompt (`ISystemPromptContributor`
     + Order + tolerância; tiers T1-T3; SDD surface; delegation policy)
   - 91: envelope `<untrusted_input>` p/ conteúdo externo em prompts —
@@ -17,7 +24,6 @@
     `/framework-assets/{stem}/{ext}` (`?enc=b64`) p/ proxies corporativos
   - 95: catálogo `*.agent.md` em camadas + `agent_catalog` tool +
     `subagent_type` validado (dep: SPEC-90)
-- Gate mantido: SPECs Draft → aprovação antes de `execute-specs`.
 
 ## Sessão 2026-10-22 (anterior, mesmo dia)
 
@@ -29,7 +35,7 @@
 ## Fatos operacionais
 
 - `scripts/check-spec-lifecycle.sh` → ok (nenhuma spec terminal em `.specs/`)
-- SPECs ativas: 70-74 (Approved, Epic #152), 89-95 (Draft)
+- SPECs ativas: 70-74 (Approved, Epic #152), 90-95 (Approved, Epic #231), 89 (Draft)
 - Próximos números livres: 96+
 - SonarCloud: `https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main`
 - Bloqueio persistente: #148 — `SONAR_TOKEN` secret + `SONAR_ENABLED=true`
