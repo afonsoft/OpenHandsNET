@@ -8,8 +8,8 @@
 | Type | `Security / hardening` |
 | Stack | `.NET 10 · agent runtime · SCM/ticket ingestion` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Draft` |
-| Ticket | análise comparativa `afonsoft/open-webui` (2026-10-22) |
+| Status | `Approved` |
+| Ticket | #232 (Epic #231) · análise `afonsoft/open-webui` (2026-10-22) |
 | Depends on | — (sinergia com SPEC-90: bloco de doutrina entra como contributor) |
 | Reference | `open-webui` `src/OpenWebUI.Infrastructure/Services/WebhookPromptTemplate.cs` (envelope `<untrusted_input>` + escaping + cap 4KB; SPEC-20261023-sdd-orchestrator-prompts cap. D) |
 | Touches | `Infrastructure/Scm/GitHubWebhookService.cs` (BuildPrompt), `Infrastructure/Tickets/`, `Infrastructure/Automations/`, `Infrastructure/Security/` (novo `UntrustedInput`), prompts do agent runtime |

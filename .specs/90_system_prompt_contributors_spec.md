@@ -8,8 +8,8 @@
 | Type | `Refactor / Feature (harness seam)` |
 | Stack | `.NET 10 · ASP.NET Core · agent runtime` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Draft` |
-| Ticket | análise comparativa `afonsoft/open-webui` (2026-10-22) |
+| Status | `Approved` |
+| Ticket | #233 (Epic #231) · análise `afonsoft/open-webui` (2026-10-22) |
 | Depends on | — (SPEC-95 consome o bloco de delegation policy) |
 | Reference | `open-webui` `src/OpenWebUI.Infrastructure/SystemPrompt/ISystemPromptContributor.cs` + `src/OpenWebUI.Api/Completions/Contributors/SystemPromptContributors.cs` (SPEC-20261021-harness-seams, SPEC-20261023-sdd-orchestrator-prompts) |
 | Touches | `Application/Agent` (contratos), `Infrastructure/Agent/SystemPromptBuilder.cs`, `Infrastructure/Agent/AgentRunner.cs`, DI do agent runtime, `tests` |
