@@ -53,15 +53,15 @@
 ## Sessão 2026-10-22 (SPEC-72)
 
 - SPECs 70/71 já entregues (PRs #159/#160) — arquivadas em docs/specs/ (cf49e92).
-- SPEC-72 auditada: snapshot sonar 19/10 stale — 44/45 issues tratáveis já
-  resolvidas na árvore; só S2699 era real (assertions adicionadas).
-- S3218/S3776 → SPEC-89 defer (draft). PR #246 aberto.
+- SPEC-72 entregue: PR #246 merged (8c19236). Snapshot 19/10 stale —
+  44/45 já resolvidas; S2699 real fix. S3218/S3776 → SPEC-89.
+- SPEC-73/74: auditar staleness antes de implementar (mesmo snapshot).
 
 ## Fatos operacionais
 
 - `scripts/check-spec-lifecycle.sh` → ok (nenhuma spec terminal em `.specs/`)
 - SPECs ativas: 72-74 (Approved, Epic #152 — 70/71 arquivadas), 89 (Draft)
-- SPEC-72: PR #246 — S2699 corrigido; S927/S4487/S1994/S3871 stale; S3218/S3776 → SPEC-89
+- SPEC-72: PR #246 merged — S2699 fix; resto stale/defer (#154 aberto c/ nota)
 - Próximos números livres: 96+
 - SonarCloud: `https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main`
 - Bloqueio persistente: #148 — `SONAR_TOKEN` secret + `SONAR_ENABLED=true`
