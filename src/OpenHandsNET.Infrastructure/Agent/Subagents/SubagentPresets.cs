@@ -45,4 +45,18 @@ public static class SubagentPresets
 
     /// <summary>Whether <paramref name="type"/> is a known preset.</summary>
     public static bool IsKnown(string? type) => Resolve(type) is not null;
+
+    /// <summary>
+    /// SPEC-95 RF-005: allowlist de um agente declarativo — só pode
+    /// <em>restringir</em> o conjunto do filho: reserved sempre fora e
+    /// <paramref name="tools"/> (quando presente) filtra por nome —
+    /// listar <c>admin_shell</c> num <c>*.agent.md</c> nunca concede
+    /// ferramentas além das do run.
+    /// </summary>
+    public static Func<string, bool> ResolveDeclarative(
+        IReadOnlyList<string>? tools) =>
+        tools is null
+            ? n => !Reserved.Contains(n)
+            : n => !Reserved.Contains(n)
+                && tools.Contains(n, StringComparer.OrdinalIgnoreCase);
 }

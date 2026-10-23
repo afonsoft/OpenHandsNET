@@ -1109,11 +1109,26 @@ public static class BuiltinTools
 
             var type = args.TryGetProperty("subagent_type", out var st)
                 ? st.GetString() ?? "explore" : "explore";
+            // SPEC-95 RF-004: presets built-in primeiro; senão, catálogo
+            // declarativo (mesma fonte que alimenta o prompt).
+            AgentDefinition? agentDef = null;
             if (!SubagentPresets.IsKnown(type))
             {
-                return ToolResult.Error(
-                    $"unknown subagent_type '{type}' "
-                    + "(explore|scout|plan|general)");
+                var catalog = ctx.Services.GetService<IAgentCatalog>();
+                agentDef = catalog is null
+                    ? null
+                    : await catalog.FindAsync(
+                        type, ctx.Sandbox, ctx.Executor, ct);
+                if (agentDef is null)
+                {
+                    var valid = catalog is null
+                        ? string.Join(", ", SubagentPresets.Names)
+                        : string.Join(", ", await catalog.ListNamesAsync(
+                            ctx.Sandbox, ctx.Executor, ct));
+                    return ToolResult.Error(
+                        $"unknown subagent_type '{type}' "
+                        + $"— válidos: {valid}");
+                }
             }
 
             var description = args.TryGetProperty("description", out var d)
@@ -1144,7 +1159,8 @@ public static class BuiltinTools
                         ctx.ConversationId, ctx.Sandbox, ctx.Executor,
                         ctx.Events, ctx.Services,
                         ctx.ActionId ?? ctx.ToolCallId ?? taskId,
-                        type, description, prompt, taskId, runCt);
+                        type, description, prompt, taskId, runCt,
+                        agent: agentDef);
                     host.Finish(ctx.ConversationId, taskId,
                         SubagentStatus.Completed, result);
                     return result;
@@ -1196,6 +1212,36 @@ public static class BuiltinTools
                 return ToolResult.Error(
                     $"subagent failed: {SecretRedactor.Redact(ex.Message)}");
             }
+        });
+
+    /// <summary>
+    /// SPEC-95 RF-003: <c>agent_catalog</c> — lista o catálogo efetivo
+    /// (builtin &lt; user &lt; workspace) para o modelo escolher um
+    /// <c>subagent_type</c> antes de delegar.
+    /// </summary>
+    public static AgentTool AgentCatalogTool() => new(
+        new ToolSchema("agent_catalog",
+            "List the subagents available for delegation as "
+            + "'name — description (source)'. Query this before choosing "
+            + "a subagent_type for the task tool.",
+            Schema("""
+                {"type":"object","properties":{}}
+                """)),
+        Risky: false,
+        Handler: async (ctx, args, ct) =>
+        {
+            var catalog = ctx.Services.GetService<IAgentCatalog>();
+            if (catalog is null)
+            {
+                return ToolResult.Error("agent catalog unavailable");
+            }
+            var agents = await catalog.ListAsync(
+                ctx.Sandbox, ctx.Executor, ct);
+            return ToolResult.Ok(new
+            {
+                catalog = string.Join("\n", agents.Select(
+                    a => $"{a.Name} — {a.Description} ({a.Source})")),
+            });
         });
 
     /// <summary>SPEC-28 RF-003: <c>task_status</c> — poll a background run.</summary>
