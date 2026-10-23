@@ -530,6 +530,10 @@ public static class DependencyInjection
         // compartilhado entre tools do mesmo escopo de processo).
         services.AddSingleton<OpenHandsNET.Application.Agent.ISubagentHost,
             OpenHandsNET.Infrastructure.Agent.Subagents.SubagentHost>();
+        // SPEC-95: catálogo declarativo de agents (builtin < user < ws).
+        services.AddSingleton<OpenHandsNET.Application.Agent.IAgentCatalog,
+            OpenHandsNET.Infrastructure.Agent.Subagents
+                .AgentCatalogService>();
         services.AddSingleton<OpenHandsNET.Application.Agent.IAgentLlmProvider>(sp =>
         {
             var opts = sp.GetRequiredService<Microsoft.Extensions.Options

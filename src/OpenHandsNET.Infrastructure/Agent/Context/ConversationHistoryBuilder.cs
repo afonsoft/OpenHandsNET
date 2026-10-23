@@ -130,7 +130,8 @@ public sealed class ConversationHistoryBuilder(IServiceProvider services)
                     RepoContext = repoContext,
                     Ct = ct,
                     SubagentCatalog =
-                        Subagents.SubagentPresets.Names,
+                        await ResolveSubagentCatalogAsync(
+                            conv.SandboxId, ct),
                     SddProbeFactory = probeCt => ProbeSddSurfaceAsync(
                         services, conv.SandboxId, probeCt),
                 });
@@ -268,6 +269,38 @@ public sealed class ConversationHistoryBuilder(IServiceProvider services)
                 b.TryGetProperty("text", out var t) ? t.GetString() : null)),
         { } other => other.GetRawText(),
     };
+
+    /// <summary>
+    /// SPEC-95 RF-007: catálogo efetivo de subagents via
+    /// <see cref="IAgentCatalog"/> (mesma fonte do tool
+    /// <c>agent_catalog</c>); sem serviço ou em falha, cai nos presets.
+    /// </summary>
+    private async Task<IReadOnlyList<string>> ResolveSubagentCatalogAsync(
+        Guid? sandboxId, CancellationToken ct)
+    {
+        if (services.GetService<IAgentCatalog>() is not { } catalog)
+        {
+            return Subagents.SubagentPresets.Names;
+        }
+        try
+        {
+            var sandbox = sandboxId is { } id
+                && services.GetService<Application.Sandbox.ISandboxService>()
+                    is { } svc
+                ? await svc.GetAsync(id, ct)
+                : null;
+            var executor = services
+                .GetService<Application.Sandbox.ISandboxExecutor>();
+            var names = await catalog.ListNamesAsync(
+                sandbox, executor, ct);
+            return names.Count > 0 ? names
+                : Subagents.SubagentPresets.Names;
+        }
+        catch
+        {
+            return Subagents.SubagentPresets.Names;
+        }
+    }
 
     /// <summary>
     /// SPEC-90: resolve o composer da DI; providers montados à mão

@@ -49,7 +49,9 @@ public sealed class ToolRegistry : IToolRegistry
                 // (filhos nunca recebem task — depth cap via preset).
                 ? (AgentTool[])[
                     BuiltinTools.SpawnTask(), BuiltinTools.TaskStatusTool(),
-                    BuiltinTools.TaskResultTool()]
+                    BuiltinTools.TaskResultTool(),
+                    // SPEC-95 RF-003: catálogo efetivo de subagents.
+                    BuiltinTools.AgentCatalogTool()]
                 : [],
             BuiltinTools.Finish(),
         ];

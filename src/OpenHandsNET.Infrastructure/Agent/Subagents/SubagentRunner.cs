@@ -22,19 +22,28 @@ public sealed class SubagentRunner(
     IAgentLlmProvider llm,
     IOptions<AgentLlmOptions> options)
 {
-    /// <summary>Runs the child loop; returns the result summary text.</summary>
+    /// <summary>
+    /// Runs the child loop; returns the result summary text. SPEC-95
+    /// RF-004: quando <paramref name="agent"/> (definição declarativa) é
+    /// passada, <c>Body</c> vira a persona do system prompt e
+    /// <c>Tools</c>/<c>Model</c> restringem/sobrescrevem (nunca expandem)
+    /// o toolset e o modelo do filho.
+    /// </summary>
     public async Task<string> RunAsync(
         Guid conversationId, Domain.Sandbox.Sandbox sandbox,
         ISandboxExecutor executor,
         IEventService events, IServiceProvider services,
         string parentActionId, string subagentType, string description,
-        string prompt, string taskId, CancellationToken ct)
+        string prompt, string taskId, CancellationToken ct,
+        AgentDefinition? agent = null)
     {
         var opt = options.Value;
         var registry = services.GetRequiredService<IToolRegistry>();
-        var allow = SubagentPresets.Resolve(subagentType)
-            ?? throw new InvalidOperationException(
-                $"unknown subagent_type '{subagentType}'");
+        var allow = agent is not null
+            ? SubagentPresets.ResolveDeclarative(agent.Tools)
+            : SubagentPresets.Resolve(subagentType)
+                ?? throw new InvalidOperationException(
+                    $"unknown subagent_type '{subagentType}'");
         var filtered = new FilterToolRegistry(registry, allow);
         var schemas = filtered.All.Select(t => t.Schema).ToList();
         var router = services.GetService<IModelRouter>();
@@ -58,14 +67,21 @@ public sealed class SubagentRunner(
                 ParentId = parentActionId,
             }, ct);
 
-        var messages = new List<LlmMessage>
-        {
-            new("system",
-                $"You are a {subagentType} subagent inside OpenHandsNET. "
+        var persona = agent?.Body is { Length: > 0 } body
+            ? body + "\n\nYou are a " + subagentType
+                + " subagent inside OpenHandsNET. Work autonomously on "
+                + "the task below using ONLY your allowed tools, then "
+                + "call finish with a concise summary for the parent "
+                + "agent. Repository root: /workspace/repo. Never ask "
+                + "questions — report findings via finish."
+            : $"You are a {subagentType} subagent inside OpenHandsNET. "
                 + "Work autonomously on the task below using ONLY your "
                 + "allowed tools, then call finish with a concise summary "
                 + "for the parent agent. Repository root: /workspace/repo. "
-                + "Never ask questions — report findings via finish."),
+                + "Never ask questions — report findings via finish.";
+        var messages = new List<LlmMessage>
+        {
+            new("system", persona),
             LlmMessage.User(prompt),
         };
 
@@ -78,7 +94,8 @@ public sealed class SubagentRunner(
             var calls = new Dictionary<int,
                 (string id, string name, StringBuilder args)>();
             await foreach (var chunk in llm.ChatStreamAsync(messages,
-                schemas, new LlmOptions(Model: selection?.Model), ct))
+                schemas, new LlmOptions(
+                    Model: agent?.Model ?? selection?.Model), ct))
             {
                 switch (chunk)
                 {
