@@ -69,3 +69,13 @@ terminal permanecer aqui (SPEC-82).
 - `docs/reference/upstream-baseline.md` — SHAs dos repos upstream
   (permalinks `blob/<sha>` usados nas SPECs).
 - Baseline upstream: clones `OpenHands/*` (HEAD ~2026-10-12).
+
+### Leva 2026-10-23 (gap-analysis)
+
+| SPEC | Título | Status | Ticket |
+|---|---|---|---|
+| 96 | sonar-rescan-truth | Approved | gap-20261023 |
+| 97 | fuzz-findings | Approved | #218 |
+| 98 | i18n-locale-slices | Approved | #244 |
+| 99 | spec89-deferred-split | Approved | gap-20261023 |
+| 100 | epic-hygiene | Approved | gap-20261023 |
