@@ -115,3 +115,4 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | SPEC | Título | Entrega |
 |---|---|---|
 | 91 | Untrusted-input envelope — `<untrusted_input>` em prompts SCM/tickets/chatops | PR #238 |
+| 90 | Composable system-prompt contributors — T1/T2/T3, SDD surface, delegation policy | PR #239 |
