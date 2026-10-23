@@ -322,6 +322,10 @@ app.Use(async (ctx, next) =>
 // and must NOT be combined with it (request reaches end of pipeline -> 500).
 app.MapStaticAssets();
 
+// SPEC-94: espelho read-only de _framework sem extensão na URL — boot do
+// WASM sobrevive a proxies corporativos que bloqueiam .wasm/.dat/.dll.
+app.MapFrameworkAssetsEndpoints();
+
 // SPEC-08 RF-013: deployment_mode surfaced on every response.
 var deploymentMode = builder.Configuration["DeploymentMode"] ?? "oss";
 app.Use(async (ctx, next) =>

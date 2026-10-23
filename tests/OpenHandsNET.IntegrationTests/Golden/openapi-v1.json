@@ -9598,6 +9598,38 @@
         ]
       }
     },
+    "/framework-assets/{stem}/{ext}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "stem",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ext",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [],
+        "summary": "GET /framework-assets/{stem}/{ext}",
+        "tags": [
+          "FrameworkAssetsEndpoints"
+        ]
+      }
+    },
     "/oauth/device/authorize": {
       "post": {
         "responses": {
@@ -10172,6 +10204,9 @@
     },
     {
       "name": "OpenAI Gateway"
+    },
+    {
+      "name": "FrameworkAssetsEndpoints"
     },
     {
       "name": "Events"
