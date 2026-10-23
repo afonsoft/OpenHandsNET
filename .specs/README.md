@@ -38,7 +38,6 @@ gates (aprovação de SPEC, merge).
 | `74_sonar_minor_code_smells_spec.md` | SonarCloud — 331 smells MINOR/INFO | `Approved` | #156 (Epic #152) |
 | `89_sonar_deferred_refactors_spec.md` | Sonar — defer Lote D (S3776/S107/S3903/S1075) | `Draft` | gap-analysis 2026-10-22 |
 | `90_system_prompt_contributors_spec.md` | Agent runtime — pipeline componível de system prompt (contributors + tiers T1-T3 + SDD + delegação) | `Approved` | #233 (Epic #231) |
-| `91_untrusted_input_envelope_spec.md` | Segurança — envelope `<untrusted_input>` p/ conteúdo externo em prompts (SCM/tickets/automations) | `Approved` | #232 (Epic #231) |
 | `92_client_drift_guards_spec.md` | Client/CI — drift guards (css-classes, form-a11y, i18n parity/placeholders) | `Approved` | #235 (Epic #231) |
 | `93_perf_loadtest_harness_spec.md` | Tooling — mock LLM OpenAI-compat + loadtest (rps/conversations/subagents) | `Approved` | #236 (Epic #231) |
 | `94_wasm_boot_resilience_spec.md` | Infra — boot.js autostart=false + `/framework-assets` mirror (proxies corporativos) | `Approved` | #237 (Epic #231) |

@@ -109,3 +109,9 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | 86 | `Sandbox:DockerRuntime` — sysbox-runc fora de k8s (HostConfig.Runtime + testes) | PR #226 |
 | 87 | Helm image loader — DaemonSet pre-pull opt-in | PR #226 |
 | 88 | Conversation cleanup — remove container + PVC ao excluir/arquivar | PR #228 |
+
+## Entregues em 2026-10-22 (análise `afonsoft/open-webui` — Epic #231)
+
+| SPEC | Título | Entrega |
+|---|---|---|
+| 91 | Untrusted-input envelope — `<untrusted_input>` em prompts SCM/tickets/chatops | PR #238 |
