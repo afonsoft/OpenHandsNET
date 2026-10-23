@@ -1,14 +1,11 @@
 # memory.md — estado corrente (max 100 linhas)
 
-## Sessão 2026-10-23 — 5/6 SPECs entregues (Epic #231)
+## Sessão 2026-10-23 — Epic #231 COMPLETO (6/6 SPECs)
 
-- **Merged + arquivadas**: #232/SPEC-91 (PR #238), #233/SPEC-90 (#239,
-  `c212c65`), #234/SPEC-95 (#240, `0cb6b86`), #236/SPEC-93 (#242,
-  `1fe3aae`), #237/SPEC-94 (#243, `c2954b9` — golden OpenAPI
-  regenerado, `?enc=b64` mirror).
-- **#235/SPEC-92 → PR #241** — 4 drift guards + baseline ratchet
-  (`tools/drift-baseline/`); CI verde mas toca `ci.yml` → **aguarda
-  revisão humana** (hard rule) — único pendente do Epic.
+- **Merged + arquivadas**: #232/SPEC-91 (PR #238), #233/SPEC-90 (#239),
+  #234/SPEC-95 (#240), #236/SPEC-93 (#242), #237/SPEC-94 (#243),
+  #235/SPEC-92 (#241 — workflow diff revisado e aprovado pelo usuário).
+- Epic #231 fechado. SPECs 90-95 todas em `docs/specs/` (`e72facb`).
 - Issue **#244** criada: retire client drift baseline (19 css, 54 a11y,
   ~1720 chaves i18n zh-CN, 3 placeholders).
 - Golden OpenAPI: regenerar com `OPENHANDSNET_UPDATE_GOLDEN=1` quando
