@@ -18,7 +18,7 @@ else
         @if (Error is not null) { <p class="admin-error">@Error</p> }
 
         <div class="field admin-toolbar">
-            <select @bind="_orgId" @bind:after="LoadAsync2">
+            <select aria-label="@L["admin.svc_title"]" @bind="_orgId" @bind:after="LoadAsync2">
                 <option value="">@L["admin.select_org"]</option>
                 @foreach (var o in _orgs)
                 {
@@ -78,9 +78,9 @@ else
 
             <h3>@L["admin.svc_create"]</h3>
             <div class="admin-toolbar">
-                <input class="input" @bind="_newName"
+                <input aria-label="@L["admin.svc_name_ph"]" class="input" @bind="_newName"
                     placeholder="@L["admin.svc_name_ph"]" />
-                <select @bind="_newRole">
+                <select aria-label="@L["admin.svc_role"]" @bind="_newRole">
                     <option value="member">member</option>
                     <option value="admin">admin</option>
                     <option value="owner">owner</option>
@@ -92,13 +92,13 @@ else
 
             <h3>@L["admin.svc_issue_key"]</h3>
             <div class="admin-toolbar">
-                <select @bind="_keyUser">
+                <select aria-label="@L["admin.svc_issue_key"]" @bind="_keyUser">
                     @foreach (var u in _users)
                     {
                         <option value="@Str(u, "id")">@Str(u, "name")</option>
                     }
                 </select>
-                <input class="input" @bind="_keyScopes"
+                <input aria-label="@L["admin.svc_issue_key"]" class="input" @bind="_keyScopes"
                     placeholder="conversations:write sandboxes:read" />
                 <button class="btn" @onclick="IssueKeyAsync">
                     @L["admin.svc_issue_btn"]

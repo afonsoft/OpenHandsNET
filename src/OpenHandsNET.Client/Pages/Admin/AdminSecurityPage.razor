@@ -20,7 +20,7 @@ else
         <h2>@L["admin.sec_ip_rules"]</h2>
         <p class="muted">@L["admin.sec_ip_hint"]</p>
         <div class="field admin-toolbar">
-            <select @bind="_scope">
+            <select aria-label="@L["admin.sec_ip_hint"]" @bind="_scope">
                 <option value="">@L["admin.sec_global"]</option>
                 @foreach (var o in _orgs)
                 {
@@ -49,12 +49,12 @@ else
             </tbody>
         </table>
         <div class="admin-form">
-            <input placeholder="10.0.0.0/8" @bind="_cidr" />
-            <select @bind="_action">
+            <input aria-label="@L["admin.sec_ip_rules"]" placeholder="10.0.0.0/8" @bind="_cidr" />
+            <select aria-label="@L["admin.sec_action"]" @bind="_action">
                 <option value="deny">deny</option>
                 <option value="allow">allow</option>
             </select>
-            <input type="number" placeholder="priority" style="width:6em"
+            <input aria-label="@L["admin.sec_priority"]" type="number" placeholder="priority" style="width:6em"
                 @bind="_priority" />
             <button class="btn btn-primary" @onclick="CreateRule">
                 @L["admin.create"]</button>
@@ -62,8 +62,8 @@ else
 
         <h2>@L["admin.sec_check"]</h2>
         <div class="admin-form">
-            <input placeholder="ip (opcional)" @bind="_checkIp" />
-            <input placeholder="@L["admin.sec_message"]" @bind="_checkMsg" />
+            <input aria-label="@L["admin.sec_check"]" placeholder="ip (opcional)" @bind="_checkIp" />
+            <input aria-label="@L["admin.sec_message"]" placeholder="@L["admin.sec_message"]" @bind="_checkMsg" />
             <button class="btn" @onclick="RunCheck">@L["admin.sec_run"]</button>
         </div>
         @if (_checkResult is not null)

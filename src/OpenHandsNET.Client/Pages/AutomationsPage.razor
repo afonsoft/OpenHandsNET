@@ -63,8 +63,8 @@ else
 
 <h2>@L["automations.new"]</h2>
 <div>
-    <input placeholder="@L["automations.name_placeholder"]" @bind="_name" />
-    <textarea placeholder="@L["automations.prompt_placeholder"]"
+    <input aria-label="@L["automations.name_placeholder"]" placeholder="@L["automations.name_placeholder"]" @bind="_name" />
+    <textarea aria-label="@L["automations.prompt_placeholder"]" placeholder="@L["automations.prompt_placeholder"]"
               @bind="_prompt" rows="3" style="width:100%"></textarea>
     <select @bind="_kind" aria-label="@(L["automations.schedule"])">
         <option value="interval">@L["automations.kind_interval"]</option>

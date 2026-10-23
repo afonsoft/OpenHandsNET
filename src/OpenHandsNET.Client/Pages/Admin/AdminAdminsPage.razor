@@ -18,7 +18,7 @@ else
         @if (_notice is not null) { <p class="admin-notice">@_notice</p> }
 
         <div class="field admin-toolbar">
-            <input placeholder="@L["admin.grant_email"]" @bind="_email"
+            <input aria-label="@L["admin.grant_email"]" placeholder="@L["admin.grant_email"]" @bind="_email"
                    @bind:event="oninput" />
             <button class="primary" @onclick="GrantAsync"
                     disabled="@(string.IsNullOrWhiteSpace(_email))">

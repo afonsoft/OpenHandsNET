@@ -37,6 +37,11 @@ def load_interpolated_keys():
             if DOUBLE_BRACE.search(str(v))}
 
 
+# Chaves onde {x} é literal intencional (ex.: path de URL instrucional
+# "POST /api/v1/orgs/{org}/...") — nunca passa por L.T.
+SINGLE_BRACE_LITERAL_KEYS = {"admin.chat_connect_hint"}
+
+
 def check_single_brace(errors):
     """Nenhum valor de locale pode usar {nome} — sempre {{nome}}."""
     for path in sorted(I18N.glob("*.json")):
@@ -44,6 +49,8 @@ def check_single_brace(errors):
             continue
         data = json.loads(path.read_text(encoding="utf-8"))
         for key, value in data.items():
+            if key in SINGLE_BRACE_LITERAL_KEYS:
+                continue
             bad = SINGLE_BRACE.findall(str(value))
             if bad:
                 errors.append((

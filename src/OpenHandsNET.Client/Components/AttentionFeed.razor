@@ -12,7 +12,8 @@
             @onclick="Toggle"
             title="@(Inbox.Count == 0 ? L["attention.badge_empty"]
                 : L.T("attention.badge", ("count", Inbox.Count.ToString())))"
-            aria-label="@L["attention.badge"]"
+            aria-label="@(Inbox.Count == 0 ? L["attention.badge_empty"]
+                : L.T("attention.badge", ("count", Inbox.Count.ToString())))"
             aria-haspopup="menu" aria-expanded="@_open">
         <Icon Name="bell" Size="16" />
         @if (Inbox.Count > 0)

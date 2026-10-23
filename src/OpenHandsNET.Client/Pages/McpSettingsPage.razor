@@ -73,11 +73,11 @@
     <h2 style="margin-top:24px">@L["mcp.add_server"]</h2>
     <div class="field">
         <label>@L["mcp.col_name"]</label>
-        <input @bind="_newName" />
+        <input aria-label="@L["mcp.col_name"]" @bind="_newName" />
     </div>
     <div class="field">
         <label>@L["mcp.col_transport"]</label>
-        <select @bind="_newTransport">
+        <select aria-label="@L["mcp.col_transport"]" @bind="_newTransport">
             <option value="stdio">stdio (no sandbox via docker exec)</option>
             <option value="http">streamable http</option>
             <option value="sse">sse (legado)</option>
@@ -87,30 +87,30 @@
     {
         <div class="field">
             <label>@L["mcp.command_label"]</label>
-            <input @bind="_newCommand" />
+            <input aria-label="@L["mcp.command_label"]" @bind="_newCommand" />
         </div>
         <div class="field">
             <label>@L["mcp.args_label"]</label>
-            <textarea @bind="_newArgs" rows="3" style="width:100%"></textarea>
+            <textarea aria-label="@L["mcp.args_label"]" @bind="_newArgs" rows="3" style="width:100%"></textarea>
         </div>
     }
     else
     {
         <div class="field">
             <label>@L["mcp.url_label"]</label>
-            <input @bind="_newUrl" />
+            <input aria-label="@L["mcp.url_label"]" @bind="_newUrl" />
         </div>
         <div class="field">
             <label>@L["mcp.oauth_auth"]</label>
-            <input @bind="_newOauthAuth" />
+            <input aria-label="@L["mcp.oauth_auth"]" @bind="_newOauthAuth" />
         </div>
         <div class="field">
             <label>@L["mcp.oauth_token"]</label>
-            <input @bind="_newOauthToken" />
+            <input aria-label="@L["mcp.oauth_token"]" @bind="_newOauthToken" />
         </div>
         <div class="field">
             <label>@L["mcp.oauth_client"]</label>
-            <input @bind="_newOauthClient" />
+            <input aria-label="@L["mcp.oauth_client"]" @bind="_newOauthClient" />
         </div>
     }
     <label style="display:flex;gap:6px;align-items:center;margin:8px 0">

@@ -15,7 +15,7 @@
         <ChatComposer Placeholder="@L["composer.placeholder_new"]"
                       DraftKey="new" OnSend="OnComposerSendAsync" />
         <div class="row">
-            <input placeholder="@L["home.repository_placeholder"]"
+            <input aria-label="@L["home.repository_placeholder"]" placeholder="@L["home.repository_placeholder"]"
                    @bind="_repository" @bind:event="oninput" />
             <label title="@L["home.confirm_title"]">
                 <input type="checkbox" @bind="_confirmMode" /> @L["home.confirmation"]

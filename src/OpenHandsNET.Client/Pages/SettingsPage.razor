@@ -38,15 +38,15 @@
     <h3>@L["settings.agent_llm"]</h3>
     <div class="field">
         <label>@L["settings.llm_model"]</label>
-        <input @bind="_model" @bind:event="oninput" />
+        <input aria-label="@L["settings.llm_model"]" @bind="_model" @bind:event="oninput" />
     </div>
     <div class="field">
         <label>@L["settings.llm_secret"]</label>
-        <input @bind="_apiKeySecret" @bind:event="oninput" />
+        <input aria-label="@L["settings.llm_secret"]" @bind="_apiKeySecret" @bind:event="oninput" />
     </div>
     <div class="field">
         <label>@L["settings.agent_type"]</label>
-        <select @bind="_agentType">
+        <select aria-label="@L["settings.agent_type"]" @bind="_agentType">
             <option value="default">default</option>
             <option value="plan">plan</option>
             <option value="readonly">readonly</option>
@@ -65,9 +65,9 @@
         @L["settings.secrets_hint"]
     </p>
     <div class="row" style="display:flex;gap:8px;margin-bottom:12px">
-        <input placeholder="@L["settings.secret_name"]" @bind="_secretName"
+        <input aria-label="@L["settings.secret_name"]" placeholder="@L["settings.secret_name"]" @bind="_secretName"
                style="flex:1" />
-        <input placeholder="@L["settings.secret_value"]" type="password" @bind="_secretValue"
+        <input aria-label="@L["settings.secret_value"]" placeholder="@L["settings.secret_value"]" type="password" @bind="_secretValue"
                style="flex:2" />
         <button @onclick="AddSecretAsync"
                 disabled="@(string.IsNullOrWhiteSpace(_secretName) || string.IsNullOrWhiteSpace(_secretValue))">
