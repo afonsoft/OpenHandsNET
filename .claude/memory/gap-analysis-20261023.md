@@ -55,3 +55,16 @@ Pendentes de aprovação do usuário antes de escrever:
 - `.sonar_devin_auto_fix/` é gitignored (artefato local; board anotado).
 - monaco/xterm = vendored → sonar issues não-corrigíveis; sugerir exclusions no
   sonar-project ou won't-fix formal.
+
+## Execução (mesma sessão)
+
+- SPECs 96–100 escritas + issues #248–252 criadas.
+- Live Sonar 23/10: BLOCKER 1, CRITICAL 191 (S3776:79, S927:74, S3218:4,
+  S4487:3, S2699:1, S1994:1, S3871:1…), MAJOR 1317 (S7761 js:850 —
+  maioria monaco vendored, S9423 css:102, S3358:69, S108:54…),
+  MINOR 404, INFO 4, VULN+BUG 108.
+- **Correção**: vereditos 'stale' da sessão estavam errados nas regras
+  grandes — linhas driftaram, issues persistem. Comments de correção
+  postados em #154/#155.
+- SPEC-96: PR #253 (tools/sonar-rescan.py) — aguarda CI.
+- Pendente: implementar 97–100 na próxima sessão.
