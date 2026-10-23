@@ -14,7 +14,7 @@ window.ohnTheme = {
             ? 'light' : 'dark';
     },
     apply(effective) {
-        document.documentElement.setAttribute('data-theme', effective);
+        document.documentElement.dataset.theme = effective;
         document
             .querySelector('meta[name="color-scheme"]')
             ?.setAttribute('content', effective);
@@ -40,19 +40,18 @@ window.ohnKeys = {
     _ref: null,
     register(ref) {
         this._ref = ref;
-        document.addEventListener('keydown', this._handler = (e) => {
+        this._handler = (e) => {
             const tag = document.activeElement?.tagName;
             const typing = tag === 'INPUT' || tag === 'TEXTAREA'
                 || tag === 'SELECT'
                 || document.activeElement?.isContentEditable;
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-                e.preventDefault();
-                this._ref?.invokeMethodAsync('OnPaletteHotkey');
-            } else if (e.key === '/' && !typing) {
+            if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k')
+                || (e.key === '/' && !typing)) {
                 e.preventDefault();
                 this._ref?.invokeMethodAsync('OnPaletteHotkey');
             }
-        });
+        };
+        document.addEventListener('keydown', this._handler);
     },
     unregister() {
         if (this._handler) {

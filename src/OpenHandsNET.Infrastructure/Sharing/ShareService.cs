@@ -112,8 +112,8 @@ public sealed class ShareService(
             return null;
         }
 
-        var secrets = await ResolveSecretValuesAsync(conv, ct);
-        var page = await PageEventsAsync(conv.Id, null, limit, secrets, ct);
+        var resolvedSecrets = await ResolveSecretValuesAsync(conv, ct);
+        var page = await PageEventsAsync(conv.Id, null, limit, resolvedSecrets, ct);
         return new SharedConversationPayload(
             Title: conv.Title ?? "Untitled conversation",
             SelectedRepository: conv.SelectedRepository,
@@ -134,8 +134,8 @@ public sealed class ShareService(
             return null;
         }
 
-        var secrets = await ResolveSecretValuesAsync(conv, ct);
-        return await PageEventsAsync(conv.Id, cursor, limit, secrets, ct);
+        var resolvedSecrets = await ResolveSecretValuesAsync(conv, ct);
+        return await PageEventsAsync(conv.Id, cursor, limit, resolvedSecrets, ct);
     }
 
     // ------------------------------------------------------------------

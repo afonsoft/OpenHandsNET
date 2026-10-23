@@ -18,10 +18,10 @@ namespace OpenHandsNET.Infrastructure.Cache;
 internal sealed class SeqReorderBuffer<T>(
     Func<T, CancellationToken, Task> emit, TimeSpan? holdback = null)
 {
-    private static readonly TimeSpan DefaultHoldback = TimeSpan.FromMilliseconds(50);
+    private const int DefaultHoldbackMs = 50;
     private const int MaxPending = 512;
 
-    private readonly TimeSpan _holdback = holdback ?? DefaultHoldback;
+    private readonly TimeSpan _holdback = holdback ?? TimeSpan.FromMilliseconds(DefaultHoldbackMs);
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly SortedDictionary<long, (T Item, DateTimeOffset Deadline)> _pending = new();
     private long _next = -1;

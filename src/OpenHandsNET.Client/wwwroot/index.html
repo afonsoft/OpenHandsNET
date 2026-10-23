@@ -17,7 +17,7 @@
                 t = window.matchMedia('(prefers-color-scheme: light)').matches
                     ? 'light' : 'dark';
             }
-            document.documentElement.setAttribute('data-theme', t);
+            document.documentElement.dataset.theme = t;
         })();
     </script>
     <link rel="stylesheet" href="lib/xterm/xterm.css" />

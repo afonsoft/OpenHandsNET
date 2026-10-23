@@ -56,7 +56,7 @@ public sealed class Spec34DeltasArtifactsTests
     }
 
     [Fact]
-    public void Batcher_Time_Threshold_Flushes()
+    public async Task Batcher_Time_Threshold_Flushes()
     {
         var bus = new CollectingBus();
         var b = new DeltaBatcher(Guid.NewGuid(), "i", bus);
@@ -64,7 +64,7 @@ public sealed class Spec34DeltasArtifactsTests
         bus.Frames.ShouldBeEmpty();
         // Simula a passagem de tempo: força via flush manual do limite —
         // o batcher avalia a janela a cada Add; 2º add após >16ms flusha.
-        Thread.Sleep(20);
+        await Task.Delay(20);
         b.Add("x");
         bus.Frames.Count.ShouldBe(1);
     }
