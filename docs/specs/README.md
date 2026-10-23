@@ -119,3 +119,4 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | 95 | Declarative agent catalog — `*.agent.md` em camadas + `agent_catalog` tool | PR #240 |
 | 93 | Perf/loadtest harness — mock LLM OpenAI-compat + rps/conversations/subagents | PR #242 |
 | 94 | WASM boot resilience — `boot.js` + `/framework-assets` mirror (proxies corporativos) | PR #243 |
+| 92 | Client drift guards — css-classes, form-a11y, i18n parity/placeholders + baseline ratchet | PR #241 |

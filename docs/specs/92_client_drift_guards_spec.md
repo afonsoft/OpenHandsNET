@@ -8,7 +8,7 @@
 | Type | `Infra / CI` |
 | Stack | `.NET 10 · Blazor WASM · Tailwind v4 · Python 3 scripts` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Completed` |
 | Ticket | #235 (Epic #231) · análise `afonsoft/open-webui` (2026-10-22) |
 | Depends on | — |
 | Reference | `open-webui` `tools/check-css-classes.py`, `check-form-a11y.py`, `check-i18n-parity.py`, `check-i18n-placeholders.py` (CI job "Blazor WASM Client Validation") |
