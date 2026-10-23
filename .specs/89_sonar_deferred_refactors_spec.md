@@ -8,7 +8,7 @@
 | Type | `Analysis / Backlog (research spec)` |
 | Stack | `.NET 10` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Draft` |
+| Status | `Superseded — see children 101-106` |
 | Ticket | gap-analysis 2026-10-22 · Lote D |
 | Depends on | SPECs 70–74 (sonar slices) |
 | Touches | nada — backlog |
@@ -40,3 +40,14 @@ dos refactors grandes que exigem SPEC própria e testes dedicados:
 
 - SPECs 90+ criadas quando priorizadas; ou marcação won't-fix no
   SonarCloud após o re-scan (dependente do #148/SONAR_TOKEN).
+
+## Child SPECs (SPEC-99 split, 2026-10-23)
+
+| SPEC | Escopo | Regra |
+|---|---|---|
+| 101 | cli/ | S3776 |
+| 102 | infra/agent | S3776 |
+| 103 | api endpoints | S3776 |
+| 104 | cross | S107 |
+| 105 | cli/settings/agent | S3218 + S127 |
+| 106 | cross | S1075 + S3903 |
