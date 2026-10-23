@@ -1,6 +1,7 @@
 using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Application.Sandbox;
 using OpenHandsNET.Domain.Events;
+using OpenHandsNET.Infrastructure.Agent.SystemPrompt;
 
 using Shouldly;
 
@@ -97,7 +98,8 @@ public sealed class AgentRunnerLoopTests
         var pendingActionId = fx.Events.Events.OfType<ActionEvent>()
             .Single(e => e.ToolName == "bash").Id;
 
-        fx.Executor.Commands.ShouldBeEmpty(); // não executou ainda
+        fx.Executor.Commands.Where(c => c != SddSurfaceProbe.Command)
+            .ShouldBeEmpty(); // não executou ainda
         fx.Runner.ResolveConfirmation(pendingActionId, approved: true);
         await run.WaitAsync(TimeSpan.FromSeconds(10));
 
@@ -123,7 +125,8 @@ public sealed class AgentRunnerLoopTests
         fx.Runner.ResolveConfirmation(actionId, approved: false);
         await run.WaitAsync(TimeSpan.FromSeconds(10));
 
-        fx.Executor.Commands.ShouldBeEmpty();
+        fx.Executor.Commands.Where(c => c != SddSurfaceProbe.Command)
+            .ShouldBeEmpty();
         fx.Events.Events.OfType<ObservationEvent>()
             .ShouldNotContain(e => e.ToolName == "bash");
         (await fx.RecordStatusAsync()).ShouldBe("Finished");
@@ -168,7 +171,8 @@ public sealed class AgentRunnerLoopTests
                 .LastOrDefault(e => e.Key == "execution_status"
                     && e.Value?.ToString().Contains("waiting") == true));
         fx.Events.Events.OfType<DecisionAutoEvent>().ShouldBeEmpty();
-        fx.Executor.Commands.ShouldBeEmpty();
+        fx.Executor.Commands.Where(c => c != SddSurfaceProbe.Command)
+            .ShouldBeEmpty();
 
         var actionId = fx.Events.Events.OfType<ActionEvent>()
             .Single(e => e.ToolName == "bash").Id;
