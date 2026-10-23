@@ -1,5 +1,24 @@
 # memory.md — estado corrente (max 100 linhas)
 
+## Sessão 2026-10-23 — EM ANDAMENTO (execução Epic #231)
+
+- **#232 SPEC-91 merged** — PR #238, untrusted-input envelope, arquivada.
+- **#233 SPEC-90 merged** — PR #239, prompt contributors, arquivada
+  (`c212c65`). 623 unit tests.
+- **#234 SPEC-95 merged** — PR #240 (`0cb6b86`), catálogo `*.agent.md`,
+  arquivada (`43d9b5d`). 637 unit tests.
+- **#235 SPEC-92 → PR #241** — 4 drift guards + baseline ratchet
+  (`tools/drift-baseline/`); checks verdes mas toca `ci.yml` →
+  **aguarda revisão humana** (hard rule).
+- **#236 SPEC-93 → PR #242** — `tools/perf/` (mock_llm + loadtest);
+  Sonar B→fixes pushed, checks rodando.
+- **#237 SPEC-94 → PR #243** — boot.js + `/framework-assets` mirror;
+  5/5 testes integração; checks rodando.
+- Baseline SPEC-92 congelou drift real: 19 classes, 54 a11y, ~1720
+  chaves i18n, 3 placeholders → issue de follow-up pendente.
+- `dotnet format` exige using-groups separados por linha em branco e
+  sem newline final (`insert_final_newline=false`).
+
 ## Sessão 2026-10-22 (cont.) — CONCLUÍDA
 
 - Retomada da grizzled-cocoa: memória commitada (`18a12ed`) + SPECs
