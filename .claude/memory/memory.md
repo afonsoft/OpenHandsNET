@@ -55,7 +55,18 @@
 - SPECs 70/71 já entregues (PRs #159/#160) — arquivadas em docs/specs/ (cf49e92).
 - SPEC-72 entregue: PR #246 merged (8c19236). Snapshot 19/10 stale —
   44/45 já resolvidas; S2699 real fix. S3218/S3776 → SPEC-89.
-- SPEC-73/74: auditar staleness antes de implementar (mesmo snapshot).
+- SPEC-73: PR #247 — verified subset fix; ~200 stale/vendored/defer; rescan pend.
+- SPEC-74: auditar staleness antes (mesmo snapshot stale).
+
+## Sessão 2026-10-23 (SPEC-73)
+
+- SPEC-73 auditada por regra: snapshot 19/10 majoritariamente stale
+  (S3358 69→0, S108 54→2, S6966/S6580/S7688 já fixos).
+- Fixes reais: S1117×2, S4581, S1121×2, S1118, S2743, S2925, S108×2,
+  JS S7761/S1121/S1871, CSS S4666×3 — PR #247.
+- S107/S127 → SPEC-89; monaco/xterm vendored; !important reduced-motion
+  = justified; S1172×10 + S1854/S2376/S6673/k8s unverified (line drift).
+- Lição: heurística bulk por regra > site-a-site quando snapshot é stale.
 
 ## Fatos operacionais
 
