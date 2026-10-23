@@ -80,6 +80,14 @@ dotnet restore OpenHandsNET.slnx && dotnet build OpenHandsNET.slnx -c Release
 dotnet test
 dotnet run --project src/OpenHandsNET.Api        # app em http://localhost:8080
 docker compose up -d --build                      # app em http://localhost:3032
+
+# Client drift guards (SPEC-92) — rodar antes de PR que toca .razor/i18n:
+python3 tools/check-css-classes.py        # classes .razor vs tailwind.css/app.css
+python3 tools/check-form-a11y.py          # controles de form sem nome acessível
+python3 tools/check-i18n-parity.py        # chaves i18n vs baseline en-US
+python3 tools/check-i18n-placeholders.py  # placeholders {{x}} + args de L.T
+# Ratchet: tools/drift-baseline/*.txt congela o drift conhecido —
+# violações novas falham; aposentar resolvidas com --write-baseline.
 ```
 
 ## Harness Structure
