@@ -68,3 +68,12 @@ Pendentes de aprovação do usuário antes de escrever:
   postados em #154/#155.
 - SPEC-96: PR #253 (tools/sonar-rescan.py) — aguarda CI.
 - Pendente: implementar 97–100 na próxima sessão.
+
+## Execução cont. (sessão 2)
+
+- SPEC-100 entregue+arquivada: #146/#148 auditadas e fechadas; #252 closed.
+- SPEC-99 entregue+arquivada: SPECs filhos 101-106 Draft em .specs/;
+  SPEC-89 virou índice (Superseded); #251 closed.
+- SPEC-96: PR #253 merged; board reconcile + SPEC-74 audit restantes (#248 aberta).
+- Fila: #249 fuzz, #250 i18n, #248 reconcile, sonar backlog real
+  (S3358:69, S108:54, S927:74) + SPECs 101-106 execução.
