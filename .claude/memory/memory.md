@@ -6,8 +6,11 @@
   #234/SPEC-95 (#240), #236/SPEC-93 (#242), #237/SPEC-94 (#243),
   #235/SPEC-92 (#241 — workflow diff revisado e aprovado pelo usuário).
 - Epic #231 fechado. SPECs 90-95 todas em `docs/specs/` (`e72facb`).
-- Issue **#244** criada: retire client drift baseline (19 css, 54 a11y,
-  ~1720 chaves i18n zh-CN, 3 placeholders).
+- Issue **#244** parcial (PR #245 merged `e3ae4aa`): css/a11y/placeholders
+  zerados (baselines regenerados); **resta i18n-parity** ~1720 chaves —
+  runtime já cai p/ en-US→pt-BR, slices por locale continuam na #244.
+- Flake CI: integration tests docker (Spec42/43/AgentEngine) falham
+  intermitente — `gh run rerun <id> --failed` resolveu 2× nesta sessão.
 - Golden OpenAPI: regenerar com `OPENHANDSNET_UPDATE_GOLDEN=1` quando
   endpoint público novo entrar.
 - Baseline SPEC-92 congelou drift real: 19 classes, 54 a11y, ~1720
