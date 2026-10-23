@@ -18,7 +18,7 @@ else
         @if (Error is not null) { <p class="admin-error">@Error</p> }
 
         <div class="field admin-toolbar">
-            <select @bind="_orgId" @bind:after="LoadAll">
+            <select aria-label="@L["admin.ident_title"]" @bind="_orgId" @bind:after="LoadAll">
                 <option value="">@L["admin.select_org"]</option>
                 @foreach (var o in _orgs)
                 {
@@ -50,7 +50,7 @@ else
                 </tbody>
             </table>
             <div class="admin-form">
-                <input placeholder="@L["admin.ident_token_name"]" @bind="_tokName" />
+                <input aria-label="@L["admin.ident_token_name"]" placeholder="@L["admin.ident_token_name"]" @bind="_tokName" />
                 <button class="btn btn-primary" @onclick="MintToken">
                     @L["admin.ident_mint"]</button>
             </div>
@@ -85,13 +85,13 @@ else
                 </tbody>
             </table>
             <div class="admin-form">
-                <input placeholder="@L["admin.ident_group"]" @bind="_mapGroup" />
-                <select @bind="_mapRole">
+                <input aria-label="@L["admin.ident_group"]" placeholder="@L["admin.ident_group"]" @bind="_mapGroup" />
+                <select aria-label="@L["admin.svc_role"]" @bind="_mapRole">
                     <option value="member">member</option>
                     <option value="admin">admin</option>
                     <option value="owner">owner</option>
                 </select>
-                <select @bind="_mapTier">
+                <select aria-label="@L["admin.ident_tier"]" @bind="_mapTier">
                     <option value="">@L["admin.ident_no_tier"]</option>
                     @foreach (var t in _tiers)
                     {
@@ -122,8 +122,8 @@ else
                 </tbody>
             </table>
             <div class="admin-form">
-                <input placeholder="@L["admin.ident_name"]" @bind="_tierName" />
-                <input placeholder='{"max_conversations_per_day": 20}'
+                <input aria-label="@L["admin.ident_name"]" placeholder="@L["admin.ident_name"]" @bind="_tierName" />
+                <input aria-label="@L["admin.ident_name"]" placeholder='{"max_conversations_per_day": 20}'
                     @bind="_tierLimits" />
                 <button class="btn btn-primary" @onclick="CreateTier">
                     @L["admin.create"]</button>

@@ -9,7 +9,7 @@
 {
     <div class="palette-overlay" @onclick="Palette.Close" @onkeydown="OnKey">
         <div class="palette" @onclick:stopPropagation>
-            <input @ref="_input" placeholder="@L["palette.placeholder"]"
+            <input aria-label="@L["palette.placeholder"]" @ref="_input" placeholder="@L["palette.placeholder"]"
                    value="@_query" @oninput="OnInput" autofocus />
             @if (Palette.Filtered.Count == 0)
             {

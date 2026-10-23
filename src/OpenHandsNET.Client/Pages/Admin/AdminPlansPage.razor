@@ -18,9 +18,9 @@ else
         @if (_notice is not null) { <p class="admin-notice">@_notice</p> }
 
         <div class="field admin-toolbar">
-            <input placeholder="@L["admin.plan_name"]" @bind="_newName"
+            <input aria-label="@L["admin.plan_name"]" placeholder="@L["admin.plan_name"]" @bind="_newName"
                    @bind:event="oninput" />
-            <input type="number" step="0.01" placeholder="@L["admin.plan_price"]"
+            <input aria-label="@L["admin.plan_price"]" type="number" step="0.01" placeholder="@L["admin.plan_price"]"
                    @bind="_newPrice" style="max-width:140px" />
             <button class="primary" @onclick="CreateAsync"
                     disabled="@(string.IsNullOrWhiteSpace(_newName))">
@@ -45,13 +45,13 @@ else
                     </button>
                 </div>
                 <div class="field admin-toolbar">
-                    <input placeholder='limits json (ex.: {"max_concurrent_runs":3})'
+                    <input aria-label="@L["common.delete"]" placeholder='limits json (ex.: {"max_concurrent_runs":3})'
                            @bind="_limitsDraft[id]"
                            @bind:event="oninput" />
                     <button @onclick="() => SaveLimitsAsync(id)">@L["admin.save_limits"]</button>
                 </div>
                 <div class="field admin-toolbar">
-                    <select @bind="_assignOrg[id]">
+                    <select aria-label="@L["admin.save_limits"]" @bind="_assignOrg[id]">
                         <option value="">@L["admin.assign_org"]</option>
                         @foreach (var o in _orgs)
                         {

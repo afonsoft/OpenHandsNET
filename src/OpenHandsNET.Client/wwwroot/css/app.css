@@ -854,3 +854,47 @@ details.ev-details summary { cursor: pointer; color: var(--ohn-fg-dim); font-siz
 }
 .ide-shell.zen .ide-side { display: none; }
 .ide-shell.zen .ide-activity { border-right: 0; }
+
+/* Issue #244 — classes usadas em .razor sem definição (drift SPEC-92).
+   Admin pages + composer + knowledge usavam tokens órfãos; estilos
+   seguem os tokens --ohn-* do tema. */
+
+/* --- buttons (.btn family — admin/toolbars) --- */
+.btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer;
+    border: 1px solid var(--ohn-border); background: var(--ohn-bg-alt);
+    color: var(--ohn-fg); text-decoration: none;
+}
+.btn:hover { background: var(--ohn-bg-hover); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-primary { background: var(--ohn-accent); border-color: var(--ohn-accent); color: #fff; }
+.btn-primary:hover { background: var(--ohn-accent); filter: brightness(1.12); }
+.btn-sm { padding: 3px 10px; font-size: 12px; }
+.btn.ghost, .ghost.btn { background: transparent; border-color: transparent; color: var(--ohn-fg-dim); }
+.btn.ghost:hover, .ghost.btn:hover { background: var(--ohn-bg-hover); color: var(--ohn-fg); }
+
+/* --- admin pages --- */
+.admin-form { display: flex; flex-direction: column; gap: 10px; max-width: 640px; }
+.admin-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ohn-fg-dim); }
+.admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.admin-table th { text-align: left; padding: 6px 10px; color: var(--ohn-fg-dim); font-weight: 600; border-bottom: 1px solid var(--ohn-border); }
+.admin-table td { padding: 6px 10px; border-bottom: 1px solid var(--ohn-border); }
+.admin-table tr:hover td { background: var(--ohn-bg-hover); }
+.admin-json { font-family: var(--ohn-mono); font-size: 12px; background: var(--ohn-code-bg); border: 1px solid var(--ohn-border); border-radius: 6px; padding: 10px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+.admin-once { font-size: 12px; color: var(--ohn-fg-dim); }
+.admin-secret-box { background: var(--ohn-code-bg); border: 1px solid var(--ohn-yellow); border-radius: 6px; padding: 12px; }
+
+/* --- composer --- */
+.composer-actions { display: flex; gap: 8px; align-items: center; }
+.send-btn { margin-left: auto; }
+
+/* --- misc --- */
+.muted { color: var(--ohn-fg-dim); }
+.text-danger { color: var(--ohn-red); }
+.input { width: 100%; }
+.spin-label { margin-left: 8px; color: var(--ohn-fg-dim); }
+.chip.attach { cursor: default; }
+.knowledge { display: flex; flex-direction: column; gap: 12px; }
+.suggestion { border: 1px solid var(--ohn-border); border-radius: 8px; padding: 12px; background: var(--ohn-bg-alt); }
+.suggestion .head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-weight: 600; }

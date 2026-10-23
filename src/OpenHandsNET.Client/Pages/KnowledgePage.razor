@@ -9,7 +9,7 @@
 
 <div class="knowledge">
     <div class="row">
-        <select @bind="_filter" @bind:after="LoadAsync">
+        <select aria-label="@L["knowledge.title"]" @bind="_filter" @bind:after="LoadAsync">
             <option value="pending">@L["knowledge.pending"]</option>
             <option value="approved">@L["knowledge.approved"]</option>
             <option value="dismissed">@L["knowledge.dismissed"]</option>

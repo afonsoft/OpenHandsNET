@@ -18,7 +18,7 @@ else
         @if (Error is not null) { <p class="admin-error">@Error</p> }
 
         <div class="field admin-toolbar">
-            <select @bind="_orgId" @bind:after="LoadConnectionsAsync">
+            <select aria-label="@L["admin.chat_title"]" @bind="_orgId" @bind:after="LoadConnectionsAsync">
                 <option value="">@L["admin.select_org"]</option>
                 @foreach (var o in _orgs)
                 {

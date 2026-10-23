@@ -18,7 +18,7 @@ else
         @if (_notice is not null) { <p class="admin-notice">@_notice</p> }
 
         <div class="field admin-toolbar">
-            <input placeholder="@L["admin.search_users"]" @bind="_q"
+            <input aria-label="@L["admin.search_users"]" placeholder="@L["admin.search_users"]" @bind="_q"
                    @bind:event="oninput" @onkeydown="OnSearchKey" />
             <button @onclick="() => LoadPageAsync(1)">@L["common.search"]</button>
         </div>

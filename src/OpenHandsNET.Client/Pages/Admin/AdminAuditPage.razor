@@ -17,8 +17,8 @@ else
         @if (Error is not null) { <p class="admin-error">@Error</p> }
 
         <div class="field admin-toolbar">
-            <input placeholder="@L["admin.user_id"]" @bind="_user" @bind:event="oninput" />
-            <input placeholder="@L["admin.action"]" @bind="_action" @bind:event="oninput" />
+            <input aria-label="@L["admin.user_id"]" placeholder="@L["admin.user_id"]" @bind="_user" @bind:event="oninput" />
+            <input aria-label="@L["admin.action"]" placeholder="@L["admin.action"]" @bind="_action" @bind:event="oninput" />
             <button @onclick="() => LoadPageAsync(1)">@L["common.filter"]</button>
             <a class="badge" download
                href="@AdminApiClient.AuditCsvUrl(_user, _action, _from, _to)">

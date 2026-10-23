@@ -32,6 +32,7 @@ else
                     <td>@s.Description</td>
                     <td>
                         <input type="checkbox" checked="@s.Enabled"
+                               aria-label="@L["skills.enabled"]"
                                disabled="@(s.Source == "builtin")"
                                @onchange="_ => ToggleAsync(s)" />
                     </td>
@@ -43,9 +44,9 @@ else
 
 <h2>@L["skills.new"]</h2>
 <div>
-    <input placeholder="@L["skills.name_placeholder"]" @bind="newName" />
-    <input placeholder="@L["skills.desc_placeholder"]" @bind="newDescription" />
-    <textarea placeholder="@L["skills.content_placeholder"]" @bind="newContent" rows="6"
+    <input aria-label="@L["skills.name_placeholder"]" placeholder="@L["skills.name_placeholder"]" @bind="newName" />
+    <input aria-label="@L["skills.desc_placeholder"]" placeholder="@L["skills.desc_placeholder"]" @bind="newDescription" />
+    <textarea aria-label="@L["skills.content_placeholder"]" placeholder="@L["skills.content_placeholder"]" @bind="newContent" rows="6"
               style="width:100%"></textarea>
     <button @onclick="CreateAsync" disabled="@string.IsNullOrWhiteSpace(newName)">
         @L["common.create"]
