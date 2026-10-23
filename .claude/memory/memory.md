@@ -1,19 +1,18 @@
 # memory.md — estado corrente (max 100 linhas)
 
-## Sessão 2026-10-23 — EM ANDAMENTO (execução Epic #231)
+## Sessão 2026-10-23 — 5/6 SPECs entregues (Epic #231)
 
-- **#232 SPEC-91 merged** — PR #238, untrusted-input envelope, arquivada.
-- **#233 SPEC-90 merged** — PR #239, prompt contributors, arquivada
-  (`c212c65`). 623 unit tests.
-- **#234 SPEC-95 merged** — PR #240 (`0cb6b86`), catálogo `*.agent.md`,
-  arquivada (`43d9b5d`). 637 unit tests.
-- **#235 SPEC-92 → PR #241** — 4 drift guards + baseline ratchet
-  (`tools/drift-baseline/`); checks verdes mas toca `ci.yml` →
-  **aguarda revisão humana** (hard rule).
-- **#236 SPEC-93 → PR #242** — `tools/perf/` (mock_llm + loadtest);
-  Sonar B→fixes pushed, checks rodando.
-- **#237 SPEC-94 → PR #243** — boot.js + `/framework-assets` mirror;
-  5/5 testes integração; checks rodando.
+- **Merged + arquivadas**: #232/SPEC-91 (PR #238), #233/SPEC-90 (#239,
+  `c212c65`), #234/SPEC-95 (#240, `0cb6b86`), #236/SPEC-93 (#242,
+  `1fe3aae`), #237/SPEC-94 (#243, `c2954b9` — golden OpenAPI
+  regenerado, `?enc=b64` mirror).
+- **#235/SPEC-92 → PR #241** — 4 drift guards + baseline ratchet
+  (`tools/drift-baseline/`); CI verde mas toca `ci.yml` → **aguarda
+  revisão humana** (hard rule) — único pendente do Epic.
+- Issue **#244** criada: retire client drift baseline (19 css, 54 a11y,
+  ~1720 chaves i18n zh-CN, 3 placeholders).
+- Golden OpenAPI: regenerar com `OPENHANDSNET_UPDATE_GOLDEN=1` quando
+  endpoint público novo entrar.
 - Baseline SPEC-92 congelou drift real: 19 classes, 54 a11y, ~1720
   chaves i18n, 3 placeholders → issue de follow-up pendente.
 - `dotnet format` exige using-groups separados por linha em branco e
