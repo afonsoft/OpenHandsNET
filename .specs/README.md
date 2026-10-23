@@ -40,7 +40,7 @@ gates (aprovação de SPEC, merge).
 | `92_client_drift_guards_spec.md` | Client/CI — drift guards (css-classes, form-a11y, i18n parity/placeholders) | `Approved` | #235 (Epic #231) |
 | `93_perf_loadtest_harness_spec.md` | Tooling — mock LLM OpenAI-compat + loadtest (rps/conversations/subagents) | `Approved` | #236 (Epic #231) |
 | `94_wasm_boot_resilience_spec.md` | Infra — boot.js autostart=false + `/framework-assets` mirror (proxies corporativos) | `Approved` | #237 (Epic #231) |
-| `95_declarative_agent_catalog_spec.md` | Agent runtime — catálogo `*.agent.md` em camadas + `agent_catalog` tool (dep: SPEC-90) | `Approved` | #234 (Epic #231) |
+| `95_declarative_agent_catalog_spec.md` | Agent runtime — catálogo `*.agent.md` em camadas + `agent_catalog` tool (dep: SPEC-90) | `Completed` | PR #240 · #234 (Epic #231) |
 
 ## Arquivo morto — `docs/specs/`
 

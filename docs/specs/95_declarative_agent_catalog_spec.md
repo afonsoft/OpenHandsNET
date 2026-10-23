@@ -8,7 +8,7 @@
 | Type | `Feature` |
 | Stack | `.NET 10 · agent runtime · sandbox workspace` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Completed` |
 | Ticket | #234 (Epic #231) · análise `afonsoft/open-webui` (2026-10-22) |
 | Depends on | SPEC-90 (delegation-policy block consome o catálogo; sem ele o catálogo ainda funciona — só o bloco de prompt fica menor) |
 | Reference | `open-webui` `src/OpenWebUI.Infrastructure/Services/AgentDefinitionService.cs` + `ChatTools/Tools/AgentCatalogBuiltinTool.cs` + `DelegateTaskBuiltinTool.cs` |
