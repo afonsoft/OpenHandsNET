@@ -24,6 +24,14 @@ public static class SubagentPresets
         StringComparer.Ordinal)
         { "search", "file_read", "think", "task_tracker", "finish" };
 
+    /// <summary>
+    /// Built-in <c>subagent_type</c> names (SPEC-90 RF-007): the static
+    /// catalog advertised by the delegation-policy prompt block until
+    /// SPEC-95 merges declarative <c>*.agent.md</c> agents.
+    /// </summary>
+    public static IReadOnlyList<string> Names =>
+        ["explore", "scout", "plan", "general"];
+
     /// <summary>Resolves the allowlist predicate for <paramref name="type"/>.</summary>
     public static Func<string, bool>? Resolve(string? type) =>
         (type ?? "explore").ToLowerInvariant() switch

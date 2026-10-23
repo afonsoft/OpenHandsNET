@@ -433,6 +433,39 @@ public static class DependencyInjection
         services.AddScoped<
             OpenHandsNET.Application.Agent.ICompactionService,
             OpenHandsNET.Infrastructure.Agent.Context.CompactionService>();
+        // SPEC-90: system-prompt contributors (pipeline componível —
+        // composer itera por Order e tolera falha individual).
+        services.AddSingleton<
+            OpenHandsNET.Application.Agent.IAgentPromptContributor,
+            OpenHandsNET.Infrastructure.Agent.SystemPrompt
+                .BaseAgentContributor>();
+        services.AddSingleton<
+            OpenHandsNET.Application.Agent.IAgentPromptContributor,
+            OpenHandsNET.Infrastructure.Agent.SystemPrompt
+                .AutonomyTiersContributor>();
+        services.AddSingleton<
+            OpenHandsNET.Application.Agent.IAgentPromptContributor,
+            OpenHandsNET.Infrastructure.Agent.SystemPrompt
+                .SddWorkflowContributor>();
+        services.AddSingleton<
+            OpenHandsNET.Application.Agent.IAgentPromptContributor,
+            OpenHandsNET.Infrastructure.Agent.SystemPrompt
+                .RepoContextContributor>();
+        services.AddSingleton<
+            OpenHandsNET.Application.Agent.IAgentPromptContributor,
+            OpenHandsNET.Infrastructure.Agent.SystemPrompt
+                .SkillsContributor>();
+        services.AddSingleton<
+            OpenHandsNET.Application.Agent.IAgentPromptContributor,
+            OpenHandsNET.Infrastructure.Agent.SystemPrompt
+                .MemoryDigestContributor>();
+        services.AddSingleton<
+            OpenHandsNET.Application.Agent.IAgentPromptContributor,
+            OpenHandsNET.Infrastructure.Agent.SystemPrompt
+                .DelegationPolicyContributor>();
+        services.AddSingleton<
+            OpenHandsNET.Infrastructure.Agent.SystemPrompt
+                .SystemPromptComposer>();
         services.AddSingleton<OpenHandsNET.Infrastructure.Agent.AgentRunnerHost>();
         services.AddSingleton<OpenHandsNET.Application.Agent.IAgentRunnerHost>(
             sp => sp.GetRequiredService<

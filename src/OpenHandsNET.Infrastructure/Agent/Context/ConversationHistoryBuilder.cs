@@ -1,6 +1,9 @@
 using System.Text.Json;
 
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using OpenHandsNET.Application.Agent;
 using OpenHandsNET.Application.Events;
@@ -114,10 +117,23 @@ public sealed class ConversationHistoryBuilder(IServiceProvider services)
                     skills, loaded.RepoSkills, lastUserText);
             }
 
-            var prompt = SystemPromptBuilder.Build(
-                conv.SelectedRepository,
-                tools.All.Select(t => t.Schema).ToList(),
-                skills, repoContext);
+            // SPEC-90 RF-008: prompt composto por contributors via DI
+            // (ordem/falha toleradas pelo composer). Sem composer
+            // registrado (testes com provider manual), cai no conjunto
+            // default de contributors.
+            var prompt = await ResolveComposer()
+                .ComposeAsync(new Application.Agent.AgentPromptContext
+                {
+                    SelectedRepository = conv.SelectedRepository,
+                    Tools = tools.All.Select(t => t.Schema).ToList(),
+                    Skills = skills,
+                    RepoContext = repoContext,
+                    Ct = ct,
+                    SubagentCatalog =
+                        Subagents.SubagentPresets.Names,
+                    SddProbeFactory = probeCt => ProbeSddSurfaceAsync(
+                        services, conv.SandboxId, probeCt),
+                });
             var sp = new SystemPromptEvent
             {
                 ParentId = lastId,
@@ -252,4 +268,73 @@ public sealed class ConversationHistoryBuilder(IServiceProvider services)
                 b.TryGetProperty("text", out var t) ? t.GetString() : null)),
         { } other => other.GetRawText(),
     };
+
+    /// <summary>
+    /// SPEC-90: resolve o composer da DI; providers montados à mão
+    /// (testes sem AddInfrastructure) recebem o conjunto default.
+    /// </summary>
+    private SystemPrompt.SystemPromptComposer ResolveComposer()
+    {
+        if (services.GetService<SystemPrompt.SystemPromptComposer>()
+            is { } composer)
+        {
+            return composer;
+        }
+        var cfg = services.GetService<IConfiguration>()
+            ?? new ConfigurationBuilder().Build();
+        var logger = services.GetService<ILoggerFactory>()
+            ?.CreateLogger<SystemPrompt.SystemPromptComposer>()
+            ?? NullLogger<SystemPrompt.SystemPromptComposer>.Instance;
+        var registered = services
+            .GetServices<IAgentPromptContributor>().ToList();
+        IReadOnlyList<IAgentPromptContributor> contributors =
+            registered.Count > 0
+                ? registered
+                :
+                [
+                    new SystemPrompt.BaseAgentContributor(),
+                    new SystemPrompt.AutonomyTiersContributor(),
+                    new SystemPrompt.SddWorkflowContributor(cfg),
+                    new SystemPrompt.RepoContextContributor(),
+                    new SystemPrompt.SkillsContributor(),
+                    new SystemPrompt.MemoryDigestContributor(),
+                    new SystemPrompt.DelegationPolicyContributor(),
+                ];
+        return new SystemPrompt.SystemPromptComposer(contributors, logger);
+    }
+
+    /// <summary>
+    /// SPEC-90 RF-006: SDD-surface probe — exec inside the conversation
+    /// sandbox checking for <c>.specs/</c> or <c>docs/specs/</c>. Any
+    /// failure (no sandbox, executor down, timeout) degrades to
+    /// <c>false</c> — prompt building never breaks on a probe.
+    /// </summary>
+    private static async Task<bool> ProbeSddSurfaceAsync(
+        IServiceProvider services, Guid? sandboxId, CancellationToken ct)
+    {
+        if (sandboxId is null
+            || services.GetService<Application.Sandbox.ISandboxService>()
+                is not { } sandboxSvc
+            || services.GetService<Application.Sandbox.ISandboxExecutor>()
+                is not { } executor)
+        {
+            return false;
+        }
+        try
+        {
+            var sandbox = await sandboxSvc.GetAsync(sandboxId.Value, ct);
+            if (sandbox is null)
+            {
+                return false;
+            }
+            var result = await executor.ExecAsync(sandbox,
+                SystemPrompt.SddSurfaceProbe.Command,
+                TimeSpan.FromSeconds(10), ct);
+            return result.ExitCode == 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }
