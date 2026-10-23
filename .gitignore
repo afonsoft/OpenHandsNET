@@ -38,3 +38,4 @@ node_modules/
 evals/results/
 evals/recordings/
 .sonar_devin_auto_fix/**
+__pycache__/
