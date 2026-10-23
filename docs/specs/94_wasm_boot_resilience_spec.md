@@ -8,7 +8,7 @@
 | Type | `Infra / Frontend` |
 | Stack | `.NET 10 · Blazor WASM · ASP.NET Core static assets` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Completed` |
 | Ticket | #237 (Epic #231) · análise `afonsoft/open-webui` (2026-10-22) |
 | Depends on | — |
 | Reference | `open-webui` `wwwroot/js/boot.js` + endpoint `GET /framework-assets/{stem}/{ext}` (`?enc=b64` fallback) — hard rule do open-webui CLAUDE.md |
