@@ -91,8 +91,15 @@ public class Spec36CoordinationTests
             {
                 ["Deployment:Replicas"] = "1",
             }).Build();
-        new ServiceCollection()
-            .AddLogging().AddCoordinationCache(cfg);
+        using var sp = new ServiceCollection()
+            .AddLogging().AddCoordinationCache(cfg)
+            .BuildServiceProvider();
+        sp.GetRequiredService<ICoordinationBus>()
+            .ShouldBeOfType<InMemoryCoordinationBus>();
+        sp.GetRequiredService<IDistributedLock>()
+            .ShouldBeOfType<NullDistributedLock>();
+        sp.GetRequiredService<IDistributedCounter>()
+            .ShouldBeOfType<InMemoryCounter>();
     }
 
     [Fact]

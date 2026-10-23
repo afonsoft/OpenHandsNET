@@ -50,10 +50,18 @@
   PVC k8s) + Lote C Sonar (S3267/S3358/S1192 + avulsos).
 - SPEC-89 Draft: defer Lote D Sonar (S3776/S107/S3903/S1075/S127/S3218).
 
+## Sessão 2026-10-22 (SPEC-72)
+
+- SPECs 70/71 já entregues (PRs #159/#160) — arquivadas em docs/specs/ (cf49e92).
+- SPEC-72 auditada: snapshot sonar 19/10 stale — 44/45 issues tratáveis já
+  resolvidas na árvore; só S2699 era real (assertions adicionadas).
+- S3218/S3776 → SPEC-89 defer (draft). PR #246 aberto.
+
 ## Fatos operacionais
 
 - `scripts/check-spec-lifecycle.sh` → ok (nenhuma spec terminal em `.specs/`)
-- SPECs ativas: 70-74 (Approved, Epic #152), 90-95 (Approved, Epic #231), 89 (Draft)
+- SPECs ativas: 72-74 (Approved, Epic #152 — 70/71 arquivadas), 89 (Draft)
+- SPEC-72: PR #246 — S2699 corrigido; S927/S4487/S1994/S3871 stale; S3218/S3776 → SPEC-89
 - Próximos números livres: 96+
 - SonarCloud: `https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main`
 - Bloqueio persistente: #148 — `SONAR_TOKEN` secret + `SONAR_ENABLED=true`
