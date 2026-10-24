@@ -32,6 +32,45 @@ public sealed class ConversationHistoryBuilder(IServiceProvider services)
         CancellationToken ct)
     {
         var events = services.GetRequiredService<IEventService>();
+        var all = await LoadAllEventsAsync(events, conversationId, ct);
+
+        var forgotten = all.OfType<Condensation>()
+            .SelectMany(c => c.ForgottenEventIds).ToHashSet();
+        var pruned = all.OfType<Condensation>()
+            .SelectMany(c => c.PrunedEventIds).ToHashSet();
+        var lastSummary = all.OfType<Condensation>()
+            .LastOrDefault(c => c.Summary is not null);
+
+        var history = new List<LlmMessage>();
+        var ids = new List<string?>();
+        var (hasSystem, lastId) = ReplayEvents(
+            all, forgotten, pruned, history, ids);
+
+        if (!hasSystem)
+        {
+            lastId = await AppendSystemPromptAsync(events, conversationId,
+                conv, tools, all, lastId, history, ids, ct);
+        }
+
+        if (lastSummary is { Summary: { } summary })
+        {
+            // O summary re-entra depois do system (ou no início) — posição
+            // determinística: min(SummaryOffset, count).
+            var at = Math.Min(
+                lastSummary.SummaryOffset ?? (hasSystem ? 1 : 0),
+                history.Count);
+            var insertAt = Math.Max(hasSystem ? 1 : 0, at);
+            history.Insert(insertAt, new LlmMessage("system",
+                $"## Earlier context (compacted)\n{summary}"));
+            ids.Insert(insertAt, lastSummary.Id);
+        }
+
+        return new RebuiltHistory(history, ids, lastId);
+    }
+
+    private static async Task<List<EventBase>> LoadAllEventsAsync(
+        IEventService events, Guid conversationId, CancellationToken ct)
+    {
         var all = new List<EventBase>();
         string? cursor = null;
         do
@@ -43,15 +82,14 @@ public sealed class ConversationHistoryBuilder(IServiceProvider services)
         }
         while (cursor is not null);
 
-        var forgotten = all.OfType<Condensation>()
-            .SelectMany(c => c.ForgottenEventIds).ToHashSet();
-        var pruned = all.OfType<Condensation>()
-            .SelectMany(c => c.PrunedEventIds).ToHashSet();
-        var lastSummary = all.OfType<Condensation>()
-            .LastOrDefault(c => c.Summary is not null);
+        return all;
+    }
 
-        var history = new List<LlmMessage>();
-        var ids = new List<string?>();
+    private static (bool HasSystem, string? LastId) ReplayEvents(
+        List<EventBase> all, HashSet<string> forgotten,
+        HashSet<string> pruned,
+        List<LlmMessage> history, List<string?> ids)
+    {
         string? lastId = null;
         var hasSystem = false;
         foreach (var e in all)
@@ -66,158 +104,146 @@ public sealed class ConversationHistoryBuilder(IServiceProvider services)
             {
                 case SystemPromptEvent sp:
                     hasSystem = true;
-                    Add(new LlmMessage("system", Flatten(sp.SystemPrompt)), e.Id);
+                    history.Add(new LlmMessage("system",
+                        Flatten(sp.SystemPrompt)));
+                    ids.Add(e.Id);
                     break;
                 case MessageEvent m:
-                    Add(ToLlmMessage(m), e.Id);
+                    history.Add(ToLlmMessage(m));
+                    ids.Add(e.Id);
                     break;
                 case ActionEvent a:
-                    Add(LlmMessage.AssistantToolCall(
+                    history.Add(LlmMessage.AssistantToolCall(
                         Flatten(a.Thought),
                         [new LlmToolCall(a.ToolCallId, a.ToolName,
-                            a.Action?.GetRawText() ?? "{}")]), e.Id);
+                            a.Action?.GetRawText() ?? "{}")]));
+                    ids.Add(e.Id);
                     break;
                 case ObservationEvent o:
-                    Add(LlmMessage.ToolResult(o.ToolCallId,
+                    history.Add(LlmMessage.ToolResult(o.ToolCallId,
                         pruned.Contains(o.Id)
                             ? "[Output truncated by condenser]"
-                            : o.Observation.GetRawText()), e.Id);
+                            : o.Observation.GetRawText()));
+                    ids.Add(e.Id);
                     break;
                 case UserRejectObservation r:
-                    Add(LlmMessage.ToolResult(
+                    history.Add(LlmMessage.ToolResult(
                         r.ToolCallId,
-                        $"User rejected: {r.RejectionReason}"), e.Id);
+                        $"User rejected: {r.RejectionReason}"));
+                    ids.Add(e.Id);
                     break;
             }
         }
 
-        if (!hasSystem)
-        {
-            // SPEC-11 RF-002: resolve skills por trigger (always/keyword/task)
-            // usando a última mensagem do usuário e as tags da conversa.
-            var lastUserText = all.OfType<MessageEvent>()
-                .Where(m => m.Source == EventSource.User)
-                .Select(m => ToLlmMessage(m).Content)
-                .LastOrDefault();
-            var skills = services.GetService<Application.Skills.ISkillService>()
-                is { } skillSvc
-                ? await skillSvc.ResolveForConversationAsync(
-                    conversationId, lastUserText, null,
-                    conv.CreatedByUserId, conv.OrgId?.ToString(), ct)
-                : [];
+        return (hasSystem, lastId);
+    }
 
-            // SPEC-25 RF-001/002: repo context + repo skills federadas.
-            string? repoContext = null;
-            if (services.GetService<Discovery.RepoContextLoader>()
-                is { } repoLoader)
+    private async Task<string?> AppendSystemPromptAsync(
+        IEventService events, Guid conversationId,
+        ConversationRecord conv, IToolRegistry tools,
+        List<EventBase> all, string? lastId,
+        List<LlmMessage> history, List<string?> ids,
+        CancellationToken ct)
+    {
+        // SPEC-11 RF-002: resolve skills por trigger (always/keyword/task)
+        // usando a última mensagem do usuário e as tags da conversa.
+        var lastUserText = all.OfType<MessageEvent>()
+            .Where(m => m.Source == EventSource.User)
+            .Select(m => ToLlmMessage(m).Content)
+            .LastOrDefault();
+        var skills = services.GetService<Application.Skills.ISkillService>()
+            is { } skillSvc
+            ? await skillSvc.ResolveForConversationAsync(
+                conversationId, lastUserText, null,
+                conv.CreatedByUserId, conv.OrgId?.ToString(), ct)
+            : [];
+
+        // SPEC-25 RF-001/002: repo context + repo skills federadas.
+        string? repoContext = null;
+        if (services.GetService<Discovery.RepoContextLoader>()
+            is { } repoLoader)
+        {
+            var loaded = await repoLoader.LoadAsync(conv, all, ct);
+            repoContext = loaded.RenderedMarkdown;
+            skills = MergeRepoSkills(
+                skills, loaded.RepoSkills, lastUserText);
+        }
+
+        // SPEC-90 RF-008: prompt composto por contributors via DI
+        // (ordem/falha toleradas pelo composer). Sem composer
+        // registrado (testes com provider manual), cai no conjunto
+        // default de contributors.
+        var prompt = await ResolveComposer()
+            .ComposeAsync(new Application.Agent.AgentPromptContext
             {
-                var loaded = await repoLoader.LoadAsync(conv, all, ct);
-                repoContext = loaded.RenderedMarkdown;
-                skills = MergeRepoSkills(
-                    skills, loaded.RepoSkills, lastUserText);
+                SelectedRepository = conv.SelectedRepository,
+                Tools = tools.All.Select(t => t.Schema).ToList(),
+                Skills = skills,
+                RepoContext = repoContext,
+                Ct = ct,
+                SubagentCatalog =
+                    await ResolveSubagentCatalogAsync(
+                        conv.SandboxId, ct),
+                SddProbeFactory = probeCt => ProbeSddSurfaceAsync(
+                    services, conv.SandboxId, probeCt),
+            });
+        var sp = new SystemPromptEvent
+        {
+            ParentId = lastId,
+            SystemPrompt = JsonSerializer.SerializeToElement(
+                new[] { new { type = "text", text = prompt } },
+                EventJson.Options),
+            Tools = JsonSerializer.SerializeToElement(
+                tools.All.Select(t => new
+                {
+                    name = t.Schema.Name,
+                    description = t.Schema.Description,
+                    input_schema = t.Schema.InputSchema,
+                }), EventJson.Options),
+        };
+        var newId = (await events.AppendAsync(conversationId, sp, ct)).Id;
+        history.Insert(0, new LlmMessage("system", prompt));
+        ids.Insert(0, sp.Id);
+        return newId;
+    }
+
+    // SPEC-25 RF-002: db ∪ repo, dedupe por nome (db ganha), cap 20.
+    // Repo skills entram via trigger Keyword(nome) — lastUserText
+    // contém o nome → injetada; o catálogo completo sempre aparece
+    // na seção Repository context.
+    private static IReadOnlyList<Domain.Skills.Skill> MergeRepoSkills(
+        IReadOnlyList<Domain.Skills.Skill> db,
+        IReadOnlyList<Domain.Skills.Skill> repo, string? message)
+    {
+        if (repo.Count == 0)
+        {
+            return db;
+        }
+
+        var names = db.Select(s => s.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var merged = db.ToList();
+        foreach (var s in repo)
+        {
+            if (names.Contains(s.Name))
+            {
+                continue;
             }
 
-            // SPEC-90 RF-008: prompt composto por contributors via DI
-            // (ordem/falha toleradas pelo composer). Sem composer
-            // registrado (testes com provider manual), cai no conjunto
-            // default de contributors.
-            var prompt = await ResolveComposer()
-                .ComposeAsync(new Application.Agent.AgentPromptContext
-                {
-                    SelectedRepository = conv.SelectedRepository,
-                    Tools = tools.All.Select(t => t.Schema).ToList(),
-                    Skills = skills,
-                    RepoContext = repoContext,
-                    Ct = ct,
-                    SubagentCatalog =
-                        await ResolveSubagentCatalogAsync(
-                            conv.SandboxId, ct),
-                    SddProbeFactory = probeCt => ProbeSddSurfaceAsync(
-                        services, conv.SandboxId, probeCt),
-                });
-            var sp = new SystemPromptEvent
+            if (message?.Contains(s.Name,
+                    StringComparison.OrdinalIgnoreCase) == true)
             {
-                ParentId = lastId,
-                SystemPrompt = JsonSerializer.SerializeToElement(
-                    new[] { new { type = "text", text = prompt } },
-                    EventJson.Options),
-                Tools = JsonSerializer.SerializeToElement(
-                    tools.All.Select(t => new
-                    {
-                        name = t.Schema.Name,
-                        description = t.Schema.Description,
-                        input_schema = t.Schema.InputSchema,
-                    }), EventJson.Options),
-            };
-            lastId = (await events.AppendAsync(conversationId, sp, ct)).Id;
-            Insert(0, new LlmMessage("system", prompt), sp.Id);
-        }
-
-        if (lastSummary is { Summary: { } summary })
-        {
-            // O summary re-entra depois do system (ou no início) — posição
-            // determinística: min(SummaryOffset, count).
-            var at = Math.Min(
-                lastSummary.SummaryOffset ?? (hasSystem ? 1 : 0),
-                history.Count);
-            Insert(Math.Max(hasSystem ? 1 : 0, at),
-                new LlmMessage("system",
-                    $"## Earlier context (compacted)\n{summary}"),
-                lastSummary.Id);
-        }
-
-        return new RebuiltHistory(history, ids, lastId);
-
-        // SPEC-25 RF-002: db ∪ repo, dedupe por nome (db ganha), cap 20.
-        // Repo skills entram via trigger Keyword(nome) — lastUserText
-        // contém o nome → injetada; o catálogo completo sempre aparece
-        // na seção Repository context.
-        static IReadOnlyList<Domain.Skills.Skill> MergeRepoSkills(
-            IReadOnlyList<Domain.Skills.Skill> db,
-            IReadOnlyList<Domain.Skills.Skill> repo, string? message)
-        {
-            if (repo.Count == 0)
-            {
-                return db;
+                merged.Add(s);
+                names.Add(s.Name);
             }
 
-            var names = db.Select(s => s.Name)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var merged = db.ToList();
-            foreach (var s in repo)
+            if (merged.Count >= 20)
             {
-                if (names.Contains(s.Name))
-                {
-                    continue;
-                }
-
-                if (message?.Contains(s.Name,
-                        StringComparison.OrdinalIgnoreCase) == true)
-                {
-                    merged.Add(s);
-                    names.Add(s.Name);
-                }
-
-                if (merged.Count >= 20)
-                {
-                    break;
-                }
+                break;
             }
-
-            return merged;
         }
 
-        void Add(LlmMessage m, string? id)
-        {
-            history.Add(m);
-            ids.Add(id);
-        }
-
-        void Insert(int at, LlmMessage m, string? id)
-        {
-            history.Insert(at, m);
-            ids.Insert(at, id);
-        }
+        return merged;
     }
 
     /// <summary>MessageEvent → LlmMessage (também usado pelo runner p/ pendings).</summary>

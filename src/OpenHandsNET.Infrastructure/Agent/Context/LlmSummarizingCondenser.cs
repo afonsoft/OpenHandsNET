@@ -72,30 +72,9 @@ public sealed class LlmSummarizingCondenser(
         }
 
         // ---- fase 1: pruning de tool results antigos (barato, sem LLM) ----
-        var pruned = new List<string>();
         var working = messages.ToList();
         var ids = eventIds.ToList();
-        var toolIdx = working
-            .Select((m, i) => (m, i))
-            .Where(t => t.m.Role == "tool")
-            .Select(t => t.i)
-            .ToList();
-        foreach (var i in toolIdx.Take(Math.Max(0, toolIdx.Count
-            - co.KeepRecentToolResults)))
-        {
-            var content = working[i].Content;
-            if (content is not null && content.Length > co.PruneMaxChars)
-            {
-                working[i] = working[i] with
-                {
-                    Content = $"[Output truncated — {content.Length} chars]",
-                };
-                if (i < ids.Count && ids[i] is { } eid)
-                {
-                    pruned.Add(eid);
-                }
-            }
-        }
+        var pruned = PruneOldToolResults(working, ids, co);
 
         var afterPrune = meter.EstimateTokens(working, model);
         var threshold = co.ThresholdTokens
@@ -181,6 +160,39 @@ public sealed class LlmSummarizingCondenser(
 
         CondenseResult Passthrough() => new(
             working, ids, [], pruned, null, null, null, tokens, afterPrune);
+    }
+
+    /// <summary>Trunca tool results antigos além de KeepRecentToolResults.</summary>
+    private static List<string> PruneOldToolResults(
+        List<LlmMessage> working, List<string?> ids,
+        CompactionOptions co)
+    {
+        var pruned = new List<string>();
+        var toolIdx = working
+            .Select((m, i) => (m, i))
+            .Where(t => t.m.Role == "tool")
+            .Select(t => t.i)
+            .ToList();
+        foreach (var i in toolIdx.Take(Math.Max(0, toolIdx.Count
+            - co.KeepRecentToolResults)))
+        {
+            var content = working[i].Content;
+            if (content is null || content.Length <= co.PruneMaxChars)
+            {
+                continue;
+            }
+
+            working[i] = working[i] with
+            {
+                Content = $"[Output truncated — {content.Length} chars]",
+            };
+            if (i < ids.Count && ids[i] is { } eid)
+            {
+                pruned.Add(eid);
+            }
+        }
+
+        return pruned;
     }
 
     private async Task<(string? summary, string responseId)> SummarizeAsync(

@@ -67,7 +67,50 @@ public sealed class SubagentRunner(
                 ParentId = parentActionId,
             }, ct);
 
-        var persona = agent?.Body is { Length: > 0 } body
+        var persona = BuildPersona(subagentType, agent);
+        var messages = new List<LlmMessage>
+        {
+            new("system", persona),
+            LlmMessage.User(prompt),
+        };
+
+        var iterations = Math.Max(1, opt.Subagents.MaxIterations);
+        var (result, lastError) = await RunIterationsAsync(
+            conversationId, sandbox, executor, events, services,
+            parentActionId, subagentType, filtered, schemas, messages,
+            agent?.Model ?? selection?.Model, opt, iterations, ct);
+
+        if (result is null)
+        {
+            result = $"subagent reached iteration cap ({iterations})"
+                + (lastError is not null ? $"; last error: {lastError}" : "");
+        }
+
+        // Cap 8KB — a exploração não polui a janela do pai.
+        var (capped, truncated) = OutputPolicy.Truncate(result, 8 * 1024);
+        if (truncated)
+        {
+            capped += "\n[summary truncated to 8KB]";
+        }
+
+        await events.AppendAsync(conversationId,
+            new ConversationStateUpdateEvent
+            {
+                Key = "subagent_run",
+                Value = JsonSerializer.SerializeToElement(new
+                {
+                    task_id = taskId,
+                    subagent_type = subagentType,
+                    status = "completed",
+                }, EventJson.Options),
+                ParentId = parentActionId,
+            }, CancellationToken.None);
+        return capped;
+    }
+
+    private static string BuildPersona(
+        string subagentType, AgentDefinition? agent) =>
+        agent?.Body is { Length: > 0 } body
             ? body + "\n\nYou are a " + subagentType
                 + " subagent inside OpenHandsNET. Work autonomously on "
                 + "the task below using ONLY your allowed tools, then "
@@ -79,23 +122,26 @@ public sealed class SubagentRunner(
                 + "allowed tools, then call finish with a concise summary "
                 + "for the parent agent. Repository root: /workspace/repo. "
                 + "Never ask questions — report findings via finish.";
-        var messages = new List<LlmMessage>
-        {
-            new("system", persona),
-            LlmMessage.User(prompt),
-        };
 
+    private async Task<(string? Result, string? LastError)>
+        RunIterationsAsync(
+            Guid conversationId, Domain.Sandbox.Sandbox sandbox,
+            ISandboxExecutor executor, IEventService events,
+            IServiceProvider services, string parentActionId,
+            string subagentType, FilterToolRegistry filtered,
+            List<ToolSchema> schemas, List<LlmMessage> messages,
+            string? model, AgentLlmOptions opt, int iterations,
+            CancellationToken ct)
+    {
         string? result = null;
         string? lastError = null;
-        var iterations = Math.Max(1, opt.Subagents.MaxIterations);
         for (var i = 0; i < iterations && result is null; i++)
         {
             var text = new StringBuilder();
             var calls = new Dictionary<int,
                 (string id, string name, StringBuilder args)>();
             await foreach (var chunk in llm.ChatStreamAsync(messages,
-                schemas, new LlmOptions(
-                    Model: agent?.Model ?? selection?.Model), ct))
+                schemas, new LlmOptions(Model: model), ct))
             {
                 switch (chunk)
                 {
@@ -154,43 +200,11 @@ public sealed class SubagentRunner(
                     continue;
                 }
 
-                var tool = filtered.Find(call.Name);
-                ToolResult toolResult;
-                if (tool is null)
-                {
-                    toolResult = ToolResult.Error(
-                        $"tool '{call.Name}' is not available to "
-                        + $"a {subagentType} subagent");
-                }
-                else
-                {
-                    try
-                    {
-                        using var toolCts = CancellationTokenSource
-                            .CreateLinkedTokenSource(ct);
-                        toolCts.CancelAfter(
-                            TimeSpan.FromSeconds(opt.ToolTimeoutSeconds));
-                        var ctx = new ToolCallContext(
-                            conversationId, sandbox, executor, events,
-                            services,
-                            TimeSpan.FromSeconds(opt.ToolTimeoutSeconds),
-                            call.Id, actionEvent.Id);
-                        toolResult = await tool.Handler(
-                            ctx, parsed, toolCts.Token);
-                    }
-                    catch (OperationCanceledException)
-                        when (!ct.IsCancellationRequested)
-                    {
-                        toolResult = ToolResult.Error("tool timed out");
-                    }
-                    catch (Exception ex)
-                        when (ex is not OperationCanceledException)
-                    {
-                        toolResult = ToolResult.Error(
-                            SecretRedactor.Redact(ex.Message));
-                        lastError = ex.Message;
-                    }
-                }
+                var (toolResult, error) = await ExecuteCallAsync(
+                    call, parsed, conversationId, sandbox, executor,
+                    events, services, subagentType, filtered,
+                    actionEvent.Id, opt, ct);
+                lastError = error ?? lastError;
 
                 await events.AppendAsync(conversationId,
                     new ObservationEvent
@@ -206,32 +220,50 @@ public sealed class SubagentRunner(
             }
         }
 
-        if (result is null)
+        return (result, lastError);
+    }
+
+    private static async Task<(ToolResult Result, string? Error)>
+        ExecuteCallAsync(
+            LlmToolCall call, JsonElement parsed,
+            Guid conversationId, Domain.Sandbox.Sandbox sandbox,
+            ISandboxExecutor executor, IEventService events,
+            IServiceProvider services, string subagentType,
+            FilterToolRegistry filtered, string actionId,
+            AgentLlmOptions opt, CancellationToken ct)
+    {
+        var tool = filtered.Find(call.Name);
+        if (tool is null)
         {
-            result = $"subagent reached iteration cap ({iterations})"
-                + (lastError is not null ? $"; last error: {lastError}" : "");
+            return (ToolResult.Error(
+                $"tool '{call.Name}' is not available to "
+                + $"a {subagentType} subagent"), null);
         }
 
-        // Cap 8KB — a exploração não polui a janela do pai.
-        var (capped, truncated) = OutputPolicy.Truncate(result, 8 * 1024);
-        if (truncated)
+        try
         {
-            capped += "\n[summary truncated to 8KB]";
+            using var toolCts = CancellationTokenSource
+                .CreateLinkedTokenSource(ct);
+            toolCts.CancelAfter(
+                TimeSpan.FromSeconds(opt.ToolTimeoutSeconds));
+            var ctx = new ToolCallContext(
+                conversationId, sandbox, executor, events,
+                services,
+                TimeSpan.FromSeconds(opt.ToolTimeoutSeconds),
+                call.Id, actionId);
+            return (await tool.Handler(ctx, parsed, toolCts.Token), null);
         }
-
-        await events.AppendAsync(conversationId,
-            new ConversationStateUpdateEvent
-            {
-                Key = "subagent_run",
-                Value = JsonSerializer.SerializeToElement(new
-                {
-                    task_id = taskId,
-                    subagent_type = subagentType,
-                    status = "completed",
-                }, EventJson.Options),
-                ParentId = parentActionId,
-            }, CancellationToken.None);
-        return capped;
+        catch (OperationCanceledException)
+            when (!ct.IsCancellationRequested)
+        {
+            return (ToolResult.Error("tool timed out"), null);
+        }
+        catch (Exception ex)
+            when (ex is not OperationCanceledException)
+        {
+            return (ToolResult.Error(
+                SecretRedactor.Redact(ex.Message)), ex.Message);
+        }
     }
 
     private static JsonElement TryParse(string? json)
