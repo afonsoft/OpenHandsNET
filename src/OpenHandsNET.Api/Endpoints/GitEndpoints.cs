@@ -607,6 +607,13 @@ public static class GitEndpoints
         IAppConversationService svc, ISandboxExecutor executor,
         HttpContext http, CancellationToken ct)
     {
+        // SPEC-97 RF-002: body não-objeto (ex.: `null`) → 400, não 500.
+        if (body.ValueKind != JsonValueKind.Object)
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 400, "object body required");
+        }
+
         var cmd = body.TryGetProperty("command", out var c)
             ? c.GetString() : null;
         if (string.IsNullOrWhiteSpace(cmd))
@@ -648,6 +655,13 @@ public static class GitEndpoints
         OpenHandsNET.Application.Identity.ICurrentUserAccessor current,
         HttpContext http, CancellationToken ct)
     {
+        // SPEC-97 RF-002: body não-objeto (ex.: `null`) → 400, não 500.
+        if (body.ValueKind != JsonValueKind.Object)
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 400, "object body required");
+        }
+
         var kind = body.TryGetProperty("kind", out var k)
             ? k.GetString() ?? "token" : "token";
         string? secret;

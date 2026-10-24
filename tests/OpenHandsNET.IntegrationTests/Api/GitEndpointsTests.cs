@@ -33,7 +33,7 @@ public sealed class GitEndpointsTests : IDisposable
             builder.UseSetting("Sandbox:WorkspaceRoot",
                 Path.Combine(Path.GetTempPath(), $"ohn-gitapi-ws-{Guid.NewGuid():N}"));
         });
-        _http = _factory.CreateClient();
+        _http = TestAuth.Login(_factory);
     }
 
     public void Dispose()

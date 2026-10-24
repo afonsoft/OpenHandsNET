@@ -137,12 +137,29 @@ public sealed class Spec36MultiReplicaTests : IAsyncLifetime
         return factory;
     }
 
-    private static HubConnection Connect(WebApplicationFactory<Program> replica) =>
-        new HubConnectionBuilder()
+    // SPEC-97: hub protegido — dev-login fornece o cookie do negotiate.
+    private static async Task<HubConnection> ConnectAsync(
+        WebApplicationFactory<Program> replica)
+    {
+        using var http = replica.CreateClient(
+            new WebApplicationFactoryClientOptions { HandleCookies = true });
+        using var res = await http.PostAsJsonAsync(
+            "/api/v1/auth/dev-login",
+            new { email = "hub@local", displayName = "hub" });
+        res.EnsureSuccessStatusCode();
+        var cookie = res.Headers.GetValues("Set-Cookie")
+            .First().Split(';')[0];
+
+        return new HubConnectionBuilder()
             .WithUrl(new Uri(replica.Server.BaseAddress, "/hubs/conversations"),
-                o => o.HttpMessageHandlerFactory =
-                    _ => replica.Server.CreateHandler())
+                o =>
+                {
+                    o.HttpMessageHandlerFactory =
+                        _ => replica.Server.CreateHandler();
+                    o.Headers.Add("Cookie", cookie);
+                })
             .Build();
+    }
 
     /// <summary>DoD: evento publicado na réplica A chega ao subscriber da B.</summary>
     [Fact]
@@ -157,7 +174,7 @@ public sealed class Spec36MultiReplicaTests : IAsyncLifetime
         var replicaB = NewReplica();
         var convId = Guid.NewGuid();
 
-        await using var conn = Connect(replicaB);
+        await using var conn = await ConnectAsync(replicaB);
         await conn.StartAsync();
         var received = new List<string>();
         var tcs = new TaskCompletionSource();
@@ -222,14 +239,16 @@ public sealed class Spec36MultiReplicaTests : IAsyncLifetime
         using var clientA = replicaA.CreateClient();
         using var clientB = replicaB.CreateClient();
 
-        // Mesma identidade anônima (ip:) nos dois lados — a janela fixa
-        // global (2/min) tem que contar o cluster inteiro.
-        (await clientA.GetAsync("/api/v1/settings"))
+        // SPEC-97: /api/v1/config é AllowAnonymous → chega ao limiter como
+        // "ip:" (mesma identidade anônima nos dois lados). A janela fixa
+        // global (2/min) tem que contar o cluster inteiro — endpoints
+        // protegidos devolveriam 401 antes do limiter e não mediriam nada.
+        (await clientA.GetAsync("/api/v1/config"))
             .StatusCode.ShouldNotBe(System.Net.HttpStatusCode.TooManyRequests);
-        (await clientA.GetAsync("/api/v1/settings"))
+        (await clientA.GetAsync("/api/v1/config"))
             .StatusCode.ShouldNotBe(System.Net.HttpStatusCode.TooManyRequests);
         // Com contador por-réplica a B ainda teria quota; global → 429.
-        (await clientB.GetAsync("/api/v1/settings"))
+        (await clientB.GetAsync("/api/v1/config"))
             .StatusCode.ShouldBe(System.Net.HttpStatusCode.TooManyRequests);
     }
 
@@ -257,7 +276,7 @@ public sealed class Spec36MultiReplicaTests : IAsyncLifetime
 
         mux.IsConnected.ShouldBeFalse("mux never noticed the redis outage");
 
-        using var client = replicaA.CreateClient();
+        using var client = await TestAuth.LoginAsync(replicaA);
         var readiness = await client.GetAsync("/api/v1/readiness");
         var payload = await readiness.Content.ReadFromJsonAsync<JsonElement>();
         payload.GetProperty("checks").GetProperty("cache")

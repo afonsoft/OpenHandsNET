@@ -1,24 +1,21 @@
 using System.Text.Json;
 
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 
-using OpenHandsNET.Api.DTOs;
 using OpenHandsNET.Domain.Configuration;
 using OpenHandsNET.Infrastructure.Persistence;
 
 namespace OpenHandsNET.Api.Endpoints;
 
 /// <summary>
-/// <c>/api/v1/settings</c> + <c>/api/v1/secrets</c> — settings é um blob JSON
-/// único; secrets gravam valor no store mas só devolvem metadados.
+/// <c>/api/v1/settings</c> — settings é um blob JSON único.
+/// Secrets CRUD vive em <see cref="SecretsEndpoints"/> (user-scoped,
+/// RequireAuthorization) — as rotas legadas app-scoped aqui colidiam com
+/// elas e produziam AmbiguousMatchException (SPEC-97/#218).
 /// </summary>
 public static class SettingsEndpoints
 {
-    private const string Secrets = "Secrets";
     private const string SettingsKey = "settings";
-    private const string SecretScope = "app";
-    private const string SecretOwner = "system"; // SPEC-08 refina owner real
 
     /// <summary>Maps settings and secrets endpoints.</summary>
     public static IEndpointRouteBuilder MapSettingsEndpoints(this IEndpointRouteBuilder app)
@@ -49,63 +46,6 @@ public static class SettingsEndpoints
             await db.SaveChangesAsync(ct);
             return Results.NoContent();
         }).WithTags("Settings");
-
-        // Secrets (SPEC-10): ciphertext em `secrets` via DataProtection;
-        // resposta expõe só metadados (nunca o valor).
-        app.MapGet("/api/v1/secrets", async (AppDbContext db, CancellationToken ct) =>
-            Results.Ok(await db.Secrets
-                .Where(s => s.Scope == SecretScope && s.OwnerId == SecretOwner)
-                .Select(s => new { name = s.Name })
-                .ToListAsync(ct))).WithTags(Secrets);
-
-        app.MapGet("/api/v1/secrets/{name}", async (
-            string name, AppDbContext db, CancellationToken ct) =>
-            await db.Secrets.FindAsync([SecretScope, SecretOwner, name], ct) is { } row
-                ? Results.Ok(new SecretMetaDto
-                {
-                    Name = name,
-                    CreatedAt = row.CreatedAt,
-                })
-                : Results.NotFound()).WithTags(Secrets);
-
-        app.MapPut("/api/v1/secrets/{name}", async (
-            string name, JsonElement body, AppDbContext db,
-            IDataProtectionProvider dp, CancellationToken ct) =>
-        {
-            var value = body.TryGetProperty("value", out var v) ? v.GetString() : null;
-            var protector = dp.CreateProtector("openhandsnet.secrets");
-            var row = await db.Secrets.FindAsync([SecretScope, SecretOwner, name], ct);
-            if (row is null)
-            {
-                db.Secrets.Add(new SecretRecord
-                {
-                    Scope = SecretScope,
-                    OwnerId = SecretOwner,
-                    Name = name,
-                    Ciphertext = protector.Protect(value ?? ""),
-                    CreatedAt = DateTimeOffset.UtcNow,
-                });
-            }
-            else
-            {
-                row.Ciphertext = protector.Protect(value ?? "");
-            }
-
-            await db.SaveChangesAsync(ct);
-            return Results.NoContent();
-        }).WithTags(Secrets);
-
-        app.MapDelete("/api/v1/secrets/{name}", async (
-            string name, AppDbContext db, CancellationToken ct) =>
-        {
-            if (await db.Secrets.FindAsync([SecretScope, SecretOwner, name], ct) is { } row)
-            {
-                db.Secrets.Remove(row);
-                await db.SaveChangesAsync(ct);
-            }
-
-            return Results.NoContent();
-        }).WithTags(Secrets);
 
         return app;
     }
