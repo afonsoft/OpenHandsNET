@@ -1187,7 +1187,7 @@ public static class BuiltinTools
         {
             run.Cts = new CancellationTokenSource();
             run.Completion = Task.Run(
-                () => ExecuteAsync(run.Cts.Token));
+                () => ExecuteAsync(run.Cts.Token), run.Cts.Token);
             return ToolResult.Ok(new
             {
                 queued = true,
