@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using System.Text.Json;
 
 using Microsoft.AspNetCore.Hosting;
@@ -37,16 +38,34 @@ public sealed class SignalRConversationHubTests : IDisposable
         if (File.Exists(_dbPath)) File.Delete(_dbPath);
     }
 
-    private HubConnection Connect() =>
-        new HubConnectionBuilder()
+    // SPEC-97: hub protegido pela FallbackPolicy — dev-login fornece o
+    // cookie que o negotiate/websocket envia.
+    private async Task<HubConnection> ConnectAsync()
+    {
+        using var http = _factory.CreateClient(
+            new WebApplicationFactoryClientOptions { HandleCookies = true });
+        using var res = await http.PostAsJsonAsync(
+            "/api/v1/auth/dev-login",
+            new { email = "hub@local", displayName = "hub" });
+        res.EnsureSuccessStatusCode();
+        var cookie = res.Headers.GetValues("Set-Cookie")
+            .First().Split(';')[0];
+
+        return new HubConnectionBuilder()
             .WithUrl(new Uri(_factory.Server.BaseAddress, "/hubs/conversations"),
-                o => o.HttpMessageHandlerFactory = _ => _factory.Server.CreateHandler())
+                o =>
+                {
+                    o.HttpMessageHandlerFactory = _ =>
+                        _factory.Server.CreateHandler();
+                    o.Headers.Add("Cookie", cookie);
+                })
             .Build();
+    }
 
     [Fact]
     public async Task Join_Streams_Live_Events_In_Order()
     {
-        await using var conn = Connect();
+        await using var conn = await ConnectAsync();
         await conn.StartAsync();
         var convId = Guid.NewGuid();
 

@@ -29,8 +29,14 @@ public static class MiscEndpoints
 
         app.MapPost("/api/v1/pending-messages", (PendingMessageDto body) =>
         {
-            var list = Pending.GetOrAdd(
-                Guid.Parse(body.ConversationId), _ => []);
+            // SPEC-97 RF-002: input inválido → 400, não 500 (era Guid.Parse).
+            if (!Guid.TryParse(body.ConversationId, out var conversationId))
+            {
+                return Results.BadRequest(
+                    new { detail = "conversation_id must be a valid guid" });
+            }
+
+            var list = Pending.GetOrAdd(conversationId, _ => []);
             lock (list)
             {
                 list.Add(body);

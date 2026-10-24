@@ -37,7 +37,7 @@ public sealed class AgentEngineE2ETests : IDisposable
                  {"tool":{"name":"finish","arguments":{"final_message":"tarefa concluída"}}}]
                 """);
         });
-        _http = _factory.CreateClient();
+        _http = TestAuth.Login(_factory);
     }
 
     public void Dispose()

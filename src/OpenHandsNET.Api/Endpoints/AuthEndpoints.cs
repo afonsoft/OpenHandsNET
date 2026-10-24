@@ -25,10 +25,19 @@ public static class AuthEndpoints
         var oauth = app.MapGroup("/oauth");
 
         // OIDC broker login — Challenge redirects to the configured authority.
-        oauth.MapGet("/oidc/login", (HttpContext ctx, string? returnTo) =>
-            Results.Challenge(
-                new AuthenticationProperties { RedirectUri = returnTo ?? "/" },
-                ["oidc"])).AllowAnonymous();
+        // SPEC-97 RF-002: provider != oidc → 404 (o scheme 'oidc' não é
+        // registrado nesse modo — Challenge lançava InvalidOperation → 500).
+        oauth.MapGet("/oidc/login", (
+            HttpContext ctx, string? returnTo, IConfiguration config) =>
+            !string.Equals(config["Auth:Provider"], "oidc",
+                StringComparison.OrdinalIgnoreCase)
+                ? Results.NotFound()
+                : Results.Challenge(
+                    new AuthenticationProperties
+                    {
+                        RedirectUri = returnTo ?? "/",
+                    },
+                    ["oidc"])).AllowAnonymous();
 
         // Silent refresh parity — re-issues session without rewriting the
         // principal cookie upstream-style.

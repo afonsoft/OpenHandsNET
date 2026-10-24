@@ -77,10 +77,14 @@ jobs:
       - name: build api
         run: dotnet build src/OpenHandsNET.Api -c Release
 
+      # SPEC-97: Auth:Provider=none explícito — appsettings.json não é lido
+      # quando o dll roda a partir de outro cwd, e o dev-login (que gera o
+      # cookie do fuzz abaixo) só existe nesse provider.
       - name: start api (isolated data dir)
         run: |
           mkdir -p "$RUNNER_TEMP/data"
-          DATA_DIR="$RUNNER_TEMP/data" ASPNETCORE_URLS="http://localhost:$PORT" \
+          DATA_DIR="$RUNNER_TEMP/data" OPENHANDSNET_Auth__Provider=none \
+            ASPNETCORE_URLS="http://localhost:$PORT" \
             dotnet src/OpenHandsNET.Api/bin/Release/net10.0/OpenHandsNET.Api.dll \
             > server.log 2>&1 &
           echo $! > server.pid
@@ -104,6 +108,18 @@ jobs:
             | jq 'del(.paths["/api/v1/sandboxes"].post)' > /tmp/openapi.json
           head -c 300 /tmp/openapi.json
 
+      # SPEC-97: FallbackPolicy exige sessão — dev-login emite o cookie que
+      # o fuzz envia em todo request para exercitar os handlers de verdade.
+      - name: dev-login cookie (fuzz auth)
+        run: |
+          COOKIE=$(curl -sf -c - -X POST \
+            "http://localhost:$PORT/api/v1/auth/dev-login" \
+            -H 'content-type: application/json' \
+            -d '{"email":"fuzz@local","displayName":"fuzz"}' \
+            | awk '$6=="openhandsnet_auth" {print $NF}')
+          test -n "$COOKIE" || { echo "::error::dev-login falhou"; exit 1; }
+          echo "FUZZ_COOKIE=openhandsnet_auth=$COOKIE" >> "$GITHUB_ENV"
+
       # pipx is preinstalled on ubuntu-latest and sidesteps the runner's
       # PEP-668 externally-managed Python (plain `pip install --user` fails).
       - name: install schemathesis
@@ -118,21 +134,22 @@ jobs:
       # --exclude-checks:
       #   - unsupported_method: a API responde 404 — não 405 — para método
       #     errado em rota conhecida (decisão registrada na SPEC-80);
-      #   - ignored_auth, not_a_server_error, positive_data_acceptance,
-      #     status_code_conformance, negative_data_rejection: falhas REais
-      #     descobertas pelo primeiro fuzz efetivo (runs 39473030937 e
-      #     39480716981) — rastreadas na issue #218 até correção;
-      #     removidas daqui para o gate voltar a ser útil.
+      #   - ignored_auth, not_a_server_error: corrigidos na SPEC-97 —
+      #     voltaram a rodar (default-deny FallbackPolicy + fixes 4xx/500).
+      #   - positive_data_acceptance, status_code_conformance,
+      #     negative_data_rejection: fidelity debt (schemas frouxos →
+      #     400/404 não documentados) — ainda rastreado na issue #218.
       # --warnings off: o warning `validation_mismatch` (schemas frouxos →
       #   maioria dos payloads gerados leva 400) falha o run como `1 failed`
       #   mesmo com checks verdes — mesma dívida da issue #218.
       - name: schemathesis run (blocking)
         run: |
           schemathesis run /tmp/openapi.json --url "http://localhost:$PORT" \
+            -H "Cookie: $FUZZ_COOKIE" \
             --max-examples 15 --workers 2 --checks all \
             --phases examples,fuzzing \
             --exclude-path /api/v1/app-conversations/stream-start \
-            --exclude-checks unsupported_method,ignored_auth,not_a_server_error,positive_data_acceptance,status_code_conformance,negative_data_rejection \
+            --exclude-checks unsupported_method,positive_data_acceptance,status_code_conformance,negative_data_rejection \
             --warnings off \
             --suppress-health-check all --no-color
 
