@@ -38,7 +38,7 @@ public sealed class Spec34ArtifactEndpointTests : IDisposable
                     $"test-{Guid.NewGuid():N}");
                 builder.UseSetting("Artifacts:WorkspaceRoot", _artRoot);
             });
-        _http = _factory.CreateClient();
+        _http = TestAuth.Login(_factory);
     }
 
     public void Dispose()

@@ -33,7 +33,7 @@ public sealed class SwitchEndpointsTests : IDisposable
             builder.UseSetting("Sandbox:WorkspaceRoot",
                 Path.Combine(Path.GetTempPath(), $"ohn-switch-ws-{Guid.NewGuid():N}"));
         });
-        _http = _factory.CreateClient();
+        _http = TestAuth.Login(_factory);
     }
 
     public void Dispose()

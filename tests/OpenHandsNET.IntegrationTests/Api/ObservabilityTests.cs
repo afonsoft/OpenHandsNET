@@ -31,7 +31,7 @@ public sealed class ObservabilityTests : IDisposable
                 Path.Combine(Path.GetTempPath(), $"ohn-obs-ws-{Guid.NewGuid():N}"));
             builder.UseSetting("Sandbox:InstanceOwner", $"test-{Guid.NewGuid():N}");
         });
-        _http = _factory.CreateClient();
+        _http = TestAuth.Login(_factory);
     }
 
     public void Dispose()

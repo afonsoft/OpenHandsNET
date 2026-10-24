@@ -8802,33 +8802,6 @@
           "OpenHandsNET.Api"
         ]
       },
-      "get": {
-        "parameters": [
-          {
-            "in": "path",
-            "name": "name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          }
-        },
-        "summary": "GET /api/v1/secrets/{name}",
-        "tags": [
-          "Secrets"
-        ]
-      },
       "put": {
         "parameters": [
           {
@@ -9508,14 +9481,9 @@
         "responses": {
           "200": {
             "description": "OK"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         },
+        "security": [],
         "summary": "POST /api/v1/webhooks/mcp-oauth-state",
         "tags": [
           "Webhooks"
@@ -10174,9 +10142,6 @@
     },
     {
       "name": "Settings"
-    },
-    {
-      "name": "Secrets"
     },
     {
       "name": "User"

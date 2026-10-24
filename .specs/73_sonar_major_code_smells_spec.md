@@ -101,3 +101,26 @@ Agrupamento por regra SonarQube (mesmo tipo) — a lista canônica issue→arqui
 2. Adicionar/ajustar testes para cada linha tocada.
 3. `dotnet format` + build + test suite.
 4. Atualizar checkboxes do ToDo Board; re-scan SonarCloud via CI após merge.
+
+## Live rescan — 2026-10-23 (SPEC-96, `resolved=false`)
+
+Fixes do PR #247 confirmados no Sonar: `S108`, `S4581`, `S2743`, `S2925`,
+`S6966`, `S1854`, `S2376`, `S1117`, `S2589` → **0 abertas**.
+
+| Regra | Board | Open live | Veredito |
+|---|---|---|---|
+| `javascript:S7761` | — | 848 | `runtime-architecture.html` gerado → exclusão |
+| `css:S9423` | — | 102 | 98 gerado + 2 app.css (gerado Tailwind) + 2 xterm |
+| `javascript:S3358` | — | 48 | gerado → exclusão |
+| `csharpsquid:S107` | 29 | 29 | deferred → SPEC-104 |
+| `Web:S6819` | — | 19 | gerado → exclusão |
+| `javascript:S8786` | 7 | 14 | gerado + monaco vendored |
+| `shelldre:S7688` | 11 | 9 | **real** — `scripts/check-*.sh` |
+| `csharpsquid:S3358` | 69 | 3 | tail real |
+| `csharpsquid:S127` | 3 | 3 | deferred → SPEC-105 |
+| resto csharpsquid | ~40 | ~7 | tail |
+| js resto | — | ~30 | gerado/monaco vendored |
+
+Critério de fechamento reescrito (RF-004): SPEC-73 fecha quando as regras
+`csharpsquid`/`shelldre`/`python` não-deferidas chegarem a 0 (S107/S127
+nos SPECs 104/105; buckets js/css/Web caem pela exclusão de gerados).

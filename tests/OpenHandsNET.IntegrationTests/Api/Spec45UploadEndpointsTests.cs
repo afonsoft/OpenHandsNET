@@ -36,7 +36,7 @@ public sealed class Spec45UploadEndpointsTests : IDisposable
                 b.UseSetting("Sandbox:InstanceOwner",
                     $"test-{Guid.NewGuid():N}");
             });
-        _http = _factory.CreateClient();
+        _http = TestAuth.Login(_factory);
     }
 
     public void Dispose()

@@ -227,6 +227,12 @@ public static class AcpEndpoints
     /// ou blocks <c>content[]</c> estilo ACP.</summary>
     private static string? ExtractPrompt(JsonElement body)
     {
+        // SPEC-97 RF-002: body não-objeto → null → caller devolve 400.
+        if (body.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
         foreach (var key in new[] { "initial_prompt", "prompt" })
         {
             if (body.TryGetProperty(key, out var p)
@@ -252,7 +258,8 @@ public static class AcpEndpoints
 
     /// <summary>String property helper.</summary>
     private static string? Prop(JsonElement body, string key) =>
-        body.TryGetProperty(key, out var p)
+        body.ValueKind == JsonValueKind.Object
+            && body.TryGetProperty(key, out var p)
             && p.ValueKind == JsonValueKind.String
             ? p.GetString() : null;
 
