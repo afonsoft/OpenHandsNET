@@ -57,3 +57,20 @@ Agrupamento por regra SonarQube (mesmo tipo) — a lista canônica issue→arqui
 2. Adicionar/ajustar testes para cada linha tocada.
 3. `dotnet format` + build + test suite.
 4. Atualizar checkboxes do ToDo Board; re-scan SonarCloud via CI após merge.
+
+## Live rescan — 2026-10-23 (SPEC-96, `resolved=false`)
+
+| Regra | Board | Open live | Veredito |
+|---|---|---|---|
+| `csharpsquid:S3776` | 74 | 73 | deferred → SPECs 101–103 |
+| `csharpsquid:S927` | 39 | 35 | **real** — param renames no `cli/` |
+| `javascript:S3776` | — | 18 | `docs/architecture/runtime-architecture.html` gerado → exclusão (ci.yml) |
+| `csharpsquid:S3218` | 2 | 4 | deferred → SPEC-105 |
+| `csharpsquid:S4487` | 3 | 0 | resolvida |
+| `csharpsquid:S2699` | 1 | 0 | resolvida via PR #246 |
+| `csharpsquid:S1994`/`S3871` | 1/1 | 0 | resolvidas |
+| js/py/shell rest | — | 10 | `runtime-architecture.html` + `tools/*.py` |
+
+Critério de fechamento reescrito (RF-004): SPEC-72 fecha quando
+`csharpsquid:S927` chegar a 0 no rescan live (S3776/S3218 seguem nos
+SPECs filhos 101–103/105).
