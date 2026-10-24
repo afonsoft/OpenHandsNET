@@ -54,43 +54,57 @@ public sealed class DeviceFlowClient(HttpClient http)
         while (DateTime.UtcNow < deadline)
         {
             ct.ThrowIfCancellationRequested();
-            var resp = await http.PostAsJsonAsync(
-                $"{serverUrl.TrimEnd('/')}/oauth/token",
-                new
-                {
-                    grant_type = "urn:ietf:params:oauth:grant-type:device_code",
-                    device_code = code.DeviceCode,
-                    client_id = "openhandsnet-cli",
-                }, ct);
-            var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
-            if (resp.IsSuccessStatusCode)
+            var (token, keepGoing, delta) = await PollOnceAsync(
+                serverUrl, code, onPending, ct);
+            if (token is not null || !keepGoing)
             {
-                return new TokenResponse(
-                    doc.GetProperty("access_token").GetString()!,
-                    doc.TryGetProperty("refresh_token", out var r)
-                        ? r.GetString() : null,
-                    doc.TryGetProperty("expires_in", out var e)
-                        ? e.GetInt32() : null);
+                return token;
             }
 
-            var error = doc.TryGetProperty("error", out var err)
-                ? err.GetString() : "unknown";
-            if (error is "authorization_pending")
-            {
-                onPending?.Invoke("waiting for browser authorization…");
-            }
-            else if (error is "slow_down")
-            {
-                interval += 5;
-            }
-            else if (error is "access_denied" or "expired_token")
-            {
-                return null;
-            }
-
+            interval += delta;
             await Task.Delay(TimeSpan.FromSeconds(interval), ct);
         }
 
         return null;
+    }
+
+    /// <summary>Uma iteração de poll: (token, continuar, ajuste de intervalo).</summary>
+    private async Task<(TokenResponse? Token, bool KeepGoing, int Delta)>
+        PollOnceAsync(string serverUrl, DeviceCodeResponse code,
+            Action<string>? onPending, CancellationToken ct)
+    {
+        var resp = await http.PostAsJsonAsync(
+            $"{serverUrl.TrimEnd('/')}/oauth/token",
+            new
+            {
+                grant_type = "urn:ietf:params:oauth:grant-type:device_code",
+                device_code = code.DeviceCode,
+                client_id = "openhandsnet-cli",
+            }, ct);
+        var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
+        if (resp.IsSuccessStatusCode)
+        {
+            return (new TokenResponse(
+                doc.GetProperty("access_token").GetString()!,
+                doc.TryGetProperty("refresh_token", out var r)
+                    ? r.GetString() : null,
+                doc.TryGetProperty("expires_in", out var e)
+                    ? e.GetInt32() : null), false, 0);
+        }
+
+        var error = doc.TryGetProperty("error", out var err)
+            ? err.GetString() : "unknown";
+        switch (error)
+        {
+            case "authorization_pending":
+                onPending?.Invoke("waiting for browser authorization…");
+                return (null, true, 0);
+            case "slow_down":
+                return (null, true, 5);
+            case "access_denied" or "expired_token":
+                return (null, false, 0);
+            default:
+                return (null, true, 0);
+        }
     }
 }

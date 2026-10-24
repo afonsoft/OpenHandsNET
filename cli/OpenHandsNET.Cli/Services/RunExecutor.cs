@@ -35,18 +35,16 @@ public sealed class RunExecutor(CloudApiClient api)
                 last = status;
             }
 
-            if (status is "READY")
+            switch (status)
             {
-                return (t is { } ready
-                    ? ready.GetProperty("app_conversation_id").GetString()
-                    : null, null);
-            }
-
-            if (status is "ERROR")
-            {
-                return (null, t is { } err
-                    && err.TryGetProperty("detail", out var d)
-                    ? d.GetString() : "start task failed");
+                case "READY":
+                    return (t is { } ready
+                        ? ready.GetProperty("app_conversation_id").GetString()
+                        : null, null);
+                case "ERROR":
+                    return (null, t is { } err
+                        && err.TryGetProperty("detail", out var d)
+                        ? d.GetString() : "start task failed");
             }
 
             await Task.Delay(1500, ct);
@@ -67,27 +65,10 @@ public sealed class RunExecutor(CloudApiClient api)
         while (DateTime.UtcNow < deadline)
         {
             ct.ThrowIfCancellationRequested();
-            string status = "";
-            var conv = await api.GetConversationAsync(conversationId, ct);
-            if (conv is { } c && c.TryGetProperty("execution_status", out var es))
-            {
-                status = es.GetString() ?? "";
-            }
+            var status = await GetStatusAsync(conversationId, ct);
 
             var page = await api.GetEventsAsync(conversationId, lastPage, ct);
-            if (page.TryGetProperty("items", out var items))
-            {
-                foreach (var e in items.EnumerateArray())
-                {
-                    var id = e.TryGetProperty("id", out var i)
-                        ? i.GetString() ?? "" : "";
-                    if (seen.Add(id))
-                    {
-                        onEvent?.Invoke(e);
-                    }
-                }
-            }
-
+            EmitNew(page, seen, onEvent);
             lastPage = page.TryGetProperty("next_page_id", out var np)
                 ? np.GetString() : null;
 
@@ -103,6 +84,34 @@ public sealed class RunExecutor(CloudApiClient api)
 
         return new Result(3, conversationId, "TIMEOUT",
             $"timeout após {timeout.TotalMinutes:N0} min");
+    }
+
+    private async Task<string> GetStatusAsync(
+        string conversationId, CancellationToken ct)
+    {
+        var conv = await api.GetConversationAsync(conversationId, ct);
+        return conv is { } c
+            && c.TryGetProperty("execution_status", out var es)
+            ? es.GetString() ?? "" : "";
+    }
+
+    private static void EmitNew(JsonElement page, HashSet<string> seen,
+        Action<JsonElement>? onEvent)
+    {
+        if (!page.TryGetProperty("items", out var items))
+        {
+            return;
+        }
+
+        foreach (var e in items.EnumerateArray())
+        {
+            var id = e.TryGetProperty("id", out var i)
+                ? i.GetString() ?? "" : "";
+            if (seen.Add(id))
+            {
+                onEvent?.Invoke(e);
+            }
+        }
     }
 
     /// <summary>JSON de saída CI-safe (uma linha).</summary>

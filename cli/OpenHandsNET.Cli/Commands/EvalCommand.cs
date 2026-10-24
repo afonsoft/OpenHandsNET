@@ -80,39 +80,12 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
         var recordings = new RecordingStore(
             Path.Combine(s.EvalsDir, "recordings"));
 
-        IReadOnlyList<EvalResult> results;
-        if (s.Mode == "recorded")
+        var results = s.Mode == "recorded"
+            ? await RunRecordedAsync(s, tasks, recordings, ct)
+            : await RunLiveAsync(s, tasks, recordings, ct);
+        if (results is null)
         {
-            var runner = new EvalRunner(new NullBackend(), recordings);
-            results = await runner.RunAsync(tasks,
-                new EvalRunOptions(s.Parallel, s.Model, "recorded"), ct: ct);
-        }
-        else
-        {
-            var url = s.Url
-                ?? Environment.GetEnvironmentVariable("OPENHANDSNET_SERVER_URL")
-                ?? "http://localhost:8080";
-            if (!url.StartsWith("http://localhost", StringComparison.Ordinal)
-                && !url.StartsWith("http://127.0.0.1", StringComparison.Ordinal)
-                && !s.AllowRemote)
-            {
-                AnsiConsole.MarkupLine(
-                    "[red]eval contra host remoto exige --allow-remote[/]");
-                return 1;
-            }
-
-            var http = new HttpClient();
-            var api = await CloudApiClient.CreateAsync(
-                s.Url, new CredentialStore(), http, ct);
-            var runner = new EvalRunner(new EvalBackend(api, http),
-                recordings);
-            results = await runner.RunAsync(tasks,
-                new EvalRunOptions(s.Parallel, s.Model, "live", s.Record),
-                onTaskDone: s.Json ? null : r => AnsiConsole.MarkupLine(
-                    r.Pass
-                        ? $"[green]✓[/] {r.Name} [grey]({r.Score:F2})[/]"
-                        : $"[red]✗[/] {r.Name} [grey]({r.Score:F2})[/]"),
-                ct: ct);
+            return 1;
         }
 
         var outDir = Path.Combine(s.Out,
@@ -171,6 +144,46 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
         }
 
         return results.All(r => r.Pass) ? 0 : 1;
+    }
+
+    private static async Task<IReadOnlyList<EvalResult>> RunRecordedAsync(
+        Settings s, IReadOnlyList<EvalTask> tasks,
+        RecordingStore recordings, CancellationToken ct)
+    {
+        var runner = new EvalRunner(new NullBackend(), recordings);
+        return await runner.RunAsync(tasks,
+            new EvalRunOptions(s.Parallel, s.Model, "recorded"), ct: ct);
+    }
+
+    /// <summary>Modo live — null se o host remoto não tiver --allow-remote.</summary>
+    private static async Task<IReadOnlyList<EvalResult>?> RunLiveAsync(
+        Settings s, IReadOnlyList<EvalTask> tasks,
+        RecordingStore recordings, CancellationToken ct)
+    {
+        var url = s.Url
+            ?? Environment.GetEnvironmentVariable("OPENHANDSNET_SERVER_URL")
+            ?? "http://localhost:8080";
+        if (!url.StartsWith("http://localhost", StringComparison.Ordinal)
+            && !url.StartsWith("http://127.0.0.1", StringComparison.Ordinal)
+            && !s.AllowRemote)
+        {
+            AnsiConsole.MarkupLine(
+                "[red]eval contra host remoto exige --allow-remote[/]");
+            return null;
+        }
+
+        var http = new HttpClient();
+        var api = await CloudApiClient.CreateAsync(
+            s.Url, new CredentialStore(), http, ct);
+        var runner = new EvalRunner(new EvalBackend(api, http),
+            recordings);
+        return await runner.RunAsync(tasks,
+            new EvalRunOptions(s.Parallel, s.Model, "live", s.Record),
+            onTaskDone: s.Json ? null : r => AnsiConsole.MarkupLine(
+                r.Pass
+                    ? $"[green]✓[/] {r.Name} [grey]({r.Score:F2})[/]"
+                    : $"[red]✗[/] {r.Name} [grey]({r.Score:F2})[/]"),
+            ct: ct);
     }
 
     private static readonly JsonSerializerOptions Json = new()
@@ -365,26 +378,7 @@ public sealed class EvalListCommand : Command<EvalListCommand.Settings>
         {
             foreach (var f in Directory.EnumerateFiles(tasksDir, "*.yaml"))
             {
-                try
-                {
-                    var t = EvalParser.ParseTask(File.ReadAllText(f));
-                    var errs = EvalParser.Validate(t);
-                    errors += errs.Count;
-                    table.AddRow(t.Name,
-                        string.Join(",", t.Assert.Select(a => a.Type)),
-                        string.Join(",", t.Tags),
-                        errs.Count == 0
-                            ? "[green]ok[/]" : $"[red]{errs.Count} erro(s)[/]");
-                    foreach (var e in errs)
-                    {
-                        AnsiConsole.MarkupLine($"[red]✗[/] {f}: {e}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    errors++;
-                    AnsiConsole.MarkupLine($"[red]✗[/] {f}: {ex.Message}");
-                }
+                errors += ValidateTaskFile(f, table);
             }
         }
 
@@ -400,5 +394,31 @@ public sealed class EvalListCommand : Command<EvalListCommand.Settings>
         }
 
         return errors > 0 ? 1 : 0;
+    }
+
+    /// <summary>Valida um task yaml: linha na tabela + retorna nº de erros.</summary>
+    private static int ValidateTaskFile(string f, Table table)
+    {
+        try
+        {
+            var t = EvalParser.ParseTask(File.ReadAllText(f));
+            var errs = EvalParser.Validate(t);
+            table.AddRow(t.Name,
+                string.Join(",", t.Assert.Select(a => a.Type)),
+                string.Join(",", t.Tags),
+                errs.Count == 0
+                    ? "[green]ok[/]" : $"[red]{errs.Count} erro(s)[/]");
+            foreach (var e in errs)
+            {
+                AnsiConsole.MarkupLine($"[red]✗[/] {f}: {e}");
+            }
+
+            return errs.Count;
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]✗[/] {f}: {ex.Message}");
+            return 1;
+        }
     }
 }

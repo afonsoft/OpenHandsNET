@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `s3776-endpoints` |
 | Type | `Refactor` |
-| Status | `Draft` |
+| Status | `Approved` |
 | Ticket | SPEC-99 child of SPEC-89 |
 | Scope | `src/OpenHandsNET.Api/Endpoints/*.cs` |
 

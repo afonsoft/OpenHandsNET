@@ -50,73 +50,110 @@ public sealed class TuiCommand : AsyncCommand<TuiCommand.Settings>
         {
             if (convId is null)
             {
-                var task = await AnsiConsole.AskAsync<string>(
-                    "[green]nova tarefa[/] ([grey]ou /list /exit[/])");
-                if (task.StartsWith('/'))
+                var (created, exit) = await PromptTaskAsync(api, ct);
+                if (exit)
                 {
-                    if (task is "/exit" or "/quit")
-                    {
-                        return 0;
-                    }
-
-                    if (task is "/list")
-                    {
-                        await ShowListAsync(api, ct);
-                        continue;
-                    }
-
-                    if (task is "/help")
-                    {
-                        ShowHelp();
-                        continue;
-                    }
+                    return 0;
                 }
 
-                var created = await api.CreateConversationAsync(task, null, ct: ct);
-                var taskId = created.GetProperty("id").GetString()!;
-                (convId, var err) = await new RunExecutor(api)
-                    .WaitReadyAsync(taskId, s =>
-                        AnsiConsole.MarkupLine($"[grey]· {s}[/]"), ct);
+                convId = created;
                 if (convId is null)
                 {
-                    AnsiConsole.MarkupLine($"[red]{err}[/]");
                     continue;
                 }
-
-                AnsiConsole.MarkupLine(
-                    $"[grey]conversa {convId[..8]} — eventos live abaixo[/]");
             }
 
             await PumpLoopAsync(api, convId, ct);
             var input = await AnsiConsole.AskAsync<string>("[green]>[/]");
-            switch (keys.Resolve(input).Trim())
+            (var nextConvId, var quit) = await DispatchAsync(
+                api, keys, input, convId, ct);
+            convId = nextConvId;
+            if (quit)
             {
-                case "/exit" or "/quit":
-                    return 0;
-                case "/new":
-                    convId = null;
-                    continue;
-                case "/status":
-                    var c = await api.GetConversationAsync(convId, ct);
-                    AnsiConsole.MarkupLine(c is { } x
-                        ? $"[yellow]{x.GetProperty("execution_status").GetString()}[/]"
-                        : "[red]not found[/]");
-                    continue;
-                case "/list":
-                    await ShowListAsync(api, ct);
-                    continue;
-                case "/help":
-                    ShowHelp();
-                    continue;
-                case "":
-                    continue;
-                default:
-                    await api.SendMessageAsync(convId, input, ct);
-                    break;
+                return 0;
             }
         }
 
         return 0;
+    }
+
+    /// <summary>
+    /// Prompt da nova tarefa (com /list /help /exit inline) + cria a
+    /// conversa e espera READY. Retorna (convId, sairDoLoop).
+    /// </summary>
+    private static async Task<(string? ConvId, bool Exit)> PromptTaskAsync(
+        CloudApiClient api, CancellationToken ct)
+    {
+        var task = await AnsiConsole.AskAsync<string>(
+            "[green]nova tarefa[/] ([grey]ou /list /exit[/])");
+        if (task.StartsWith('/'))
+        {
+            if (task is "/exit" or "/quit")
+            {
+                return (null, true);
+            }
+
+            if (task is "/list")
+            {
+                await ShowListAsync(api, ct);
+                return (null, false);
+            }
+
+            if (task is "/help")
+            {
+                ShowHelp();
+                return (null, false);
+            }
+        }
+
+        var created = await api.CreateConversationAsync(task, null, ct: ct);
+        var taskId = created.GetProperty("id").GetString()!;
+        var (convId, err) = await new RunExecutor(api)
+            .WaitReadyAsync(taskId, s =>
+                AnsiConsole.MarkupLine($"[grey]· {s}[/]"), ct);
+        if (convId is null)
+        {
+            AnsiConsole.MarkupLine($"[red]{err}[/]");
+            return (null, false);
+        }
+
+        AnsiConsole.MarkupLine(
+            $"[grey]conversa {convId[..8]} — eventos live abaixo[/]");
+        return (convId, false);
+    }
+
+    /// <summary>
+    /// Despacha uma linha de input do prompt (>). Retorna
+    /// (novoConvId, sairDoLoop).
+    /// </summary>
+    private static async Task<(string? ConvId, bool Quit)> DispatchAsync(
+        CloudApiClient api, TuiKeymap keys, string input,
+        string convId, CancellationToken ct)
+    {
+        switch (keys.Resolve(input).Trim())
+        {
+            case "/exit" or "/quit":
+                return (convId, true);
+            case "/new":
+                return (null, false);
+            case "/status":
+                var c = await api.GetConversationAsync(convId, ct);
+                AnsiConsole.MarkupLine(c is { } x
+                    ? $"[yellow]{x.GetProperty("execution_status").GetString()}[/]"
+                    : "[red]not found[/]");
+                return (convId, false);
+            case "/list":
+                await ShowListAsync(api, ct);
+                return (convId, false);
+            case "/help":
+                ShowHelp();
+                return (convId, false);
+            case "":
+                return (convId, false);
+            default:
+                await api.SendMessageAsync(convId, input, ct);
+                return (convId, false);
+        }
     }
 
     /// <summary>Drena eventos novos (poll 1.2s) até Enter ou timeout curto.</summary>
