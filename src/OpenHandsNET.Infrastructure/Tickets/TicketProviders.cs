@@ -151,84 +151,12 @@ public sealed class LinearTicketProvider(
 
             if (type == "Issue" && action == "update")
             {
-                var key = data.TryGetProperty("identifier", out var id)
-                    ? id.GetString() : null;
-                if (key is null)
-                {
-                    return null;
-                }
-                string? addedLabel = null, newAssignee = null,
-                    newState = null;
-                if (root.TryGetProperty("updatedFrom", out var uf))
-                {
-                    // Mudança de label/assignee/state — updatedFrom tem
-                    // o valor ANTERIOR; o novo está em data.
-                    if (uf.TryGetProperty("labelIds", out _))
-                    {
-                        addedLabel = FirstLabelName(data);
-                    }
-                    if (uf.TryGetProperty("assigneeId", out _))
-                    {
-                        newAssignee = null;
-                        if (data.TryGetProperty("assignee", out var asg))
-                        {
-                            if (asg.TryGetProperty("displayName", out var dn))
-                            {
-                                newAssignee = dn.GetString();
-                            }
-                            else if (asg.TryGetProperty("name", out var n))
-                            {
-                                newAssignee = n.GetString();
-                            }
-                        }
-                    }
-                    if (uf.TryGetProperty("stateId", out _))
-                    {
-                        newState = data.TryGetProperty("state", out var st)
-                            && st.TryGetProperty("name", out var sn)
-                            ? sn.GetString() : null;
-                    }
-                }
-                else if (ufBool(data))
-                {
-                    // Issue.create também chega como update parcial —
-                    // trata label direto.
-                    addedLabel = FirstLabelName(data);
-                }
-
-                return new TicketWebhookEvent(
-                    "issue_updated", key,
-                    deliveryId is null
-                        ? null : $"{deliveryId}:{createdAt}",
-                    addedLabel, newAssignee, newState, null,
-                    ProjectKey: ProjectOf(key),
-                    Title: Str(data, "title"),
-                    Description: Str(data, "description"),
-                    Url: Str(data, "url"),
-                    Labels: LabelsOf(data),
-                    State: null,
-                    Assignee: null);
+                return ParseIssueUpdate(root, data, deliveryId, createdAt);
             }
 
             if (type == "Comment" && action == "create")
             {
-                var body = Str(data, "body");
-                var key = data.TryGetProperty(Issue, out var iss)
-                    ? Str(iss, "identifier") : null;
-                if (key is null)
-                {
-                    return null;
-                }
-                return new TicketWebhookEvent(
-                    "comment_created", key,
-                    deliveryId is null
-                        ? null : $"{deliveryId}:{createdAt}",
-                    null, null, null, body,
-                    ProjectKey: ProjectOf(key),
-                    Title: null, Description: null,
-                    Url: data.TryGetProperty(Issue, out var i2)
-                        ? Str(i2, "url") : null,
-                    Labels: null, State: null, Assignee: null);
+                return ParseCommentCreate(data, deliveryId, createdAt);
             }
             return null;
         }
@@ -236,6 +164,93 @@ public sealed class LinearTicketProvider(
         {
             return null;
         }
+    }
+
+    private static TicketWebhookEvent? ParseIssueUpdate(
+        JsonElement root, JsonElement data,
+        string? deliveryId, string? createdAt)
+    {
+        var key = data.TryGetProperty("identifier", out var id)
+            ? id.GetString() : null;
+        if (key is null)
+        {
+            return null;
+        }
+        string? addedLabel = null, newAssignee = null,
+            newState = null;
+        if (root.TryGetProperty("updatedFrom", out var uf))
+        {
+            // Mudança de label/assignee/state — updatedFrom tem
+            // o valor ANTERIOR; o novo está em data.
+            if (uf.TryGetProperty("labelIds", out _))
+            {
+                addedLabel = FirstLabelName(data);
+            }
+            if (uf.TryGetProperty("assigneeId", out _))
+            {
+                newAssignee = AssigneeName(data);
+            }
+            if (uf.TryGetProperty("stateId", out _))
+            {
+                newState = data.TryGetProperty("state", out var st)
+                    && st.TryGetProperty("name", out var sn)
+                    ? sn.GetString() : null;
+            }
+        }
+        else if (ufBool(data))
+        {
+            // Issue.create também chega como update parcial —
+            // trata label direto.
+            addedLabel = FirstLabelName(data);
+        }
+
+        return new TicketWebhookEvent(
+            "issue_updated", key,
+            deliveryId is null
+                ? null : $"{deliveryId}:{createdAt}",
+            addedLabel, newAssignee, newState, null,
+            ProjectKey: ProjectOf(key),
+            Title: Str(data, "title"),
+            Description: Str(data, "description"),
+            Url: Str(data, "url"),
+            Labels: LabelsOf(data),
+            State: null,
+            Assignee: null);
+    }
+
+    private static string? AssigneeName(JsonElement data)
+    {
+        if (!data.TryGetProperty("assignee", out var asg))
+        {
+            return null;
+        }
+        if (asg.TryGetProperty("displayName", out var dn))
+        {
+            return dn.GetString();
+        }
+        return asg.TryGetProperty("name", out var n) ? n.GetString() : null;
+    }
+
+    private static TicketWebhookEvent? ParseCommentCreate(
+        JsonElement data, string? deliveryId, string? createdAt)
+    {
+        var body = Str(data, "body");
+        var key = data.TryGetProperty(Issue, out var iss)
+            ? Str(iss, "identifier") : null;
+        if (key is null)
+        {
+            return null;
+        }
+        return new TicketWebhookEvent(
+            "comment_created", key,
+            deliveryId is null
+                ? null : $"{deliveryId}:{createdAt}",
+            null, null, null, body,
+            ProjectKey: ProjectOf(key),
+            Title: null, Description: null,
+            Url: data.TryGetProperty(Issue, out var i2)
+                ? Str(i2, "url") : null,
+            Labels: null, State: null, Assignee: null);
     }
 
     /// <inheritdoc />
@@ -524,68 +539,13 @@ public sealed class JiraTicketProvider(
             if (eventType == "jira:issue_updated"
                 && root.TryGetProperty(Issue, out var issue))
             {
-                var key = Str(issue, "key");
-                if (key is null)
-                {
-                    return null;
-                }
-                string? addedLabel = null, newAssignee = null,
-                    newState = null;
-                if (root.TryGetProperty("changelog", out var cl)
-                    && cl.TryGetProperty("items", out var items))
-                {
-                    foreach (var item in items.EnumerateArray())
-                    {
-                        switch (Str(item, "field"))
-                        {
-                            case "labels":
-                                addedLabel = Str(item, "toString")
-                                    ?? Str(item, "to");
-                                break;
-                            case "assignee":
-                                newAssignee = Str(item, "toString")
-                                    ?? Str(item, "to");
-                                break;
-                            case "status":
-                                newState = Str(item, "toString")
-                                    ?? Str(item, "to");
-                                break;
-                        }
-                    }
-                }
-                var f = issue.TryGetProperty("fields", out var ff)
-                    ? ff : default;
-                return new TicketWebhookEvent(
-                    "issue_updated", key, deliveryId,
-                    addedLabel, newAssignee, newState, null,
-                    ProjectKey: ProjectOf(key),
-                    Title: Str(f, "summary"),
-                    Description: AdfToText(f, "description"),
-                    Url: UrlOf(issue),
-                    Labels: LabelsOf(f),
-                    State: f.TryGetProperty("status", out var s)
-                        ? Str(s, "name") : null,
-                    Assignee: f.TryGetProperty("assignee", out var a)
-                        ? Str(a, "displayName") : null);
+                return ParseIssueUpdated(root, issue, deliveryId);
             }
 
             if (eventType == "comment_created"
                 && root.TryGetProperty(Issue, out var iss2))
             {
-                var key = Str(iss2, "key");
-                if (key is null)
-                {
-                    return null;
-                }
-                var body = root.TryGetProperty("comment", out var cm)
-                    ? AdfToText(cm, "body") : null;
-                return new TicketWebhookEvent(
-                    "comment_created", key, deliveryId,
-                    null, null, null, body,
-                    ProjectKey: ProjectOf(key),
-                    Title: null, Description: null,
-                    Url: UrlOf(iss2),
-                    Labels: null, State: null, Assignee: null);
+                return ParseCommentCreated(root, iss2, deliveryId);
             }
             return null;
         }
@@ -593,6 +553,73 @@ public sealed class JiraTicketProvider(
         {
             return null;
         }
+    }
+
+    private static TicketWebhookEvent? ParseIssueUpdated(
+        JsonElement root, JsonElement issue, string? deliveryId)
+    {
+        var key = Str(issue, "key");
+        if (key is null)
+        {
+            return null;
+        }
+        string? addedLabel = null, newAssignee = null,
+            newState = null;
+        if (root.TryGetProperty("changelog", out var cl)
+            && cl.TryGetProperty("items", out var items))
+        {
+            foreach (var item in items.EnumerateArray())
+            {
+                switch (Str(item, "field"))
+                {
+                    case "labels":
+                        addedLabel = Str(item, "toString")
+                            ?? Str(item, "to");
+                        break;
+                    case "assignee":
+                        newAssignee = Str(item, "toString")
+                            ?? Str(item, "to");
+                        break;
+                    case "status":
+                        newState = Str(item, "toString")
+                            ?? Str(item, "to");
+                        break;
+                }
+            }
+        }
+        var f = issue.TryGetProperty("fields", out var ff)
+            ? ff : default;
+        return new TicketWebhookEvent(
+            "issue_updated", key, deliveryId,
+            addedLabel, newAssignee, newState, null,
+            ProjectKey: ProjectOf(key),
+            Title: Str(f, "summary"),
+            Description: AdfToText(f, "description"),
+            Url: UrlOf(issue),
+            Labels: LabelsOf(f),
+            State: f.TryGetProperty("status", out var s)
+                ? Str(s, "name") : null,
+            Assignee: f.TryGetProperty("assignee", out var a)
+                ? Str(a, "displayName") : null);
+    }
+
+    private static TicketWebhookEvent? ParseCommentCreated(
+        JsonElement root, JsonElement issue, string? deliveryId)
+    {
+        var key = Str(issue, "key");
+        if (key is null)
+        {
+            return null;
+        }
+        var body = root.TryGetProperty("comment", out var cm)
+            ? AdfToText(cm, "body") : null;
+        return new TicketWebhookEvent(
+            "comment_created", key, deliveryId,
+            null, null, null, body,
+            ProjectKey: ProjectOf(key),
+            Title: null, Description: null,
+            Url: UrlOf(issue),
+            Labels: null, State: null, Assignee: null);
     }
 
     /// <inheritdoc />
@@ -765,34 +792,35 @@ public sealed class JiraTicketProvider(
             return null;
         }
         var sb = new StringBuilder();
-        Walk(doc);
+        WalkAdf(doc, sb);
         var s = sb.ToString().Trim();
         return s.Length == 0 ? null : s;
+    }
 
-        void Walk(JsonElement n)
+    private static void WalkAdf(JsonElement n, StringBuilder sb)
+    {
+        if (n.ValueKind != JsonValueKind.Object)
         {
-            if (n.ValueKind == JsonValueKind.Object)
+            return;
+        }
+        if (n.TryGetProperty("type", out var t)
+            && t.GetString() == "text"
+            && n.TryGetProperty("text", out var txt))
+        {
+            sb.Append(txt.GetString());
+        }
+        if (n.TryGetProperty("content", out var c)
+            && c.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var child in c.EnumerateArray())
             {
-                if (n.TryGetProperty("type", out var t)
-                    && t.GetString() == "text"
-                    && n.TryGetProperty("text", out var txt))
-                {
-                    sb.Append(txt.GetString());
-                }
-                if (n.TryGetProperty("content", out var c)
-                    && c.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var child in c.EnumerateArray())
-                    {
-                        Walk(child);
-                    }
-                    if (n.TryGetProperty("type", out var t2)
-                        && (t2.GetString() == "paragraph"
-                            || t2.GetString() == "heading"))
-                    {
-                        sb.Append('\n');
-                    }
-                }
+                WalkAdf(child, sb);
+            }
+            if (n.TryGetProperty("type", out var t2)
+                && (t2.GetString() == "paragraph"
+                    || t2.GetString() == "heading"))
+            {
+                sb.Append('\n');
             }
         }
     }

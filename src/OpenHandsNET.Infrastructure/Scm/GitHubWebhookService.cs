@@ -213,17 +213,14 @@ public sealed class GitHubWebhookService(
         }
     }
 
+    private sealed record MentionFields(
+        string? Body, string? Author, string? Branch,
+        string? PrUrl, int? PrNumber, long? InReplyTo);
+
     private static ScmMentionContext? ParseMention(
         string eventType, JsonElement root, string? installationId)
     {
-        string? body = null;
-        string? author = null;
         string? repository = null;
-        string? branch = null;
-        string? prUrl = null;
-        int? prNumber = null;
-        long? inReplyTo = null;
-
         if (root.TryGetProperty(Repository, out var repo)
             && repo.TryGetProperty("full_name", out var fn))
         {
@@ -234,82 +231,94 @@ public sealed class GitHubWebhookService(
             return null;
         }
 
-        switch (eventType)
+        var f = eventType switch
         {
-            case "issue_comment":
-                if (!root.TryGetProperty(Comment, out var c1))
-                    return null;
-                body = c1.TryGetProperty("body", out var b1)
-                    ? b1.GetString() : null;
-                author = c1.TryGetProperty("user", out var u1)
-                    && u1.TryGetProperty("login", out var l1)
-                        ? l1.GetString() : null;
-                if (root.TryGetProperty("issue", out var issue)
-                    && issue.TryGetProperty("pull_request", out var pr1)
-                    && pr1.TryGetProperty("html_url", out var u))
-                {
-                    prUrl = u.GetString();
-                    prNumber = issue.GetProperty("number").GetInt32();
-                }
-                break;
-
-            case "pull_request_review_comment":
-                if (!root.TryGetProperty(Comment, out var c2))
-                    return null;
-                body = c2.TryGetProperty("body", out var b2)
-                    ? b2.GetString() : null;
-                author = c2.TryGetProperty("user", out var u2)
-                    && u2.TryGetProperty("login", out var l2)
-                        ? l2.GetString() : null;
-                if (c2.TryGetProperty("in_reply_to_id", out var r2)
-                    && r2.ValueKind == JsonValueKind.Number)
-                {
-                    inReplyTo = r2.GetInt64();
-                }
-                if (root.TryGetProperty("pull_request", out var pr2))
-                {
-                    prUrl = pr2.TryGetProperty("html_url", out var u3)
-                        ? u3.GetString() : null;
-                    prNumber = pr2.TryGetProperty("number", out var n3)
-                        ? n3.GetInt32() : null;
-                    branch = pr2.TryGetProperty("head", out var h3)
-                        && h3.TryGetProperty("ref", out var rf)
-                            ? rf.GetString() : null;
-                }
-                break;
-
-            case "pull_request_review":
-                if (!root.TryGetProperty("review", out var rv))
-                    return null;
-                body = rv.TryGetProperty("body", out var b3)
-                    ? b3.GetString() : null;
-                author = rv.TryGetProperty("user", out var u4)
-                    && u4.TryGetProperty("login", out var l4)
-                        ? l4.GetString() : null;
-                if (root.TryGetProperty("pull_request", out var pr3))
-                {
-                    prUrl = pr3.TryGetProperty("html_url", out var u5)
-                        ? u5.GetString() : null;
-                    prNumber = pr3.TryGetProperty("number", out var n5)
-                        ? n5.GetInt32() : null;
-                    branch = pr3.TryGetProperty("head", out var h5)
-                        && h5.TryGetProperty("ref", out var rf5)
-                            ? rf5.GetString() : null;
-                }
-                break;
-
-            default:
-                return null;
-        }
-
-        if (body is null || !body.Contains(Mention, StringComparison.Ordinal))
+            "issue_comment" => ParseIssueComment(root),
+            "pull_request_review_comment" => ParsePrReviewComment(root),
+            "pull_request_review" => ParsePrReview(root),
+            _ => null,
+        };
+        if (f?.Body is null || !f.Body.Contains(Mention, StringComparison.Ordinal))
         {
             return null;
         }
 
         return new ScmMentionContext(
-            ScmKind.GitHub, repository, branch, prUrl, prNumber,
-            author, body, inReplyTo, installationId);
+            ScmKind.GitHub, repository, f.Branch, f.PrUrl, f.PrNumber,
+            f.Author, f.Body, f.InReplyTo, installationId);
+    }
+
+    private static (string? PrUrl, int? PrNumber, string? Branch) PullRefOf(JsonElement pr)
+        => (pr.TryGetProperty("html_url", out var u) ? u.GetString() : null,
+            pr.TryGetProperty("number", out var n) ? n.GetInt32() : null,
+            pr.TryGetProperty("head", out var h)
+                && h.TryGetProperty("ref", out var rf)
+                    ? rf.GetString() : null);
+
+    private static MentionFields? ParseIssueComment(JsonElement root)
+    {
+        if (!root.TryGetProperty(Comment, out var c))
+        {
+            return null;
+        }
+        var body = c.TryGetProperty("body", out var b) ? b.GetString() : null;
+        var author = c.TryGetProperty("user", out var u)
+            && u.TryGetProperty("login", out var l)
+                ? l.GetString() : null;
+        string? prUrl = null;
+        int? prNumber = null;
+        if (root.TryGetProperty("issue", out var issue)
+            && issue.TryGetProperty("pull_request", out var pr)
+            && pr.TryGetProperty("html_url", out var pu))
+        {
+            prUrl = pu.GetString();
+            prNumber = issue.GetProperty("number").GetInt32();
+        }
+        return new MentionFields(body, author, null, prUrl, prNumber, null);
+    }
+
+    private static MentionFields? ParsePrReviewComment(JsonElement root)
+    {
+        if (!root.TryGetProperty(Comment, out var c))
+        {
+            return null;
+        }
+        var body = c.TryGetProperty("body", out var b) ? b.GetString() : null;
+        var author = c.TryGetProperty("user", out var u)
+            && u.TryGetProperty("login", out var l)
+                ? l.GetString() : null;
+        long? inReplyTo = null;
+        if (c.TryGetProperty("in_reply_to_id", out var r)
+            && r.ValueKind == JsonValueKind.Number)
+        {
+            inReplyTo = r.GetInt64();
+        }
+        string? prUrl = null, branch = null;
+        int? prNumber = null;
+        if (root.TryGetProperty("pull_request", out var pr))
+        {
+            (prUrl, prNumber, branch) = PullRefOf(pr);
+        }
+        return new MentionFields(body, author, branch, prUrl, prNumber, inReplyTo);
+    }
+
+    private static MentionFields? ParsePrReview(JsonElement root)
+    {
+        if (!root.TryGetProperty("review", out var rv))
+        {
+            return null;
+        }
+        var body = rv.TryGetProperty("body", out var b) ? b.GetString() : null;
+        var author = rv.TryGetProperty("user", out var u)
+            && u.TryGetProperty("login", out var l)
+                ? l.GetString() : null;
+        string? prUrl = null, branch = null;
+        int? prNumber = null;
+        if (root.TryGetProperty("pull_request", out var pr))
+        {
+            (prUrl, prNumber, branch) = PullRefOf(pr);
+        }
+        return new MentionFields(body, author, branch, prUrl, prNumber, null);
     }
 
     /// <inheritdoc />
@@ -465,96 +474,104 @@ public sealed class GitHubWebhookService(
             return null;
         }
 
-        string? body = null;
-        string? author = null;
-        int? prNumber = null;
-        string? prUrl = null;
-        string? branch = null;
-
-        switch (kind)
+        var f = kind switch
         {
-            case ScmKind.GitLab:
-                if (eventType != "Note Hook"
-                    || !root.TryGetProperty("object_attributes", out var oa))
-                {
-                    return null;
-                }
-                body = oa.TryGetProperty("note", out var n)
-                    ? n.GetString() : null;
-                author = root.TryGetProperty("user", out var gu)
-                    && gu.TryGetProperty("username", out var un)
-                        ? un.GetString() : null;
-                if (oa.TryGetProperty("noteable_type", out var nt)
-                    && nt.GetString() == "MergeRequest"
-                    && root.TryGetProperty("merge_request", out var glmr))
-                {
-                    prNumber = glmr.TryGetProperty("iid", out var ii)
-                        ? ii.GetInt32() : null;
-                    prUrl = glmr.TryGetProperty("url", out var gu2)
-                        ? gu2.GetString() : null;
-                    branch = glmr.TryGetProperty("source_branch", out var sb)
-                        ? sb.GetString() : null;
-                }
-                break;
-
-            case ScmKind.Bitbucket:
-                if (eventType != "pullrequest:comment_created"
-                    && eventType != "issue:comment_created")
-                {
-                    return null;
-                }
-                if (root.TryGetProperty(Comment, out var bc)
-                    && bc.TryGetProperty("content", out var bco))
-                {
-                    body = bco.TryGetProperty("raw", out var raw)
-                        ? raw.GetString() : null;
-                }
-                author = root.TryGetProperty(Comment, out var bcc)
-                    && bcc.TryGetProperty("user", out var bu)
-                    && bu.TryGetProperty("nickname", out var bn)
-                        ? bn.GetString() : null;
-                if (root.TryGetProperty("pullrequest", out var bbpr))
-                {
-                    prNumber = bbpr.TryGetProperty("id", out var bid)
-                        ? bid.GetInt32() : null;
-                    prUrl = bbpr.TryGetProperty("links", out var bl)
-                        && bl.TryGetProperty("html", out var bh)
-                        && bh.TryGetProperty("href", out var bh2)
-                            ? bh2.GetString() : null;
-                }
-                break;
-
-            case ScmKind.AzureDevOps:
-                if (!root.TryGetProperty("resource", out var res))
-                {
-                    return null;
-                }
-                // ms.vss-code.git-pullrequest-comment-event
-                if (!res.TryGetProperty(Comment, out var ac))
-                {
-                    return null;
-                }
-                body = ac.TryGetProperty("content", out var aco)
-                    ? aco.GetString() : null;
-                author = ac.TryGetProperty("author", out var aa)
-                    && aa.TryGetProperty("displayName", out var an)
-                        ? an.GetString() : null;
-                prNumber = res.TryGetProperty("pullRequest", out var apr)
-                    && apr.TryGetProperty("pullRequestId", out var aid)
-                        ? aid.GetInt32() : null;
-                break;
-
-            default:
-                return null;
-        }
-
-        if (body is null || !body.Contains(Mention, StringComparison.Ordinal))
+            ScmKind.GitLab => ParseGitLabMention(eventType, root),
+            ScmKind.Bitbucket => ParseBitbucketMention(eventType, root),
+            ScmKind.AzureDevOps => ParseAzureMention(root),
+            _ => null,
+        };
+        if (f?.Body is null || !f.Body.Contains(Mention, StringComparison.Ordinal))
         {
             return null;
         }
         return new ScmMentionContext(
-            kind, repository, branch, prUrl, prNumber,
-            author, body, null, null);
+            kind, repository, f.Branch, f.PrUrl, f.PrNumber,
+            f.Author, f.Body, null, null);
+    }
+
+    private static MentionFields? ParseGitLabMention(
+        string? eventType, JsonElement root)
+    {
+        if (eventType != "Note Hook"
+            || !root.TryGetProperty("object_attributes", out var oa))
+        {
+            return null;
+        }
+        var body = oa.TryGetProperty("note", out var n)
+            ? n.GetString() : null;
+        var author = root.TryGetProperty("user", out var gu)
+            && gu.TryGetProperty("username", out var un)
+                ? un.GetString() : null;
+        string? prUrl = null, branch = null;
+        int? prNumber = null;
+        if (oa.TryGetProperty("noteable_type", out var nt)
+            && nt.GetString() == "MergeRequest"
+            && root.TryGetProperty("merge_request", out var glmr))
+        {
+            prNumber = glmr.TryGetProperty("iid", out var ii)
+                ? ii.GetInt32() : null;
+            prUrl = glmr.TryGetProperty("url", out var gu2)
+                ? gu2.GetString() : null;
+            branch = glmr.TryGetProperty("source_branch", out var sb)
+                ? sb.GetString() : null;
+        }
+        return new MentionFields(body, author, branch, prUrl, prNumber, null);
+    }
+
+    private static MentionFields? ParseBitbucketMention(
+        string? eventType, JsonElement root)
+    {
+        if (eventType != "pullrequest:comment_created"
+            && eventType != "issue:comment_created")
+        {
+            return null;
+        }
+        string? body = null;
+        if (root.TryGetProperty(Comment, out var bc)
+            && bc.TryGetProperty("content", out var bco))
+        {
+            body = bco.TryGetProperty("raw", out var raw)
+                ? raw.GetString() : null;
+        }
+        var author = root.TryGetProperty(Comment, out var bcc)
+            && bcc.TryGetProperty("user", out var bu)
+            && bu.TryGetProperty("nickname", out var bn)
+                ? bn.GetString() : null;
+        string? prUrl = null;
+        int? prNumber = null;
+        if (root.TryGetProperty("pullrequest", out var bbpr))
+        {
+            prNumber = bbpr.TryGetProperty("id", out var bid)
+                ? bid.GetInt32() : null;
+            prUrl = bbpr.TryGetProperty("links", out var bl)
+                && bl.TryGetProperty("html", out var bh)
+                && bh.TryGetProperty("href", out var bh2)
+                    ? bh2.GetString() : null;
+        }
+        return new MentionFields(body, author, null, prUrl, prNumber, null);
+    }
+
+    private static MentionFields? ParseAzureMention(JsonElement root)
+    {
+        if (!root.TryGetProperty("resource", out var res))
+        {
+            return null;
+        }
+        // ms.vss-code.git-pullrequest-comment-event
+        if (!res.TryGetProperty(Comment, out var ac))
+        {
+            return null;
+        }
+        var body = ac.TryGetProperty("content", out var aco)
+            ? aco.GetString() : null;
+        var author = ac.TryGetProperty("author", out var aa)
+            && aa.TryGetProperty("displayName", out var an)
+                ? an.GetString() : null;
+        int? prNumber = res.TryGetProperty("pullRequest", out var apr)
+            && apr.TryGetProperty("pullRequestId", out var aid)
+                ? aid.GetInt32() : null;
+        return new MentionFields(body, author, null, null, prNumber, null);
     }
 
     private async Task<Guid?> ResolveOwnerUserIdAsync(

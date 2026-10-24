@@ -111,63 +111,71 @@ public sealed class ConversationStateService : IAsyncDisposable
 
         // SPEC-41 RF-004: watchdog de stall — avalia o silêncio a cada 5s;
         // heartbeats de run_progress renovam LastEventAt e mantêm Stalled=false.
-        _ = Task.Run(async () =>
-        {
-            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
-            try
-            {
-                while (await timer.WaitForNextTickAsync(_cts.Token))
-                {
-                    var stalled = ExecutionStatus == "RUNNING"
-                        && DateTimeOffset.UtcNow - LastEventAt
-                            > TimeSpan.FromSeconds(45);
-                    if (stalled != Stalled)
-                    {
-                        Stalled = stalled;
-                        Changed?.Invoke();
-                    }
-                }
-            }
-            catch (OperationCanceledException) { /* dispose */ }
-        }, _cts.Token);
+        _ = Task.Run(() => StallWatchdogAsync(_cts.Token), _cts.Token);
 
         var lastId = _events.Count > 0 ? _events[^1].Id : null;
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await foreach (var e in _hub.JoinAsync(
-                    Guid.Parse(conversationId), lastId, _cts.Token))
-                {
-                    Apply(e);
-                    Changed?.Invoke();
-                }
-            }
-            catch (OperationCanceledException) { /* dispose */ }
-            catch (Exception ex)
-            {
-                ErrorMessage = $"stream error: {ex.Message}";
-                Connected = false;
-                Changed?.Invoke();
-            }
-        }, _cts.Token);
+        _ = Task.Run(() => EventStreamAsync(conversationId, lastId, _cts.Token),
+            _cts.Token);
 
         // SPEC-34: pump do canal de deltas — efêmero, paralelo ao stream
         // durável; falha dele nunca derruba o stream principal.
-        _ = Task.Run(async () =>
+        _ = Task.Run(() => DeltaPumpAsync(conversationId, _cts.Token), _cts.Token);
+    }
+
+    private async Task StallWatchdogAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        try
         {
-            try
+            while (await timer.WaitForNextTickAsync(ct))
             {
-                await foreach (var d in _hub.DeltasAsync(
-                    Guid.Parse(conversationId), _cts.Token))
+                var stalled = ExecutionStatus == "RUNNING"
+                    && DateTimeOffset.UtcNow - LastEventAt
+                        > TimeSpan.FromSeconds(45);
+                if (stalled != Stalled)
                 {
-                    ApplyDelta(d);
+                    Stalled = stalled;
                     Changed?.Invoke();
                 }
             }
-            catch (OperationCanceledException) { /* dispose */ }
-            catch (Exception) { /* deltas são best-effort */ }
-        }, _cts.Token);
+        }
+        catch (OperationCanceledException) { /* dispose */ }
+    }
+
+    private async Task EventStreamAsync(
+        string conversationId, string? lastId, CancellationToken ct)
+    {
+        try
+        {
+            await foreach (var e in _hub.JoinAsync(
+                Guid.Parse(conversationId), lastId, ct))
+            {
+                Apply(e);
+                Changed?.Invoke();
+            }
+        }
+        catch (OperationCanceledException) { /* dispose */ }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"stream error: {ex.Message}";
+            Connected = false;
+            Changed?.Invoke();
+        }
+    }
+
+    private async Task DeltaPumpAsync(string conversationId, CancellationToken ct)
+    {
+        try
+        {
+            await foreach (var d in _hub.DeltasAsync(
+                Guid.Parse(conversationId), ct))
+            {
+                ApplyDelta(d);
+                Changed?.Invoke();
+            }
+        }
+        catch (OperationCanceledException) { /* dispose */ }
+        catch (Exception) { /* deltas são best-effort */ }
     }
 
     /// <summary>Aplica um frame de delta ao slot efêmero do item_id.</summary>
@@ -233,77 +241,15 @@ public sealed class ConversationStateService : IAsyncDisposable
         switch (e.Kind)
         {
             case "ConversationStateUpdateEvent":
-                var v = e.Get("value");
-                if (v.ValueKind == JsonValueKind.String)
-                {
-                    ExecutionStatus = v.GetString()!
-                        .ToUpperInvariant();
-                }
-                else if (v.ValueKind == JsonValueKind.Object)
-                {
-                    // upstream: { execution_status, pending_action, ... }
-                    if (v.TryGetProperty("execution_status", out var es))
-                    {
-                        ExecutionStatus = es.GetString()!.ToUpperInvariant();
-                    }
-
-                    if (v.TryGetProperty("pending_action", out var pa)
-                        && pa.ValueKind == JsonValueKind.Object)
-                    {
-                        PendingAction = new PendingActionInfo(
-                            pa.TryGetProperty("action_id", out var aid)
-                                ? aid.GetString() ?? "" : "",
-                            pa.TryGetProperty("tool", out var t)
-                                ? t.ToString() : pa.ToString());
-                    }
-
-                    if (v.TryGetProperty("pending_action", out var pa2)
-                        && pa2.ValueKind is JsonValueKind.Null)
-                    {
-                        PendingAction = null;
-                    }
-                }
+                ApplyStateUpdate(e.Get("value"));
                 break;
 
             case "TokenEvent":
-                if (e.Get("prompt_tokens").ValueKind == JsonValueKind.Number)
-                {
-                    PromptTokens += e.Get("prompt_tokens").GetInt64();
-                }
-
-                if (e.Get("completion_tokens").ValueKind == JsonValueKind.Number)
-                {
-                    CompletionTokens += e.Get("completion_tokens").GetInt64();
-                }
-
-                if (e.Get("cost_usd").ValueKind == JsonValueKind.Number)
-                {
-                    CostUsd += e.Get("cost_usd").GetDouble();
-                }
+                ApplyToken(e);
                 break;
 
             case "ObservationEvent":
-                var obs = e.Get("observation");
-                if (obs.ValueKind == JsonValueKind.String)
-                {
-                    TerminalBuffer.AppendLine(obs.GetString());
-                }
-                else if (obs.ValueKind == JsonValueKind.Object
-                    && obs.TryGetProperty("screenshot_base64", out var shot))
-                {
-                    Screenshots.Add(shot.GetString() ?? "");
-                }
-                else if (obs.ValueKind == JsonValueKind.Object
-                    && obs.TryGetProperty("output", out var o)
-                    && o.ValueKind == JsonValueKind.String)
-                {
-                    // bash/file obs: { exit_code, output, error, timed_out }
-                    TerminalBuffer.AppendLine(o.GetString());
-                }
-                else if (obs.ValueKind == JsonValueKind.Object)
-                {
-                    TerminalBuffer.AppendLine(obs.ToString());
-                }
+                ApplyObservation(e.Get("observation"));
                 break;
 
             case "UserRejectObservation":
@@ -319,14 +265,7 @@ public sealed class ConversationStateService : IAsyncDisposable
                 break;
 
             case "agent_diagnostic":
-                // SPEC-26 RF-004: diagnósticos ≥warn notificam.
-                var sev = e.Str("severity");
-                if (sev is "warn" or "warning" or "error")
-                {
-                    var msg = $"{e.Str("code")}: {e.Str("message")}";
-                    if (sev is "error") { _toasts?.Error(msg); }
-                    else { _toasts?.Warn(msg); }
-                }
+                ApplyDiagnostic(e);
                 break;
 
             case "ActionEvent":
@@ -337,6 +276,104 @@ public sealed class ConversationStateService : IAsyncDisposable
                 }
                 break;
         }
+    }
+
+    private void ApplyStateUpdate(JsonElement v)
+    {
+        if (v.ValueKind == JsonValueKind.String)
+        {
+            ExecutionStatus = v.GetString()!
+                .ToUpperInvariant();
+            return;
+        }
+
+        if (v.ValueKind != JsonValueKind.Object)
+        {
+            return;
+        }
+
+        // upstream: { execution_status, pending_action, ... }
+        if (v.TryGetProperty("execution_status", out var es))
+        {
+            ExecutionStatus = es.GetString()!.ToUpperInvariant();
+        }
+
+        if (v.TryGetProperty("pending_action", out var pa)
+            && pa.ValueKind == JsonValueKind.Object)
+        {
+            PendingAction = new PendingActionInfo(
+                pa.TryGetProperty("action_id", out var aid)
+                    ? aid.GetString() ?? "" : "",
+                pa.TryGetProperty("tool", out var t)
+                    ? t.ToString() : pa.ToString());
+        }
+
+        if (v.TryGetProperty("pending_action", out var pa2)
+            && pa2.ValueKind is JsonValueKind.Null)
+        {
+            PendingAction = null;
+        }
+    }
+
+    private void ApplyToken(ClientEvent e)
+    {
+        if (e.Get("prompt_tokens").ValueKind == JsonValueKind.Number)
+        {
+            PromptTokens += e.Get("prompt_tokens").GetInt64();
+        }
+
+        if (e.Get("completion_tokens").ValueKind == JsonValueKind.Number)
+        {
+            CompletionTokens += e.Get("completion_tokens").GetInt64();
+        }
+
+        if (e.Get("cost_usd").ValueKind == JsonValueKind.Number)
+        {
+            CostUsd += e.Get("cost_usd").GetDouble();
+        }
+    }
+
+    private void ApplyObservation(JsonElement obs)
+    {
+        if (obs.ValueKind == JsonValueKind.String)
+        {
+            TerminalBuffer.AppendLine(obs.GetString());
+            return;
+        }
+
+        if (obs.ValueKind != JsonValueKind.Object)
+        {
+            return;
+        }
+
+        if (obs.TryGetProperty("screenshot_base64", out var shot))
+        {
+            Screenshots.Add(shot.GetString() ?? "");
+            return;
+        }
+
+        if (obs.TryGetProperty("output", out var o)
+            && o.ValueKind == JsonValueKind.String)
+        {
+            // bash/file obs: { exit_code, output, error, timed_out }
+            TerminalBuffer.AppendLine(o.GetString());
+            return;
+        }
+
+        TerminalBuffer.AppendLine(obs.ToString());
+    }
+
+    private void ApplyDiagnostic(ClientEvent e)
+    {
+        // SPEC-26 RF-004: diagnósticos ≥warn notificam.
+        var sev = e.Str("severity");
+        if (sev is not ("warn" or "warning" or "error"))
+        {
+            return;
+        }
+        var msg = $"{e.Str("code")}: {e.Str("message")}";
+        if (sev is "error") { _toasts?.Error(msg); }
+        else { _toasts?.Warn(msg); }
     }
 
     private void UpdatePlan(ClientEvent e)

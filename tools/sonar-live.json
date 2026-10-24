@@ -1,0 +1,93 @@
+{
+ "BLOCKER": {
+  "total": 0,
+  "rules": {}
+ },
+ "CRITICAL": {
+  "total": 120,
+  "rules": {
+   "csharpsquid:S3776": 52,
+   "csharpsquid:S927": 35,
+   "javascript:S3776": 18,
+   "csharpsquid:S3218": 4,
+   "javascript:S3735": 3,
+   "javascript:S2004": 2,
+   "python:S5655": 2,
+   "python:S3776": 2,
+   "shelldre:S131": 1,
+   "python:S1192": 1
+  }
+ },
+ "MAJOR": {
+  "total": 1140,
+  "rules": {
+   "javascript:S7761": 848,
+   "css:S9423": 102,
+   "javascript:S3358": 48,
+   "csharpsquid:S107": 33,
+   "Web:S6819": 19,
+   "javascript:S8786": 14,
+   "shelldre:S7688": 9,
+   "javascript:S7768": 7,
+   "javascript:S6535": 7,
+   "javascript:S4144": 6,
+   "css:S4666": 6,
+   "javascript:S6666": 6,
+   "css:S9440": 5,
+   "javascript:S2681": 4,
+   "csharpsquid:S3358": 3,
+   "Web:S7927": 3,
+   "javascript:S1121": 3,
+   "csharpsquid:S127": 3,
+   "shelldre:S7677": 2,
+   "Web:S6845": 1,
+   "csharpsquid:S6673": 1,
+   "kubernetes:S6596": 1,
+   "kubernetes:S6897": 1,
+   "javascript:S7762": 1,
+   "javascript:S7721": 1,
+   "shelldre:S7682": 1,
+   "shelldre:S7679": 1,
+   "javascript:S1854": 1,
+   "csharpsquid:S1118": 1,
+   "csharpsquid:S1172": 1,
+   "javascript:S6661": 1
+  }
+ },
+ "MINOR": {
+  "total": 265,
+  "rules": {
+   "csharpsquid:S8970": 144,
+   "javascript:S7765": 15,
+   "javascript:S2486": 15,
+   "javascript:S6353": 14,
+   "javascript:S6653": 12,
+   "javascript:S4138": 10,
+   "javascript:S6582": 10,
+   "csharpsquid:S1075": 10,
+   "csharpsquid:S3267": 9,
+   "css:S1874": 5,
+   "javascript:S7778": 3,
+   "docker:S7031": 2,
+   "csharpsquid:S1192": 2,
+   "javascript:S7773": 2,
+   "csharpsquid:S1905": 2,
+   "Web:S6827": 1,
+   "docker:S7026": 1,
+   "docker:S7018": 1,
+   "csharpsquid:S3400": 1,
+   "javascript:S7750": 1,
+   "csharpsquid:S1199": 1,
+   "javascript:S9381": 1,
+   "Web:ImgWithoutAltCheck": 1,
+   "csharpsquid:S1125": 1,
+   "csharpsquid:S2737": 1
+  }
+ },
+ "INFO": {
+  "total": 1,
+  "rules": {
+   "csharpsquid:S1135": 1
+  }
+ }
+}

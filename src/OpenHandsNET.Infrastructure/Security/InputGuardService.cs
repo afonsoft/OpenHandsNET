@@ -28,17 +28,7 @@ public sealed class InputGuardService(
     public async Task<InputGuardResult> ScoreAsync(
         string text, string channel, Guid? orgId, CancellationToken ct)
     {
-        var mode = "pattern";
-        if (orgId is { } oid)
-        {
-            var pol = await db.Set<SecurityPolicyRecord>().AsNoTracking()
-                .Where(p => p.OrgId == oid)
-                .Select(p => p.InputGuardMode)
-                .FirstOrDefaultAsync(ct);
-            if (!string.IsNullOrEmpty(pol))
-                mode = pol;
-        }
-
+        var mode = await ResolveModeAsync(orgId, ct);
         if (mode == "off")
         {
             return new InputGuardResult(
@@ -53,11 +43,28 @@ public sealed class InputGuardService(
 
         // LLM second opinion — endpoint OpenAI-compat (OmniRoute role).
         var endpoint = config["InputGuard:LlmEndpoint"];
-        if (string.IsNullOrEmpty(endpoint))
-        {
-            return baseResult;
-        }
+        return string.IsNullOrEmpty(endpoint)
+            ? baseResult
+            : await LlmVerdictAsync(text, endpoint, baseResult, ct);
+    }
 
+    private async Task<string> ResolveModeAsync(Guid? orgId, CancellationToken ct)
+    {
+        if (orgId is not { } oid)
+        {
+            return "pattern";
+        }
+        var pol = await db.Set<SecurityPolicyRecord>().AsNoTracking()
+            .Where(p => p.OrgId == oid)
+            .Select(p => p.InputGuardMode)
+            .FirstOrDefaultAsync(ct);
+        return string.IsNullOrEmpty(pol) ? "pattern" : pol;
+    }
+
+    private async Task<InputGuardResult> LlmVerdictAsync(
+        string text, string endpoint, InputGuardResult baseResult,
+        CancellationToken ct)
+    {
         try
         {
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);

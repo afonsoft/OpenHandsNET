@@ -10,121 +10,150 @@ public static partial class GitDiffParser
     /// <summary>Parses <c>git diff HEAD</c> text.</summary>
     public static GitDiffReport Parse(string output)
     {
-        var files = new List<GitDiffFile>();
-        string? path = null;
-        var status = "modified";
-        var hunks = new List<GitHunk>();
-        var content = new System.Text.StringBuilder();
-        var oldStart = 0; var oldLines = 0; var newStart = 0; var newLines = 0;
-        var inHunk = false;
-
-        void FlushHunk()
-        {
-            if (inHunk)
-            {
-                hunks.Add(new GitHunk(
-                    oldStart, oldLines, newStart, newLines,
-                    content.ToString().TrimEnd('\n')));
-                content.Clear();
-                inHunk = false;
-            }
-        }
-
-        void FlushFile()
-        {
-            FlushHunk();
-            if (path is not null)
-            {
-                files.Add(new GitDiffFile(path, status, hunks.ToList()));
-                hunks.Clear();
-            }
-        }
-
+        var parser = new Parser();
         foreach (var raw in output.Split('\n'))
         {
-            var line = raw.TrimEnd('\r');
+            parser.Feed(raw.TrimEnd('\r'));
+        }
+
+        return parser.Finish();
+    }
+
+    private sealed class Parser
+    {
+        private readonly List<GitDiffFile> _files = new();
+        private readonly List<GitHunk> _hunks = new();
+        private readonly System.Text.StringBuilder _content = new();
+        private string? _path;
+        private string _status = "modified";
+        private int _oldStart, _oldLines, _newStart, _newLines;
+        private bool _inHunk;
+
+        public void Feed(string line)
+        {
             if (line.StartsWith("diff --git ", StringComparison.Ordinal))
             {
-                FlushFile();
-                path = null;
-                status = "modified";
-                var m = DiffGitHeader().Match(line);
-                if (m.Success)
-                {
-                    path = m.Groups[2].Value;
-                }
-
-                continue;
+                StartFile(line);
+                return;
             }
 
-            if (line.StartsWith("new file mode", StringComparison.Ordinal))
+            if (TryMeta(line))
             {
-                status = "added";
-                continue;
-            }
-
-            if (line.StartsWith("deleted file mode", StringComparison.Ordinal))
-            {
-                status = "deleted";
-                continue;
-            }
-
-            if (line.StartsWith("rename to ", StringComparison.Ordinal))
-            {
-                status = "renamed";
-                path = line["rename to ".Length..];
-                continue;
-            }
-
-            if (line.StartsWith("+++ ", StringComparison.Ordinal))
-            {
-                var p = line[4..].Trim();
-                if (p == "/dev/null")
-                {
-                    status = "deleted";
-                }
-                else
-                {
-                    path = p.StartsWith("b/", StringComparison.Ordinal) ? p[2..] : p;
-                }
-
-                continue;
-            }
-
-            if (line.StartsWith("--- ", StringComparison.Ordinal))
-            {
-                continue;
+                return;
             }
 
             if (line.StartsWith("@@ ", StringComparison.Ordinal))
             {
-                FlushHunk();
-                var m = HunkHeader().Match(line);
-                if (m.Success)
-                {
-                    oldStart = int.Parse(m.Groups[1].Value);
-                    oldLines = m.Groups[2].Success ? int.Parse(m.Groups[2].Value) : 1;
-                    newStart = int.Parse(m.Groups[3].Value);
-                    newLines = m.Groups[4].Success ? int.Parse(m.Groups[4].Value) : 1;
-                    inHunk = true;
-                }
-
-                continue;
+                StartHunk(line);
+                return;
             }
 
-            if (inHunk)
+            if (_inHunk)
             {
-                content.AppendLine(line);
+                _content.AppendLine(line);
             }
         }
 
-        FlushFile();
+        public GitDiffReport Finish()
+        {
+            FlushFile();
+            var adds = _files.Sum(f => f.Hunks.Sum(h =>
+                h.Content.Split('\n').Count(l => l.StartsWith('+') && !l.StartsWith("+++"))));
+            var dels = _files.Sum(f => f.Hunks.Sum(h =>
+                h.Content.Split('\n').Count(l => l.StartsWith('-') && !l.StartsWith("---"))));
+            return new GitDiffReport(_files, adds, dels);
+        }
 
-        var adds = files.Sum(f => f.Hunks.Sum(h =>
-            h.Content.Split('\n').Count(l => l.StartsWith('+') && !l.StartsWith("+++"))));
-        var dels = files.Sum(f => f.Hunks.Sum(h =>
-            h.Content.Split('\n').Count(l => l.StartsWith('-') && !l.StartsWith("---"))));
-        return new GitDiffReport(files, adds, dels);
+        private void StartFile(string line)
+        {
+            FlushFile();
+            _path = null;
+            _status = "modified";
+            var m = DiffGitHeader().Match(line);
+            if (m.Success)
+            {
+                _path = m.Groups[2].Value;
+            }
+        }
+
+        private bool TryMeta(string line)
+        {
+            if (line.StartsWith("new file mode", StringComparison.Ordinal))
+            {
+                _status = "added";
+                return true;
+            }
+
+            if (line.StartsWith("deleted file mode", StringComparison.Ordinal))
+            {
+                _status = "deleted";
+                return true;
+            }
+
+            if (line.StartsWith("rename to ", StringComparison.Ordinal))
+            {
+                _status = "renamed";
+                _path = line["rename to ".Length..];
+                return true;
+            }
+
+            if (line.StartsWith("+++ ", StringComparison.Ordinal))
+            {
+                ApplyNewPath(line);
+                return true;
+            }
+
+            return line.StartsWith("--- ", StringComparison.Ordinal);
+        }
+
+        private void ApplyNewPath(string line)
+        {
+            var p = line[4..].Trim();
+            if (p == "/dev/null")
+            {
+                _status = "deleted";
+            }
+            else
+            {
+                _path = p.StartsWith("b/", StringComparison.Ordinal) ? p[2..] : p;
+            }
+        }
+
+        private void StartHunk(string line)
+        {
+            FlushHunk();
+            var m = HunkHeader().Match(line);
+            if (m.Success)
+            {
+                _oldStart = int.Parse(m.Groups[1].Value);
+                _oldLines = m.Groups[2].Success ? int.Parse(m.Groups[2].Value) : 1;
+                _newStart = int.Parse(m.Groups[3].Value);
+                _newLines = m.Groups[4].Success ? int.Parse(m.Groups[4].Value) : 1;
+                _inHunk = true;
+            }
+        }
+
+        private void FlushHunk()
+        {
+            if (_inHunk)
+            {
+                _hunks.Add(new GitHunk(
+                    _oldStart, _oldLines, _newStart, _newLines,
+                    _content.ToString().TrimEnd('\n')));
+                _content.Clear();
+                _inHunk = false;
+            }
+        }
+
+        private void FlushFile()
+        {
+            FlushHunk();
+            if (_path is not null)
+            {
+                _files.Add(new GitDiffFile(_path, _status, _hunks.ToList()));
+                _hunks.Clear();
+            }
+        }
     }
 
     [GeneratedRegex(@"^diff --git a/(.+) b/(.+)$")]
