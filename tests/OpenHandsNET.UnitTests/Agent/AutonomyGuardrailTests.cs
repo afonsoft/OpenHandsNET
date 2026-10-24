@@ -42,6 +42,15 @@ public class AutonomyGuardrailTests
     [InlineData("chmod -R 777 /", true)]
     [InlineData("chmod -R 755 /workspace", false)]
     [InlineData(":(){ :|:& };:", true)]
+    // SPEC-102: cobertura dos segmentos extraídos (IsDangerousSegment) —
+    // rm/chmod/chown após separadores e flags combinadas.
+    [InlineData("true || rm -rf /home/x", true)]
+    [InlineData("sleep 1 & rm -r /srv", true)]
+    [InlineData("rm -rRf /opt/data", true)]
+    [InlineData("chown -R root /usr/lib", true)]
+    [InlineData("ls; chown user file.txt", false)]
+    [InlineData("xargs rm", false)]
+    [InlineData("sudo -n true", false)]
     public void Bash_Destructive_Patterns(string command, bool expected)
     {
         var args = Args($"{{\"command\":{JsonSerializer.Serialize(command)}}}");

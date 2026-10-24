@@ -127,20 +127,9 @@ public sealed class AgentRunner(
         // SPEC-41 RF-004: heartbeat — LLM/tool calls longas não emitem
         // eventos; o ping de 15s mantém o watchdog do client quieto.
         using var hbCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        var heartbeat = Task.Run(async () =>
-        {
-            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(15));
-            try
-            {
-                while (await timer.WaitForNextTickAsync(hbCts.Token))
-                {
-                    await activity.HeartbeatAsync(events, conversationId,
-                        CancellationToken.None);
-                }
-            }
-            catch (OperationCanceledException) { /* cancelamento esperado */ }
-            catch (Exception) { /* heartbeat é best-effort */ }
-        }, CancellationToken.None);
+        var heartbeat = Task.Run(
+            () => HeartbeatLoopAsync(events, activity, hbCts.Token),
+            CancellationToken.None);
         try
         {
             await LoopAsync(events, db, conv, sandbox, executor, tools, mcp,
@@ -148,24 +137,8 @@ public sealed class AgentRunner(
         }
         catch (OperationCanceledException)
         {
-            // SPEC-24 RF-006: pausa/interrupção também fecha com summary.
-            await activity.SummaryAsync(events, conversationId,
-                _pauseRequested ? Paused : "interrupted", null,
-                CancellationToken.None);
-            await SetStatusAsync(events, db, conv,
-                _pauseRequested ? Paused : "idle",
-                _pauseRequested
-                    ? ConversationExecutionStatus.Paused
-                    : ConversationExecutionStatus.Running,
-                CancellationToken.None);
-            // SPEC-43 RF-002: pausa também fecha o turno com checkpoint
-            // (ct já cancelado aqui → token neutro).
-            if (_pauseRequested)
-            {
-                await AutoCheckpointAsync(services, sandbox,
-                    conversationId, Paused,
-                    CancellationToken.None);
-            }
+            await HandleInterruptAsync(events, db, conv, sandbox,
+                activity);
         }
         finally
         {
@@ -179,6 +152,47 @@ public sealed class AgentRunner(
                 await mcp.DisconnectAsync(
                     conversationId, CancellationToken.None);
             }
+        }
+    }
+
+    private async Task HeartbeatLoopAsync(
+        IEventService events, RunActivityTracker activity,
+        CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(15));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                await activity.HeartbeatAsync(events, conversationId,
+                    CancellationToken.None);
+            }
+        }
+        catch (OperationCanceledException) { /* cancelamento esperado */ }
+        catch (Exception) { /* heartbeat é best-effort */ }
+    }
+
+    private async Task HandleInterruptAsync(
+        IEventService events, AppDbContext db, ConversationRecord conv,
+        Domain.Sandbox.Sandbox sandbox, RunActivityTracker activity)
+    {
+        // SPEC-24 RF-006: pausa/interrupção também fecha com summary.
+        await activity.SummaryAsync(events, conversationId,
+            _pauseRequested ? Paused : "interrupted", null,
+            CancellationToken.None);
+        await SetStatusAsync(events, db, conv,
+            _pauseRequested ? Paused : "idle",
+            _pauseRequested
+                ? ConversationExecutionStatus.Paused
+                : ConversationExecutionStatus.Running,
+            CancellationToken.None);
+        // SPEC-43 RF-002: pausa também fecha o turno com checkpoint
+        // (ct já cancelado aqui → token neutro).
+        if (_pauseRequested)
+        {
+            await AutoCheckpointAsync(services, sandbox,
+                conversationId, Paused,
+                CancellationToken.None);
         }
     }
 
@@ -252,20 +266,8 @@ public sealed class AgentRunner(
         {
             byorCtx = await byor.ResolveCallContextAsync(byorUser, ct);
             var permitted = await byor.PermittedModelsAsync(ct);
-            var mode = proxyOpt?.Mode ?? "off";
-            string? rejection = (mode, byorCtx, permitted) switch
-            {
-                ("byor", null, _) =>
-                    "byor_key_missing: strict BYOR mode requires an "
-                        + "active virtual key for the conversation owner",
-                ("byor", _, var p) when !p.Contains(model) =>
-                    $"byor_model_rejected: model '{model}' not in "
-                        + $"LiteLLM permitted list (mode={mode})",
-                (_, not null, { Count: > 0 } p) when !p.Contains(model) =>
-                    $"byor_model_rejected: model '{model}' not in "
-                        + $"LiteLLM permitted list (mode={mode})",
-                _ => null,
-            };
+            var rejection = ByorRejection(
+                proxyOpt?.Mode ?? "off", model, byorCtx, permitted);
             if (rejection is not null)
             {
                 var sep = rejection.IndexOf(':');
@@ -304,43 +306,12 @@ public sealed class AgentRunner(
             }
 
             // pending_messages: usuário falou durante o run → entra no histórico.
-            while (_incoming.Reader.TryRead(out var pending))
-            {
-                history.Add(Context.ConversationHistoryBuilder.ToLlmMessage(pending));
-                ids.Add(pending.Id);
-                lastEventId = pending.Id;
-                if (hooks is not null)
-                {
-                    await hooks.RunAsync(Domain.Hooks.HookEvent.OnMessage,
-                        new Application.Hooks.HookContext
-                        {
-                            ConversationId = conversationId,
-                            Sandbox = sandbox,
-                            Services = services,
-                            MessageId = pending.Id,
-                        }, ct);
-                }
-            }
+            lastEventId = await DrainPendingAsync(
+                hooks, sandbox, history, ids, lastEventId, ct);
 
             // SPEC-22: compaction — forced (manual/overflow/stop_length) ou
             // threshold avaliado pelo condenser. Modelo pode promover antes.
-            CompactionTrigger? forced;
-            if (_compactRequested)
-            {
-                forced = CompactionTrigger.Manual;
-            }
-            else if (overflowPending)
-            {
-                forced = CompactionTrigger.Overflow;
-            }
-            else if (stopLengthPending)
-            {
-                forced = CompactionTrigger.StopLength;
-            }
-            else
-            {
-                forced = null;
-            }
+            var forced = ForcedTrigger(overflowPending, stopLengthPending);
             var pendingInstructions = _compactInstructions;
             _compactRequested = false;
             _compactInstructions = null;
@@ -1153,6 +1124,66 @@ public sealed class AgentRunner(
             }
             catch { /* diagnóstico é melhor esforço também */ }
         }
+    }
+
+    private static string? ByorRejection(
+        string mode, string? model, ByorCallContext? byorCtx,
+        IReadOnlyList<string> permitted) =>
+        (mode, byorCtx, permitted) switch
+        {
+            ("byor", null, _) =>
+                "byor_key_missing: strict BYOR mode requires an "
+                    + "active virtual key for the conversation owner",
+            ("byor", _, var p) when !p.Contains(model) =>
+                $"byor_model_rejected: model '{model}' not in "
+                    + $"LiteLLM permitted list (mode={mode})",
+            (_, not null, { Count: > 0 } p) when !p.Contains(model) =>
+                $"byor_model_rejected: model '{model}' not in "
+                    + $"LiteLLM permitted list (mode={mode})",
+            _ => null,
+        };
+
+    private async Task<string?> DrainPendingAsync(
+        Application.Hooks.IHookService? hooks,
+        Domain.Sandbox.Sandbox sandbox, List<LlmMessage> history,
+        List<string?> ids, string? lastEventId, CancellationToken ct)
+    {
+        while (_incoming.Reader.TryRead(out var pending))
+        {
+            history.Add(
+                Context.ConversationHistoryBuilder.ToLlmMessage(pending));
+            ids.Add(pending.Id);
+            lastEventId = pending.Id;
+            if (hooks is not null)
+            {
+                await hooks.RunAsync(Domain.Hooks.HookEvent.OnMessage,
+                    new Application.Hooks.HookContext
+                    {
+                        ConversationId = conversationId,
+                        Sandbox = sandbox,
+                        Services = services,
+                        MessageId = pending.Id,
+                    }, ct);
+            }
+        }
+
+        return lastEventId;
+    }
+
+    private CompactionTrigger? ForcedTrigger(
+        bool overflowPending, bool stopLengthPending)
+    {
+        if (_compactRequested)
+        {
+            return CompactionTrigger.Manual;
+        }
+
+        if (overflowPending)
+        {
+            return CompactionTrigger.Overflow;
+        }
+
+        return stopLengthPending ? CompactionTrigger.StopLength : null;
     }
 
     /// <summary>Interrupt/pause → status de saída; true = encerrar o loop.</summary>

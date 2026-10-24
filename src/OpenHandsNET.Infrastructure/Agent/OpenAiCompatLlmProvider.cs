@@ -81,37 +81,9 @@ public sealed class OpenAiCompatLlmProvider(
                 request = CloneRequest(request);
             }
 
-            var client = httpFactory.CreateClient("agent-llm");
-            client.Timeout = TimeSpan.FromSeconds(cfg.TimeoutSeconds);
             try
             {
-                var response = await client.SendAsync(
-                    request, HttpCompletionOption.ResponseHeadersRead, ct);
-                if (response.IsSuccessStatusCode)
-                {
-                    return response;
-                }
-
-                var body = await response.Content.ReadAsStringAsync(ct);
-                var redacted = SecretRedactor.Redact(body);
-                // SPEC-22 RF-004: overflow é classificado — o runner compacta
-                // (ou promove o modelo) e retenta, em vez de falhar a run.
-                if ((int)response.StatusCode == 400 && IsContextOverflow(body))
-                {
-                    throw new ContextOverflowException(
-                        $"LLM context overflow: {redacted[..Math.Min(redacted.Length, 300)]}");
-                }
-
-                // SPEC-23 RF-003: classificação — kinds não retentáveis
-                // (Auth, ModelUnavailable) abortam sem gastar retries.
-                var kind = Classify(response.StatusCode, body);
-                last = new LlmCallException(kind,
-                    $"LLM endpoint {(int)response.StatusCode}: {redacted}",
-                    (int)response.StatusCode);
-                if (!IsRetryable(kind))
-                {
-                    throw last;
-                }
+                return await SendOnceAsync(request, cfg, ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException
                 and not ContextOverflowException)
@@ -129,6 +101,36 @@ public sealed class OpenAiCompatLlmProvider(
         }
 
         throw last!;
+    }
+
+    private async Task<HttpResponseMessage> SendOnceAsync(
+        HttpRequestMessage request, AgentLlmOptions cfg, CancellationToken ct)
+    {
+        var client = httpFactory.CreateClient("agent-llm");
+        client.Timeout = TimeSpan.FromSeconds(cfg.TimeoutSeconds);
+        var response = await client.SendAsync(
+            request, HttpCompletionOption.ResponseHeadersRead, ct);
+        if (response.IsSuccessStatusCode)
+        {
+            return response;
+        }
+
+        var body = await response.Content.ReadAsStringAsync(ct);
+        var redacted = SecretRedactor.Redact(body);
+        // SPEC-22 RF-004: overflow é classificado — o runner compacta
+        // (ou promove o modelo) e retenta, em vez de falhar a run.
+        if ((int)response.StatusCode == 400 && IsContextOverflow(body))
+        {
+            throw new ContextOverflowException(
+                $"LLM context overflow: {redacted[..Math.Min(redacted.Length, 300)]}");
+        }
+
+        // SPEC-23 RF-003: classificação — kinds não retentáveis
+        // (Auth, ModelUnavailable) abortam sem gastar retries.
+        var kind = Classify(response.StatusCode, body);
+        throw new LlmCallException(kind,
+            $"LLM endpoint {(int)response.StatusCode}: {redacted}",
+            (int)response.StatusCode);
     }
 
     private HttpRequestMessage BuildRequest(
@@ -248,53 +250,9 @@ public sealed class OpenAiCompatLlmProvider(
         var delta = choices[0].TryGetProperty("delta", out var d) ? d : default;
         if (delta.ValueKind == JsonValueKind.Object)
         {
-            // SPEC-41 RF-001: reasoning viaja em canal separado do content —
-            // reasoning_content (DeepSeek/OmniRoute), reasoning, e o array
-            // reasoning_details[{text}] (Responses-style).
-            if (delta.TryGetProperty("reasoning_content", out var rc)
-                && rc.ValueKind == JsonValueKind.String)
+            foreach (var chunk in DeltaChunks(delta))
             {
-                yield return new ReasoningDelta(rc.GetString()!);
-            }
-
-            if (delta.TryGetProperty("reasoning", out var r)
-                && r.ValueKind == JsonValueKind.String)
-            {
-                yield return new ReasoningDelta(r.GetString()!);
-            }
-
-            if (delta.TryGetProperty("reasoning_details", out var rd)
-                && rd.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var item in rd.EnumerateArray())
-                {
-                    if (item.TryGetProperty("text", out var t)
-                        && t.ValueKind == JsonValueKind.String)
-                    {
-                        yield return new ReasoningDelta(t.GetString()!);
-                    }
-                }
-            }
-
-            if (delta.TryGetProperty("content", out var content)
-                && content.ValueKind == JsonValueKind.String)
-            {
-                yield return new TextDelta(content.GetString()!);
-            }
-
-            if (delta.TryGetProperty("tool_calls", out var calls))
-            {
-                foreach (var call in calls.EnumerateArray())
-                {
-                    var fn = call.TryGetProperty("function", out var f) ? f : default;
-                    yield return new ToolCallDelta(
-                        call.TryGetProperty("index", out var idx) ? idx.GetInt32() : 0,
-                        call.TryGetProperty("id", out var id) ? id.GetString() : null,
-                        fn.ValueKind == JsonValueKind.Object
-                            && fn.TryGetProperty("name", out var n) ? n.GetString() : null,
-                        fn.ValueKind == JsonValueKind.Object
-                            && fn.TryGetProperty("arguments", out var a) ? a.GetString() : null);
-                }
+                yield return chunk;
             }
         }
 
@@ -302,6 +260,62 @@ public sealed class OpenAiCompatLlmProvider(
         if (finish is not null && !root.TryGetProperty("usage", out _))
         {
             yield return new CompletionEnd(new LlmUsage(0, 0, null), finish, responseId);
+        }
+    }
+
+    /// <summary>
+    /// SPEC-41 RF-001: reasoning viaja em canal separado do content —
+    /// reasoning_content (DeepSeek/OmniRoute), reasoning, e o array
+    /// reasoning_details[{text}] (Responses-style).
+    /// </summary>
+    private static IEnumerable<ILlmStreamChunk> DeltaChunks(JsonElement delta)
+    {
+        if (delta.TryGetProperty("reasoning_content", out var rc)
+            && rc.ValueKind == JsonValueKind.String)
+        {
+            yield return new ReasoningDelta(rc.GetString()!);
+        }
+
+        if (delta.TryGetProperty("reasoning", out var r)
+            && r.ValueKind == JsonValueKind.String)
+        {
+            yield return new ReasoningDelta(r.GetString()!);
+        }
+
+        if (delta.TryGetProperty("reasoning_details", out var rd)
+            && rd.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in rd.EnumerateArray())
+            {
+                if (item.TryGetProperty("text", out var t)
+                    && t.ValueKind == JsonValueKind.String)
+                {
+                    yield return new ReasoningDelta(t.GetString()!);
+                }
+            }
+        }
+
+        if (delta.TryGetProperty("content", out var content)
+            && content.ValueKind == JsonValueKind.String)
+        {
+            yield return new TextDelta(content.GetString()!);
+        }
+
+        if (!delta.TryGetProperty("tool_calls", out var calls))
+        {
+            yield break;
+        }
+
+        foreach (var call in calls.EnumerateArray())
+        {
+            var fn = call.TryGetProperty("function", out var f) ? f : default;
+            yield return new ToolCallDelta(
+                call.TryGetProperty("index", out var idx) ? idx.GetInt32() : 0,
+                call.TryGetProperty("id", out var id) ? id.GetString() : null,
+                fn.ValueKind == JsonValueKind.Object
+                    && fn.TryGetProperty("name", out var n) ? n.GetString() : null,
+                fn.ValueKind == JsonValueKind.Object
+                    && fn.TryGetProperty("arguments", out var a) ? a.GetString() : null);
         }
     }
 

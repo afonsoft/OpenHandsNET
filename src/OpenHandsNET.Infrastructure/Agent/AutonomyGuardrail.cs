@@ -84,42 +84,39 @@ public static class AutonomyGuardrail
         }
 
         // rm/chmod/chown em alvo fora do workspace — análise por segmento.
-        foreach (var seg in command.Split('|', '&', ';'))
+        return command.Split('|', '&', ';').Any(IsDangerousSegment);
+    }
+
+    private static bool IsDangerousSegment(string seg)
+    {
+        var tokens = seg.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (tokens.Length < 2)
         {
-            var tokens = seg.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (tokens.Length < 2)
-            {
-                continue;
-            }
-
-            var cmd = Path.GetFileName(tokens[0]);
-            var isRm = cmd == "rm";
-            var isPerm = cmd is "chmod" or "chown";
-            if (!isRm && !isPerm)
-            {
-                continue;
-            }
-
-            var recursive = tokens.Skip(1).Any(t =>
-                t.StartsWith('-') && t.Contains('R', StringComparison.OrdinalIgnoreCase) ||
-                t == "--recursive");
-            var force = isRm && tokens.Skip(1).Any(t =>
-                t.StartsWith('-') && !t.StartsWith("--") &&
-                t.Contains('f', StringComparison.OrdinalIgnoreCase) ||
-                t == "--force");
-            if (!recursive && !force)
-            {
-                continue;
-            }
-
-            if (tokens.Skip(1)
-                .Where(x => !x.StartsWith('-'))
-                .Any(t => IsOutsideWorkspace(t) || t is "/" or "~" or "/*" or "$HOME"))
-            {
-                return true;
-            }
+            return false;
         }
 
-        return false;
+        var cmd = Path.GetFileName(tokens[0]);
+        var isRm = cmd == "rm";
+        var isPerm = cmd is "chmod" or "chown";
+        if (!isRm && !isPerm)
+        {
+            return false;
+        }
+
+        var recursive = tokens.Skip(1).Any(t =>
+            t.StartsWith('-') && t.Contains('R', StringComparison.OrdinalIgnoreCase) ||
+            t == "--recursive");
+        var force = isRm && tokens.Skip(1).Any(t =>
+            t.StartsWith('-') && !t.StartsWith("--") &&
+            t.Contains('f', StringComparison.OrdinalIgnoreCase) ||
+            t == "--force");
+        if (!recursive && !force)
+        {
+            return false;
+        }
+
+        return tokens.Skip(1)
+            .Where(x => !x.StartsWith('-'))
+            .Any(t => IsOutsideWorkspace(t) || t is "/" or "~" or "/*" or "$HOME");
     }
 }

@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `s3776-cli-cognitive` |
 | Type | `Refactor` |
-| Status | `Approved` |
+| Status | `In Review` |
 | Ticket | SPEC-99 child of SPEC-89 |
 | Scope | `cli/OpenHandsNET.Cli/**/*.cs` |
 

@@ -446,112 +446,129 @@ public static class BuiltinTools
                  "required":["action"]}
                 """)),
         Risky: true,
-        Handler: async (ctx, args, ct) =>
+        Handler: RoutineHandlerAsync);
+
+    private static async Task<ToolResult> RoutineHandlerAsync(
+        ToolCallContext ctx, JsonElement args, CancellationToken ct)
+    {
+        var db = ctx.Services.GetService<
+            OpenHandsNET.Infrastructure.Persistence.AppDbContext>();
+        var svc = ctx.Services.GetService<
+            OpenHandsNET.Application.Automations.IAutomationService>();
+        if (db is null || svc is null)
         {
-            var db = ctx.Services.GetService<
-                OpenHandsNET.Infrastructure.Persistence.AppDbContext>();
-            var svc = ctx.Services.GetService<
-                OpenHandsNET.Application.Automations.IAutomationService>();
-            if (db is null || svc is null)
+            return ToolResult.Error("automations unavailable");
+        }
+
+        var conv = await db.Conversations.AsNoTracking()
+            .Where(c => c.Id == ctx.ConversationId)
+            .Select(c => new { c.CreatedByUserId, c.OrgId })
+            .FirstOrDefaultAsync(ct);
+        if (conv?.CreatedByUserId is not { } owner
+            || !Guid.TryParse(owner, out var ownerId))
+        {
+            return ToolResult.Error("conversation owner unresolved");
+        }
+
+        return args.GetProperty("action").GetString() switch
+        {
+            "list" => await ListRoutinesAsync(svc, ownerId, ct),
+            "create" => await CreateRoutineAsync(
+                svc, args, ownerId, conv.OrgId, ct),
+            "enable" or "disable" or "delete" =>
+                await MutateRoutineAsync(svc, args, ownerId, ct),
+            var action => ToolResult.Error($"unknown action {action}"),
+        };
+    }
+
+    private static async Task<ToolResult> ListRoutinesAsync(
+        OpenHandsNET.Application.Automations.IAutomationService svc,
+        Guid ownerId, CancellationToken ct)
+    {
+        var items = await svc.ListAsync(ownerId, ct);
+        return ToolResult.Ok(new
+        {
+            routines = items.Select(a => new
             {
-                return ToolResult.Error("automations unavailable");
-            }
-
-            var conv = await db.Conversations.AsNoTracking()
-                .Where(c => c.Id == ctx.ConversationId)
-                .Select(c => new { c.CreatedByUserId, c.OrgId })
-                .FirstOrDefaultAsync(ct);
-            if (conv?.CreatedByUserId is not { } owner
-                || !Guid.TryParse(owner, out var ownerId))
-            {
-                return ToolResult.Error("conversation owner unresolved");
-            }
-
-            var action = args.GetProperty("action").GetString();
-            switch (action)
-            {
-                case "list":
-                    {
-                        var items = await svc.ListAsync(ownerId, ct);
-                        return ToolResult.Ok(new
-                        {
-                            routines = items.Select(a => new
-                            {
-                                a.Id,
-                                a.Name,
-                                a.ScheduleKind,
-                                a.Enabled,
-                                a.NextRunAt,
-                                a.LastRunAt,
-                            }),
-                        });
-                    }
-                case "create":
-                    {
-                        var req = new OpenHandsNET.Application.Automations
-                            .AutomationUpsert(
-                                Str(args, "name"), Str(args, "prompt"),
-                                Str(args, "llm_model"),
-                                Str(args, "selected_repository"),
-                                Str(args, "schedule_kind"),
-                                Str(args, "schedule_time_utc"),
-                                Int(args, "interval_minutes"),
-                                Int(args, "weekday"),
-                                Enabled: true, NextRunAt: null);
-                        var (info, error) = await svc.CreateAsync(
-                            req, ownerId, conv.OrgId, ct);
-                        return info is null
-                            ? ToolResult.Error(error ?? "create failed")
-                            : ToolResult.Ok(new
-                            {
-                                info.Id,
-                                info.Name,
-                                info.NextRunAt,
-                            });
-                    }
-                case "enable" or "disable" or "delete":
-                    {
-                        if (!Guid.TryParse(Str(args, "id"), out var id))
-                        {
-                            return ToolResult.Error("id required");
-                        }
-
-                        if (action == "delete")
-                        {
-                            return await svc.DeleteAsync(id, ownerId, ct)
-                                ? ToolResult.Ok(new { deleted = id })
-                                : ToolResult.Error("routine not found");
-                        }
-
-                        var (info, error) = await svc.UpdateAsync(id,
-                            new OpenHandsNET.Application.Automations
-                                .AutomationUpsert(null, null, null, null,
-                                    null, null, null, null,
-                                    Enabled: action == "enable",
-                                    NextRunAt: null),
-                            ownerId, ct);
-                        return info is null
-                            ? ToolResult.Error(error ?? "routine not found")
-                            : ToolResult.Ok(new
-                            {
-                                info.Id,
-                                info.Enabled,
-                                info.NextRunAt,
-                            });
-                    }
-                default:
-                    return ToolResult.Error($"unknown action {action}");
-            }
-
-            static string? Str(JsonElement a, string n) =>
-                a.TryGetProperty(n, out var v)
-                && v.ValueKind == JsonValueKind.String
-                    ? v.GetString() : null;
-            static int? Int(JsonElement a, string n) =>
-                a.TryGetProperty(n, out var v)
-                && v.ValueKind == JsonValueKind.Number
-                    ? v.GetInt32() : null;
+                a.Id,
+                a.Name,
+                a.ScheduleKind,
+                a.Enabled,
+                a.NextRunAt,
+                a.LastRunAt,
+            }),
         });
+    }
+
+    private static async Task<ToolResult> CreateRoutineAsync(
+        OpenHandsNET.Application.Automations.IAutomationService svc,
+        JsonElement args, Guid ownerId, Guid? orgId,
+        CancellationToken ct)
+    {
+        var req = new OpenHandsNET.Application.Automations
+            .AutomationUpsert(
+                Str(args, "name"), Str(args, "prompt"),
+                Str(args, "llm_model"),
+                Str(args, "selected_repository"),
+                Str(args, "schedule_kind"),
+                Str(args, "schedule_time_utc"),
+                Int(args, "interval_minutes"),
+                Int(args, "weekday"),
+                Enabled: true, NextRunAt: null);
+        var (info, error) = await svc.CreateAsync(
+            req, ownerId, orgId, ct);
+        return info is null
+            ? ToolResult.Error(error ?? "create failed")
+            : ToolResult.Ok(new
+            {
+                info.Id,
+                info.Name,
+                info.NextRunAt,
+            });
+    }
+
+    private static async Task<ToolResult> MutateRoutineAsync(
+        OpenHandsNET.Application.Automations.IAutomationService svc,
+        JsonElement args, Guid ownerId, CancellationToken ct)
+    {
+        if (!Guid.TryParse(Str(args, "id"), out var id))
+        {
+            return ToolResult.Error("id required");
+        }
+
+        if (Str(args, "action") == "delete")
+        {
+            return await svc.DeleteAsync(id, ownerId, ct)
+                ? ToolResult.Ok(new { deleted = id })
+                : ToolResult.Error("routine not found");
+        }
+
+        var (info, error) = await svc.UpdateAsync(id,
+            new OpenHandsNET.Application.Automations
+                .AutomationUpsert(null, null, null, null,
+                    null, null, null, null,
+                    Enabled: Str(args, "action") == "enable",
+                    NextRunAt: null),
+            ownerId, ct);
+        return info is null
+            ? ToolResult.Error(error ?? "routine not found")
+            : ToolResult.Ok(new
+            {
+                info.Id,
+                info.Enabled,
+                info.NextRunAt,
+            });
+    }
+
+    private static string? Str(JsonElement a, string n) =>
+        a.TryGetProperty(n, out var v)
+        && v.ValueKind == JsonValueKind.String
+            ? v.GetString() : null;
+
+    private static int? Int(JsonElement a, string n) =>
+        a.TryGetProperty(n, out var v)
+        && v.ValueKind == JsonValueKind.Number
+            ? v.GetInt32() : null;
 
     /// <summary>
     /// SPEC-30 RF-002: persistent memory — <c>project</c> scope writes
@@ -573,51 +590,61 @@ public static class BuiltinTools
                  "required":["op","key"]}
                 """)),
         Risky: true,
-        Handler: async (ctx, args, ct) =>
+        Handler: MemoryHandlerAsync);
+
+    private static async Task<ToolResult> MemoryHandlerAsync(
+        ToolCallContext ctx, JsonElement args, CancellationToken ct)
+    {
+        var op = args.GetProperty("op").GetString()!;
+        var scope = args.TryGetProperty("scope", out var sc)
+            ? sc.GetString() ?? Project : Project;
+        var key = Slugify(args.GetProperty("key").GetString()!);
+        var text = args.TryGetProperty("text", out var t)
+            ? t.GetString() : null;
+
+        // scope=org resolve a OrgId da conversa (SPEC-30 RF-001).
+        var orgId = scope == "org" || op == "promote"
+            ? await ResolveConvOrgIdAsync(ctx, ct)
+            : null;
+        var memory = ctx.Services.GetService<
+            Application.Memory.IMemoryService>();
+        return op switch
         {
-            var op = args.GetProperty("op").GetString()!;
-            var scope = args.TryGetProperty("scope", out var sc)
-                ? sc.GetString() ?? Project : Project;
-            var key = Slugify(args.GetProperty("key").GetString()!);
-            var text = args.TryGetProperty("text", out var t)
-                ? t.GetString() : null;
+            "remember" when scope == "org" =>
+                await RememberOrgAsync(memory, orgId, key, text, ct),
+            "remember" => await RememberProjectAsync(ctx, key, text, ct),
+            "recall" when scope == "org" =>
+                await RecallOrgAsync(memory, orgId, key, ct),
+            "recall" => await RecallProjectAsync(ctx, key, ct),
+            "forget" when scope == "org" =>
+                await ForgetOrgAsync(memory, orgId, key, ct),
+            "forget" => await ForgetProjectAsync(ctx, key, ct),
+            "promote" => await PromoteAsync(ctx, memory, orgId, key, ct),
+            _ => ToolResult.Error($"unknown memory op '{op}'"),
+        };
+    }
 
-            // scope=org resolve a OrgId da conversa (SPEC-30 RF-001).
-            Guid? orgId = null;
-            if (scope == "org" || op == "promote")
-            {
-                var db = ctx.Services.GetService<
-                    Infrastructure.Persistence.AppDbContext>();
-                if (db is not null)
-                {
-                    orgId = (await db.Conversations
-                        .FindAsync([ctx.ConversationId], ct))?.OrgId;
-                }
-            }
+    private static async Task<Guid?> ResolveConvOrgIdAsync(
+        ToolCallContext ctx, CancellationToken ct)
+    {
+        var db = ctx.Services.GetService<
+            Infrastructure.Persistence.AppDbContext>();
+        return db is null
+            ? null
+            : (await db.Conversations
+                .FindAsync([ctx.ConversationId], ct))?.OrgId;
+    }
 
-            var memory = ctx.Services.GetService<
-                Application.Memory.IMemoryService>();
-            return op switch
+    private static async Task<ToolResult> ForgetOrgAsync(
+        Application.Memory.IMemoryService? memory, Guid? orgId,
+        string key, CancellationToken ct) =>
+        orgId is null || memory is null
+            ? ToolResult.Error("org memory unavailable")
+            : ToolResult.Ok(new
             {
-                "remember" when scope == "org" =>
-                    await RememberOrgAsync(memory, orgId, key, text, ct),
-                "remember" => await RememberProjectAsync(ctx, key, text, ct),
-                "recall" when scope == "org" =>
-                    await RecallOrgAsync(memory, orgId, key, ct),
-                "recall" => await RecallProjectAsync(ctx, key, ct),
-                "forget" when scope == "org" =>
-                    orgId is null || memory is null
-                        ? ToolResult.Error("org memory unavailable")
-                        : ToolResult.Ok(new
-                        {
-                            ok = await memory.ForgetOrgAsync(
-                                orgId.Value, key, "agent", ct),
-                        }),
-                "forget" => await ForgetProjectAsync(ctx, key, ct),
-                "promote" => await PromoteAsync(ctx, memory, orgId, key, ct),
-                _ => ToolResult.Error($"unknown memory op '{op}'"),
-            };
-        });
+                ok = await memory.ForgetOrgAsync(
+                    orgId.Value, key, "agent", ct),
+            });
 
     private static async Task<ToolResult> RememberOrgAsync(
         Application.Memory.IMemoryService? memory, Guid? orgId,
@@ -785,70 +812,75 @@ public static class BuiltinTools
                  "required":["action"]}
                 """)),
         Risky: true,
-        Handler: async (ctx, args, ct) =>
+        Handler: BrowserHandlerAsync);
+
+    private static async Task<ToolResult> BrowserHandlerAsync(
+        ToolCallContext ctx, JsonElement args, CancellationToken ct)
+    {
+        var browser = ctx.Services.GetService<IBrowserService>();
+        if (browser is null)
         {
-            var browser = ctx.Services.GetService<IBrowserService>();
-            if (browser is null)
-            {
-                return ToolResult.Error("browser service unavailable");
-            }
+            return ToolResult.Error("browser service unavailable");
+        }
 
-            var actionName = args.GetProperty("action").GetString()!;
-            // SPEC-64 RF-004: TOTP — o código é computado aqui a
-            // partir do segredo 'totp:<name>'; o segredo nunca sai
-            // do vault e só o código efêmero vai ao input.
-            if (actionName.Equals("totp", StringComparison.OrdinalIgnoreCase))
-            {
-                return await BrowserTotpAsync(ctx, args, ct);
-            }
-            if (!Enum.TryParse<BrowserActionKind>(
-                    actionName, ignoreCase: true, out var kind))
-            {
-                return ToolResult.Error($"unknown browser action '{actionName}'");
-            }
+        var actionName = args.GetProperty("action").GetString()!;
+        // SPEC-64 RF-004: TOTP — o código é computado aqui a
+        // partir do segredo 'totp:<name>'; o segredo nunca sai
+        // do vault e só o código efêmero vai ao input.
+        if (actionName.Equals("totp", StringComparison.OrdinalIgnoreCase))
+        {
+            return await BrowserTotpAsync(ctx, args, ct);
+        }
+        if (!Enum.TryParse<BrowserActionKind>(
+                actionName, ignoreCase: true, out var kind))
+        {
+            return ToolResult.Error($"unknown browser action '{actionName}'");
+        }
 
-            string? Opt(string name) => args.TryGetProperty(name, out var v)
-                && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
-            // SPEC-24 RF-003: tool_progress nas fases da ação.
-            if (ctx.ToolCallId is not null)
-            {
-                await ctx.EmitAsync(new Domain.Events.ToolProgressEvent
-                {
-                    ToolCallId = ctx.ToolCallId,
-                    ActionId = ctx.ActionId,
-                    Phase = "start",
-                    Message = $"browser {actionName}",
-                }, CancellationToken.None);
-            }
+        // SPEC-24 RF-003: tool_progress nas fases da ação.
+        await EmitProgressAsync(ctx, "start", $"browser {actionName}");
 
-            var result = await browser.ActAsync(ctx.ConversationId,
-                new BrowserActRequest(
-                    kind, Opt("url"), Opt("selector"), Opt("text"),
-                    Opt("direction")), ct);
-            if (ctx.ToolCallId is not null)
-            {
-                await ctx.EmitAsync(new Domain.Events.ToolProgressEvent
-                {
-                    ToolCallId = ctx.ToolCallId,
-                    ActionId = ctx.ActionId,
-                    Phase = result.Ok ? "done" : "error",
-                    Message = result.Ok
-                        ? result.Title ?? result.Url ?? "ok"
-                        : result.Error ?? "failed",
-                }, CancellationToken.None);
-            }
+        var result = await browser.ActAsync(ctx.ConversationId,
+            new BrowserActRequest(
+                kind, Opt(args, "url"), Opt(args, "selector"),
+                Opt(args, "text"), Opt(args, "direction")), ct);
+        await EmitProgressAsync(ctx, result.Ok ? "done" : "error",
+            result.Ok
+                ? result.Title ?? result.Url ?? "ok"
+                : result.Error ?? "failed");
 
-            return result.Ok
-                ? ToolResult.Ok(new
-                {
-                    ok = true,
-                    url = result.Url,
-                    title = result.Title,
-                    screenshot_base64 = result.ScreenshotBase64,
-                    content = result.Content,
-                })
-                : ToolResult.Error(result.Error ?? "browser action failed");
-        });
+        return result.Ok
+            ? ToolResult.Ok(new
+            {
+                ok = true,
+                url = result.Url,
+                title = result.Title,
+                screenshot_base64 = result.ScreenshotBase64,
+                content = result.Content,
+            })
+            : ToolResult.Error(result.Error ?? "browser action failed");
+    }
+
+    private static string? Opt(JsonElement args, string name) =>
+        args.TryGetProperty(name, out var v)
+        && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+
+    private static async Task EmitProgressAsync(
+        ToolCallContext ctx, string phase, string message)
+    {
+        if (ctx.ToolCallId is null)
+        {
+            return;
+        }
+
+        await ctx.EmitAsync(new Domain.Events.ToolProgressEvent
+        {
+            ToolCallId = ctx.ToolCallId,
+            ActionId = ctx.ActionId,
+            Phase = phase,
+            Message = message,
+        }, CancellationToken.None);
+    }
 
     /// <summary>
     /// SPEC-64 RF-004: resolve <c>totp:{name}</c> e devolve o código
@@ -984,34 +1016,10 @@ public static class BuiltinTools
             var query = args.GetProperty("query").GetString()!;
             var mode = args.TryGetProperty("mode", out var m)
                 ? m.GetString() ?? Content : Content;
-            var glob = args.TryGetProperty("glob", out var g)
-                ? g.GetString() : null;
-            var path = args.TryGetProperty("path", out var p)
-                ? p.GetString() : null;
             var max = args.TryGetProperty("max_results", out var mr)
                 ? Math.Clamp(mr.GetInt32(), 1, 500) : 50;
-            var contextLines = args.TryGetProperty("context_lines", out var cl)
-                ? Math.Clamp(cl.GetInt32(), 0, 10) : 0;
-            var dir = string.IsNullOrEmpty(path)
-                ? "/workspace/repo" : $"/workspace/repo/{path}";
-
-            // rg confinado ao dir; fallback grep/find quando a imagem
-            // não tem ripgrep (blueprints mínimas).
-            var shell = ShellQuote(query);
-            var globArg = glob is null ? "" : $" -g {ShellQuote(glob)}";
-            var ctxArg = mode == Content && contextLines > 0
-                ? $" -C{contextLines}" : "";
-            var command = mode == "files"
-                ? $"cd {ShellQuote(dir)} 2>/dev/null && "
-                    + $"(rg --files{globArg} 2>/dev/null | head -{max}"
-                    + $" || find . -type f{GlobToFind(glob)} | head -{max})"
-                : $"cd {ShellQuote(dir)} 2>/dev/null && "
-                    + $"(rg --line-number --max-count {max}{ctxArg}{globArg}"
-                    + $" -- {shell} 2>/dev/null || grep -Rn"
-                    + $"{(glob is null ? "" : $" --include={ShellQuote(glob)}")}"
-                    + $" -- {shell} . 2>/dev/null | head -{max * 8})";
             var res = await ctx.Executor.ExecAsync(
-                ctx.Sandbox, command, timeout, ct);
+                ctx.Sandbox, BuildSearchCommand(args, mode, max), timeout, ct);
             return res.ExitCode is 0 or 1 // rg: 1 = no matches
                 ? ToolResult.Ok(new
                 {
@@ -1023,6 +1031,38 @@ public static class BuiltinTools
                 })
                 : ToolResult.Error($"search failed: {res.StdErr.Trim()}");
         });
+
+    /// <summary>
+    /// rg confinado ao dir; fallback grep/find quando a imagem
+    /// não tem ripgrep (blueprints mínimas).
+    /// </summary>
+    private static string BuildSearchCommand(
+        JsonElement args, string mode, int max)
+    {
+        var query = args.GetProperty("query").GetString()!;
+        var glob = args.TryGetProperty("glob", out var g)
+            ? g.GetString() : null;
+        var path = args.TryGetProperty("path", out var p)
+            ? p.GetString() : null;
+        var contextLines = args.TryGetProperty("context_lines", out var cl)
+            ? Math.Clamp(cl.GetInt32(), 0, 10) : 0;
+        var dir = string.IsNullOrEmpty(path)
+            ? "/workspace/repo" : $"/workspace/repo/{path}";
+
+        var shell = ShellQuote(query);
+        var globArg = glob is null ? "" : $" -g {ShellQuote(glob)}";
+        var ctxArg = mode == Content && contextLines > 0
+            ? $" -C{contextLines}" : "";
+        return mode == "files"
+            ? $"cd {ShellQuote(dir)} 2>/dev/null && "
+                + $"(rg --files{globArg} 2>/dev/null | head -{max}"
+                + $" || find . -type f{GlobToFind(glob)} | head -{max})"
+            : $"cd {ShellQuote(dir)} 2>/dev/null && "
+                + $"(rg --line-number --max-count {max}{ctxArg}{globArg}"
+                + $" -- {shell} 2>/dev/null || grep -Rn"
+                + $"{(glob is null ? "" : $" --include={ShellQuote(glob)}")}"
+                + $" -- {shell} . 2>/dev/null | head -{max * 8})";
+    }
 
     /// <summary>
     /// Backend-side fetch (SPEC-25 RF-003): http(s) only, SSRF guard,
@@ -1088,131 +1128,159 @@ public static class BuiltinTools
                  "required":["prompt"]}
                 """)),
         Risky: false,
-        Handler: async (ctx, args, ct) =>
+        Handler: SpawnTaskHandlerAsync);
+
+    private static async Task<ToolResult> SpawnTaskHandlerAsync(
+        ToolCallContext ctx, JsonElement args, CancellationToken ct)
+    {
+        var host = ctx.Services.GetService<ISubagentHost>();
+        var llm = ctx.Services.GetService<IAgentLlmProvider>();
+        var opt = ctx.Services.GetService<
+            Microsoft.Extensions.Options.IOptions<AgentLlmOptions>>()?.Value
+            ?? new AgentLlmOptions();
+        if (host is null || llm is null)
         {
-            var host = ctx.Services.GetService<ISubagentHost>();
-            var llm = ctx.Services.GetService<IAgentLlmProvider>();
-            var opt = ctx.Services.GetService<
-                Microsoft.Extensions.Options.IOptions<AgentLlmOptions>>()?.Value
-                ?? new AgentLlmOptions();
-            if (host is null || llm is null)
-            {
-                return ToolResult.Error("subagents unavailable");
-            }
+            return ToolResult.Error("subagents unavailable");
+        }
 
-            var prompt = args.TryGetProperty("prompt", out var p)
-                ? p.GetString() : null;
-            if (string.IsNullOrWhiteSpace(prompt))
-            {
-                return ToolResult.Error("task requires a prompt");
-            }
+        var prompt = args.TryGetProperty("prompt", out var p)
+            ? p.GetString() : null;
+        if (string.IsNullOrWhiteSpace(prompt))
+        {
+            return ToolResult.Error("task requires a prompt");
+        }
 
-            var type = args.TryGetProperty("subagent_type", out var st)
-                ? st.GetString() ?? "explore" : "explore";
-            // SPEC-95 RF-004: presets built-in primeiro; senão, catálogo
-            // declarativo (mesma fonte que alimenta o prompt).
-            AgentDefinition? agentDef = null;
-            if (!SubagentPresets.IsKnown(type))
-            {
-                var catalog = ctx.Services.GetService<IAgentCatalog>();
-                agentDef = catalog is null
-                    ? null
-                    : await catalog.FindAsync(
-                        type, ctx.Sandbox, ctx.Executor, ct);
-                if (agentDef is null)
-                {
-                    var valid = catalog is null
-                        ? string.Join(", ", SubagentPresets.Names)
-                        : string.Join(", ", await catalog.ListNamesAsync(
-                            ctx.Sandbox, ctx.Executor, ct));
-                    return ToolResult.Error(
-                        $"unknown subagent_type '{type}' "
-                        + $"— válidos: {valid}");
-                }
-            }
+        var type = args.TryGetProperty("subagent_type", out var st)
+            ? st.GetString() ?? "explore" : "explore";
+        var (agentDef, typeError) = await ResolveAgentDefAsync(
+            ctx, type, ct);
+        if (typeError is not null)
+        {
+            return typeError;
+        }
 
-            var description = args.TryGetProperty("description", out var d)
-                ? d.GetString() ?? type : type;
-            var background = args.TryGetProperty("background", out var bg)
-                && bg.ValueKind == JsonValueKind.True;
-            var taskId = Ulid.NewUlid().ToString();
-            var run = new SubagentRun
-            {
-                Info = new SubagentRunInfo(
-                    taskId, type, description, SubagentStatus.Running,
-                    DateTimeOffset.UtcNow),
-            };
-            if (!host.TryStart(ctx.ConversationId, run,
-                    Math.Max(1, opt.Subagents.MaxConcurrent)))
-            {
-                return ToolResult.Error(
-                    "subagent concurrency limit reached");
-            }
+        var description = args.TryGetProperty("description", out var d)
+            ? d.GetString() ?? type : type;
+        var background = args.TryGetProperty("background", out var bg)
+            && bg.ValueKind == JsonValueKind.True;
+        var taskId = Ulid.NewUlid().ToString();
+        var run = new SubagentRun
+        {
+            Info = new SubagentRunInfo(
+                taskId, type, description, SubagentStatus.Running,
+                DateTimeOffset.UtcNow),
+        };
+        if (!host.TryStart(ctx.ConversationId, run,
+                Math.Max(1, opt.Subagents.MaxConcurrent)))
+        {
+            return ToolResult.Error(
+                "subagent concurrency limit reached");
+        }
 
-            var runner = new Subagents.SubagentRunner(llm,
-                Microsoft.Extensions.Options.Options.Create(opt));
-            async Task<string> ExecuteAsync(CancellationToken runCt)
-            {
-                try
-                {
-                    var result = await runner.RunAsync(
-                        ctx.ConversationId, ctx.Sandbox, ctx.Executor,
-                        ctx.Events, ctx.Services,
-                        ctx.ActionId ?? ctx.ToolCallId ?? taskId,
-                        type, description, prompt, taskId, runCt,
-                        agent: agentDef);
-                    host.Finish(ctx.ConversationId, taskId,
-                        SubagentStatus.Completed, result);
-                    return result;
-                }
-                catch (OperationCanceledException)
-                {
-                    host.Finish(ctx.ConversationId, taskId,
-                        SubagentStatus.Aborted, error: "cancelled");
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    host.Finish(ctx.ConversationId, taskId,
-                        SubagentStatus.Failed,
-                        error: SecretRedactor.Redact(ex.Message));
-                    throw;
-                }
-            }
+        var runner = new Subagents.SubagentRunner(llm,
+            Microsoft.Extensions.Options.Options.Create(opt));
+        Task<string> ExecuteAsync(CancellationToken runCt) =>
+            RunSubagentAsync(ctx, host, runner, taskId, type,
+                description, prompt, agentDef, runCt);
 
-            if (background)
+        if (background)
+        {
+            run.Cts = new CancellationTokenSource();
+            run.Completion = Task.Run(
+                () => ExecuteAsync(run.Cts.Token), run.Cts.Token);
+            return ToolResult.Ok(new
             {
-                run.Cts = new CancellationTokenSource();
-                run.Completion = Task.Run(
-                    () => ExecuteAsync(run.Cts.Token));
-                return ToolResult.Ok(new
-                {
-                    queued = true,
-                    task_id = taskId,
-                    subagent_type = type,
-                });
-            }
+                queued = true,
+                task_id = taskId,
+                subagent_type = type,
+            });
+        }
 
-            try
+        try
+        {
+            var result = await ExecuteAsync(ct);
+            return ToolResult.Ok(new
             {
-                var result = await ExecuteAsync(ct);
-                return ToolResult.Ok(new
-                {
-                    task_id = taskId,
-                    status = "completed",
-                    result,
-                });
-            }
-            catch (OperationCanceledException)
-            {
-                return ToolResult.Error("subagent aborted");
-            }
-            catch (Exception ex)
-            {
-                return ToolResult.Error(
-                    $"subagent failed: {SecretRedactor.Redact(ex.Message)}");
-            }
-        });
+                task_id = taskId,
+                status = "completed",
+                result,
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            return ToolResult.Error("subagent aborted");
+        }
+        catch (Exception ex)
+        {
+            return ToolResult.Error(
+                $"subagent failed: {SecretRedactor.Redact(ex.Message)}");
+        }
+    }
+
+    /// <summary>
+    /// SPEC-95 RF-004: presets built-in primeiro; senão, catálogo
+    /// declarativo (mesma fonte que alimenta o prompt).
+    /// </summary>
+    private static async Task<(AgentDefinition? Def, ToolResult? Error)>
+        ResolveAgentDefAsync(ToolCallContext ctx, string type,
+            CancellationToken ct)
+    {
+        if (SubagentPresets.IsKnown(type))
+        {
+            return (null, null);
+        }
+
+        var catalog = ctx.Services.GetService<IAgentCatalog>();
+        var agentDef = catalog is null
+            ? null
+            : await catalog.FindAsync(
+                type, ctx.Sandbox, ctx.Executor, ct);
+        if (agentDef is not null)
+        {
+            return (agentDef, null);
+        }
+
+        var valid = catalog is null
+            ? string.Join(", ", SubagentPresets.Names)
+            : string.Join(", ", await catalog.ListNamesAsync(
+                ctx.Sandbox, ctx.Executor, ct));
+        return (null, ToolResult.Error(
+            $"unknown subagent_type '{type}' "
+            + $"— válidos: {valid}"));
+    }
+
+    private static async Task<string> RunSubagentAsync(
+        ToolCallContext ctx, ISubagentHost host,
+        Subagents.SubagentRunner runner, string taskId, string type,
+        string description, string prompt, AgentDefinition? agentDef,
+        CancellationToken runCt)
+    {
+        try
+        {
+            var result = await runner.RunAsync(
+                ctx.ConversationId, ctx.Sandbox, ctx.Executor,
+                ctx.Events, ctx.Services,
+                ctx.ActionId ?? ctx.ToolCallId ?? taskId,
+                type, description, prompt, taskId, runCt,
+                agent: agentDef);
+            host.Finish(ctx.ConversationId, taskId,
+                SubagentStatus.Completed, result);
+            return result;
+        }
+        catch (OperationCanceledException)
+        {
+            host.Finish(ctx.ConversationId, taskId,
+                SubagentStatus.Aborted, error: "cancelled");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            host.Finish(ctx.ConversationId, taskId,
+                SubagentStatus.Failed,
+                error: SecretRedactor.Redact(ex.Message));
+            throw;
+        }
+    }
 
     /// <summary>
     /// SPEC-95 RF-003: <c>agent_catalog</c> — lista o catálogo efetivo

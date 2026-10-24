@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `s3776-infra-agent` |
 | Type | `Refactor` |
-| Status | `Approved` |
+| Status | `In Review` |
 | Ticket | SPEC-99 child of SPEC-89 |
 | Scope | `src/OpenHandsNET.Infrastructure/{Agent,Tools}/**/*.cs` |
 

@@ -231,29 +231,12 @@ public sealed class AgentCatalogService(ILogger<AgentCatalogService> logger)
             return null;
         }
 
-        var span = md.AsSpan().TrimStart('﻿');
-        if (!span.StartsWith("---"))
+        if (SplitFrontmatter(md, path) is not { } parts)
         {
-            logger.LogWarning(
-                "agent file {Path} sem frontmatter — skip", path);
-            return null;
-        }
-        var nl = span.IndexOf('\n');
-        if (nl < 0)
-        {
-            return null;
-        }
-        var rest = span[(nl + 1)..];
-        var end = rest.ToString().IndexOf("\n---", StringComparison.Ordinal);
-        if (end < 0)
-        {
-            logger.LogWarning(
-                "agent file {Path} sem fence de fechamento — skip", path);
             return null;
         }
 
-        var fm = rest[..end].ToString();
-        var body = rest[(end + 4)..].ToString().Trim();
+        var (fm, body) = parts;
         string? name = null, desc = null, model = null;
         List<string>? tools = null;
         foreach (var line in fm.Split('\n'))
@@ -297,6 +280,35 @@ public sealed class AgentCatalogService(ILogger<AgentCatalogService> logger)
         return new AgentDefinition(
             name.Trim(), desc.Trim(), tools, model, body,
             source, path);
+    }
+
+    /// <summary>Extrai (frontmatter, body) entre os fences `---`.</summary>
+    private (string Fm, string Body)? SplitFrontmatter(
+        string md, string path)
+    {
+        var span = md.AsSpan().TrimStart('﻿');
+        if (!span.StartsWith("---"))
+        {
+            logger.LogWarning(
+                "agent file {Path} sem frontmatter — skip", path);
+            return null;
+        }
+        var nl = span.IndexOf('\n');
+        if (nl < 0)
+        {
+            return null;
+        }
+        var rest = span[(nl + 1)..];
+        var end = rest.ToString().IndexOf("\n---", StringComparison.Ordinal);
+        if (end < 0)
+        {
+            logger.LogWarning(
+                "agent file {Path} sem fence de fechamento — skip", path);
+            return null;
+        }
+
+        return (rest[..end].ToString(),
+            rest[(end + 4)..].ToString().Trim());
     }
 
     /// <summary><c>[a, b]</c> ou CSV → lista normalizada.</summary>
