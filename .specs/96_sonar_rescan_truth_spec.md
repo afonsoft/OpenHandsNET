@@ -36,3 +36,17 @@ MAJOR 1317 / MINOR 404 / INFO 4; VULN+BUG 108.
 - [ ] Board reflete live (issues novas incluídas).
 - [ ] #154–156 atualizadas com delta real.
 - [ ] SPEC-74 auditada contra live.
+
+## Resultado — 2026-10-23
+
+- `--board` regenera `SONAR_FIX_TODO_BOARD.md` (1574 issues abertas).
+- **Correção**: contagens sem `resolved=false` incluem resolvidas —
+  backlog real = 1541 smells + 15 vulns + 18 bugs.
+- `sonar-project.properties` é **ignorado pelo dotnet-sonarscanner**;
+  exclusões efetivas vivem em `ci.yml` — alinhadas nesta entrega
+  (~1100 findings de `docs/architecture/runtime-architecture.html`
+  gerado + monaco/xterm vendored saem do backlog no próximo scan).
+
+- [x] Board reflete live (issues novas incluídas).
+- [x] #154–156 atualizadas com delta real.
+- [x] SPEC-74 auditada contra live.

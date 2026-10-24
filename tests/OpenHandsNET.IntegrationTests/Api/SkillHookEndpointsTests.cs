@@ -32,7 +32,7 @@ public sealed class SkillHookEndpointsTests : IDisposable
             builder.UseSetting("Sandbox:WorkspaceRoot",
                 Path.Combine(Path.GetTempPath(), $"ohn-sk-ws-{Guid.NewGuid():N}"));
         });
-        _http = _factory.CreateClient();
+        _http = TestAuth.Login(_factory);
     }
 
     public void Dispose()
