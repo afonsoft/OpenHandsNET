@@ -23,12 +23,16 @@ public static class SecretsEndpoints
             CancellationToken ct) =>
         {
             var user = current.User;
-            return user is null ? Results.Unauthorized()
-                : Results.Ok(new
-                {
-                    names = await store.ListNamesAsync(
-                        "user", user.UserId.ToString(), ct),
-                });
+            if (user is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            // SPEC-97: shape `[{name}]` — contrato que o client já consome
+            // (o stub app-scoped removido respondia igual).
+            var names = await store.ListNamesAsync(
+                "user", user.UserId.ToString(), ct);
+            return Results.Ok(names.Select(n => new { name = n }));
         }).RequireAuthorization()
             .RequireScope("secrets:write");
 

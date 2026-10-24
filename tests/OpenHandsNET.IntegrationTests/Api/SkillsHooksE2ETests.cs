@@ -40,7 +40,7 @@ public sealed class SkillsHooksE2ETests : IDisposable
                  {"tool":{"name":"finish","arguments":{"final_message":"done"}}}]
                 """);
         });
-        _http = _factory.CreateClient();
+        _http = TestAuth.Login(_factory);
     }
 
     public void Dispose()

@@ -91,3 +91,20 @@ Agrupamento por regra SonarQube (mesmo tipo) — a lista canônica issue→arqui
 2. Adicionar/ajustar testes para cada linha tocada.
 3. `dotnet format` + build + test suite.
 4. Atualizar checkboxes do ToDo Board; re-scan SonarCloud via CI após merge.
+
+## Live rescan — 2026-10-23 (SPEC-96, `resolved=false`)
+
+| Regra | Board | Open live | Veredito |
+|---|---|---|---|
+| `csharpsquid:S8970` | 145 | 143 | **real** — params naming, mecânico |
+| `csharpsquid:S1192` | 50 | 1 | quase zerada |
+| `csharpsquid:S2486` | 30 | 0 | resolvida |
+| `csharpsquid:S3267` | 20 | 9 | real (loops → LINQ) |
+| `csharpsquid:S1075` | 10 | 10 | deferred → SPEC-106 |
+| `javascript:*` | ~80 | ~95 | gerado/monaco vendored → exclusão |
+| `css:*` / `docker:*` | ~10 | ~10 | tail real pequeno |
+| resto csharpsquid | ~40 | ~25 | tail real pequeno |
+
+Critério de fechamento reescrito (RF-004): SPEC-74 fecha quando
+`csharpsquid` MINOR não-deferidas chegarem a 0 (S1075 no SPEC-106;
+js/css vendored/gerado via exclusão).

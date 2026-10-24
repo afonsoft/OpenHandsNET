@@ -19,6 +19,9 @@ public static class WebhookEndpoints
     {
         var group = app.MapGroup("/api/v1/webhooks").WithTags("Webhooks");
 
+        // SPEC-97 RF-001: ingress POSTs exigem auth (Bearer sk-*) — antes
+        // eram escritas anônimas sem verificação (achado `ignored_auth`).
+
         // Injeta um evento externo (ex.: CI, GitHub webhook) no stream da conversa.
         group.MapPost("/events/{conversationId:guid}", async (
             Guid conversationId, WebhookEventRequest body,
@@ -60,7 +63,9 @@ public static class WebhookEndpoints
         group.MapGet("/secrets", () => Results.Ok(Array.Empty<object>()));
 
         // OAuth state exchange do MCP (SPEC-07 completa; aqui aceita e no-ops).
-        group.MapPost("/mcp-oauth-state", () => Results.Accepted());
+        // Anônimo: callback externo do servidor MCP (SPEC-97 RF-001).
+        group.MapPost("/mcp-oauth-state", () => Results.Accepted())
+            .AllowAnonymous();
 
         return app;
     }

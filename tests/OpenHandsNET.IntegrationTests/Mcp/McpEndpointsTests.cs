@@ -44,11 +44,12 @@ public sealed class McpEndpointsTests : IAsyncDisposable
             // via flag explícita; produção usa docker exec no sandbox).
             b.UseSetting("Mcp:AllowHostMcp", "true");
         });
-        _http = _factory.CreateClient(new WebApplicationFactoryClientOptions
-        {
-            // OAuth authorize devolve 302 — o teste conduz o fluxo manualmente.
-            AllowAutoRedirect = false,
-        });
+        _http = TestAuth.Login(_factory, "mcp@local",
+            new WebApplicationFactoryClientOptions
+            {
+                // OAuth authorize devolve 302 — o teste conduz o fluxo manualmente.
+                AllowAutoRedirect = false,
+            });
         (_fake, _fakeBase) = StartFakeServer();
     }
 

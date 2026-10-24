@@ -351,7 +351,7 @@ jobs:
           /k:"afonsoft_OpenHandsNET" /o:"afonsoft"
           /d:sonar.host.url="https://sonarcloud.io"
           /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
-          /d:sonar.exclusions="**/wwwroot/lib/**,**/bin/**,**/obj/**"
+          /d:sonar.exclusions="**/wwwroot/lib/**,**/wwwroot/css/app.css,**/wwwroot/js/theme.js,**/wwwroot/js/monacoInterop.js,**/wwwroot/index.html,**/Persistence/Migrations/**,**/bin/**,**/obj/**,**/packages.lock.json,**/Golden/**,**/docs/**,**/data/**"
 
       - name: build (Release)
         run: dotnet build OpenHandsNET.slnx -c Release
