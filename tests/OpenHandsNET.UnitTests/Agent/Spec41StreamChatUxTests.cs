@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json.Nodes;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -87,6 +88,56 @@ public sealed class Spec41StreamChatUxTests
         var chunks = await CollectAsync(p);
         chunks.OfType<ReasoningDelta>().ShouldBeEmpty();
         chunks.OfType<TextDelta>().Single().Text.ShouldBe("plain");
+    }
+
+    // SPEC-102: regressão — bloco tool_calls extraído para DeltaChunks.
+    [Fact]
+    public async Task Parse_Tool_Calls_Emit_ToolCallDelta()
+    {
+        var p = Provider(
+            "data: {\"choices\":[{\"delta\":{\"tool_calls\":["
+            + "{\"index\":0,\"id\":\"call_1\",\"function\":"
+            + "{\"name\":\"search\",\"arguments\":\"{\\\"q\\\":\"}},"
+            + "{\"index\":1,\"id\":\"call_2\",\"function\":"
+            + "{\"name\":\"read\",\"arguments\":\"{}\"}}]}}]}\n"
+            + "data: [DONE]\n");
+
+        var chunks = await CollectAsync(p);
+        var calls = chunks.OfType<ToolCallDelta>().ToList();
+        calls.Count.ShouldBe(2);
+        calls[0].Index.ShouldBe(0);
+        calls[0].Id.ShouldBe("call_1");
+        calls[0].Name.ShouldBe("search");
+        calls[0].ArgumentsFragment.ShouldBe("{\"q\":");
+        calls[1].Name.ShouldBe("read");
+        calls[1].ArgumentsFragment.ShouldBe("{}");
+    }
+
+    // SPEC-102: regressão — script com tool_calls no MockLlmProvider
+    // (gerador extraído ToolCallDeltas).
+    [Fact]
+    public async Task Mock_Tool_Calls_Script_Emits_ToolCallDelta_And_End()
+    {
+        var mock = new MockLlmProvider([
+            JsonNode.Parse(
+                "{\"tool_calls\":[{\"id\":\"t1\",\"name\":\"finish\","
+                + "\"arguments\":{\"final_message\":\"bye\"}}]}")!,
+        ]);
+
+        var chunks = new List<ILlmStreamChunk>();
+        await foreach (var c in mock.ChatStreamAsync(
+            [LlmMessage.User("hi")], [], new LlmOptions(),
+            CancellationToken.None))
+        {
+            chunks.Add(c);
+        }
+
+        var call = chunks.OfType<ToolCallDelta>().Single();
+        call.Id.ShouldBe("t1");
+        call.Name.ShouldBe("finish");
+        call.ArgumentsFragment.ShouldNotBeNull()
+            .ShouldContain("final_message");
+        chunks.OfType<CompletionEnd>().ShouldNotBeEmpty();
     }
 
     // ---------- DeltaBatcher channels ----------
