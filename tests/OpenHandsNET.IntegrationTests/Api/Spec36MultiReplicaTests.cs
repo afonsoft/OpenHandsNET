@@ -236,16 +236,19 @@ public sealed class Spec36MultiReplicaTests : IAsyncLifetime
         };
         var replicaA = NewReplica(cfg);
         var replicaB = NewReplica(cfg);
-        // Mesma identidade (mesmo user id) nos dois lados — a janela fixa
-        // global (2/min) tem que contar o cluster inteiro.
-        using var clientA = await TestAuth.LoginAsync(replicaA, "rl@local");
-        using var clientB = await TestAuth.LoginAsync(replicaB, "rl@local");
-        (await clientA.GetAsync("/api/v1/settings"))
+        using var clientA = replicaA.CreateClient();
+        using var clientB = replicaB.CreateClient();
+
+        // SPEC-97: /api/v1/config é AllowAnonymous → chega ao limiter como
+        // "ip:" (mesma identidade anônima nos dois lados). A janela fixa
+        // global (2/min) tem que contar o cluster inteiro — endpoints
+        // protegidos devolveriam 401 antes do limiter e não mediriam nada.
+        (await clientA.GetAsync("/api/v1/config"))
             .StatusCode.ShouldNotBe(System.Net.HttpStatusCode.TooManyRequests);
-        (await clientA.GetAsync("/api/v1/settings"))
+        (await clientA.GetAsync("/api/v1/config"))
             .StatusCode.ShouldNotBe(System.Net.HttpStatusCode.TooManyRequests);
         // Com contador por-réplica a B ainda teria quota; global → 429.
-        (await clientB.GetAsync("/api/v1/settings"))
+        (await clientB.GetAsync("/api/v1/config"))
             .StatusCode.ShouldBe(System.Net.HttpStatusCode.TooManyRequests);
     }
 
