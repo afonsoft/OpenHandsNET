@@ -1,5 +1,28 @@
 # memory.md — estado corrente (max 100 linhas)
 
+## Sessão 2026-10-23 (cont. 3) — SPEC-98 i18n COMPLETO + stack de PRs
+
+- **SPEC-98 entregue** (#250/#244): 6 PRs stacked **#256–#261**
+  (zh→de→es→fr→it→ja). Baseline i18n-parity **0 signatures** —
+  ratchet agora protege paridade total nos 8 locales (451 keys cada).
+- **Stack sequencial main→#261**: #254(SPEC-96) → #255(SPEC-97) →
+  #256(zh) → #257(de) → #258(es) → #259(fr) → #260(it) → #261(ja).
+  **Merge estrito na ordem**; após cada squash o diff 3-dot do
+  próximo encolhe sozinho. Branches i18n foram criados em cadeia
+  (sem voltar à main) — formato correto p/ baseline compartilhado.
+- **Gates pendentes**: #254/#255 tocam `.github/workflows/` →
+  hard rule 6, revisão humana. SPECs **101–106** (filhos SPEC-89:
+  S3776 cli/agent/endpoints, S107, S3218+S127, S1075+S3903) estão
+  **Draft** — precisam aprovação antes de implementar.
+- **SPEC-97** (#255): FallbackPolicy default-deny + AllowAnonymous
+  nos públicos; 500→4xx (Guid.TryParse, JsonElement guards, OIDC
+  404, secrets duplicado removido de SettingsEndpoints); nightly
+  fuzz com cookie dev-login; 28 testes boundary; golden regen.
+- Sonar live truth: queries exigem `resolved=false` (sem isso
+  counts inflam ~350 issues resolvidas). Exclusões de docs/
+  alinhadas ao ci.yml (dotnet-scanner ignora sonar-project.properties).
+- `tools/sonar-live.json` é snapshot gerado — não commitar.
+
 ## Sessão 2026-10-23 — Epic #231 COMPLETO (6/6 SPECs)
 
 - **Merged + arquivadas**: #232/SPEC-91 (PR #238), #233/SPEC-90 (#239),
