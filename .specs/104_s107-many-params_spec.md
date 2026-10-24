@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `s107-many-params` |
 | Type | `Refactor` |
-| Status | `Draft` |
+| Status | `Approved` |
 | Ticket | SPEC-99 child of SPEC-89 |
 | Scope | `src/**/*.cs` |
 

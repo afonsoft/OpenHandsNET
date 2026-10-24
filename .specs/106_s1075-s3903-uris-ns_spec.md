@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `s1075-s3903-uris-ns` |
 | Type | `Refactor` |
-| Status | `Draft` |
+| Status | `Approved` |
 | Ticket | SPEC-99 child of SPEC-89 |
 | Scope | `src/ + cli/` |
 

@@ -32,18 +32,7 @@ public sealed class ChatStatusCommand : AsyncCommand<ChatStatusCommand.Settings>
         {
             foreach (var c in conns.EnumerateArray())
             {
-                table.AddRow(
-                    c.TryGetProperty("kind", out var k)
-                        ? k.GetString() ?? "" : "",
-                    c.TryGetProperty("team_id", out var t)
-                        ? t.GetString() ?? "" : "",
-                    c.TryGetProperty("bot_user_id", out var b)
-                        ? b.GetString() ?? "" : "",
-                    c.TryGetProperty("channels", out var ch)
-                        && ch.ValueKind
-                            == System.Text.Json.JsonValueKind.Array
-                        ? ch.GetArrayLength().ToString() : "0",
-                    c.GetProperty("id").GetString()![..8]);
+                AddRow(table, c);
             }
         }
         AnsiConsole.Write(table);
@@ -53,6 +42,22 @@ public sealed class ChatStatusCommand : AsyncCommand<ChatStatusCommand.Settings>
             "  Commands:     POST /api/v1/webhooks/chat/slack/commands\n" +
             "  Interactions: POST /api/v1/webhooks/chat/slack/interactions");
         return 0;
+    }
+
+    private static void AddRow(Table table, System.Text.Json.JsonElement c)
+    {
+        var channels = c.TryGetProperty("channels", out var ch)
+            && ch.ValueKind == System.Text.Json.JsonValueKind.Array
+            ? ch.GetArrayLength().ToString() : "0";
+        table.AddRow(
+            c.TryGetProperty("kind", out var k)
+                ? k.GetString() ?? "" : "",
+            c.TryGetProperty("team_id", out var t)
+                ? t.GetString() ?? "" : "",
+            c.TryGetProperty("bot_user_id", out var b)
+                ? b.GetString() ?? "" : "",
+            channels,
+            c.GetProperty("id").GetString()![..8]);
     }
 }
 

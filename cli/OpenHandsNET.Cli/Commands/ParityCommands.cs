@@ -41,21 +41,7 @@ public sealed class ModelsCommand : AsyncCommand<ModelsCommand.Settings>
         {
             foreach (var m in models.EnumerateArray())
             {
-                var pricing = m.TryGetProperty("pricing", out var p)
-                    && p.ValueKind == JsonValueKind.Object;
-                table.AddRow(
-                    m.TryGetProperty("provider", out var pr)
-                        ? pr.GetString() ?? "" : "",
-                    m.GetProperty("id").GetString() ?? "",
-                    m.TryGetProperty("context_window", out var w)
-                        && w.ValueKind == JsonValueKind.Number
-                        ? w.GetInt64().ToString("N0") : "?",
-                    pricing && p.TryGetProperty("input_per_million", out var i)
-                        && i.ValueKind == JsonValueKind.Number
-                        ? i.GetDecimal().ToString("0.###") : "-",
-                    pricing && p.TryGetProperty("output_per_million", out var o)
-                        && o.ValueKind == JsonValueKind.Number
-                        ? o.GetDecimal().ToString("0.###") : "-");
+                AddModelRow(table, m);
             }
         }
 
@@ -66,6 +52,25 @@ public sealed class ModelsCommand : AsyncCommand<ModelsCommand.Settings>
         }
 
         return 0;
+    }
+
+    private static void AddModelRow(Table table, JsonElement m)
+    {
+        var pricing = m.TryGetProperty("pricing", out var p)
+            && p.ValueKind == JsonValueKind.Object;
+        table.AddRow(
+            m.TryGetProperty("provider", out var pr)
+                ? pr.GetString() ?? "" : "",
+            m.GetProperty("id").GetString() ?? "",
+            m.TryGetProperty("context_window", out var w)
+                && w.ValueKind == JsonValueKind.Number
+                ? w.GetInt64().ToString("N0") : "?",
+            pricing && p.TryGetProperty("input_per_million", out var i)
+                && i.ValueKind == JsonValueKind.Number
+                ? i.GetDecimal().ToString("0.###") : "-",
+            pricing && p.TryGetProperty("output_per_million", out var o)
+                && o.ValueKind == JsonValueKind.Number
+                ? o.GetDecimal().ToString("0.###") : "-");
     }
 }
 
@@ -95,27 +100,7 @@ public sealed class StatsCommand : AsyncCommand<StatsCommand.Settings>
         var conversations = await api.CountConversationsAsync(ct);
 
         JsonElement? usage = null;
-        var orgId = settings.OrgId;
-        if (orgId is null)
-        {
-            // Resolve a primeira org do usuário (best-effort; OSS sem orgs
-            // cai no ramo de only-conversations).
-            var orgs = await api.ListOrgsAsync(ct);
-            if (orgs.ValueKind == JsonValueKind.Array
-                && orgs.GetArrayLength() > 0)
-            {
-                orgId = orgs[0].TryGetProperty("id", out var i)
-                    ? i.GetString() : null;
-            }
-            else if (orgs.ValueKind == JsonValueKind.Object
-                && orgs.TryGetProperty("items", out var items)
-                && items.GetArrayLength() > 0)
-            {
-                orgId = items[0].TryGetProperty("id", out var i)
-                    ? i.GetString() : null;
-            }
-        }
-
+        var orgId = settings.OrgId ?? await ResolveOrgIdAsync(api, ct);
         if (orgId is not null && Guid.TryParse(orgId, out var og))
         {
             usage = await api.GetOrgUsageAsync(og, ct);
@@ -151,6 +136,32 @@ public sealed class StatsCommand : AsyncCommand<StatsCommand.Settings>
 
         AnsiConsole.Write(table);
         return 0;
+    }
+
+    /// <summary>
+    /// Resolve a primeira org do usuário (best-effort; OSS sem orgs
+    /// devolve null e o fluxo segue só com conversations).
+    /// </summary>
+    private static async Task<string?> ResolveOrgIdAsync(
+        CloudApiClient api, CancellationToken ct)
+    {
+        var orgs = await api.ListOrgsAsync(ct);
+        if (orgs.ValueKind == JsonValueKind.Array
+            && orgs.GetArrayLength() > 0)
+        {
+            return orgs[0].TryGetProperty("id", out var i)
+                ? i.GetString() : null;
+        }
+
+        if (orgs.ValueKind == JsonValueKind.Object
+            && orgs.TryGetProperty("items", out var items)
+            && items.GetArrayLength() > 0)
+        {
+            return items[0].TryGetProperty("id", out var i)
+                ? i.GetString() : null;
+        }
+
+        return null;
     }
 }
 

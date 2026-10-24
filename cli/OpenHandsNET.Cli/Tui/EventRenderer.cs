@@ -14,70 +14,24 @@ public static class EventRenderer
         switch (kind)
         {
             case "MessageEvent":
-                var role = Role(e);
-                var text = MessageText(e);
-                AnsiConsole.MarkupLine(role == "user"
-                    ? $"[blue on grey15] você [/] {text.EscapeMarkup()}"
-                    : $"[green on grey15] agent [/] {text.EscapeMarkup()}");
+                WriteMessage(e);
                 break;
-
             case "ActionEvent":
-                var tool = e.TryGetProperty("tool", out var t)
-                    && t.TryGetProperty("name", out var n)
-                        ? n.GetString() : "?";
-                var cmd = e.TryGetProperty("tool", out var t2)
-                    && t2.TryGetProperty("arguments", out var a)
-                    && a.TryGetProperty("command", out var c)
-                        ? c.GetString() : null;
-                AnsiConsole.MarkupLine(
-                    $"[purple]⚙ {tool}[/]" + (cmd is null ? "" :
-                        $" [grey]{cmd.EscapeMarkup()}[/]"));
+                WriteAction(e);
                 break;
-
             case "ObservationEvent":
-                var obs = e.TryGetProperty("observation", out var o)
-                    ? o : default;
-                string? output;
-                if (obs.ValueKind == JsonValueKind.String)
-                {
-                    output = obs.GetString();
-                }
-                else if (obs.ValueKind == JsonValueKind.Object
-                    && obs.TryGetProperty("output", out var o2))
-                {
-                    output = o2.GetString();
-                }
-                else
-                {
-                    output = null;
-                }
-
-                if (output is { Length: > 0 })
-                {
-                    AnsiConsole.MarkupLine(
-                        $"[grey]  └─ {Trim(output, 200).EscapeMarkup()}[/]");
-                }
+                WriteObservation(e);
                 break;
-
             case "ConversationStateUpdateEvent":
-                var v = e.TryGetProperty("value", out var val) ? val : default;
-                var st = v.ValueKind == JsonValueKind.String
-                    ? v.GetString() : v.ToString();
-                AnsiConsole.MarkupLine($"[yellow]── {st} ──[/]");
+                WriteStateUpdate(e);
                 break;
-
             case "AgentErrorEvent":
             case "ServerErrorEvent":
-                var err = e.TryGetProperty("error", out var er)
-                    ? er.GetString() : e.ToString();
-                AnsiConsole.MarkupLine(
-                    $"[red]✗ {kind}: {Trim(err ?? "", 200).EscapeMarkup()}[/]");
+                WriteError(e, kind);
                 break;
-
             case "UserRejectObservation":
                 AnsiConsole.MarkupLine("[red]✗ action rejected by user[/]");
                 break;
-
             case "HookExecutionEvent":
             case "CondensationEvent":
             case "CondensationRequestEvent":
@@ -85,6 +39,71 @@ public static class EventRenderer
                 AnsiConsole.MarkupLine($"[grey]· {kind}[/]");
                 break;
         }
+    }
+
+    private static void WriteMessage(JsonElement e)
+    {
+        var role = Role(e);
+        var text = MessageText(e);
+        AnsiConsole.MarkupLine(role == "user"
+            ? $"[blue on grey15] você [/] {text.EscapeMarkup()}"
+            : $"[green on grey15] agent [/] {text.EscapeMarkup()}");
+    }
+
+    private static void WriteAction(JsonElement e)
+    {
+        var tool = e.TryGetProperty("tool", out var t)
+            && t.TryGetProperty("name", out var n)
+                ? n.GetString() : "?";
+        var cmd = e.TryGetProperty("tool", out var t2)
+            && t2.TryGetProperty("arguments", out var a)
+            && a.TryGetProperty("command", out var c)
+                ? c.GetString() : null;
+        AnsiConsole.MarkupLine(
+            $"[purple]⚙ {tool}[/]" + (cmd is null ? "" :
+                $" [grey]{cmd.EscapeMarkup()}[/]"));
+    }
+
+    private static void WriteObservation(JsonElement e)
+    {
+        var obs = e.TryGetProperty("observation", out var o)
+            ? o : default;
+        string? output;
+        if (obs.ValueKind == JsonValueKind.String)
+        {
+            output = obs.GetString();
+        }
+        else if (obs.ValueKind == JsonValueKind.Object
+            && obs.TryGetProperty("output", out var o2))
+        {
+            output = o2.GetString();
+        }
+        else
+        {
+            output = null;
+        }
+
+        if (output is { Length: > 0 })
+        {
+            AnsiConsole.MarkupLine(
+                $"[grey]  └─ {Trim(output, 200).EscapeMarkup()}[/]");
+        }
+    }
+
+    private static void WriteStateUpdate(JsonElement e)
+    {
+        var v = e.TryGetProperty("value", out var val) ? val : default;
+        var st = v.ValueKind == JsonValueKind.String
+            ? v.GetString() : v.ToString();
+        AnsiConsole.MarkupLine($"[yellow]── {st} ──[/]");
+    }
+
+    private static void WriteError(JsonElement e, string? kind)
+    {
+        var err = e.TryGetProperty("error", out var er)
+            ? er.GetString() : e.ToString();
+        AnsiConsole.MarkupLine(
+            $"[red]✗ {kind}: {Trim(err ?? "", 200).EscapeMarkup()}[/]");
     }
 
     /// <summary>Trunca saída longa para o log.</summary>

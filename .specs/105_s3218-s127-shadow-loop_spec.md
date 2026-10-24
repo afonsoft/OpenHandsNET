@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `s3218-s127-shadow-loop` |
 | Type | `Refactor` |
-| Status | `Draft` |
+| Status | `Approved` |
 | Ticket | SPEC-99 child of SPEC-89 |
 | Scope | `cli/ + Settings + AgentRunner.cs` |
 
