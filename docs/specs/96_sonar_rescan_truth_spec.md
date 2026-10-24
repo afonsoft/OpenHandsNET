@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `sonar-rescan-truth` |
 | Type | `Quality / tooling` |
-| Status | `Approved` |
+| Status | `Completed` |
 | Ticket | gap-analysis 2026-10-23 |
 | Depends on | — |
 | Touches | `.sonar_devin_auto_fix/`, issues #154–156, SPECs 72–74 |

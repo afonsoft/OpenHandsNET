@@ -127,3 +127,13 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 |---|---|---|
 | 70 | SonarCloud vulnerabilities — 52 issues / 16 regras (41 fix + 11 won't-fix justificadas) | PRs #159/#160 |
 | 71 | SonarCloud bugs — 32 issues / 7 regras | PRs #159/#160 |
+
+## Entregues em 2026-10-24 (gap-analysis 23/10 + filhos SPEC-89)
+
+| SPEC | Título | Entrega |
+|---|---|---|
+| 96 | sonar-rescan-truth — `tools/sonar-rescan.py` + exclusões ci.yml | PRs #253/#254 · #248 (verif. exclusões pendente) |
+| 97 | fuzz-findings — FallbackPolicy, 500→4xx, nightly auth | PR #255 · #218 (verif. nightly pendente) |
+| 98 | i18n-locale-slices — 6 locales 451/451, baseline 0 | PRs #256–#261 · #250/#244 |
+| 101 | s3776-cli — 10 sites refactor + EventRendererTests | PR #263 |
+| 102 | s3776-infra-agent — 15 sites refactor + testes | PR #264 |

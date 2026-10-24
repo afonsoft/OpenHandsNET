@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `i18n-locale-slices` |
 | Type | `Quality / i18n` |
-| Status | `Approved` |
+| Status | `Completed` |
 | Ticket | #244 (fatia restante) |
 | Depends on | SPEC-92 (drift guards) entregue |
 | Touches | `src/OpenHandsNET.Client/i18n/*.json`, baseline ratchet |

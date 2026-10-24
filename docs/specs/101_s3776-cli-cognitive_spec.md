@@ -1,14 +1,14 @@
-# SPEC — 102 · S3776 cognitive complexity — infra/agent
+# SPEC — 101 · S3776 cognitive complexity — cli/
 
 ## 0. Metadata
 
 | Field | Value |
 |---|---|
-| Feature | `s3776-infra-agent` |
+| Feature | `s3776-cli-cognitive` |
 | Type | `Refactor` |
-| Status | `In Review` |
+| Status | `Completed` |
 | Ticket | SPEC-99 child of SPEC-89 |
-| Scope | `src/OpenHandsNET.Infrastructure/{Agent,Tools}/**/*.cs` |
+| Scope | `cli/OpenHandsNET.Cli/**/*.cs` |
 
 ## 1. User Story
 
@@ -17,7 +17,7 @@
 
 ## 2. Contexto / escopo
 
-S3776 ×~35 em AgentRunner/BuiltinTools; extrair decisões p/ métodos nomeados. Filho da SPEC-89 (deferred refactors).
+S3776 ×~30 em commands/TUI; quebrar métodos god em handlers por subcomando. Filho da SPEC-89 (deferred refactors).
 
 ## 3. Requisitos
 
