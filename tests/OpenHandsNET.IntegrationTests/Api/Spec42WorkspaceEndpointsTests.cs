@@ -34,7 +34,7 @@ public sealed class Spec42WorkspaceEndpointsTests : IDisposable
             b.UseSetting("Sandbox:WorkspaceRoot",
                 Path.Combine(Path.GetTempPath(), $"ohn-spec42-ws-{Guid.NewGuid():N}"));
         });
-        _http = _factory.CreateClient();
+        _http = TestAuth.Login(_factory);
     }
 
     public void Dispose()

@@ -98,7 +98,7 @@ public sealed class SystemEndpointsTests : IClassFixture<SystemEndpointsTests.Ap
                 ["Sandbox:Kubernetes:KubeconfigPath"] = kubeconfig,
             },
         };
-        var client = factory.CreateClient();
+        var client = await TestAuth.LoginAsync(factory);
         var res = await client.GetAsync("/api/v1/readiness");
         res.StatusCode.ShouldBe(HttpStatusCode.OK);
         var json = await res.Content

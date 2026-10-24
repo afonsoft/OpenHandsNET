@@ -270,7 +270,16 @@ if (authProvider.Equals("oidc", StringComparison.OrdinalIgnoreCase))
     });
 }
 
-builder.Services.AddAuthorization();
+// SPEC-97 RF-001: default-deny real — endpoints sem AllowAnonymous exigem
+// usuário autenticado (fecha os 35 `ignored_auth` do fuzz #218). Endpoints
+// públicos opt-in via .AllowAnonymous() ou metadata AllowAnonymous.
+builder.Services.AddAuthorization(o =>
+{
+    o.FallbackPolicy = new Microsoft.AspNetCore.Authorization
+        .AuthorizationPolicyBuilder("smart")
+        .RequireAuthenticatedUser()
+        .Build();
+});
 builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider,
     OpenHandsNET.Api.Policies.PermissionPolicyProvider>();
 builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler,
@@ -320,7 +329,7 @@ app.Use(async (ctx, next) =>
 // .NET 10: MapStaticAssets serves the WASM client files (incl. _framework)
 // as endpoint-routed assets; UseBlazorFrameworkFiles is the legacy middleware
 // and must NOT be combined with it (request reaches end of pipeline -> 500).
-app.MapStaticAssets();
+app.MapStaticAssets().AllowAnonymous();
 
 // SPEC-94: espelho read-only de _framework sem extensão na URL — boot do
 // WASM sobrevive a proxies corporativos que bloqueiam .wasm/.dat/.dll.
@@ -391,29 +400,32 @@ app.MapDelegationEndpoints();
 app.MapKnowledgeEndpoints();
 app.MapBrowserProfileEndpoints();
 app.MapHub<ConversationHub>("/hubs/conversations");
-app.MapHealthChecks("/api/v1/health");
+// Probes k8s/docker — anônimos por definição (SPEC-97).
+app.MapHealthChecks("/api/v1/health").AllowAnonymous();
 app.MapHealthChecks("/api/v1/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
     Predicate = check => check.Tags.Contains("ready"),
-});
+}).AllowAnonymous();
 app.MapReadinessEndpoints();
 
 // SPEC-51 RF-002: documento vivo em /openapi/v1.json — o golden
-// snapshot em tests/ detecta drift de contrato em PR.
-app.MapOpenApi("/openapi/{documentName}.json");
+// snapshot em tests/ detecta drift de contrato em PR. Anônimo p/ o
+// fuzz nightly (schemathesis baixa sem credencial — SPEC-97).
+app.MapOpenApi("/openapi/{documentName}.json").AllowAnonymous();
 // SPEC-51 RF-003: explorer opt-in — default on em Development, off em
 // produção (Api:OpenApiExplorer=true para habilitar explicitamente).
 if (builder.Configuration.GetValue<bool?>("Api:OpenApiExplorer")
     ?? app.Environment.IsDevelopment())
 {
-    app.MapScalarApiReference();
+    app.MapScalarApiReference().AllowAnonymous();
 }
 
 // Prometheus scrape endpoint (SPEC-13 RF-004): openhandsnet_* counters.
 app.UseMetricServer("/metrics");
 
-// SPA fallback: any non-API route serves the Blazor WASM shell.
-app.MapFallbackToFile("index.html");
+// SPA fallback: any non-API route serves the Blazor WASM shell. Anônimo —
+// a tela de login precisa carregar sem sessão (SPEC-97).
+app.MapFallbackToFile("index.html").AllowAnonymous();
 
 await app.RunAsync();
 
