@@ -32,7 +32,7 @@ public sealed class EgressProxyService(
         $"{EngineLabels.Prefix}config_hash";
 
     /// <summary>Proxy URL for sandbox env (container name resolves on the net).</summary>
-    public static string ProxyUrl => $"http://{ProxyName}:{ProxyPort}";
+    public static string ProxyUrl => $"http://{ProxyName}:{ProxyPort}"; // NOSONAR S5332 — internal container/pod network (no TLS trust boundary)
 
     /// <summary>proxy env vars injected into allowlist-mode sandboxes.</summary>
     public static IReadOnlyList<string> ProxyEnv() =>

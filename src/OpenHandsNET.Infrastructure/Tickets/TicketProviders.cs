@@ -366,13 +366,11 @@ public sealed class LinearTicketProvider(
             && t.TryGetProperty("states", out var st)
             && st.TryGetProperty("nodes", out var nodes))
         {
-            foreach (var s in nodes.EnumerateArray().Where(s =>
-                string.Equals(Str(s, "name"), stateName,
-                    StringComparison.OrdinalIgnoreCase)))
-            {
-                stateId = Str(s, "id");
-                break;
-            }
+            stateId = nodes.EnumerateArray()
+                .Where(s => string.Equals(Str(s, "name"), stateName,
+                    StringComparison.OrdinalIgnoreCase))
+                .Select(s => Str(s, "id"))
+                .FirstOrDefault();
         }
         if (uuid is null || stateId is null)
         {

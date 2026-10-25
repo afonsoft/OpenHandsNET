@@ -100,3 +100,10 @@
 - SonarCloud: `https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main`
 - Bloqueio persistente: #148 — `SONAR_TOKEN` secret + `SONAR_ENABLED=true`
 - Clone open-webui p/ re-auditoria: `/home/ubuntu/repos/open-webui`
+
+## 2026-10-25 — SPEC-107 executada
+- PR #270 (housekeeping) merged → SPECs 96-98/101-102 arquivadas, 107-110 Approved.
+- SPEC-107 → **PR #271**: 34/35 sites S3776 decompostos; `AgentRunner.LoopAsync`
+  (CC~210) deferido p/ fatia dedicada (core loop, alto blast radius).
+- Filas: #266 SPEC-107 (em PR), #267 SPEC-108 (vuln/bug triage),
+  #268 SPEC-109 (tail rules), #269 SPEC-110 (flakes).

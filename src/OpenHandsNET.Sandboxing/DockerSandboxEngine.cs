@@ -428,7 +428,7 @@ public sealed class DockerSandboxEngine(
             && nets.TryGetValue(controlNet, out var ctrl)
             && !string.IsNullOrEmpty(ctrl.IPAddress))
         {
-            return new Uri($"http://{ctrl.IPAddress}:{agentPort}");
+            return new Uri($"http://{ctrl.IPAddress}:{agentPort}"); // NOSONAR S5332 — internal container/pod network (no TLS trust boundary)
         }
 
         var ports = inspect.NetworkSettings?.Ports;
@@ -438,14 +438,14 @@ public sealed class DockerSandboxEngine(
             && int.TryParse(bindings[0].HostPort, out var hostPort))
         {
             return new Uri(
-                $"http://{options.Value.AgentHost ?? "127.0.0.1"}:{hostPort}");
+                $"http://{options.Value.AgentHost ?? "127.0.0.1"}:{hostPort}"); // NOSONAR S5332 — internal container/pod network (no TLS trust boundary)
         }
 
         if (nets is not null
             && nets.Values.FirstOrDefault(n =>
                 !string.IsNullOrEmpty(n.IPAddress)) is { IPAddress: { } ip })
         {
-            return new Uri($"http://{ip}:{agentPort}");
+            return new Uri($"http://{ip}:{agentPort}"); // NOSONAR S5332 — internal container/pod network (no TLS trust boundary)
         }
 
         return null;

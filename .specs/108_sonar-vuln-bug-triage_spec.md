@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `sonar-vuln-bug-triage` |
 | Type | `Fix` |
-| Status | `Approved` |
+| Status | `In Review` |
 | Ticket | gap-analysis 2026-10-24 · GAP-sonar-vuln-bug-triage |
 | Scope | repo-wide VULNERABILITY (15) + BUG (18) abertos |
 
@@ -50,3 +50,35 @@ Live 2026-10-24 (resolved=false):
 - [ ] VULNERABILITY + BUG abertos ≤ justificados documentados na SPEC.
 - [ ] Findings em `docs/architecture/*.html` cobertos pela resolução
   do GAP-sonar-exclusion (won't-fix bulk ou exclusão efetiva).
+
+## 5. Execução (2026-10-24)
+
+**Fixes reais (BUG):**
+- S8949 ×11 — `ct` propagado: `ParityCommands` (GetModelsAsync/
+  GetToolsAsync), `TuiCommand` (AskAsync/PromptAsync), `ScmCommands`
+  (PromptAsync), `SupportBundleService`/`TrajectoryExporter`
+  (`ZipArchiveEntry.OpenAsync(ct)`).
+- S1751 — `TicketProviders` state lookup `foreach`/`break` → LINQ
+  `FirstOrDefault`.
+
+**Fixes reais (VULN — workflows, revisão humana req.):**
+- `scorecard.yml` — `permissions: read-all` → `permissions: {}`
+  top-level (job mantém grants explícitos).
+- `security-scan.yml` — `curl --proto '=https' --tlsv1.2 -fsSL` +
+  `pipx --pip-args="--only-binary :all:"` / `pip --only-binary :all:`.
+
+**Won't-fix justificado (NOSONAR + comentário):**
+- S5332 ×7 — `http://` em links internos container/pod→agent
+  (DockerSandboxEngine, KubernetesSandboxEngine, SandboxHostRouter,
+  EgressProxyService, SandboxAgent/Program). Tráfego na rede interna
+  do sandbox; TLS exigiria PKI própria sem ganho real.
+- S5542 — `GitHubScmProvider` RSA PKCS#1 é exigência do RS256 p/
+  GitHub App JWT (RFC 7518).
+- S5693 — `ChatComposer` já limita via `OpenReadStream(MaxUploadBytes)`.
+- S6865 — `api.yaml` SA token automount é requisito do sandbox-manager.
+- Web:S5254/PageWithoutTitle + css:S9424 — artefatos gerados/vendored
+  em `docs/architecture/` + `wwwroot/lib/xterm/` (escopo de exclusão,
+  tracked em #248).
+
+**Regressão:** `SupportBundleServiceTests` — zip entries +
+propagação de ct (cobre os OpenAsync(ct) de S8949).
