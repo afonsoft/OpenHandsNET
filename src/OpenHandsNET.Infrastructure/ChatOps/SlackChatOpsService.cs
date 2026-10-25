@@ -196,7 +196,7 @@ public sealed class SlackChatOpsService(
         }
 
         return (null, new SlackEventMsg(
-            type!, channelId, text, ts, threadTs!));
+            type ?? "", channelId, text, ts, threadTs ?? ts));
     }
 
     private async Task<(ChatOpsResult, string?)> DispatchEventAsync(
@@ -204,13 +204,13 @@ public sealed class SlackChatOpsService(
         string teamId, CancellationToken ct)
     {
         var (verdict, msg) = await ExtractEventAsync(root, ct);
-        if (verdict is not null)
+        if (verdict is not null || msg is null)
         {
-            return (verdict.Value, null);
+            return (verdict ?? ChatOpsResult.Ignored, null);
         }
 
         var config = await connections.GetChannelConfigAsync(
-            connection.Id, msg!.ChannelId, ct);
+            connection.Id, msg.ChannelId, ct);
         var isMention = msg.Type == "app_mention"
             || (connection.BotUserId is not null
                 && msg.Text.Contains($"<@{connection.BotUserId}>",

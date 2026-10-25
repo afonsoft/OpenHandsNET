@@ -160,14 +160,13 @@ static List<object> ProbeProc()
 
 static long RssKb(string dir)
 {
-    foreach (var line in File.ReadLines(Path.Combine(dir, "status"))
-        .Where(l => l.StartsWith("VmRSS:", StringComparison.Ordinal)))
-    {
-        var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return parts.Length >= 2 && long.TryParse(parts[1], out var kb)
-            ? kb : 0;
-    }
-    return 0;
+    var rss = File.ReadLines(Path.Combine(dir, "status"))
+        .Where(l => l.StartsWith("VmRSS:", StringComparison.Ordinal))
+        .Select(l => l.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        .Where(parts => parts.Length >= 2)
+        .Select(parts => long.TryParse(parts[1], out var kb) ? kb : 0)
+        .FirstOrDefault();
+    return rss;
 }
 
 static string Trunc(string s, int max = 200) =>
