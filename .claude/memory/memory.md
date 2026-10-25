@@ -107,3 +107,21 @@
   (CC~210) deferido p/ fatia dedicada (core loop, alto blast radius).
 - Filas: #266 SPEC-107 (em PR), #267 SPEC-108 (vuln/bug triage),
   #268 SPEC-109 (tail rules), #269 SPEC-110 (flakes).
+
+## Estado atual (2026-10-24/25 — sessão gap-analysis followup)
+
+**Branches/PRs:**
+- `feat/spec-107-s3776-remainder` → **PR #271** (34/35 sites + LoopAsync
+  deferido; ondas de fixes new-code — revert aplicado em SetStatusAsync).
+- `feat/spec-108-vuln-bug-triage` → **PR #272 MERGED** (S8949, S1751,
+  workflows, NOSONAR justificados).
+- `feat/spec-109-sonar-tail` → **PR #273** (S927×35 + tail rules;
+  rebaseado pós-#272 com fix de `ct` nos callsites novos).
+- `feat/spec-110-flake-hardening` → **PR #274** (probe 90s, apk retry,
+  SQLite Default Timeout=10).
+
+**Lições:** renames S927 NÃO podem tocar named-arg labels (`ct:` = nome
+do param do callee); `insert_final_newline=false` no .editorconfig;
+S107 fix via record-bundling; regex sobre chamadas multiline pode comer
+args do CORPO — restringir à signature.
+

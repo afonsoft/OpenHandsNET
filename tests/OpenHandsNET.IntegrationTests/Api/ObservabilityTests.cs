@@ -25,7 +25,7 @@ public sealed class ObservabilityTests : IDisposable
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseSetting("Database:Provider", "Sqlite");
-            builder.UseSetting("Database:ConnectionString", $"Data Source={_dbPath}");
+            builder.UseSetting("Database:ConnectionString", $"Data Source={_dbPath};Default Timeout=10");
             builder.UseSetting("Observability:OtlpEndpoint", string.Empty);
             builder.UseSetting("Sandbox:WorkspaceRoot",
                 Path.Combine(Path.GetTempPath(), $"ohn-obs-ws-{Guid.NewGuid():N}"));
@@ -55,7 +55,7 @@ public sealed class ObservabilityTests : IDisposable
             },
         });
 
-        var deadline = DateTime.UtcNow.AddSeconds(30);
+        var deadline = DateTime.UtcNow.AddSeconds(90);
         var body = "";
         while (DateTime.UtcNow < deadline)
         {

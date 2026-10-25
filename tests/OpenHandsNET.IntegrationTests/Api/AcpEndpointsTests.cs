@@ -23,7 +23,7 @@ public sealed class AcpEndpointsTests : IDisposable
             {
                 builder.UseSetting("Database:Provider", "Sqlite");
                 builder.UseSetting(
-                    "Database:ConnectionString", $"Data Source={dbPath}");
+                    "Database:ConnectionString", $"Data Source={dbPath};Default Timeout=10");
                 builder.UseSetting("Observability:OtlpEndpoint", string.Empty);
                 builder.UseSetting("Auth:Provider", "none");
                 builder.UseSetting("Auth:UserProvisioningEnabled", "true");

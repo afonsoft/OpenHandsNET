@@ -27,7 +27,7 @@ public sealed class Spec42WorkspaceEndpointsTests : IDisposable
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
             b.UseSetting("Database:Provider", "Sqlite");
-            b.UseSetting("Database:ConnectionString", $"Data Source={_dbPath}");
+            b.UseSetting("Database:ConnectionString", $"Data Source={_dbPath};Default Timeout=10");
             b.UseSetting("Observability:OtlpEndpoint", string.Empty);
             b.UseSetting("Sandbox:DefaultImage", "bash:5");
             b.UseSetting("Sandbox:InstanceOwner", $"test-{Guid.NewGuid():N}");

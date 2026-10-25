@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `integration-flake-hardening-2` |
 | Type | `Fix` |
-| Status | `Approved` |
+| Status | `In Review` |
 | Ticket | gap-analysis 2026-10-24 · GAP-tests-integration-flakes |
 | Scope | `tests/OpenHandsNET.IntegrationTests/**` sandbox-dependent |
 
@@ -48,3 +48,26 @@ docker no runner é a variável instável, não o código sob teste.
 - [ ] `build + test` passa de primeira em 3 merges consecutivos na main.
 - [ ] Testes quarentenados listados na SPEC com justificativa e issue
   de reabilitação.
+
+## 4. Execução (2026-10-24)
+
+**Diagnóstico:**
+- Falhas do round se concentram em dois padrões: (a) janela entre
+  task READY e container Running (pull frio de `bash:5` no runner) —
+  probe de 30s era curto demais; (b) escrita concorrente em SQLite
+  (`database is locked`) entre contexts — reproduzido em unit test
+  (`Spec54ChatOpsTests`: postback fire-and-forget vs dedup seguinte).
+
+**Hardening aplicado:**
+- Probe `/exec` 30s → 90s (`Spec43CheckpointEndpointsTests`,
+  `ObservabilityTests`).
+- `apk add` com 1 retry (mirror Alpine flakea ~1%).
+- `Default Timeout=10` (busy handler) em todas as connection strings
+  SQLite dos testes de integração + Spec54 unit — absorve locks curtos
+  entre contexts concorrentes.
+
+**Não-máscara (RF-003):** asserts intactos — apenas timeouts/retry de
+provisionamento e busy-timeout de infra de teste. O race do postback
+é real em SQLite; em Postgres (prod) a escrita concorrente é suportada.
+
+**Pendente:** RF-004 (3 runs verdes) avaliado após merge via nightly.

@@ -31,7 +31,7 @@ public sealed class Spec34ArtifactEndpointTests : IDisposable
             {
                 builder.UseSetting("Database:Provider", "Sqlite");
                 builder.UseSetting(
-                    "Database:ConnectionString", $"Data Source={_dbPath}");
+                    "Database:ConnectionString", $"Data Source={_dbPath};Default Timeout=10");
                 builder.UseSetting("Observability:OtlpEndpoint",
                     string.Empty);
                 builder.UseSetting("Sandbox:InstanceOwner",
