@@ -29,7 +29,7 @@ namespace OpenHandsNET.UnitTests.ChatOps;
 /// </summary>
 public sealed class Spec54ChatOpsTests : IAsyncDisposable
 {
-    private readonly SqliteConnection _conn = new("Data Source=:memory:");
+    private readonly SqliteConnection _conn = new("Data Source=:memory:;Default Timeout=10");
     private readonly AppDbContext _db;
     private readonly Guid _orgId = Guid.NewGuid();
     private readonly Guid _ownerId = Guid.NewGuid();

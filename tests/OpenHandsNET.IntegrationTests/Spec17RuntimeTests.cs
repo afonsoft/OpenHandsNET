@@ -39,7 +39,7 @@ public sealed class Spec17RuntimeTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         _db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlite($"Data Source={_dbPath}")
+            .UseSqlite($"Data Source={_dbPath};Default Timeout=10")
             .UseSnakeCaseNamingConvention().Options);
         await _db.Database.MigrateAsync();
         try
@@ -76,7 +76,7 @@ public sealed class Spec17RuntimeTests : IAsyncLifetime
     private IServiceScopeFactory NewScopeFactory() =>
         new ServiceCollection()
             .AddDbContext<AppDbContext>(o => o
-                .UseSqlite($"Data Source={_dbPath}")
+                .UseSqlite($"Data Source={_dbPath};Default Timeout=10")
                 .UseSnakeCaseNamingConvention())
             .BuildServiceProvider()
             .GetRequiredService<IServiceScopeFactory>();

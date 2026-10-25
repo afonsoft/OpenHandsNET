@@ -33,7 +33,7 @@ public sealed class PersistenceSchemaTests : IAsyncLifetime
     private AppDbContext NewContext(bool multiTenancy = false, Guid? orgId = null)
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlite($"Data Source={_dbPath}")
+            .UseSqlite($"Data Source={_dbPath};Default Timeout=10")
             .UseSnakeCaseNamingConvention()
             .Options;
         var ctx = new AppDbContext(options,
@@ -170,7 +170,7 @@ public sealed class PersistenceSchemaTests : IAsyncLifetime
 
     private async Task<HashSet<string>> ExistingTablesAsync()
     {
-        await using var conn = new SqliteConnection($"Data Source={_dbPath}");
+        await using var conn = new SqliteConnection($"Data Source={_dbPath};Default Timeout=10");
         await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table'";
@@ -186,7 +186,7 @@ public sealed class PersistenceSchemaTests : IAsyncLifetime
 
     private async Task<HashSet<string>> ColumnsOfAsync(string table)
     {
-        await using var conn = new SqliteConnection($"Data Source={_dbPath}");
+        await using var conn = new SqliteConnection($"Data Source={_dbPath};Default Timeout=10");
         await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = $"PRAGMA table_info({table})";

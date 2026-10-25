@@ -25,7 +25,7 @@ public sealed class OpenAiGatewayTests : IDisposable
             {
                 builder.UseSetting("Database:Provider", "Sqlite");
                 builder.UseSetting(
-                    "Database:ConnectionString", $"Data Source={dbPath}");
+                    "Database:ConnectionString", $"Data Source={dbPath};Default Timeout=10");
                 builder.UseSetting("Observability:OtlpEndpoint", string.Empty);
                 builder.UseSetting("Sandbox:DefaultImage", "bash:5");
                 builder.UseSetting("Auth:Provider", "none");

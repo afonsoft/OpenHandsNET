@@ -27,7 +27,7 @@ public sealed class SwitchEndpointsTests : IDisposable
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseSetting("Database:Provider", "Sqlite");
-            builder.UseSetting("Database:ConnectionString", $"Data Source={_dbPath}");
+            builder.UseSetting("Database:ConnectionString", $"Data Source={_dbPath};Default Timeout=10");
             builder.UseSetting("Observability:OtlpEndpoint", string.Empty);
             builder.UseSetting("Sandbox:InstanceOwner", $"test-{Guid.NewGuid():N}");
             builder.UseSetting("Sandbox:WorkspaceRoot",

@@ -27,7 +27,7 @@ public sealed class Spec43CheckpointEndpointsTests : IDisposable
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
             b.UseSetting("Database:Provider", "Sqlite");
-            b.UseSetting("Database:ConnectionString", $"Data Source={_dbPath}");
+            b.UseSetting("Database:ConnectionString", $"Data Source={_dbPath};Default Timeout=10");
             b.UseSetting("Observability:OtlpEndpoint", string.Empty);
             b.UseSetting("Sandbox:DefaultImage", "bash:5");
             b.UseSetting("Sandbox:InstanceOwner", $"test-{Guid.NewGuid():N}");
@@ -113,8 +113,8 @@ public sealed class Spec43CheckpointEndpointsTests : IDisposable
         var file = $"a-{Guid.NewGuid():N}.txt";
 
         // READY pode chegar um tick antes do container virar Running —
-        // sonda /exec até 200 (máx 30s).
-        var probeDeadline = DateTime.UtcNow.AddSeconds(30);
+        // sonda /exec até 200 (máx 90s — pull da imagem em runner frio).
+        var probeDeadline = DateTime.UtcNow.AddSeconds(90);
         while (DateTime.UtcNow < probeDeadline)
         {
             var probe = await _http.PostAsJsonAsync($"{b}/exec",
@@ -131,8 +131,10 @@ public sealed class Spec43CheckpointEndpointsTests : IDisposable
         // Se o egress do sandbox bloquear apk, o teste falha aqui.
         var init = await _http.PostAsJsonAsync($"{b}/exec", new
         {
+            // apk retry x1 — mirror alpine flakeou em ~1% dos runs.
             command = "mkdir -p /workspace/repo && " +
-                "apk add --no-cache git >/dev/null 2>&1 && " +
+                "(apk add --no-cache git >/dev/null 2>&1 || " +
+                " apk add --no-cache git >/dev/null 2>&1) && " +
                 "cd /workspace/repo && git init -b main && " +
                 "git -c user.email=t@t -c user.name=t " +
                 "commit --allow-empty -qm init",

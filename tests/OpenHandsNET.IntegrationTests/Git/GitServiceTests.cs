@@ -41,7 +41,7 @@ public sealed class GitServiceTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         _db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlite($"Data Source={_dbPath}")
+            .UseSqlite($"Data Source={_dbPath};Default Timeout=10")
             .UseSnakeCaseNamingConvention().Options);
         await _db.Database.MigrateAsync();
         try
