@@ -133,3 +133,11 @@ args do CORPO — restringir à signature.
 - **PR #279** `feat/spec-111-loop-decomposition`: `LoopAsync` (CC~210, ~890 linhas) → orquestração ~230 linhas + `MaybeCompactAsync`/`StreamAttemptAsync`/`DispatchToolCallsAsync`/`ExecuteToolCallAsync` sobre `LoopState`/`TurnState`; assinaturas ≤6 params. Build 0/0, format limpo, 269/269 testes Agent.
 - **Erros/lições**: rename `\b` em bloco movido corrompeu strings (`"turn.Text"`, `permission st.Policy`) e membros anônimos — fix pontual pós-diff; `ref` não compila em async → `StreamOutcome` record; `continue` em corpo extraído → verdict enum; `tcMsgIdx` mutado em fase interna → `TurnState.TcMsgIdx`.
 - **Pendente**: CI #278/#279 → merges → fechar #276/#277 → arquivar SPECs 111/112 → re-rodar nightly fuzz (#218) e gap-analysis. GATE humano: SONAR_TOKEN.
+
+## 2026-10-25 (final) — SPEC-111/112 merged
+
+- **PR #278** merged (SPEC-112 fuzz round 2) — golden regenerado + SC2015 fix.
+- **PR #279** merged (SPEC-111) — `PR test policy` exigiu teste: `Multiple_ToolCalls_One_Turn_Emit_Composite_Action_Ids` adicionado (mock aceita `"tool_calls":[...]` array).
+- Issues #276/#277 auto-fechadas via "Closes". Repo: 0 PRs, só `main` (spec-111 estava stacked em spec-112 — `git rebase --skip` o commit squashado).
+- SPECs 111/112 arquivadas neste housekeeping PR.
+- Pendente: re-rodar nightly fuzz p/ validar #218; gap-analysis; GATE SONAR_TOKEN.

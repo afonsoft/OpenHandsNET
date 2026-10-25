@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | `In Review` |
+| Status | `Done` |
 | Origem | gap-analysis 2026-10-25 — nightly `40177735051` (2026-10-25, sha `ef6ad24d`, **pós-#255**) |
 | Severidade | P1 |
 | Issue relacionada | #218 (permanece aberta — findings residuais) |
