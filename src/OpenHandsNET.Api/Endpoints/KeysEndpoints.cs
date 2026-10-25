@@ -107,7 +107,7 @@ public static class KeysEndpoints
             {
                 return ProxyUnavailable();
             }
-        }).RequireAuthorization();
+        }).RequireAuthorization().ProducesProblem(503);
 
         g.MapPost("/llm/byor/refresh", async (
             [FromBody] ByorRefreshRequest? req,
@@ -145,7 +145,7 @@ public static class KeysEndpoints
             {
                 return ProxyUnavailable();
             }
-        }).RequireAuthorization();
+        }).RequireAuthorization().ProducesProblem(503);
 
         g.MapGet("/llm/byor/permitted", async (
             ICurrentUserAccessor current, IByorKeyService byor,
@@ -167,7 +167,7 @@ public static class KeysEndpoints
             {
                 return ProxyUnavailable();
             }
-        }).RequireAuthorization();
+        }).RequireAuthorization().ProducesProblem(503);
 
         g.MapDelete("/llm/byor", async (
             ICurrentUserAccessor current, IByorKeyService byor,
@@ -191,7 +191,7 @@ public static class KeysEndpoints
             {
                 return ProxyUnavailable();
             }
-        }).RequireAuthorization();
+        }).RequireAuthorization().ProducesProblem(503);
 
         return app;
     }

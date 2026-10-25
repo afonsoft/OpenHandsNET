@@ -66,9 +66,11 @@ public sealed class ApiKeyService(
         var rows = await db.ApiKeys
             .IgnoreQueryFilters()
             .Where(k => k.UserId == user.UserId.ToString())
-            .OrderByDescending(k => k.CreatedAt)
             .ToListAsync(cancellationToken);
-        return rows.Select(ToInfo).ToList();
+        // SQLite can't ORDER BY DateTimeOffset — sort in memory (per-user
+        // key lists are small).
+        return rows.OrderByDescending(k => k.CreatedAt)
+            .Select(ToInfo).ToList();
     }
 
     /// <inheritdoc />
@@ -175,6 +177,8 @@ public sealed class ApiKeyService(
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(plaintext)));
 
     private static ApiKeyInfo ToInfo(ApiKeyRecord r) => new(
-        r.Id, r.Prefix, r.Name, Guid.Parse(r.UserId), r.OrgId,
+        r.Id, r.Prefix, r.Name,
+        // svc_* service-user keys can carry non-GUID owners — don't 500.
+        Guid.TryParse(r.UserId, out var uid) ? uid : Guid.Empty, r.OrgId,
         r.NotBefore, r.ExpiresAt, r.LastUsedAt, r.CreatedAt);
 }

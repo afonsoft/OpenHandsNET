@@ -108,17 +108,27 @@ jobs:
             | jq 'del(.paths["/api/v1/sandboxes"].post)' > /tmp/openapi.json
           head -c 300 /tmp/openapi.json
 
-      # SPEC-97: FallbackPolicy exige sessão — dev-login emite o cookie que
-      # o fuzz envia em todo request para exercitar os handlers de verdade.
-      - name: dev-login cookie (fuzz auth)
+      # SPEC-97/112: FallbackPolicy exige sessão — dev-login emite o cookie
+      # que minta uma API key `sk-*`; o fuzz envia `Authorization: Bearer`
+      # para que o check `ignored_auth` exercite credencial inválida de
+      # verdade (com cookie válido presente, mutar Authorization nunca
+      # produzia 401 — falso-positivo sistêmico).
+      - name: dev-login + mint sk- key (fuzz auth)
         run: |
-          COOKIE=$(curl -sf -c - -X POST \
+          COOKIE_JAR=$(mktemp)
+          curl -sf -c "$COOKIE_JAR" -X POST \
             "http://localhost:$PORT/api/v1/auth/dev-login" \
             -H 'content-type: application/json' \
-            -d '{"email":"fuzz@local","displayName":"fuzz"}' \
-            | awk '$6=="openhandsnet_auth" {print $NF}')
-          test -n "$COOKIE" || { echo "::error::dev-login falhou"; exit 1; }
-          echo "FUZZ_COOKIE=openhandsnet_auth=$COOKIE" >> "$GITHUB_ENV"
+            -d '{"email":"fuzz@local","displayName":"fuzz"}' > /dev/null
+          KEY=$(curl -sf -b "$COOKIE_JAR" -X POST \
+            "http://localhost:$PORT/api/v1/keys" \
+            -H 'content-type: application/json' \
+            -d '{"name":"nightly-fuzz"}' | jq -r '.key')
+          if [ -z "$KEY" ] || [ "$KEY" = "null" ]; then
+            echo "::error::mint sk- falhou"
+            exit 1
+          fi
+          echo "FUZZ_AUTH=Authorization: Bearer $KEY" >> "$GITHUB_ENV"
 
       # pipx is preinstalled on ubuntu-latest and sidesteps the runner's
       # PEP-668 externally-managed Python (plain `pip install --user` fails).
@@ -145,7 +155,7 @@ jobs:
       - name: schemathesis run (blocking)
         run: |
           schemathesis run /tmp/openapi.json --url "http://localhost:$PORT" \
-            -H "Cookie: $FUZZ_COOKIE" \
+            -H "$FUZZ_AUTH" \
             --max-examples 15 --workers 2 --checks all \
             --phases examples,fuzzing \
             --exclude-path /api/v1/app-conversations/stream-start \

@@ -26,10 +26,10 @@ public static partial class CheckpointEndpoints
         var conv = app.MapGroup("/api/v1/app-conversations")
             .WithTags("Checkpoints");
 
-        conv.MapGet("/{id:guid}/checkpoints", ListAsync);
-        conv.MapPost("/{id:guid}/checkpoints", SnapshotAsync);
-        conv.MapGet("/{id:guid}/checkpoints/{hash}", GetAsync);
-        conv.MapPost("/{id:guid}/checkpoints/{hash}/revert", RevertAsync);
+        conv.MapGet("/{id:guid}/checkpoints", ListAsync).ProducesProblem(503);
+        conv.MapPost("/{id:guid}/checkpoints", SnapshotAsync).ProducesProblem(503);
+        conv.MapGet("/{id:guid}/checkpoints/{hash}", GetAsync).ProducesProblem(503);
+        conv.MapPost("/{id:guid}/checkpoints/{hash}/revert", RevertAsync).ProducesProblem(503);
         return app;
     }
 
