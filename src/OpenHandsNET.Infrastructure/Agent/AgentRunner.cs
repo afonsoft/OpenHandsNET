@@ -105,7 +105,7 @@ public sealed class AgentRunner(
         }
 
         await SetStatusAsync(events, db, conv, "running",
-            ConversationExecutionStatus.Running);
+            ConversationExecutionStatus.Running, ct);
         using var pump = Subscribe(events);
 
         // SPEC-11: hooks de ciclo de vida — falhas não abortam (salvo blocking).
@@ -184,7 +184,8 @@ public sealed class AgentRunner(
             _pauseRequested ? Paused : "idle",
             _pauseRequested
                 ? ConversationExecutionStatus.Paused
-                : ConversationExecutionStatus.Running);
+                : ConversationExecutionStatus.Running,
+            CancellationToken.None);
         // SPEC-43 RF-002: pausa também fecha o turno com checkpoint
         // (ct já cancelado aqui → token neutro).
         if (_pauseRequested)
@@ -278,7 +279,7 @@ public sealed class AgentRunner(
                         Message = rejection[(sep + 2)..],
                     }, CancellationToken.None);
                 await SetStatusAsync(events, db, conv, Error,
-                    ConversationExecutionStatus.Error);
+                    ConversationExecutionStatus.Error, CancellationToken.None);
                 return;
             }
         }
@@ -557,7 +558,7 @@ public sealed class AgentRunner(
                 await activity.SummaryAsync(events, conversationId,
                     Error, "context overflow", CancellationToken.None);
                 await SetStatusAsync(events, db, conv, Error,
-                    ConversationExecutionStatus.Error);
+                    ConversationExecutionStatus.Error, CancellationToken.None);
                 return;
             }
             catch (LlmCallException lce) when (router is not null
@@ -589,7 +590,8 @@ public sealed class AgentRunner(
                         Error = SecretRedactor.Redact(lce.Message),
                     }, CancellationToken.None);
                     await SetStatusAsync(events, db, conv, Error,
-                        ConversationExecutionStatus.Error);
+                        ConversationExecutionStatus.Error,
+                        CancellationToken.None);
                     return;
                 }
 
@@ -605,7 +607,8 @@ public sealed class AgentRunner(
                             $"route budget exceeded: {lce.Message}"),
                     }, CancellationToken.None);
                     await SetStatusAsync(events, db, conv, Error,
-                        ConversationExecutionStatus.Error);
+                        ConversationExecutionStatus.Error,
+                        CancellationToken.None);
                     return;
                 }
 
@@ -621,7 +624,8 @@ public sealed class AgentRunner(
                         Error = SecretRedactor.Redact(lce.Message),
                     }, CancellationToken.None);
                     await SetStatusAsync(events, db, conv, Error,
-                        ConversationExecutionStatus.Error);
+                        ConversationExecutionStatus.Error,
+                        CancellationToken.None);
                     return;
                 }
 
@@ -649,7 +653,7 @@ public sealed class AgentRunner(
                     Error, SecretRedactor.Redact(ex.Message),
                     CancellationToken.None);
                 await SetStatusAsync(events, db, conv, Error,
-                    ConversationExecutionStatus.Error);
+                    ConversationExecutionStatus.Error, CancellationToken.None);
                 return;
             }
 
@@ -663,7 +667,7 @@ public sealed class AgentRunner(
                 {
                     // Completion vazio → nada a fazer; encerra em idle.
                     await SetStatusAsync(events, db, conv, "idle",
-                        ConversationExecutionStatus.Running);
+                        ConversationExecutionStatus.Running, CancellationToken.None);
                     return;
                 }
 
@@ -852,7 +856,7 @@ public sealed class AgentRunner(
                 if (needsConfirm)
                 {
                     await SetStatusAsync(events, db, conv,
-                        "waiting_for_confirmation", null,
+                        "waiting_for_confirmation", null, ct,
                         pendingAction: actionEvent.Id,
                         pendingTool: call.Name);
                     var approved = await WaitConfirmationAsync(
@@ -871,7 +875,7 @@ public sealed class AgentRunner(
                     }
 
                     await SetStatusAsync(events, db, conv, "running",
-                        ConversationExecutionStatus.Running);
+                        ConversationExecutionStatus.Running, ct);
                 }
 
                 ToolResult result;
@@ -1007,7 +1011,7 @@ public sealed class AgentRunner(
                     await activity.SummaryAsync(events, conversationId,
                         "completed", finalText, CancellationToken.None);
                     await SetStatusAsync(events, db, conv, "finished",
-                        ConversationExecutionStatus.Finished);
+                        ConversationExecutionStatus.Finished, ct);
                     // SPEC-52 RF-005: commit status no head SHA do PR
                     // (fire-and-forget — nunca falha a run).
                     _ = Task.Run(() => services
@@ -1077,7 +1081,7 @@ public sealed class AgentRunner(
         await activity.SummaryAsync(events, conversationId, "stuck", null,
             CancellationToken.None);
         await SetStatusAsync(events, db, conv, "stuck",
-            ConversationExecutionStatus.Error);
+            ConversationExecutionStatus.Error, CancellationToken.None);
     }
 
     /// <summary>
@@ -1198,7 +1202,8 @@ public sealed class AgentRunner(
             _pauseRequested ? Paused : "idle",
             _pauseRequested
                 ? ConversationExecutionStatus.Paused
-                : ConversationExecutionStatus.Running);
+                : ConversationExecutionStatus.Running,
+            CancellationToken.None);
         return true;
     }
 
@@ -1215,7 +1220,7 @@ public sealed class AgentRunner(
         AgentLlmOptions opt, CancellationToken ct)
     {
         await SetStatusAsync(events, db, conv, "waiting_for_question",
-            null,
+            null, ct,
             attentionKind: Application.Conversations
                 .AttentionKinds.Question);
         try
@@ -1228,7 +1233,7 @@ public sealed class AgentRunner(
             var text = Context.ConversationHistoryBuilder
                 .ToLlmMessage(msg).Content ?? "";
             await SetStatusAsync(events, db, conv, "running",
-                ConversationExecutionStatus.Running);
+                ConversationExecutionStatus.Running, ct);
             return ToolResult.Ok(
                 string.IsNullOrWhiteSpace(text) ? "(empty answer)" : text);
         }
@@ -1240,7 +1245,8 @@ public sealed class AgentRunner(
                 _pauseRequested ? Paused : "idle",
                 _pauseRequested
                     ? ConversationExecutionStatus.Paused
-                    : ConversationExecutionStatus.Running);
+                    : ConversationExecutionStatus.Running,
+                CancellationToken.None);
             return null;
         }
     }
@@ -1268,7 +1274,8 @@ public sealed class AgentRunner(
                 _pauseRequested ? Paused : "idle",
                 _pauseRequested
                     ? ConversationExecutionStatus.Paused
-                    : ConversationExecutionStatus.Running);
+                    : ConversationExecutionStatus.Running,
+                CancellationToken.None);
             return null;
         }
     }
@@ -1371,7 +1378,7 @@ public sealed class AgentRunner(
     private async Task SetStatusAsync(
         IEventService events, AppDbContext db, ConversationRecord conv,
         string status, ConversationExecutionStatus? recordStatus,
-        string? pendingAction = null,
+        CancellationToken ct, string? pendingAction = null,
         string? pendingTool = null, string? attentionKind = null)
     {
         await events.AppendAsync(conversationId, new ConversationStateUpdateEvent
@@ -1393,7 +1400,7 @@ public sealed class AgentRunner(
                         },
                     },
                     EventJson.Options),
-        });
+        }, CancellationToken.None);
 
         var kind = status switch
         {
@@ -1561,7 +1568,7 @@ public sealed class AgentRunner(
                         Message = msg,
                     }, CancellationToken.None);
                 await SetStatusAsync(events, db, conv, Error,
-                    ConversationExecutionStatus.Error);
+                    ConversationExecutionStatus.Error, CancellationToken.None);
                 return false;
             }
 
