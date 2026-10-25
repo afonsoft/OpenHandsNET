@@ -160,12 +160,9 @@ static List<object> ProbeProc()
 
 static long RssKb(string dir)
 {
-    foreach (var line in File.ReadLines(Path.Combine(dir, "status")))
+    foreach (var line in File.ReadLines(Path.Combine(dir, "status"))
+        .Where(l => l.StartsWith("VmRSS:", StringComparison.Ordinal)))
     {
-        if (!line.StartsWith("VmRSS:", StringComparison.Ordinal))
-        {
-            continue;
-        }
         var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         return parts.Length >= 2 && long.TryParse(parts[1], out var kb)
             ? kb : 0;
@@ -531,10 +528,6 @@ namespace OpenHandsNET.SandboxAgent
                         timedOut = true;
                         break;
                     }
-                    catch (OperationCanceledException)
-                    {
-                        throw;
-                    }
                 }
 
                 return new CommandResult(-1, "", LockedErr(), timedOut);
@@ -634,12 +627,10 @@ namespace OpenHandsNET.SandboxAgent
         /// <summary>Liga as surfaces cuja env flag está set (boot ou init).</summary>
         public void StartEnabled(IConfiguration cfg)
         {
-            foreach (var s in _all)
+            foreach (var s in _all.Where(s =>
+                SurfaceSupervisor.FlaggedOn(cfg[s.EnvFlag])))
             {
-                if (SurfaceSupervisor.FlaggedOn(cfg[s.EnvFlag]))
-                {
-                    s.Start();
-                }
+                s.Start();
             }
         }
 
@@ -651,12 +642,11 @@ namespace OpenHandsNET.SandboxAgent
                 return;
             }
 
-            foreach (var s in _all)
+            foreach (var s in _all.Where(s =>
+                env.TryGetValue(s.EnvFlag, out var v)
+                    && SurfaceSupervisor.FlaggedOn(v)))
             {
-                if (env.TryGetValue(s.EnvFlag, out var v) && SurfaceSupervisor.FlaggedOn(v))
-                {
-                    s.Start();
-                }
+                s.Start();
             }
         }
 

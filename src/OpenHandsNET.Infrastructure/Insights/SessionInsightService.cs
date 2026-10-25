@@ -98,12 +98,10 @@ public sealed class SessionInsightService : ISessionInsightService
             ev.Payload.Contains("error", StringComparison.OrdinalIgnoreCase) ||
             ev.Payload.Contains("fail", StringComparison.OrdinalIgnoreCase));
         var hasError = flagged.Any();
-        foreach (var ev in flagged)
-        {
-            issues.Add(new SessionIssue("command_error", "medium",
+        issues.AddRange(flagged.Select(ev =>
+            new SessionIssue("command_error", "medium",
                 SecretRedactor.Redact(
-                    ev.Payload[..Math.Min(120, ev.Payload.Length)])));
-        }
+                    ev.Payload[..Math.Min(120, ev.Payload.Length)]))));
 
         var outcome = conv.ExecutionStatus switch
         {

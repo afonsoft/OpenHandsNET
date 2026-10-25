@@ -596,7 +596,7 @@ public sealed class GitHubWebhookService(
         return null;
     }
 
-    // SPEC-91: todo texto derivado do payload entra envelopado; o
+    // SPEC-91: qualquer texto derivado do payload entra envelopado; o
     // cabeçalho estrutural e ids validados (nº do PR como int) ficam fora.
     internal static string BuildPrompt(
         ScmMentionContext mention)
