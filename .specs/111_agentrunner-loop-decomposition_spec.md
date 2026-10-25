@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Status | `Approved` |
+| Status | `In Review` |
 | Origem | gap-analysis 2026-10-25 — deferral explícito da SPEC-107 |
 | Severidade | P1 |
 | Epic | SonarCloud remediation (#152) / gap-analysis followup |
