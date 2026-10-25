@@ -57,6 +57,34 @@ public sealed class AgentRunnerLoopTests
     }
 
     [Fact]
+    public async Task Multiple_ToolCalls_One_Turn_Emit_Composite_Action_Ids()
+    {
+        // SPEC-111: dispatch por call — duas calls na mesma completion
+        // geram dois ActionEvents e o id composto cobre ambos no forget.
+        const string script = """
+            [{"tool_calls":[{"name":"bash","arguments":{"command":"echo a"}},
+                            {"name":"bash","arguments":{"command":"echo b"}}]},
+             {"tool":{"name":"finish","arguments":{"final_message":"ok"}}}]
+            """;
+        await using var fx = new AgentRunnerFixture(script);
+        fx.Executor.ExecHandler = c =>
+            new CommandResult(0, c + "\n", "", false);
+        await fx.Runner.RunAsync(CancellationToken.None);
+
+        var actions = fx.Events.Events.OfType<ActionEvent>().ToList();
+        var bashActions = actions.Where(a => a.ToolName == "bash").ToList();
+        bashActions.Count.ShouldBe(2);
+        var observations = fx.Events.Events
+            .OfType<ObservationEvent>()
+            .Where(o => o.ToolName == "bash").ToList();
+        observations.Count.ShouldBe(2);
+        foreach (var (act, obs) in bashActions.Zip(observations))
+        {
+            obs.ActionId.ShouldBe(act.Id);
+        }
+    }
+
+    [Fact]
     public async Task Text_Deltas_Go_To_Ephemeral_Bus_Not_Event_Store()
     {
         const string script = """

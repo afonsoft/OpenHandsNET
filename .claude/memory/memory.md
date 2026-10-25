@@ -126,3 +126,10 @@ do param do callee); `insert_final_newline=false` no .editorconfig;
 S107 fix via record-bundling; regex sobre chamadas multiline pode comer
 args do CORPO — restringir à signature.
 
+
+## 2026-10-25 — SPEC-111/112 implementadas
+
+- **PR #278** `feat/spec-112-fuzz-round2`: dev-login email ausente→400; usage-override/webhooks JsonException→400; webhook conv desconhecida→404; mcp/tool-call server vazio→400; `GET /keys` DateTimeOffset→ordenação em memória (SQLite); OpenAPI documenta 503 legit (checkpoint/tool-call); nightly fuzz auth cookie→Bearer `sk-*` mint via POST /keys. 10/10 testes Spec112 verdes.
+- **PR #279** `feat/spec-111-loop-decomposition`: `LoopAsync` (CC~210, ~890 linhas) → orquestração ~230 linhas + `MaybeCompactAsync`/`StreamAttemptAsync`/`DispatchToolCallsAsync`/`ExecuteToolCallAsync` sobre `LoopState`/`TurnState`; assinaturas ≤6 params. Build 0/0, format limpo, 269/269 testes Agent.
+- **Erros/lições**: rename `\b` em bloco movido corrompeu strings (`"turn.Text"`, `permission st.Policy`) e membros anônimos — fix pontual pós-diff; `ref` não compila em async → `StreamOutcome` record; `continue` em corpo extraído → verdict enum; `tcMsgIdx` mutado em fase interna → `TurnState.TcMsgIdx`.
+- **Pendente**: CI #278/#279 → merges → fechar #276/#277 → arquivar SPECs 111/112 → re-rodar nightly fuzz (#218) e gap-analysis. GATE humano: SONAR_TOKEN.
