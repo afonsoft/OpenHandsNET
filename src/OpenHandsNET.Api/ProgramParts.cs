@@ -49,8 +49,8 @@ internal static class ProgramParts
         });
 
         // Observability (OTLP exporter only when an endpoint is configured).
-        var otlpEndpoint = builder.Configuration["Observability:OtlpEndpoint"];
-        var otlpEnabled = !string.IsNullOrWhiteSpace(otlpEndpoint);
+        var otlpEndpoint = builder.Configuration["Observability:OtlpEndpoint"]
+            is { Length: > 0 } ep ? ep : null;
         builder.Services.AddOpenTelemetry()
             .WithTracing(tracing =>
             {
@@ -59,10 +59,10 @@ internal static class ProgramParts
                     .AddEntityFrameworkCoreInstrumentation()
                     .AddSource(OpenHandsNET.Infrastructure.Telemetry
                         .OpenNetTelemetry.ActivitySourceName);
-                if (otlpEnabled)
+                if (otlpEndpoint is not null)
                 {
                     tracing.AddOtlpExporter(
-                        o => o.Endpoint = new Uri(otlpEndpoint!));
+                        o => o.Endpoint = new Uri(otlpEndpoint));
                 }
             })
             .WithMetrics(metrics =>
@@ -72,10 +72,10 @@ internal static class ProgramParts
                     .AddRuntimeInstrumentation()
                     .AddMeter(OpenHandsNET.Infrastructure.Telemetry
                         .OpenNetTelemetry.MeterName);
-                if (otlpEnabled)
+                if (otlpEndpoint is not null)
                 {
                     metrics.AddOtlpExporter(
-                        o => o.Endpoint = new Uri(otlpEndpoint!));
+                        o => o.Endpoint = new Uri(otlpEndpoint));
                 }
             });
     }

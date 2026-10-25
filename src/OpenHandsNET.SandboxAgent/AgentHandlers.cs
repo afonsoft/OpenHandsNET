@@ -240,7 +240,9 @@ public sealed class AgentHandlers(AgentState runtime, SurfaceRegistry surfaces)
         if (full is null) return Results.BadRequest(new { error = "outside_workspace" });
         Directory.CreateDirectory(Path.GetDirectoryName(full)!);
         using var reader = new StreamReader(http.Request.Body);
-        await File.WriteAllTextAsync(full, await reader.ReadToEndAsync());
+        await File.WriteAllTextAsync(full,
+            await reader.ReadToEndAsync(http.RequestAborted),
+            http.RequestAborted);
         runtime.Record("file_write", path);
         return Results.NoContent();
     }

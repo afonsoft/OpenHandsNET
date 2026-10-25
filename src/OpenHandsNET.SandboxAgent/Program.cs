@@ -36,11 +36,6 @@ surfaces.Register("vscode", "SANDBOX_VSCODE", 8080, "http",
     installer: "/opt/ohn/sdks/code-server.sh");
 surfaces.StartEnabled(builder.Configuration);
 
-var ExecStreamJson = new JsonSerializerOptions
-{
-    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-};
-
 AgentState LoadState(IConfiguration cfg)
 {
     var deferred = string.Equals(

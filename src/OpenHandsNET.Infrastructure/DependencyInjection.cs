@@ -27,8 +27,8 @@ public static class DependencyInjection
         RegisterPersistence(services, configuration);
         RegisterEventing(services, configuration);
         RegisterSandboxGit(services, configuration);
-        RegisterScmProviders(services, configuration);
-        RegisterChatOpsTickets(services, configuration);
+        RegisterScmProviders(services);
+        RegisterChatOpsTickets(services);
         RegisterConversations(services, configuration);
         RegisterIdentity(services, configuration);
         RegisterMcp(services, configuration);
@@ -164,7 +164,7 @@ public static class DependencyInjection
     }
 
     private static void RegisterScmProviders(
-        IServiceCollection services, IConfiguration configuration)
+        IServiceCollection services)
     {
         // SPEC-53: providers REST (GitLab/Bitbucket/Azure DevOps) — mesmo
         // IScmProvider, registrados por kind.
@@ -207,7 +207,7 @@ public static class DependencyInjection
     }
 
     private static void RegisterChatOpsTickets(
-        IServiceCollection services, IConfiguration configuration)
+        IServiceCollection services)
     {
         // SPEC-54 ChatOps: Slack connections, sink, pipeline e reporter.
         services.AddScoped<

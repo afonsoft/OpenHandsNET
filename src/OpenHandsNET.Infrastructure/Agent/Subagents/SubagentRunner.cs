@@ -74,11 +74,13 @@ public sealed class SubagentRunner(
             LlmMessage.User(prompt),
         };
 
+        var env = new SubagentEnv(
+            conversationId, sandbox, executor, events, services,
+            parentActionId, subagentType, filtered, messages, opt);
         var iterations = Math.Max(1, opt.Subagents.MaxIterations);
         var (result, lastError) = await RunIterationsAsync(
-            conversationId, sandbox, executor, events, services,
-            parentActionId, subagentType, filtered, schemas, messages,
-            agent?.Model ?? selection?.Model, opt, iterations, ct);
+            env, schemas,
+            agent?.Model ?? selection?.Model, iterations, ct);
 
         if (result is null)
         {
@@ -123,23 +125,26 @@ public sealed class SubagentRunner(
                 + "for the parent agent. Repository root: /workspace/repo. "
                 + "Never ask questions — report findings via finish.";
 
+    /// <summary>Ambiente compartilhado das execuções de tool do subagent.</summary>
+    private sealed record SubagentEnv(
+        Guid ConversationId, Domain.Sandbox.Sandbox Sandbox,
+        ISandboxExecutor Executor, IEventService Events,
+        IServiceProvider Services, string ParentActionId,
+        string SubagentType, FilterToolRegistry Filtered,
+        List<LlmMessage> Messages, AgentLlmOptions Opt);
+
     private async Task<(string? Result, string? LastError)>
         RunIterationsAsync(
-            Guid conversationId, Domain.Sandbox.Sandbox sandbox,
-            ISandboxExecutor executor, IEventService events,
-            IServiceProvider services, string parentActionId,
-            string subagentType, FilterToolRegistry filtered,
-            List<ToolSchema> schemas, List<LlmMessage> messages,
-            string? model, AgentLlmOptions opt, int iterations,
-            CancellationToken ct)
+            SubagentEnv env, List<ToolSchema> schemas,
+            string? model, int iterations, CancellationToken ct)
     {
         string? result = null;
         string? lastError = null;
         for (var i = 0; i < iterations && result is null; i++)
         {
             var (text, ordered) = await CollectTurnAsync(
-                messages, schemas, model, ct);
-            messages.Add(LlmMessage.AssistantToolCall(
+                env.Messages, schemas, model, ct);
+            env.Messages.Add(LlmMessage.AssistantToolCall(
                 text.Length > 0 ? text.ToString() : null, ordered));
             if (ordered.Count == 0)
             {
@@ -149,10 +154,7 @@ public sealed class SubagentRunner(
 
             foreach (var call in ordered)
             {
-                var (r, err) = await ExecuteOneCallAsync(
-                    call, conversationId, sandbox, executor, events,
-                    services, parentActionId, subagentType, filtered,
-                    messages, opt, ct);
+                var (r, err) = await ExecuteOneCallAsync(call, env, ct);
                 if (r is not null)
                 {
                     result = r;
@@ -205,12 +207,7 @@ public sealed class SubagentRunner(
     }
 
     private async Task<(string? Result, string? Error)> ExecuteOneCallAsync(
-        LlmToolCall call, Guid conversationId,
-        Domain.Sandbox.Sandbox sandbox, ISandboxExecutor executor,
-        IEventService events, IServiceProvider services,
-        string parentActionId, string subagentType,
-        FilterToolRegistry filtered, List<LlmMessage> messages,
-        AgentLlmOptions opt, CancellationToken ct)
+        LlmToolCall call, SubagentEnv env, CancellationToken ct)
     {
         var parsed = TryParse(call.ArgumentsJson);
         var actionEvent = new ActionEvent
@@ -219,9 +216,9 @@ public sealed class SubagentRunner(
             Action = parsed,
             ToolCallId = call.Id,
             LlmResponseId = "",
-            ParentId = parentActionId,
+            ParentId = env.ParentActionId,
         };
-        await events.AppendAsync(conversationId, actionEvent, ct);
+        await env.Events.AppendAsync(env.ConversationId, actionEvent, ct);
 
         // finish interceptado aqui — o registro do filho nunca
         // executa o Finish real do pai.
@@ -232,11 +229,9 @@ public sealed class SubagentRunner(
         }
 
         var (toolResult, error) = await ExecuteCallAsync(
-            call, parsed, conversationId, sandbox, executor,
-            events, services, subagentType, filtered,
-            actionEvent.Id, opt, ct);
+            call, parsed, actionEvent.Id, env, ct);
 
-        await events.AppendAsync(conversationId,
+        await env.Events.AppendAsync(env.ConversationId,
             new ObservationEvent
             {
                 ToolName = call.Name,
@@ -245,26 +240,22 @@ public sealed class SubagentRunner(
                 Observation = toolResult.Observation,
                 ParentId = actionEvent.Id,
             }, ct);
-        messages.Add(LlmMessage.ToolResult(
+        env.Messages.Add(LlmMessage.ToolResult(
             call.Id, toolResult.Observation.GetRawText()));
         return (null, error);
     }
 
     private static async Task<(ToolResult Result, string? Error)>
         ExecuteCallAsync(
-            LlmToolCall call, JsonElement parsed,
-            Guid conversationId, Domain.Sandbox.Sandbox sandbox,
-            ISandboxExecutor executor, IEventService events,
-            IServiceProvider services, string subagentType,
-            FilterToolRegistry filtered, string actionId,
-            AgentLlmOptions opt, CancellationToken ct)
+            LlmToolCall call, JsonElement parsed, string actionId,
+            SubagentEnv env, CancellationToken ct)
     {
-        var tool = filtered.Find(call.Name);
+        var tool = env.Filtered.Find(call.Name);
         if (tool is null)
         {
             return (ToolResult.Error(
                 $"tool '{call.Name}' is not available to "
-                + $"a {subagentType} subagent"), null);
+                + $"a {env.SubagentType} subagent"), null);
         }
 
         try
@@ -272,11 +263,11 @@ public sealed class SubagentRunner(
             using var toolCts = CancellationTokenSource
                 .CreateLinkedTokenSource(ct);
             toolCts.CancelAfter(
-                TimeSpan.FromSeconds(opt.ToolTimeoutSeconds));
+                TimeSpan.FromSeconds(env.Opt.ToolTimeoutSeconds));
             var ctx = new ToolCallContext(
-                conversationId, sandbox, executor, events,
-                services,
-                TimeSpan.FromSeconds(opt.ToolTimeoutSeconds),
+                env.ConversationId, env.Sandbox, env.Executor,
+                env.Events, env.Services,
+                TimeSpan.FromSeconds(env.Opt.ToolTimeoutSeconds),
                 call.Id, actionId);
             return (await tool.Handler(ctx, parsed, toolCts.Token), null);
         }

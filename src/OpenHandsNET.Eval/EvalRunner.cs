@@ -145,31 +145,43 @@ public sealed class EvalRunner(IEvalBackend backend, RecordingStore? recordings 
             var kind = e.TryGetProperty("kind", out var k)
                 ? k.GetString() ?? "" : "";
             kinds[kind] = kinds.GetValueOrDefault(kind) + 1;
-            if (kind is "TokenEvent"
-                && e.TryGetProperty("prompt_tokens", out var pt)
-                && pt.ValueKind == JsonValueKind.Number)
-            {
-                tokens += pt.GetInt64();
-                if (e.TryGetProperty("completion_tokens", out var ctok)
-                    && ctok.ValueKind == JsonValueKind.Number)
-                {
-                    tokens += ctok.GetInt64();
-                }
-            }
-
-            if (e.TryGetProperty("message", out var m)
-                && m.ValueKind == JsonValueKind.String)
-            {
-                transcript.AppendLine(m.GetString());
-            }
-
-            if (e.TryGetProperty("text", out var tx)
-                && tx.ValueKind == JsonValueKind.String)
-            {
-                transcript.AppendLine(tx.GetString());
-            }
+            tokens += TokenUsageOf(e, kind);
+            AppendTranscript(e, transcript);
         }
         return (transcript, tokens, kinds);
+    }
+
+    private static long TokenUsageOf(JsonElement e, string kind)
+    {
+        if (kind is not "TokenEvent"
+            || !e.TryGetProperty("prompt_tokens", out var pt)
+            || pt.ValueKind != JsonValueKind.Number)
+        {
+            return 0;
+        }
+        var total = pt.GetInt64();
+        if (e.TryGetProperty("completion_tokens", out var ctok)
+            && ctok.ValueKind == JsonValueKind.Number)
+        {
+            total += ctok.GetInt64();
+        }
+        return total;
+    }
+
+    private static void AppendTranscript(
+        JsonElement e, System.Text.StringBuilder transcript)
+    {
+        if (e.TryGetProperty("message", out var m)
+            && m.ValueKind == JsonValueKind.String)
+        {
+            transcript.AppendLine(m.GetString());
+        }
+
+        if (e.TryGetProperty("text", out var tx)
+            && tx.ValueKind == JsonValueKind.String)
+        {
+            transcript.AppendLine(tx.GetString());
+        }
     }
 
     private async Task<(Dictionary<string, int> Exec,

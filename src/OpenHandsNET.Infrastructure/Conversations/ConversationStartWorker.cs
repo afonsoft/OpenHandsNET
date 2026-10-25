@@ -97,8 +97,8 @@ public sealed class ConversationStartWorker(
         }
 
         await AdvanceAsync(db, task, StartTaskStatus.PreparingRepository, ct);
-        await CloneRepositoryAsync(scope, workspaces, sandboxService,
-            gitService, sbForProvision, sandbox, conv, ct);
+        await CloneRepositoryAsync(
+            scope, workspaces, sbForProvision, sandbox, conv, ct);
 
         // SPEC-17 RF-004 + SPEC-25 RF-001: blueprint + descoberta de contexto
         // — falha nunca bloqueia READY.
@@ -144,10 +144,13 @@ public sealed class ConversationStartWorker(
 
     private static async Task CloneRepositoryAsync(
         IServiceScope scope, OpenHandsNET.Sandboxing.WorkspaceProvisioner workspaces,
-        ISandboxService sandboxService, Application.Git.IGitService gitService,
         Domain.Sandbox.Sandbox? sbForProvision, Domain.Sandbox.Sandbox sandbox,
         ConversationRecord conv, CancellationToken ct)
     {
+        var sandboxService = scope.ServiceProvider
+            .GetRequiredService<ISandboxService>();
+        var gitService = scope.ServiceProvider
+            .GetRequiredService<Application.Git.IGitService>();
         if (string.IsNullOrEmpty(conv.SelectedRepository))
         {
             return;
