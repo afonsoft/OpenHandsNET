@@ -19,13 +19,13 @@ public sealed class TicketsStatusCommand
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var api = await CloudApiClient.CreateAsync(
-            settings.ServerUrl, new CredentialStore(), ct: ct);
+            settings.ServerUrl, new CredentialStore(), ct: cancellationToken);
         var orgId = settings.OrgId
-            ?? await ScmStatusCommand.ResolveOrgAsync(api, ct);
-        var conns = await api.ListTicketConnectionsAsync(orgId, ct);
+            ?? await ScmStatusCommand.ResolveOrgAsync(api, cancellationToken);
+        var conns = await api.ListTicketConnectionsAsync(orgId, cancellationToken);
 
         var table = new Table().AddColumns(
             "KIND", "API URL", "WORKSPACE", "ID");
@@ -62,12 +62,12 @@ public sealed class TicketsTestCommand
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var api = await CloudApiClient.CreateAsync(
-            settings.ServerUrl, new CredentialStore(), ct: ct);
+            settings.ServerUrl, new CredentialStore(), ct: cancellationToken);
         var diag = await api.TestTicketConnectionAsync(
-            settings.ConnectionId, ct);
+            settings.ConnectionId, cancellationToken);
         var ok = diag.ValueKind == System.Text.Json.JsonValueKind.Object
             && diag.TryGetProperty("ok", out var o)
             && o.GetBoolean();
@@ -98,12 +98,12 @@ public sealed class TicketsRunCommand
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var api = await CloudApiClient.CreateAsync(
-            settings.ServerUrl, new CredentialStore(), ct: ct);
+            settings.ServerUrl, new CredentialStore(), ct: cancellationToken);
         var r = await api.RunTicketAsync(
-            settings.ConnectionId, settings.IssueKey, ct);
+            settings.ConnectionId, settings.IssueKey, cancellationToken);
         var ok = r.ValueKind == System.Text.Json.JsonValueKind.Object
             && r.TryGetProperty("result", out var res)
             && res.GetString() == "processed";

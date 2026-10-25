@@ -41,7 +41,7 @@ public sealed class SquidConfigWriter(
         var dir = ConfigDir;
         Directory.CreateDirectory(dir);
         var domains = NormalizeDomains(options.Value.EgressAllow);
-        var conf = RenderConf();
+        var conf = SquidConf;
         var allow = RenderAllowlist(domains);
         WriteIfChanged(Path.Combine(dir, ConfFile), conf);
         WriteIfChanged(Path.Combine(dir, AllowFile), allow);
@@ -53,7 +53,7 @@ public sealed class SquidConfigWriter(
     }
 
     /// <summary>squid.conf — fail-closed: nada passa sem dstdomain match.</summary>
-    internal static string RenderConf() => """
+    internal const string SquidConf = """
         # OpenHandsNET egress allowlist proxy (SPEC-19) — gerado, não editar.
         http_port 3128
         acl allowed dstdomain "/etc/squid/allowlist.txt"

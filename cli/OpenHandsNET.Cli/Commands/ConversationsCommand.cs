@@ -15,11 +15,11 @@ public sealed class ConversationsListCommand : AsyncCommand<ConversationsListCom
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var api = await CloudApiClient.CreateAsync(
-            settings.ServerUrl, new CredentialStore(), ct: ct);
-        var page = await api.ListConversationsAsync(ct);
+            settings.ServerUrl, new CredentialStore(), ct: cancellationToken);
+        var page = await api.ListConversationsAsync(cancellationToken);
         var table = new Table().AddColumns("STATUS", "TITLE", "REPO", "ID");
         if (page.TryGetProperty("items", out var items))
         {
@@ -54,11 +54,11 @@ public sealed class ConversationsStatusCommand : AsyncCommand<ConversationsStatu
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var api = await CloudApiClient.CreateAsync(
-            settings.ServerUrl, new CredentialStore(), ct: ct);
-        var conv = await api.GetConversationAsync(settings.Id, ct);
+            settings.ServerUrl, new CredentialStore(), ct: cancellationToken);
+        var conv = await api.GetConversationAsync(settings.Id, cancellationToken);
         if (conv is null)
         {
             AnsiConsole.MarkupLine("[red]conversation not found[/]");
@@ -88,11 +88,11 @@ public sealed class ConversationsDeleteCommand : AsyncCommand<ConversationsDelet
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var api = await CloudApiClient.CreateAsync(
-            settings.ServerUrl, new CredentialStore(), ct: ct);
-        await api.DeleteConversationAsync(settings.Id, ct);
+            settings.ServerUrl, new CredentialStore(), ct: cancellationToken);
+        await api.DeleteConversationAsync(settings.Id, cancellationToken);
         AnsiConsole.MarkupLine($"[green]✓[/] deleted {settings.Id[..8]}");
         return 0;
     }

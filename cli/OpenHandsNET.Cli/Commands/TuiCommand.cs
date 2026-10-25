@@ -22,7 +22,7 @@ public sealed class TuiCommand : AsyncCommand<TuiCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         if (Console.IsInputRedirected || Console.IsOutputRedirected)
         {
@@ -35,9 +35,9 @@ public sealed class TuiCommand : AsyncCommand<TuiCommand.Settings>
         AnsiConsole.MarkupLine("[bold]OpenHandsNET[/] — interactive TUI " +
             "([grey]/help para comandos[/])");
         var api = await CloudApiClient.CreateAsync(
-            settings.ServerUrl, new CredentialStore(), ct: ct);
+            settings.ServerUrl, new CredentialStore(), ct: cancellationToken);
         // SPEC-31 RF-003: keybindings de ~/.openhandsnet/tui.json.
-        var keys = await TuiKeymap.LoadAsync(ct: ct);
+        var keys = await TuiKeymap.LoadAsync(ct: cancellationToken);
         if (keys.Aliases.Count > 0)
         {
             AnsiConsole.MarkupLine(
@@ -46,11 +46,11 @@ public sealed class TuiCommand : AsyncCommand<TuiCommand.Settings>
 
         string? convId = settings.ConversationId;
 
-        while (!ct.IsCancellationRequested)
+        while (!cancellationToken.IsCancellationRequested)
         {
             if (convId is null)
             {
-                var (created, exit) = await PromptTaskAsync(api, ct);
+                var (created, exit) = await PromptTaskAsync(api, cancellationToken);
                 if (exit)
                 {
                     return 0;
@@ -63,10 +63,10 @@ public sealed class TuiCommand : AsyncCommand<TuiCommand.Settings>
                 }
             }
 
-            await PumpLoopAsync(api, convId, ct);
+            await PumpLoopAsync(api, convId, cancellationToken);
             var input = await AnsiConsole.AskAsync<string>("[green]>[/]");
             (var nextConvId, var quit) = await DispatchAsync(
-                api, keys, input, convId, ct);
+                api, keys, input, convId, cancellationToken);
             convId = nextConvId;
             if (quit)
             {

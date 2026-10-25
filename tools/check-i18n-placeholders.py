@@ -16,6 +16,7 @@ Uso: python3 tools/check-i18n-placeholders.py
 import json
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -27,12 +28,13 @@ I18N = ROOT / "src/OpenHandsNET.Client/wwwroot/i18n"
 CLIENT = ROOT / "src/OpenHandsNET.Client"
 
 SINGLE_BRACE = re.compile(r"(?<!\{)\{(\w+)\}(?!\})")
+BASE_LOCALE = "en-US.json"
 DOUBLE_BRACE = re.compile(r"\{\{(\w+)\}\}")
 
 
 def load_interpolated_keys():
     """Chaves cujo valor (en-US) contém placeholders {{nome}}."""
-    en = json.loads((I18N / "en-US.json").read_text(encoding="utf-8"))
+    en = json.loads((I18N / BASE_LOCALE).read_text(encoding="utf-8"))
     return {k: set(DOUBLE_BRACE.findall(str(v))) for k, v in en.items()
             if DOUBLE_BRACE.search(str(v))}
 
@@ -63,8 +65,8 @@ def check_single_brace(errors):
 def check_placeholder_parity(errors):
     """Mesmo conjunto de {{nome}} em todas as traduções de uma chave."""
     files = [p for p in sorted(I18N.glob("*.json"))
-             if p.name not in ("locales.json", "en-US.json")]
-    en = json.loads((I18N / "en-US.json").read_text(encoding="utf-8"))
+             if p.name not in ("locales.json", BASE_LOCALE)]
+    en = json.loads((I18N / BASE_LOCALE).read_text(encoding="utf-8"))
     for path in files:
         data = json.loads(path.read_text(encoding="utf-8"))
         for key, value in data.items():
@@ -136,7 +138,7 @@ def main():
             if new[sig] > 0:
                 new[sig] -= 1
                 print(" -", disp)
-        _drift.report(NAME, {}, stale)
+        _drift.report(NAME, Counter(), stale)
         sys.exit(1)
     _drift.report(NAME, new, stale)
     print("OK: placeholders i18n consistentes ({{nome}} + args completos)")

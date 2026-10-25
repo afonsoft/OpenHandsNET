@@ -33,7 +33,7 @@ public sealed class CloudCommand : AsyncCommand<CloudCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var task = settings.Task;
         if (settings.File is { } file)
@@ -44,7 +44,7 @@ public sealed class CloudCommand : AsyncCommand<CloudCommand.Settings>
                 return 1;
             }
 
-            task = await System.IO.File.ReadAllTextAsync(file, ct);
+            task = await System.IO.File.ReadAllTextAsync(file, cancellationToken);
         }
 
         if (string.IsNullOrWhiteSpace(task))
@@ -54,7 +54,7 @@ public sealed class CloudCommand : AsyncCommand<CloudCommand.Settings>
         }
 
         var api = await CloudApiClient.CreateAsync(
-            settings.ServerUrl, new CredentialStore(), ct: ct);
+            settings.ServerUrl, new CredentialStore(), ct: cancellationToken);
         var runner = new RunExecutor(api);
 
         var convId = await AnsiConsole.Status().StartAsync(
@@ -62,10 +62,10 @@ public sealed class CloudCommand : AsyncCommand<CloudCommand.Settings>
             {
                 var created = await api.CreateConversationAsync(
                     task, settings.Repository,
-                    confirmationMode: settings.ConfirmationMode, ct: ct);
+                    confirmationMode: settings.ConfirmationMode, ct: cancellationToken);
                 var taskId = created.GetProperty("id").GetString()!;
                 var (readyId, error) = await runner.WaitReadyAsync(
-                    taskId, s => ctx.Status($"start-task: {s}"), ct);
+                    taskId, s => ctx.Status($"start-task: {s}"), cancellationToken);
                 if (error is not null)
                 {
                     throw new HttpRequestException(error);
@@ -86,7 +86,7 @@ public sealed class CloudCommand : AsyncCommand<CloudCommand.Settings>
         {
             var result = await runner.WatchAsync(convId,
                 TimeSpan.FromMinutes(30),
-                e => Tui.EventRenderer.Write(e), ct);
+                e => Tui.EventRenderer.Write(e), cancellationToken);
             return result.ExitCode;
         }
 

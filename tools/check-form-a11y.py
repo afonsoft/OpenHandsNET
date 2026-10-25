@@ -19,6 +19,7 @@ Exits non-zero and prints violations.
 import re
 import sys
 import glob
+from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -111,74 +112,94 @@ def button_has_text(src, attrs_end):
     return len(text) > 0
 
 
+def check_controls(f: str, src: str, fors: list[str],
+                   lranges: list[tuple[int, int]],
+                   errors: list[tuple[str, str]]) -> None:
+    """Check 3 — inputs/selects/textareas com nome acessível."""
+    for m in FORM_TAGS.finditer(src):
+        attrs, _ = tag_attrs(src, m.end())
+        a = dict(ATTR.findall(attrs))
+        if a.get('type') == 'hidden':
+            continue
+        if 'aria-label' in a or 'aria-labelledby' in a:
+            continue
+        cid = a.get('id')
+        if cid and cid in fors:
+            continue
+        if in_spans(m.start(), lranges):
+            continue
+        line = src[:m.start()].count('\n') + 1
+        errors.append((f"{f}:unnamed-<{m.group(1)}>",
+                       f"{f}:{line}: <{m.group(1)}> without "
+                       "accessible name"))
+
+
+def check_buttons(f: str, src: str,
+                  errors: list[tuple[str, str]]) -> None:
+    """Check 3b — buttons precisam de nome: aria-label/labelledby/
+    title ou texto."""
+    for m in BUTTON_TAG.finditer(src):
+        attrs, attrs_end = tag_attrs(src, m.end())
+        a = dict(ATTR.findall(attrs))
+        if 'aria-label' in a or 'aria-labelledby' in a or 'title' in a:
+            continue
+        if button_has_text(src, attrs_end):
+            continue
+        line = src[:m.start()].count('\n') + 1
+        errors.append((f"{f}:unnamed-<button>",
+                       f"{f}:{line}: <button> without accessible name"))
+
+
+def check_loop_ids(f: str, src: str, spans: list[tuple[int, int]],
+                   errors: list[tuple[str, str]]) -> None:
+    """Check 4 — id dentro de loop referenciado por label fora."""
+    for m in re.finditer(r'\bid="([A-Za-z0-9_-]+)"', src):
+        if in_spans(m.start(), spans):
+            for fm in re.finditer(
+                    r'\bfor="' + re.escape(m.group(1)) + r'"', src):
+                if not in_spans(fm.start(), spans):
+                    line = src[:m.start()].count('\n') + 1
+                    errors.append((f"{f}:loop-id={m.group(1)}",
+                                   f"{f}:{line}: id \"{m.group(1)}\" "
+                                   "inside loop referenced by label "
+                                   "outside loop"))
+
+
+def check_file(f: str, errors: list[tuple[str, str]]) -> None:
+    """Roda os 4 checks de a11y num .razor e acumula violações."""
+    src = open(f, encoding='utf-8').read()
+    ids = re.findall(r'\bid="([A-Za-z0-9_-]+)"', src)
+    fors = re.findall(r'\bfor="([A-Za-z0-9_-]+)"', src)
+    spans = loop_spans(src)
+    lranges = label_ranges(src)
+
+    # 1. for -> id
+    for fr in fors:
+        if fr not in ids:
+            errors.append((f"{f}:for={fr}",
+                           f"{f}: for=\"{fr}\" has no matching id"))
+
+    # 2. duplicate ids (literal duplicates only)
+    seen = {}
+    for i in ids:
+        seen[i] = seen.get(i, 0) + 1
+    for i, c in seen.items():
+        if c > 1:
+            errors.append((f"{f}:dup-id={i}",
+                           f"{f}: duplicate id \"{i}\" x{c}"))
+
+    check_controls(f, src, fors, lranges, errors)
+    check_buttons(f, src, errors)
+    check_loop_ids(f, src, spans, errors)
+
+
 def main():
     # violations: (signature livre-de-linha, display arquivo:linha)
     errors: list[tuple[str, str]] = []
     files = sorted(glob.glob(
         'src/OpenHandsNET.Client/**/*.razor', recursive=True))
     for f in files:
-        src = open(f, encoding='utf-8').read()
-        ids = re.findall(r'\bid="([A-Za-z0-9_-]+)"', src)
-        fors = re.findall(r'\bfor="([A-Za-z0-9_-]+)"', src)
-        spans = loop_spans(src)
-        lranges = label_ranges(src)
-
-        # 1. for -> id
-        for fr in fors:
-            if fr not in ids:
-                errors.append((f"{f}:for={fr}",
-                               f"{f}: for=\"{fr}\" has no matching id"))
-
-        # 2. duplicate ids (literal duplicates only)
-        seen = {}
-        for i in ids:
-            seen[i] = seen.get(i, 0) + 1
-        for i, c in seen.items():
-            if c > 1:
-                errors.append((f"{f}:dup-id={i}",
-                               f"{f}: duplicate id \"{i}\" x{c}"))
-
-        # 3. control accessible names
-        for m in FORM_TAGS.finditer(src):
-            attrs, _ = tag_attrs(src, m.end())
-            a = dict(ATTR.findall(attrs))
-            if a.get('type') == 'hidden':
-                continue
-            if 'aria-label' in a or 'aria-labelledby' in a:
-                continue
-            cid = a.get('id')
-            if cid and cid in fors:
-                continue
-            if in_spans(m.start(), lranges):
-                continue
-            line = src[:m.start()].count('\n') + 1
-            errors.append((f"{f}:unnamed-<{m.group(1)}>",
-                           f"{f}:{line}: <{m.group(1)}> without "
-                           "accessible name"))
-
-        # 3b. buttons need a name: aria-label/labelledby/title or text
-        for m in BUTTON_TAG.finditer(src):
-            attrs, attrs_end = tag_attrs(src, m.end())
-            a = dict(ATTR.findall(attrs))
-            if 'aria-label' in a or 'aria-labelledby' in a or 'title' in a:
-                continue
-            if button_has_text(src, attrs_end):
-                continue
-            line = src[:m.start()].count('\n') + 1
-            errors.append((f"{f}:unnamed-<button>",
-                           f"{f}:{line}: <button> without accessible name"))
-
-        # 4. label-outside / control-inside loop
-        for m in re.finditer(r'\bid="([A-Za-z0-9_-]+)"', src):
-            if in_spans(m.start(), spans):
-                for fm in re.finditer(
-                        r'\bfor="' + re.escape(m.group(1)) + r'"', src):
-                    if not in_spans(fm.start(), spans):
-                        line = src[:m.start()].count('\n') + 1
-                        errors.append((f"{f}:loop-id={m.group(1)}",
-                                       f"{f}:{line}: id \"{m.group(1)}\" "
-                                       "inside loop referenced by label "
-                                       "outside loop"))
+        check_file(f, errors)
 
     signatures = [sig for sig, _ in errors]
     if _drift.maybe_write_baseline(NAME, signatures):
@@ -190,7 +211,7 @@ def main():
             if new[sig] > 0:
                 new[sig] -= 1
                 print("  -", disp)
-        _drift.report(NAME, {}, stale)  # new já impresso com linhas
+        _drift.report(NAME, Counter(), stale)  # new já impresso com linhas
         sys.exit(1)
     _drift.report(NAME, new, stale)
     print(f"OK: {len(files)} razor files checked")

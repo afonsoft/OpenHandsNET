@@ -398,7 +398,7 @@ public static class OpenAiGatewayEndpoints
         try
         {
             await foreach (var frame in activity
-                .SubscribeAsync(convId, linked.Token))
+                .SubscribeAsync(convId, linked.Token)) // NOSONAR S3267 — loop tem side-effect (WriteChunkAsync); Select exigiria IAsyncEnumerable LINQ
             {
                 sentText.Add(frame.Text);
                 await WriteChunkAsync(new

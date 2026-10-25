@@ -83,12 +83,8 @@ public sealed class EdgeAccessMiddleware(
 
     private bool IsExempt(PathString path)
     {
-        foreach (var p in options.Value.ExemptPaths)
-        {
-            if (path.StartsWithSegments(p, StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-        return false;
+        return options.Value.ExemptPaths.Any(p =>
+            path.StartsWithSegments(p, StringComparison.OrdinalIgnoreCase));
     }
 
     private async Task<List<(string Scope, string Cidr, string Action, int Priority)>>

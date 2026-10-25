@@ -106,6 +106,17 @@ async def hub_connect(base: str, token: str, session):
     return ws, time.monotonic() - t0
 
 
+def _invocation_frame(frame: str) -> bool:
+    """True quando o frame é um InvocationMessage SignalR (type=1)."""
+    if not frame:
+        return False
+    try:
+        env = json.loads(frame)
+    except json.JSONDecodeError:
+        return False
+    return env.get("type") == 1
+
+
 async def hub_first_event(ws, timeout_s: float) -> tuple[float, int]:
     """Wait for 1st InvocationMessage. Returns (ttft_s, n_events_seen)."""
     t0 = time.monotonic()
@@ -117,18 +128,9 @@ async def hub_first_event(ws, timeout_s: float) -> tuple[float, int]:
             raise RuntimeError("hub closed")
         if msg.type != aiohttp.WSMsgType.TEXT:
             continue
-        for frame in msg.data.split(SEP):
-            if not frame:
-                continue
-            try:
-                env = json.loads(frame)
-            except json.JSONDecodeError:
-                continue
-            if env.get("type") == 1:          # Invocation
-                n += 1
-                return time.monotonic() - t0, n
-            if env.get("type") == 6:          # Ping — keep waiting
-                continue
+        if any(_invocation_frame(f) for f in msg.data.split(SEP)):
+            n += 1
+            return time.monotonic() - t0, n
 
 
 # ---------- HTTP helpers ----------

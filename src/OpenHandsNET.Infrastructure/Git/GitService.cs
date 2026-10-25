@@ -74,7 +74,7 @@ public sealed class GitService(
                     $"GIT_ASKPASS='{askPassPath}' GIT_TERMINAL_PROMPT=0 ";
             }
 
-            logger.LogInformation("Cloning {Repo} into {Path} (container mode)",
+            logger.LogInformation("Cloning {RepoUrl} into {RepoPath} (container mode)",
                 safeUrl, Repo);
             var clone = await executor.ExecAsync(sandbox,
                 $"{envPrefix}git clone -- '{Escape(url)}' '{Repo}'",

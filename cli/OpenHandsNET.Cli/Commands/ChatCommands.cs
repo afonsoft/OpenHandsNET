@@ -18,13 +18,13 @@ public sealed class ChatStatusCommand : AsyncCommand<ChatStatusCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var api = await CloudApiClient.CreateAsync(
-            settings.ServerUrl, new CredentialStore(), ct: ct);
+            settings.ServerUrl, new CredentialStore(), ct: cancellationToken);
         var orgId = settings.OrgId
-            ?? await ScmStatusCommand.ResolveOrgAsync(api, ct);
-        var conns = await api.ListChatConnectionsAsync(orgId, ct);
+            ?? await ScmStatusCommand.ResolveOrgAsync(api, cancellationToken);
+        var conns = await api.ListChatConnectionsAsync(orgId, cancellationToken);
 
         var table = new Table().AddColumns(
             "KIND", "TEAM", "BOT USER", "CHANNELS", "ID");
@@ -77,12 +77,12 @@ public sealed class ChatTestCommand : AsyncCommand<ChatTestCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var api = await CloudApiClient.CreateAsync(
-            settings.ServerUrl, new CredentialStore(), ct: ct);
+            settings.ServerUrl, new CredentialStore(), ct: cancellationToken);
         var diag = await api.TestChatConnectionAsync(
-            settings.ConnectionId, ct);
+            settings.ConnectionId, cancellationToken);
         var ok = diag.ValueKind == System.Text.Json.JsonValueKind.Object
             && diag.TryGetProperty("ok", out var o)
             && o.GetBoolean();

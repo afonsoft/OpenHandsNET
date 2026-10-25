@@ -23,7 +23,7 @@ public sealed class ModelsCommand : AsyncCommand<ModelsCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(),
@@ -93,17 +93,17 @@ public sealed class StatsCommand : AsyncCommand<StatsCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var api = await CloudApiClient.CreateAsync(
-            settings.ServerUrl, new CredentialStore(), ct: ct);
-        var conversations = await api.CountConversationsAsync(ct);
+            settings.ServerUrl, new CredentialStore(), ct: cancellationToken);
+        var conversations = await api.CountConversationsAsync(cancellationToken);
 
         JsonElement? usage = null;
-        var orgId = settings.OrgId ?? await ResolveOrgIdAsync(api, ct);
+        var orgId = settings.OrgId ?? await ResolveOrgIdAsync(api, cancellationToken);
         if (orgId is not null && Guid.TryParse(orgId, out var og))
         {
-            usage = await api.GetOrgUsageAsync(og, ct);
+            usage = await api.GetOrgUsageAsync(og, cancellationToken);
         }
 
         if (settings.Json)
@@ -185,7 +185,7 @@ public sealed class SkillsCommand : AsyncCommand<SkillsCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(),
@@ -243,23 +243,23 @@ public sealed class ExportCommand : AsyncCommand<ExportCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var api = await CloudApiClient.CreateAsync(
-            settings.ServerUrl, new CredentialStore(), ct: ct);
+            settings.ServerUrl, new CredentialStore(), ct: cancellationToken);
 
         if (settings.Jsonl)
         {
-            return await ExportJsonlAsync(api, settings, ct);
+            return await ExportJsonlAsync(api, settings, cancellationToken);
         }
 
         var path = settings.Out
             ?? $"openhandsnet-{settings.ConversationId}.zip";
         using var resp = await api.DownloadTrajectoryAsync(
-            settings.ConversationId, ct);
-        await using var src = await resp.Content.ReadAsStreamAsync(ct);
+            settings.ConversationId, cancellationToken);
+        await using var src = await resp.Content.ReadAsStreamAsync(cancellationToken);
         await using var dst = File.Create(path);
-        await src.CopyToAsync(dst, ct);
+        await src.CopyToAsync(dst, cancellationToken);
         AnsiConsole.MarkupLine(
             $"[green]✓[/] trajectory → {Markup.Escape(path)}");
         return 0;
@@ -323,11 +323,11 @@ public sealed class ResumeCommand : AsyncCommand<ResumeCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var api = await CloudApiClient.CreateAsync(
-            settings.ServerUrl, new CredentialStore(), ct: ct);
-        var conv = await api.GetConversationAsync(settings.Id, ct);
+            settings.ServerUrl, new CredentialStore(), ct: cancellationToken);
+        var conv = await api.GetConversationAsync(settings.Id, cancellationToken);
         if (conv is null)
         {
             AnsiConsole.MarkupLine("[red]conversation not found[/]");
@@ -335,7 +335,7 @@ public sealed class ResumeCommand : AsyncCommand<ResumeCommand.Settings>
         }
 
         // Replay tail.
-        var page = await api.GetEventsAsync(settings.Id, ct: ct);
+        var page = await api.GetEventsAsync(settings.Id, ct: cancellationToken);
         if (page.TryGetProperty("items", out var items))
         {
             var last = items.EnumerateArray().TakeLast(settings.Tail);
@@ -347,7 +347,7 @@ public sealed class ResumeCommand : AsyncCommand<ResumeCommand.Settings>
 
         AnsiConsole.MarkupLine(
             $"[grey]resumed {settings.Id[..8]} — /exit sai[/]");
-        while (!ct.IsCancellationRequested)
+        while (!cancellationToken.IsCancellationRequested)
         {
             var input = await AnsiConsole.AskAsync<string>("[green]>[/]");
             if (input.Trim() is "/exit" or "/quit")
@@ -360,9 +360,9 @@ public sealed class ResumeCommand : AsyncCommand<ResumeCommand.Settings>
                 continue;
             }
 
-            await api.SendMessageAsync(settings.Id, input, ct);
-            await Task.Delay(800, ct);
-            var poll = await api.GetEventsAsync(settings.Id, ct: ct);
+            await api.SendMessageAsync(settings.Id, input, cancellationToken);
+            await Task.Delay(800, cancellationToken);
+            var poll = await api.GetEventsAsync(settings.Id, ct: cancellationToken);
             if (poll.TryGetProperty("items", out var fresh))
             {
                 foreach (var e in fresh.EnumerateArray().TakeLast(5))
@@ -392,13 +392,13 @@ public sealed class AttachCommand : AsyncCommand<AttachCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct) =>
+        CommandContext context, Settings settings, CancellationToken cancellationToken) =>
         await new TuiCommand().ExecuteAsync(context,
             new TuiCommand.Settings
             {
                 ServerUrl = settings.Url,
                 ConversationId = settings.ConversationId,
-            }, ct);
+            }, cancellationToken);
 }
 
 /// <summary><c>openhandsnet mcp list</c> — SPEC-31 RF-001.</summary>
@@ -411,7 +411,7 @@ public sealed class McpListCommand : AsyncCommand<McpListCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(),
@@ -473,11 +473,11 @@ public sealed class McpTestCommand : AsyncCommand<McpTestCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var api = await CloudApiClient.CreateAsync(
-            settings.ServerUrl, new CredentialStore(), ct: ct);
-        var servers = await api.GetMcpServersAsync(ct);
+            settings.ServerUrl, new CredentialStore(), ct: cancellationToken);
+        var servers = await api.GetMcpServersAsync(cancellationToken);
         JsonElement? target = null;
         if (servers.ValueKind == JsonValueKind.Array)
         {
@@ -498,7 +498,7 @@ public sealed class McpTestCommand : AsyncCommand<McpTestCommand.Settings>
             return 1;
         }
 
-        var probe = await api.ProbeMcpAsync(target.Value, ct);
+        var probe = await api.ProbeMcpAsync(target.Value, cancellationToken);
         var ok = probe.TryGetProperty("ok", out var o) && o.GetBoolean();
         var detail = probe.TryGetProperty("error", out var e)
             ? e.GetString() : ProbeDetail(probe);

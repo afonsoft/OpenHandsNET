@@ -44,6 +44,14 @@ public sealed class EgressProxyTests : IDisposable
     }
 
     [Fact]
+    public void SquidConf_Is_Deny_By_Default()
+    {
+        // SPEC-109: S3400 — template virou constante; conteúdo estável.
+        SquidConfigWriter.SquidConf.ShouldContain("http_port 3128");
+        SquidConfigWriter.SquidConf.ShouldContain("http_access deny all");
+    }
+
+    [Fact]
     public void NormalizeDomains_Empty_And_Invalid()
     {
         SquidConfigWriter.NormalizeDomains(null).ShouldBeEmpty();
