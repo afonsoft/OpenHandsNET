@@ -90,7 +90,24 @@ public sealed class LlmSummarizingCondenser(
                 tokens, afterPrune);
         }
 
-        // ---- fase 2: summarization ----
+        return await SummarizePhaseAsync(
+            new PruneOutcome(working, ids, pruned, tokens, afterPrune),
+            trigger, model, co, o, ct);
+    }
+
+    /// <summary>Estado da fase 1 (pruning) que alimenta a fase 2.</summary>
+    private sealed record PruneOutcome(
+        List<LlmMessage> Working, List<string?> Ids, List<string> Pruned,
+        int Tokens, int AfterPrune);
+
+    // ---- fase 2: summarization ----
+    private async Task<CondenseResult> SummarizePhaseAsync(
+        PruneOutcome p, CompactionTrigger trigger,
+        string? model, CompactionOptions co, AgentLlmOptions o,
+        CancellationToken ct)
+    {
+        var working = p.Working;
+        var ids = p.Ids;
         var start = working.Count > 0 && working[0].Role == "system" ? 1 : 0;
         var boundary = Math.Max(start, working.Count - co.KeepLastTurns);
         // nunca inicia o tail com tool results órfãos (a call ficaria fora).
@@ -101,9 +118,7 @@ public sealed class LlmSummarizingCondenser(
 
         if (boundary - start <= 0)
         {
-            return new CondenseResult(
-                working, ids, [], pruned, null, null, null,
-                tokens, afterPrune);
+            return Passthrough();
         }
 
         try
@@ -143,8 +158,8 @@ public sealed class LlmSummarizingCondenser(
                 .Where(s => s.Length > 0)
                 .ToList();
             return new CondenseResult(
-                resultMsgs, resultIds, forgotten, pruned, summary, start,
-                responseId, tokens,
+                resultMsgs, resultIds, forgotten, p.Pruned, summary, start,
+                responseId, p.Tokens,
                 meter.EstimateTokens(resultMsgs, model));
         }
         catch (OperationCanceledException)
@@ -159,7 +174,8 @@ public sealed class LlmSummarizingCondenser(
         }
 
         CondenseResult Passthrough() => new(
-            working, ids, [], pruned, null, null, null, tokens, afterPrune);
+            working, ids, [], p.Pruned, null, null, null,
+            p.Tokens, p.AfterPrune);
     }
 
     /// <summary>Trunca tool results antigos além de KeepRecentToolResults.</summary>

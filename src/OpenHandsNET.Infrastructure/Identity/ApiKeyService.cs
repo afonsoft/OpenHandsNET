@@ -122,25 +122,8 @@ public sealed class ApiKeyService(
         }
 
         var keyId = record.Id;
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await using var scope = scopeFactory.CreateAsyncScope();
-                var scoped = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                var row = await scoped.ApiKeys.IgnoreQueryFilters()
-                    .FirstOrDefaultAsync(k => k.Id == keyId, cancellationToken);
-                if (row is not null)
-                {
-                    row.LastUsedAt = DateTimeOffset.UtcNow;
-                    await scoped.SaveChangesAsync(cancellationToken);
-                }
-            }
-            catch (Exception e)
-            {
-                logger.LogDebug(e, "last_used_at update failed for key {KeyId}", keyId);
-            }
-        }, CancellationToken.None);
+        _ = Task.Run(() => TouchLastUsedAsync(keyId, cancellationToken),
+            CancellationToken.None);
 
         return svc is not null
             ? new ApiKeyResolution(
@@ -150,6 +133,26 @@ public sealed class ApiKeyService(
             : new ApiKeyResolution(
                 record.Id, userId, record.OrgId, record.Name,
                 Scopes: ParseScopes(record.ScopesJson));
+    }
+
+    private async Task TouchLastUsedAsync(Guid keyId, CancellationToken ct)
+    {
+        try
+        {
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var scoped = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var row = await scoped.ApiKeys.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(k => k.Id == keyId, ct);
+            if (row is not null)
+            {
+                row.LastUsedAt = DateTimeOffset.UtcNow;
+                await scoped.SaveChangesAsync(ct);
+            }
+        }
+        catch (Exception e)
+        {
+            logger.LogDebug(e, "last_used_at update failed for key {KeyId}", keyId);
+        }
     }
 
     /// <summary>Scopes serializados (null = chave sem restrição).</summary>

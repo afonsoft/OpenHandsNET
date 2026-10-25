@@ -637,12 +637,10 @@ public sealed class SandboxService(
 
         var conv = await db.Conversations.AsNoTracking()
             .Where(c => c.Id == conversationId.Value)
-            .Select(c => new
-            {
+            .Select(c => new ConvSecrets(
                 c.CreatedByUserId,
                 c.SelectedRepository,
-                c.SecretNamesJson,
-            })
+                c.SecretNamesJson))
             .FirstOrDefaultAsync(ct);
         if (conv is null)
         {
@@ -650,38 +648,55 @@ public sealed class SandboxService(
         }
 
         var env = new List<string>();
+        await AppendSecretEnvAsync(env, conv, conversationId, ct);
+        await AppendGitEnvAsync(env, conv, ct);
+        return env;
+    }
 
-        // SPEC-33 RF-003: secrets por referência — conv.secret_names_json
-        // guarda NOMES; o valor só existe aqui (env do container).
-        if (secretStore is not null
-            && !string.IsNullOrEmpty(conv.SecretNamesJson)
-            && !string.IsNullOrEmpty(conv.CreatedByUserId))
+    private sealed record ConvSecrets(
+        string? CreatedByUserId, string? SelectedRepository,
+        string? SecretNamesJson);
+
+    // SPEC-33 RF-003: secrets por referência — conv.secret_names_json
+    // guarda NOMES; o valor só existe aqui (env do container).
+    private async Task AppendSecretEnvAsync(
+        List<string> env, ConvSecrets conv, Guid? conversationId,
+        CancellationToken ct)
+    {
+        if (secretStore is null
+            || string.IsNullOrEmpty(conv.SecretNamesJson)
+            || string.IsNullOrEmpty(conv.CreatedByUserId))
         {
-            try
+            return;
+        }
+        try
+        {
+            var names = System.Text.Json.JsonSerializer
+                .Deserialize<List<string>>(conv.SecretNamesJson) ?? [];
+            foreach (var name in names)
             {
-                var names = System.Text.Json.JsonSerializer
-                    .Deserialize<List<string>>(conv.SecretNamesJson) ?? [];
-                foreach (var name in names)
+                var value = await secretStore.ResolveAsync(
+                    "user", conv.CreatedByUserId, name, ct);
+                if (value is not null)
                 {
-                    var value = await secretStore.ResolveAsync(
-                        "user", conv.CreatedByUserId, name, ct);
-                    if (value is not null)
-                    {
-                        env.Add($"{name}={value}");
-                    }
+                    env.Add($"{name}={value}");
                 }
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                logger.LogWarning(ex,
-                    "Secret env resolution failed for conversation {Id}",
-                    conversationId);
-            }
         }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex,
+                "Secret env resolution failed for conversation {Id}",
+                conversationId);
+        }
+    }
 
+    private async Task AppendGitEnvAsync(
+        List<string> env, ConvSecrets conv, CancellationToken ct)
+    {
         if (gitCredentials is null)
         {
-            return env;
+            return;
         }
 
         var ghToken = await gitCredentials.ResolveTokenAsync(
@@ -704,8 +719,6 @@ public sealed class SandboxService(
                 env.Add($"GH_HOST={repoHost}");
             }
         }
-
-        return env;
     }
 
     /// <summary>Extrai o host de <c>selected_repository</c> (url ou owner/repo).</summary>

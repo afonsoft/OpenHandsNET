@@ -270,6 +270,25 @@ public sealed class OpenAiCompatLlmProvider(
     /// </summary>
     private static IEnumerable<ILlmStreamChunk> DeltaChunks(JsonElement delta)
     {
+        foreach (var chunk in ReasoningChunks(delta))
+        {
+            yield return chunk;
+        }
+
+        if (delta.TryGetProperty("content", out var content)
+            && content.ValueKind == JsonValueKind.String)
+        {
+            yield return new TextDelta(content.GetString()!);
+        }
+
+        foreach (var chunk in ToolCallChunks(delta))
+        {
+            yield return chunk;
+        }
+    }
+
+    private static IEnumerable<ILlmStreamChunk> ReasoningChunks(JsonElement delta)
+    {
         if (delta.TryGetProperty("reasoning_content", out var rc)
             && rc.ValueKind == JsonValueKind.String)
         {
@@ -294,13 +313,10 @@ public sealed class OpenAiCompatLlmProvider(
                 }
             }
         }
+    }
 
-        if (delta.TryGetProperty("content", out var content)
-            && content.ValueKind == JsonValueKind.String)
-        {
-            yield return new TextDelta(content.GetString()!);
-        }
-
+    private static IEnumerable<ILlmStreamChunk> ToolCallChunks(JsonElement delta)
+    {
         if (!delta.TryGetProperty("tool_calls", out var calls))
         {
             yield break;

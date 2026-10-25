@@ -192,6 +192,54 @@ public sealed class EvalHarnessTests
         back.Tokens.ShouldBe(123);
     }
 
+    [Fact]
+    public void Validate_Reports_Each_Assert_Violation()
+    {
+        var task = new EvalTask
+        {
+            Name = "t",
+            Task = "do it",
+            Assert =
+            [
+                new EvalAssert { Type = "exit_code" },
+                new EvalAssert { Type = "file_contains", Path = "../x" },
+                new EvalAssert { Type = "output_contains" },
+                new EvalAssert { Type = "llm_judge" },
+                new EvalAssert { Type = "mystery" },
+                new EvalAssert { Type = "output_contains",
+                    Pattern = "ok", Weight = 0 },
+            ],
+        };
+
+        var errors = EvalParser.Validate(task);
+
+        errors.ShouldContain(e => e.Contains("exit_code requires cmd"));
+        errors.ShouldContain(e => e.Contains("file_contains requires safe path"));
+        errors.ShouldContain(e => e.Contains("file_contains requires pattern"));
+        errors.ShouldContain(e => e.Contains("output_contains requires pattern"));
+        errors.ShouldContain(e => e.Contains("llm_judge requires rubric"));
+        errors.ShouldContain(e => e.Contains("unknown type 'mystery'"));
+        errors.ShouldContain(e => e.Contains("weight must be > 0"));
+    }
+
+    [Fact]
+    public void Validate_Passes_Valid_Task()
+    {
+        var task = new EvalTask
+        {
+            Name = "t",
+            Task = "do it",
+            Assert =
+            [
+                new EvalAssert { Type = "exit_code", Cmd = "make test" },
+                new EvalAssert { Type = "file_contains",
+                    Path = "/workspace/a.py", Pattern = "x" },
+            ],
+        };
+
+        EvalParser.Validate(task).ShouldBeEmpty();
+    }
+
     private static JsonElement CmdOut(string text) =>
         JsonDocument.Parse(
             $"{{\"kind\":\"command_output\",\"id\":\"e1\",\"text\":\"{text}\"}}")

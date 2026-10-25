@@ -122,6 +122,21 @@ public sealed class EvalRunner(IEvalBackend backend, RecordingStore? recordings 
         EvalTask task, string convId, IReadOnlyList<JsonElement> events,
         CancellationToken ct)
     {
+        var (transcript, tokens, kinds) = SummarizeEvents(events);
+        var (execResults, fileContents) =
+            await CollectAssertArtifacts(task, convId, transcript, ct);
+
+        return new EvalEvidence(
+            transcript.ToString(), execResults, fileContents,
+            kinds, tokens);
+    }
+
+    // Transcript textual (mensagens + saídas + observações) + token totals
+    // + contagem por kind.
+    private static (System.Text.StringBuilder Transcript, long Tokens,
+        Dictionary<string, int> Kinds) SummarizeEvents(
+            IReadOnlyList<JsonElement> events)
+    {
         var transcript = new System.Text.StringBuilder();
         long tokens = 0;
         var kinds = new Dictionary<string, int>();
@@ -130,32 +145,50 @@ public sealed class EvalRunner(IEvalBackend backend, RecordingStore? recordings 
             var kind = e.TryGetProperty("kind", out var k)
                 ? k.GetString() ?? "" : "";
             kinds[kind] = kinds.GetValueOrDefault(kind) + 1;
-            if (kind is "TokenEvent"
-                && e.TryGetProperty("prompt_tokens", out var pt)
-                && pt.ValueKind == JsonValueKind.Number)
-            {
-                tokens += pt.GetInt64();
-                if (e.TryGetProperty("completion_tokens", out var ctok)
-                    && ctok.ValueKind == JsonValueKind.Number)
-                {
-                    tokens += ctok.GetInt64();
-                }
-            }
+            tokens += TokenUsageOf(e, kind);
+            AppendTranscript(e, transcript);
+        }
+        return (transcript, tokens, kinds);
+    }
 
-            // transcript textual: mensagens + saídas de comando + observações.
-            if (e.TryGetProperty("message", out var m)
-                && m.ValueKind == JsonValueKind.String)
-            {
-                transcript.AppendLine(m.GetString());
-            }
+    private static long TokenUsageOf(JsonElement e, string kind)
+    {
+        if (kind is not "TokenEvent"
+            || !e.TryGetProperty("prompt_tokens", out var pt)
+            || pt.ValueKind != JsonValueKind.Number)
+        {
+            return 0;
+        }
+        var total = pt.GetInt64();
+        if (e.TryGetProperty("completion_tokens", out var ctok)
+            && ctok.ValueKind == JsonValueKind.Number)
+        {
+            total += ctok.GetInt64();
+        }
+        return total;
+    }
 
-            if (e.TryGetProperty("text", out var tx)
-                && tx.ValueKind == JsonValueKind.String)
-            {
-                transcript.AppendLine(tx.GetString());
-            }
+    private static void AppendTranscript(
+        JsonElement e, System.Text.StringBuilder transcript)
+    {
+        if (e.TryGetProperty("message", out var m)
+            && m.ValueKind == JsonValueKind.String)
+        {
+            transcript.AppendLine(m.GetString());
         }
 
+        if (e.TryGetProperty("text", out var tx)
+            && tx.ValueKind == JsonValueKind.String)
+        {
+            transcript.AppendLine(tx.GetString());
+        }
+    }
+
+    private async Task<(Dictionary<string, int> Exec,
+        Dictionary<string, string?> Files)> CollectAssertArtifacts(
+            EvalTask task, string convId,
+            System.Text.StringBuilder transcript, CancellationToken ct)
+    {
         var execResults = new Dictionary<string, int>();
         var fileContents = new Dictionary<string, string?>();
         foreach (var a in task.Assert)
@@ -172,10 +205,7 @@ public sealed class EvalRunner(IEvalBackend backend, RecordingStore? recordings 
                 fileContents[p] = await backend.ReadFileAsync(convId, p, ct);
             }
         }
-
-        return new EvalEvidence(
-            transcript.ToString(), execResults, fileContents,
-            kinds, tokens);
+        return (execResults, fileContents);
     }
 
     private async Task<EvalResult> Score(

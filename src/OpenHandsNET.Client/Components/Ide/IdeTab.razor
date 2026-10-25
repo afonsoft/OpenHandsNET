@@ -250,43 +250,53 @@
             && !_monacoFailed)
         {
             _editorDirty = false;
-            try
-            {
-                var ok = await Monaco.CreateEditorAsync("ide-monaco",
-                    t.Cached, MonacoInterop.LanguageFor(t.Path),
-                    readOnly: false);
-                if (ok && _self is not null)
-                {
-                    // Editor recriado a cada tab — re-subscreve os hooks.
-                    await Monaco.OnChangedAsync("ide-monaco", _self,
-                        nameof(NotifyDirty));
-                    await Monaco.OnSaveAsync("ide-monaco", _self,
-                        nameof(NotifySave));
-                    await Monaco.OnCursorAsync("ide-monaco", _self,
-                        nameof(NotifyCursor));
-                }
-            }
-            catch (JSException) { _monacoFailed = true; }
-            catch (InvalidOperationException) { _monacoFailed = true; }
+            await CreateNormalEditorAsync(t);
         }
 
         // Diff view — editor duplo HEAD × workspace.
         if (_diff is { } d && _editorDirty && !_monacoFailed)
         {
             _editorDirty = false;
-            try
-            {
-                await Monaco.CreateDiffEditorAsync("ide-diff",
-                    d.Orig, d.Mod, MonacoInterop.LanguageFor(d.Path));
-            }
-            catch (JSException) { _monacoFailed = true; }
-            catch (InvalidOperationException) { _monacoFailed = true; }
+            await CreateDiffEditorAsync(d);
         }
 
         if (_quickOpen)
         {
             try { await _qoInput.FocusAsync(); } catch { /* best-effort — falha tolerada */ }
         }
+    }
+
+    private async Task CreateNormalEditorAsync(Tab t)
+    {
+        try
+        {
+            var ok = await Monaco.CreateEditorAsync("ide-monaco",
+                t.Cached, MonacoInterop.LanguageFor(t.Path),
+                readOnly: false);
+            if (ok && _self is not null)
+            {
+                // Editor recriado a cada tab — re-subscreve os hooks.
+                await Monaco.OnChangedAsync("ide-monaco", _self,
+                    nameof(NotifyDirty));
+                await Monaco.OnSaveAsync("ide-monaco", _self,
+                    nameof(NotifySave));
+                await Monaco.OnCursorAsync("ide-monaco", _self,
+                    nameof(NotifyCursor));
+            }
+        }
+        catch (JSException) { _monacoFailed = true; }
+        catch (InvalidOperationException) { _monacoFailed = true; }
+    }
+
+    private async Task CreateDiffEditorAsync(DiffView d)
+    {
+        try
+        {
+            await Monaco.CreateDiffEditorAsync("ide-diff",
+                d.Orig, d.Mod, MonacoInterop.LanguageFor(d.Path));
+        }
+        catch (JSException) { _monacoFailed = true; }
+        catch (InvalidOperationException) { _monacoFailed = true; }
     }
 
     // ---- JS callbacks (Monaco) -----------------------------------------

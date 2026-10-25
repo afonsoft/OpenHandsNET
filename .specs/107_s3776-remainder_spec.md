@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `s3776-remainder` |
 | Type | `Refactor` |
-| Status | `Approved` |
+| Status | `In Review` |
 | Ticket | gap-analysis 2026-10-24 · GAP-sonar-s3776-remainder |
 | Scope | `src/**` exceto `Api/Endpoints` (SPEC-103), `Infrastructure/Agent` (SPEC-102), `cli/` (SPEC-101) |
 
@@ -41,3 +41,45 @@ Após merges #263/#264: `cli/` = 0, `Infrastructure/Agent` = 4 residuais,
 ## 4. Acceptance
 
 - [ ] Sonar deixa de reportar S3776 fora dos escopos 101–103 (ou won't-fix).
+
+## 5. Execução (2026-10-25)
+
+**34/35 sites decompostos** — extração behavior-preserving:
+
+- `Git/{StatusParser,DiffParser}`: handlers por linha + classe `Parser`.
+- `Tickets/TicketProviders`: `ParseIssueUpdate/CommentCreate` + `WalkAdf`.
+- `Scm/GitHubWebhookService`: record `MentionFields` + handlers por kind.
+- `Client/Services/ConversationStateService`: pumps + dispatch `Apply*`.
+- `SandboxAgent`: `AgentHandlers` (endpoints) + `RssKb` + `EmitTap`.
+- `DependencyInjection.AddInfrastructure` (~600ln) → 9 `Register*`.
+- `Security/InputGuardService`: `ResolveModeAsync` + `LlmVerdictAsync`.
+- `Identity/ApiKeyService`: `TouchLastUsedAsync`.
+- `Insights/SessionInsightService`: `BuildAnalysis` + `SuggestLearningsAsync`.
+- `Discovery/RepoContextLoader`: `Append{Instructions,Readme,Skills}`
+  + `ParseSkillRefs`.
+- `Conversations/ConversationStartWorker`: `CloneRepositoryAsync` +
+  `ResolveSkillsAsync`.
+- `ChatOps/SlackChatOpsService`: `DispatchEventAsync` +
+  `DispatchInteractionAsync` + `PostbackAsync`.
+- `Sandbox/SandboxService`: `AppendSecretEnvAsync` + `AppendGitEnvAsync`.
+- `Automations/AutomationService`: `FireDueAsync` + `ReconcileRunningAsync`.
+- `Sandbox/SandboxAgentExecutor`: `ParseSseLine`.
+- `Eval/{EvalRunner,EvalTask}`: `SummarizeEvents` +
+  `CollectAssertArtifacts` + `ValidateAssertType`.
+- `Api/Program.cs` top-level → `ProgramParts` (`AddObservability`,
+  `AddOpenApiDoc`, `AddAuth`, `UsePipeline`, `MapApi`).
+- `Api/Policies/PermissionPolicy`: `ResolveTargetOrgAsync` +
+  `OrgRolePermitsAsync`.
+- `Client/Components/{ChatComposer,IdeExplorer,IdeTab}`: `HandlePopupKeyAsync`,
+  `ApplyChanges`+`GitLetter`, `Create{Normal,Diff}EditorAsync`.
+- Agent residuals: `LlmSummarizingCondenser.SummarizePhaseAsync`,
+  `OpenAiCompatLlmProvider.{ReasoningChunks,ToolCallChunks}`,
+  `SubagentRunner.{CollectTurnAsync,ExecuteOneCallAsync}`.
+
+**Deferido (fatia própria):** `AgentRunner.LoopAsync` (~890 linhas,
+CC~210) — core loop do agente; precisa de context-class dedicada e
+cobertura de regressão forte. Risco alto demais para extração mecânica
+no mesmo PR; será SPEC filha de refatoração dirigida por testes.
+
+**Gate de testes:** `EvalHarnessTests` +2 facts (`Validate` por tipo de
+assert + happy path).

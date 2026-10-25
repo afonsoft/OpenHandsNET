@@ -144,40 +144,7 @@ public static class EvalParser
         foreach (var (a, i) in t.Assert.Select((a, i) => (a, i)))
         {
             var label = $"assert[{i}]";
-            switch (a.Type)
-            {
-                case "exit_code":
-                    if (string.IsNullOrWhiteSpace(a.Cmd))
-                    {
-                        errors.Add($"{label}: exit_code requires cmd");
-                    }
-                    break;
-                case "file_contains":
-                    if (string.IsNullOrWhiteSpace(a.Path) || a.Path.Contains(".."))
-                    {
-                        errors.Add($"{label}: file_contains requires safe path");
-                    }
-                    if (string.IsNullOrEmpty(a.Pattern))
-                    {
-                        errors.Add($"{label}: file_contains requires pattern");
-                    }
-                    break;
-                case "output_contains":
-                    if (string.IsNullOrEmpty(a.Pattern))
-                    {
-                        errors.Add($"{label}: output_contains requires pattern");
-                    }
-                    break;
-                case "llm_judge":
-                    if (string.IsNullOrWhiteSpace(a.Rubric))
-                    {
-                        errors.Add($"{label}: llm_judge requires rubric");
-                    }
-                    break;
-                default:
-                    errors.Add($"{label}: unknown type '{a.Type}'");
-                    break;
-            }
+            ValidateAssertType(a, label, errors);
 
             if (a.Weight <= 0)
             {
@@ -186,5 +153,44 @@ public static class EvalParser
         }
 
         return errors;
+    }
+
+    private static void ValidateAssertType(
+        EvalAssert a, string label, List<string> errors)
+    {
+        switch (a.Type)
+        {
+            case "exit_code":
+                if (string.IsNullOrWhiteSpace(a.Cmd))
+                {
+                    errors.Add($"{label}: exit_code requires cmd");
+                }
+                break;
+            case "file_contains":
+                if (string.IsNullOrWhiteSpace(a.Path) || a.Path.Contains(".."))
+                {
+                    errors.Add($"{label}: file_contains requires safe path");
+                }
+                if (string.IsNullOrEmpty(a.Pattern))
+                {
+                    errors.Add($"{label}: file_contains requires pattern");
+                }
+                break;
+            case "output_contains":
+                if (string.IsNullOrEmpty(a.Pattern))
+                {
+                    errors.Add($"{label}: output_contains requires pattern");
+                }
+                break;
+            case "llm_judge":
+                if (string.IsNullOrWhiteSpace(a.Rubric))
+                {
+                    errors.Add($"{label}: llm_judge requires rubric");
+                }
+                break;
+            default:
+                errors.Add($"{label}: unknown type '{a.Type}'");
+                break;
+        }
     }
 }

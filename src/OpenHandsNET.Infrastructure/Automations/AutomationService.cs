@@ -479,32 +479,43 @@ public sealed class AutomationService(
             .ToListAsync(ct);
         foreach (var a in due)
         {
-            try
-            {
-                await FireAsync(a, actor: "schedule", ip: null, ct);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                // Falha numa automation não bloqueia as demais (RF-005 NFR).
-                logger?.LogWarning(ex,
-                    "automation {Id} tick fire failed", a.Id);
-                try
-                {
-                    a.NextRunAt = AutomationSchedule.ComputeNextRun(
-                        a.ScheduleKind, a.ScheduleTimeUtc,
-                        a.IntervalMinutes, a.Weekday, a.NextRunAt, now);
-                    await db.SaveChangesAsync(ct);
-                }
-                catch (Exception inner)
-                    when (inner is not OperationCanceledException)
-                {
-                    logger?.LogWarning(inner,
-                        "automation {Id} reschedule failed", a.Id);
-                }
-            }
+            await FireDueAsync(a, now, ct);
         }
 
-        // Reconcile: runs running → status da conversa linkada.
+        await ReconcileRunningAsync(ct);
+    }
+
+    private async Task FireDueAsync(
+        AutomationRecord a, DateTimeOffset now, CancellationToken ct)
+    {
+        try
+        {
+            await FireAsync(a, actor: "schedule", ip: null, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Falha numa automation não bloqueia as demais (RF-005 NFR).
+            logger?.LogWarning(ex,
+                "automation {Id} tick fire failed", a.Id);
+            try
+            {
+                a.NextRunAt = AutomationSchedule.ComputeNextRun(
+                    a.ScheduleKind, a.ScheduleTimeUtc,
+                    a.IntervalMinutes, a.Weekday, a.NextRunAt, now);
+                await db.SaveChangesAsync(ct);
+            }
+            catch (Exception inner)
+                when (inner is not OperationCanceledException)
+            {
+                logger?.LogWarning(inner,
+                    "automation {Id} reschedule failed", a.Id);
+            }
+        }
+    }
+
+    // Reconcile: runs running → status da conversa linkada.
+    private async Task ReconcileRunningAsync(CancellationToken ct)
+    {
         var running = await db.AutomationRuns
             .Where(r => r.Status == "running").ToListAsync(ct);
         if (running.Count == 0)

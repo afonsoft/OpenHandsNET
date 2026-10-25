@@ -24,6 +24,21 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services, IConfiguration configuration)
     {
+        RegisterPersistence(services, configuration);
+        RegisterEventing(services, configuration);
+        RegisterSandboxGit(services, configuration);
+        RegisterScmProviders(services);
+        RegisterChatOpsTickets(services);
+        RegisterConversations(services, configuration);
+        RegisterIdentity(services, configuration);
+        RegisterMcp(services, configuration);
+        RegisterAgent(services, configuration);
+        return services;
+    }
+
+    private static void RegisterPersistence(
+        IServiceCollection services, IConfiguration configuration)
+    {
         var provider = configuration["Database:Provider"] ?? "Sqlite";
         var connectionString = configuration["Database:ConnectionString"]
             ?? "Data Source=data/openhandsnet.db";
@@ -54,6 +69,11 @@ public static class DependencyInjection
         services.AddHealthChecks().AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);
         services.AddHostedService<DatabaseMigrator>();
 
+    }
+
+    private static void RegisterEventing(
+        IServiceCollection services, IConfiguration configuration)
+    {
         // Event stream (SPEC-02): store + in-process fan-out + dispatcher/webhooks.
         services.AddSingleton<InMemoryEventBus>();
         services.AddSingleton<IEventBus>(sp =>
@@ -76,6 +96,11 @@ public static class DependencyInjection
         // (exigido quando Deployment:Replicas > 1).
         services.AddCoordinationCache(configuration);
 
+    }
+
+    private static void RegisterSandboxGit(
+        IServiceCollection services, IConfiguration configuration)
+    {
         // Sandbox (SPEC-03/35): engine layer (docker local | runtime-api
         // remote) via ISandboxEngine; records/specs ficam no Api.
         services.AddSandboxing(configuration);
@@ -136,6 +161,11 @@ public static class DependencyInjection
                 f, log);
         });
 
+    }
+
+    private static void RegisterScmProviders(
+        IServiceCollection services)
+    {
         // SPEC-53: providers REST (GitLab/Bitbucket/Azure DevOps) — mesmo
         // IScmProvider, registrados por kind.
         services.AddScoped<
@@ -174,6 +204,11 @@ public static class DependencyInjection
                 .AzureDevOpsScmProvider(hf, sc, log);
         });
 
+    }
+
+    private static void RegisterChatOpsTickets(
+        IServiceCollection services)
+    {
         // SPEC-54 ChatOps: Slack connections, sink, pipeline e reporter.
         services.AddScoped<
             OpenHandsNET.Application.ChatOps.IChatConnectionService,
@@ -229,6 +264,11 @@ public static class DependencyInjection
                                     .JiraTicketProvider>>()),
             });
 
+    }
+
+    private static void RegisterConversations(
+        IServiceCollection services, IConfiguration configuration)
+    {
         // Checkpoints (SPEC-43): git-dir separado no sandbox, snapshots
         // pós-turno/manuais, revert com drift guard.
         services.Configure<OpenHandsNET.Application.Checkpoints.CheckpointOptions>(
@@ -299,6 +339,11 @@ public static class DependencyInjection
         services.AddHostedService<
             OpenHandsNET.Infrastructure.Skills.BuiltinSkillSeedService>();
 
+    }
+
+    private static void RegisterIdentity(
+        IServiceCollection services, IConfiguration configuration)
+    {
         // Identity & RBAC (SPEC-08): orgs, keys, device flow, admin, audit.
         services.Configure<OpenHandsNET.Infrastructure.Identity.AuthOptions>(
             configuration.GetSection(
@@ -380,6 +425,11 @@ public static class DependencyInjection
             OpenHandsNET.Infrastructure.Identity.Provisioning.IBrokerUserAdmin,
             OpenHandsNET.Infrastructure.Identity.Provisioning.NullBrokerUserAdmin>();
 
+    }
+
+    private static void RegisterMcp(
+        IServiceCollection services, IConfiguration configuration)
+    {
         // MCP (SPEC-07): settings CRUD + client singleton + OAuth + probe.
         services.Configure<OpenHandsNET.Infrastructure.Mcp.McpOptions>(
             configuration.GetSection(
@@ -395,6 +445,11 @@ public static class DependencyInjection
             sp => sp.GetRequiredService<
                 OpenHandsNET.Infrastructure.Mcp.McpClientService>());
 
+    }
+
+    private static void RegisterAgent(
+        IServiceCollection services, IConfiguration configuration)
+    {
         // Agent engine (SPEC-09): LLM provider + tool registry + runner host.
         services.Configure<OpenHandsNET.Application.Agent.AgentLlmOptions>(
             configuration.GetSection("AgentLlm"));
@@ -618,7 +673,6 @@ public static class DependencyInjection
                                 .ILogger<OpenHandsNET.Infrastructure.Artifacts
                                     .WorkspaceArtifactStore>>());
         });
-        return services;
     }
 
     /// <summary>

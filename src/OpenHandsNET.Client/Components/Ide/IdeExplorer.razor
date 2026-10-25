@@ -115,40 +115,40 @@
             _git.Clear();
             if (changes.TryGetProperty("files", out var f))
             {
-                foreach (var item in f.EnumerateArray())
-                {
-                    if (item.ValueKind
-                        != System.Text.Json.JsonValueKind.Object)
-                    {
-                        continue;
-                    }
-
-                    var p = item.TryGetProperty("path", out var pp)
-                        ? pp.GetString() : null;
-                    var st = item.TryGetProperty("status", out var ss)
-                        ? ss.GetString() ?? "M" : "M";
-                    if (p is not null)
-                    {
-                        string letter;
-                        if (st.Contains('D'))
-                        {
-                            letter = "D";
-                        }
-                        else if (st.Contains('A') || st.Contains('?'))
-                        {
-                            letter = "A";
-                        }
-                        else
-                        {
-                            letter = "M";
-                        }
-
-                        _git[$"/workspace/repo/{p}"] = letter;
-                    }
-                }
+                ApplyChanges(f);
             }
         }
         catch { /* best-effort — falha tolerada */ }
+    }
+
+    private void ApplyChanges(System.Text.Json.JsonElement files)
+    {
+        foreach (var item in files.EnumerateArray())
+        {
+            if (item.ValueKind
+                != System.Text.Json.JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var p = item.TryGetProperty("path", out var pp)
+                ? pp.GetString() : null;
+            var st = item.TryGetProperty("status", out var ss)
+                ? ss.GetString() ?? "M" : "M";
+            if (p is not null)
+            {
+                _git[$"/workspace/repo/{p}"] = GitLetter(st);
+            }
+        }
+    }
+
+    private static string GitLetter(string status)
+    {
+        if (status.Contains('D'))
+        {
+            return "D";
+        }
+        return status.Contains('A') || status.Contains('?') ? "A" : "M";
     }
 
     private async Task OnItemClick(FileItem entry)

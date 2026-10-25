@@ -161,16 +161,16 @@ public sealed class AgentCatalogService(ILogger<AgentCatalogService> logger)
                 continue;
             }
 
-            foreach (var entry in entries.Where(e =>
-                !e.IsDirectory && e.Path.EndsWith(
-                    ".agent.md", StringComparison.OrdinalIgnoreCase)))
-            {
-                // entry.Path pode ser nome relativo ao dir ou path
-                // completo — normaliza para o nome do arquivo.
-                var fileName = entry.Path.Contains('/')
-                    ? entry.Path[entry.Path.LastIndexOf('/')..]
+            // entry.Path pode ser nome relativo ao dir ou path
+            // completo — normaliza para o nome do arquivo.
+            foreach (var fileName in entries
+                .Where(e => !e.IsDirectory && e.Path.EndsWith(
+                    ".agent.md", StringComparison.OrdinalIgnoreCase))
+                .Select(e => e.Path.Contains('/')
+                    ? e.Path[e.Path.LastIndexOf('/')..]
                         .TrimStart('/')
-                    : entry.Path;
+                    : e.Path))
+            {
                 var path = $"{RepoRoot}/{dir}/{fileName}";
                 var def = await TryParseWorkspaceFileAsync(
                     sandbox, executor, path, ct);
