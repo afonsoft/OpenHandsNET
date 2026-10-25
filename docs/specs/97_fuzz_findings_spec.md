@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `fuzz-findings` |
 | Type | `Security / robustness` |
-| Status | `Approved` |
+| Status | `Completed` |
 | Ticket | #218 |
 | Depends on | SPEC-80 (openapi fidelity) entregue |
 | Touches | endpoints sem auth declarada, handlers 500 |

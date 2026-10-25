@@ -74,8 +74,28 @@ terminal permanecer aqui (SPEC-82).
 
 | SPEC | Título | Status | Ticket |
 |---|---|---|---|
-| 96 | sonar-rescan-truth | Approved | gap-20261023 |
-| 97 | fuzz-findings | Approved | #218 |
-| 98 | i18n-locale-slices | Approved | #244 |
-| 99 | spec89-deferred-split | Approved | gap-20261023 |
-| 100 | epic-hygiene | Approved | gap-20261023 |
+| 96 | sonar-rescan-truth | Completed → docs/specs | #248 (verif. exclusões) |
+| 97 | fuzz-findings | Completed → docs/specs | #218 (verif. nightly) |
+| 98 | i18n-locale-slices | Completed → docs/specs | #250/#244 |
+| 99 | spec89-deferred-split | Completed → docs/specs | gap-20261023 |
+| 100 | epic-hygiene | Completed → docs/specs | gap-20261023 |
+
+### Filhos SPEC-89 (defer Lote D)
+
+| SPEC | Título | Status | Issue |
+|---|---|---|---|
+| 101 | s3776-cli-cognitive | Completed → docs/specs | PR #263 |
+| 102 | s3776-infra-agent | Completed → docs/specs | PR #264 |
+| 103 | s3776-endpoints | Approved | Epic #152 |
+| 104 | s107-many-params | Approved | Epic #152 |
+| 105 | s3218-s127-shadow-loop | Approved | Epic #152 |
+| 106 | s1075-s3903-uris-ns | Approved | Epic #152 |
+
+### Leva 2026-10-24 (gap-analysis — Epic #265)
+
+| SPEC | Título | Status | Issue |
+|---|---|---|---|
+| 107 | s3776-remainder (fora dos escopos 101–103) | Approved | #266 |
+| 108 | sonar-vuln-bug-triage (VULN 15 + BUG 18) | Approved | #267 |
+| 109 | sonar-tail-rules (S927 + scripts/infra) | Approved | #268 |
+| 110 | integration-flake-hardening-2 | Approved | #269 |

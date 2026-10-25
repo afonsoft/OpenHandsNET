@@ -39,3 +39,4 @@ evals/results/
 evals/recordings/
 .sonar_devin_auto_fix/**
 __pycache__/
+tools/sonar-live.json
