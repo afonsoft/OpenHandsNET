@@ -122,6 +122,21 @@ public sealed class EvalRunner(IEvalBackend backend, RecordingStore? recordings 
         EvalTask task, string convId, IReadOnlyList<JsonElement> events,
         CancellationToken ct)
     {
+        var (transcript, tokens, kinds) = SummarizeEvents(events);
+        var (execResults, fileContents) =
+            await CollectAssertArtifacts(task, convId, transcript, ct);
+
+        return new EvalEvidence(
+            transcript.ToString(), execResults, fileContents,
+            kinds, tokens);
+    }
+
+    // Transcript textual (mensagens + saídas + observações) + token totals
+    // + contagem por kind.
+    private static (System.Text.StringBuilder Transcript, long Tokens,
+        Dictionary<string, int> Kinds) SummarizeEvents(
+            IReadOnlyList<JsonElement> events)
+    {
         var transcript = new System.Text.StringBuilder();
         long tokens = 0;
         var kinds = new Dictionary<string, int>();
@@ -142,7 +157,6 @@ public sealed class EvalRunner(IEvalBackend backend, RecordingStore? recordings 
                 }
             }
 
-            // transcript textual: mensagens + saídas de comando + observações.
             if (e.TryGetProperty("message", out var m)
                 && m.ValueKind == JsonValueKind.String)
             {
@@ -155,7 +169,14 @@ public sealed class EvalRunner(IEvalBackend backend, RecordingStore? recordings 
                 transcript.AppendLine(tx.GetString());
             }
         }
+        return (transcript, tokens, kinds);
+    }
 
+    private async Task<(Dictionary<string, int> Exec,
+        Dictionary<string, string?> Files)> CollectAssertArtifacts(
+            EvalTask task, string convId,
+            System.Text.StringBuilder transcript, CancellationToken ct)
+    {
         var execResults = new Dictionary<string, int>();
         var fileContents = new Dictionary<string, string?>();
         foreach (var a in task.Assert)
@@ -172,10 +193,7 @@ public sealed class EvalRunner(IEvalBackend backend, RecordingStore? recordings 
                 fileContents[p] = await backend.ReadFileAsync(convId, p, ct);
             }
         }
-
-        return new EvalEvidence(
-            transcript.ToString(), execResults, fileContents,
-            kinds, tokens);
+        return (execResults, fileContents);
     }
 
     private async Task<EvalResult> Score(

@@ -376,38 +376,49 @@ public sealed class SandboxAgentTransport(
                 continue;
             }
 
-            var data = line["data:".Length..].Trim();
-            using var doc = JsonDocument.Parse(data);
-            var root = doc.RootElement;
-            if (root.TryGetProperty("type", out var t)
-                && t.GetString() == "exit")
+            var (chunk, isExit) = ParseSseLine(
+                line["data:".Length..].Trim(), sw.ElapsedMilliseconds);
+            if (chunk is not null)
             {
-                yield return new ExecCompleted(
-                    new CommandResult(
-                        root.TryGetProperty("exit_code", out var ec)
-                            ? ec.GetInt32() : -1,
-                        root.TryGetProperty("std_out", out var so)
-                            ? so.GetString() ?? "" : "",
-                        root.TryGetProperty("std_err", out var se)
-                            ? se.GetString() ?? "" : "",
-                        root.TryGetProperty("timed_out", out var to)
-                            && to.GetBoolean()),
-                    root.TryGetProperty("duration_ms", out var dm)
-                        ? dm.GetInt64() : sw.ElapsedMilliseconds,
-                    root.TryGetProperty("truncated", out var tr)
-                        && tr.GetBoolean());
+                yield return chunk;
+            }
+            if (isExit)
+            {
                 yield break;
             }
-
-            var channel = root.TryGetProperty("channel", out var ch)
-                ? ch.GetString() ?? "stdout" : "stdout";
-            var text = root.TryGetProperty("text", out var tx)
-                ? tx.GetString() ?? "" : "";
-            if (text.Length > 0)
-            {
-                yield return new OutputChunk(channel, text);
-            }
         }
+    }
+
+    private static (IExecChunk? Chunk, bool IsExit) ParseSseLine(
+        string data, long elapsedMs)
+    {
+        using var doc = JsonDocument.Parse(data);
+        var root = doc.RootElement;
+        if (root.TryGetProperty("type", out var t)
+            && t.GetString() == "exit")
+        {
+            return (new ExecCompleted(
+                new CommandResult(
+                    root.TryGetProperty("exit_code", out var ec)
+                        ? ec.GetInt32() : -1,
+                    root.TryGetProperty("std_out", out var so)
+                        ? so.GetString() ?? "" : "",
+                    root.TryGetProperty("std_err", out var se)
+                        ? se.GetString() ?? "" : "",
+                    root.TryGetProperty("timed_out", out var to)
+                        && to.GetBoolean()),
+                root.TryGetProperty("duration_ms", out var dm)
+                    ? dm.GetInt64() : elapsedMs,
+                root.TryGetProperty("truncated", out var tr)
+                    && tr.GetBoolean()), true);
+        }
+
+        var channel = root.TryGetProperty("channel", out var ch)
+            ? ch.GetString() ?? "stdout" : "stdout";
+        var text = root.TryGetProperty("text", out var tx)
+            ? tx.GetString() ?? "" : "";
+        return (text.Length > 0 ? new OutputChunk(channel, text) : null,
+            false);
     }
 
     public async Task<CommandResult> ExecAsync(

@@ -137,39 +137,8 @@ public sealed class SubagentRunner(
         string? lastError = null;
         for (var i = 0; i < iterations && result is null; i++)
         {
-            var text = new StringBuilder();
-            var calls = new Dictionary<int,
-                (string id, string name, StringBuilder args)>();
-            await foreach (var chunk in llm.ChatStreamAsync(messages,
-                schemas, new LlmOptions(Model: model), ct))
-            {
-                switch (chunk)
-                {
-                    case TextDelta d:
-                        text.Append(d.Text);
-                        break;
-                    case ToolCallDelta tcd:
-                        if (!calls.TryGetValue(tcd.Index, out var cur))
-                        {
-                            cur = ("", "", new StringBuilder());
-                        }
-
-                        cur.id = tcd.Id ?? cur.id;
-                        cur.name = tcd.Name ?? cur.name;
-                        if (tcd.ArgumentsFragment is { } frag)
-                        {
-                            cur.args.Append(frag);
-                        }
-
-                        calls[tcd.Index] = cur;
-                        break;
-                }
-            }
-
-            var ordered = calls.OrderBy(kv => kv.Key)
-                .Select(kv => new LlmToolCall(
-                    kv.Value.id, kv.Value.name, kv.Value.args.ToString()))
-                .ToList();
+            var (text, ordered) = await CollectTurnAsync(
+                messages, schemas, model, ct);
             messages.Add(LlmMessage.AssistantToolCall(
                 text.Length > 0 ? text.ToString() : null, ordered));
             if (ordered.Count == 0)
@@ -180,47 +149,105 @@ public sealed class SubagentRunner(
 
             foreach (var call in ordered)
             {
-                var parsed = TryParse(call.ArgumentsJson);
-                var actionEvent = new ActionEvent
+                var (r, err) = await ExecuteOneCallAsync(
+                    call, conversationId, sandbox, executor, events,
+                    services, parentActionId, subagentType, filtered,
+                    messages, opt, ct);
+                if (r is not null)
                 {
-                    ToolName = call.Name,
-                    Action = parsed,
-                    ToolCallId = call.Id,
-                    LlmResponseId = "",
-                    ParentId = parentActionId,
-                };
-                await events.AppendAsync(conversationId, actionEvent, ct);
-
-                // finish interceptado aqui — o registro do filho nunca
-                // executa o Finish real do pai.
-                if (call.Name == "finish")
-                {
-                    result = parsed.TryGetProperty("final_message", out var m)
-                        ? m.GetString() ?? "done" : "done";
-                    continue;
+                    result = r;
                 }
-
-                var (toolResult, error) = await ExecuteCallAsync(
-                    call, parsed, conversationId, sandbox, executor,
-                    events, services, subagentType, filtered,
-                    actionEvent.Id, opt, ct);
-                lastError = error ?? lastError;
-
-                await events.AppendAsync(conversationId,
-                    new ObservationEvent
-                    {
-                        ToolName = call.Name,
-                        ToolCallId = call.Id,
-                        ActionId = actionEvent.Id,
-                        Observation = toolResult.Observation,
-                        ParentId = actionEvent.Id,
-                    }, ct);
-                messages.Add(LlmMessage.ToolResult(
-                    call.Id, toolResult.Observation.GetRawText()));
+                lastError = err ?? lastError;
             }
         }
 
         return (result, lastError);
+    }
+
+    private async Task<(StringBuilder Text, List<LlmToolCall> Ordered)>
+        CollectTurnAsync(List<LlmMessage> messages,
+            List<ToolSchema> schemas, string? model, CancellationToken ct)
+    {
+        var text = new StringBuilder();
+        var calls = new Dictionary<int,
+            (string id, string name, StringBuilder args)>();
+        await foreach (var chunk in llm.ChatStreamAsync(messages,
+            schemas, new LlmOptions(Model: model), ct))
+        {
+            switch (chunk)
+            {
+                case TextDelta d:
+                    text.Append(d.Text);
+                    break;
+                case ToolCallDelta tcd:
+                    if (!calls.TryGetValue(tcd.Index, out var cur))
+                    {
+                        cur = ("", "", new StringBuilder());
+                    }
+
+                    cur.id = tcd.Id ?? cur.id;
+                    cur.name = tcd.Name ?? cur.name;
+                    if (tcd.ArgumentsFragment is { } frag)
+                    {
+                        cur.args.Append(frag);
+                    }
+
+                    calls[tcd.Index] = cur;
+                    break;
+            }
+        }
+
+        var ordered = calls.OrderBy(kv => kv.Key)
+            .Select(kv => new LlmToolCall(
+                kv.Value.id, kv.Value.name, kv.Value.args.ToString()))
+            .ToList();
+        return (text, ordered);
+    }
+
+    private async Task<(string? Result, string? Error)> ExecuteOneCallAsync(
+        LlmToolCall call, Guid conversationId,
+        Domain.Sandbox.Sandbox sandbox, ISandboxExecutor executor,
+        IEventService events, IServiceProvider services,
+        string parentActionId, string subagentType,
+        FilterToolRegistry filtered, List<LlmMessage> messages,
+        AgentLlmOptions opt, CancellationToken ct)
+    {
+        var parsed = TryParse(call.ArgumentsJson);
+        var actionEvent = new ActionEvent
+        {
+            ToolName = call.Name,
+            Action = parsed,
+            ToolCallId = call.Id,
+            LlmResponseId = "",
+            ParentId = parentActionId,
+        };
+        await events.AppendAsync(conversationId, actionEvent, ct);
+
+        // finish interceptado aqui — o registro do filho nunca
+        // executa o Finish real do pai.
+        if (call.Name == "finish")
+        {
+            return (parsed.TryGetProperty("final_message", out var m)
+                ? m.GetString() ?? "done" : "done", null);
+        }
+
+        var (toolResult, error) = await ExecuteCallAsync(
+            call, parsed, conversationId, sandbox, executor,
+            events, services, subagentType, filtered,
+            actionEvent.Id, opt, ct);
+
+        await events.AppendAsync(conversationId,
+            new ObservationEvent
+            {
+                ToolName = call.Name,
+                ToolCallId = call.Id,
+                ActionId = actionEvent.Id,
+                Observation = toolResult.Observation,
+                ParentId = actionEvent.Id,
+            }, ct);
+        messages.Add(LlmMessage.ToolResult(
+            call.Id, toolResult.Observation.GetRawText()));
+        return (null, error);
     }
 
     private static async Task<(ToolResult Result, string? Error)>

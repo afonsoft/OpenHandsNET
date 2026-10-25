@@ -144,175 +144,188 @@ public sealed class SlackChatOpsService(
                 return (ChatOpsResult.Challenge,
                     root.GetProperty("challenge").GetString());
             }
-            var eventId = root.TryGetProperty("event_id", out var eid)
-                ? eid.GetString() : null;
-            if (await IsDuplicateAsync(eventId, ct))
-            {
-                return (ChatOpsResult.Duplicate, null);
-            }
+            return await DispatchEventAsync(root, connection, teamId, ct);
+        }
+    }
 
-            if (!root.TryGetProperty("event", out var ev)
-                || !ev.TryGetProperty("type", out var et))
-            {
-                return (ChatOpsResult.Ignored, null);
-            }
-            var type = et.GetString();
+    private async Task<(ChatOpsResult, string?)> DispatchEventAsync(
+        JsonElement root, ChatConnection connection,
+        string teamId, CancellationToken ct)
+    {
+        var eventId = root.TryGetProperty("event_id", out var eid)
+            ? eid.GetString() : null;
+        if (await IsDuplicateAsync(eventId, ct))
+        {
+            return (ChatOpsResult.Duplicate, null);
+        }
 
-            // Ignorar mensagens de bot (echo próprio).
-            if (ev.TryGetProperty("bot_id", out _)
-                || (ev.TryGetProperty("subtype", out var st)
-                    && st.GetString() == "bot_message"))
-            {
-                return (ChatOpsResult.Ignored, null);
-            }
+        if (!root.TryGetProperty("event", out var ev)
+            || !ev.TryGetProperty("type", out var et))
+        {
+            return (ChatOpsResult.Ignored, null);
+        }
+        var type = et.GetString();
 
-            var channelId = ev.TryGetProperty("channel", out var ch)
-                ? ch.GetString() : null;
-            var text = ev.TryGetProperty("text", out var tx)
-                ? tx.GetString() : null;
-            var ts = ev.TryGetProperty("ts", out var tss)
-                ? tss.GetString() : null;
-            var threadTs = ev.TryGetProperty("thread_ts", out var th)
-                ? th.GetString() : ts;
-            if (channelId is null || text is null || ts is null)
-            {
-                return (ChatOpsResult.Ignored, null);
-            }
+        // Ignorar mensagens de bot (echo próprio).
+        if (ev.TryGetProperty("bot_id", out _)
+            || (ev.TryGetProperty("subtype", out var st)
+                && st.GetString() == "bot_message"))
+        {
+            return (ChatOpsResult.Ignored, null);
+        }
 
-            var config = await connections.GetChannelConfigAsync(
-                connection.Id, channelId, ct);
-            var isMention = type == "app_mention"
-                || (connection.BotUserId is not null
-                    && text.Contains($"<@{connection.BotUserId}>",
-                        StringComparison.Ordinal));
-            var isIm = type == "message"
-                && ev.TryGetProperty("channel_type", out var cty)
-                && cty.GetString() == "im";
-            var isTriage = config?.AutoTriage == true
-                && type == "message";
+        var channelId = ev.TryGetProperty("channel", out var ch)
+            ? ch.GetString() : null;
+        var text = ev.TryGetProperty("text", out var tx)
+            ? tx.GetString() : null;
+        var ts = ev.TryGetProperty("ts", out var tss)
+            ? tss.GetString() : null;
+        var threadTs = ev.TryGetProperty("thread_ts", out var th)
+            ? th.GetString() : ts;
+        if (channelId is null || text is null || ts is null)
+        {
+            return (ChatOpsResult.Ignored, null);
+        }
 
-            // Thread bound primeiro: replies num thread conhecido vão pra
-            // conversa mesmo sem menção/DM/triage no canal.
-            var bound = await db.ChatThreadBindings.IgnoreQueryFilters()
-                .FirstOrDefaultAsync(b => b.ConnectionId == connection.Id
-                    && b.ChannelId == channelId
-                    && b.ThreadTs == threadTs, ct);
+        var config = await connections.GetChannelConfigAsync(
+            connection.Id, channelId, ct);
+        var isMention = type == "app_mention"
+            || (connection.BotUserId is not null
+                && text.Contains($"<@{connection.BotUserId}>",
+                    StringComparison.Ordinal));
+        var isIm = type == "message"
+            && ev.TryGetProperty("channel_type", out var cty)
+            && cty.GetString() == "im";
+        var isTriage = config?.AutoTriage == true
+            && type == "message";
 
-            if (bound is not null)
-            {
-                // Reply no thread → send-message na conversa existente.
-                await AppendUserMessageAsync(
-                    bound.ConversationId,
-                    UntrustedInput.Wrap(StripMention(text),
-                        $"slack:{channelId}", "message.text"), ct);
-                return (ChatOpsResult.Processed, null);
-            }
+        // Thread bound primeiro: replies num thread conhecido vão pra
+        // conversa mesmo sem menção/DM/triage no canal.
+        var bound = await db.ChatThreadBindings.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(b => b.ConnectionId == connection.Id
+                && b.ChannelId == channelId
+                && b.ThreadTs == threadTs, ct);
 
-            if (!isMention && !isIm && !isTriage)
-            {
-                return (ChatOpsResult.Ignored, null);
-            }
-
-            var ownerUserId = await ResolveOwnerAsync(connection, ct);
-            if (ownerUserId is null)
-            {
-                return (ChatOpsResult.Ignored, null);
-            }
-
-            // SPEC-59 RF-002: screening do texto do webhook antes de
-            // virar prompt — block → resposta educada + audit (sem o
-            // conteúdo, só categorias).
-            var verdict = await inputGuard.ScoreAsync(
-                text, "webhook:slack", connection.OrgId, ct);
-            if (verdict.Verdict
-                == Application.Security.InputGuardVerdict.Block)
-            {
-                await sink.PostMessageAsync(
-                    connection, channelId, threadTs,
-                    "Mensagem bloqueada pela política de segurança da "
-                        + "org — reformule e tente de novo.",
-                    ct);
-                await audit.RecordAsync(
-                    "guard.input_blocked", null, connection.OrgId,
-                    "channel", channelId,
-                    metadata: new
-                    {
-                        channel = "webhook:slack",
-                        categories = verdict.Categories,
-                    },
-                    cancellationToken: ct);
-                return (ChatOpsResult.Blocked, null);
-            }
-
-            var prompt = BuildPrompt(text, isTriage, channelId);
-            var task = await conversations.CreateForUserAsync(
-                ownerUserId.Value, connection.OrgId,
-                new CreateConversationRequest(
-                    new InitialMessage("user", [prompt], Run: true),
-                    config?.SelectedRepository,
-                    AgentType: null, LlmModel: null, SandboxSpecId: null),
-                ct);
-
-            var convId = task.AppConversationId ?? Guid.Empty;
-            db.ChatThreadBindings.Add(new ChatThreadBindingRecord
-            {
-                Id = Guid.NewGuid(),
-                ConnectionId = connection.Id,
-                ChannelId = channelId,
-                ThreadTs = threadTs!,
-                ConversationId = convId,
-                CreatedAt = DateTimeOffset.UtcNow,
-            });
-            await db.SaveChangesAsync(ct);
-
-            await audit.RecordAsync("chatops.thread_bound",
-                actorUserId: ownerUserId.Value.ToString(),
-                orgId: connection.OrgId,
-                targetType: "app_conversation", targetId: convId.ToString(),
-                metadata: new { channelId, threadTs, isTriage },
-                cancellationToken: ct);
-            await audit.RecordAsync("chatops.run_started",
-                orgId: connection.OrgId,
-                targetType: "app_conversation", targetId: convId.ToString(),
-                metadata: new { teamId, channelId },
-                cancellationToken: ct);
-
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await sink.AddReactionAsync(
-                        connection, channelId, ts, "eyes",
-                        CancellationToken.None);
-                    var statusTs = await sink.PostMessageAsync(
-                        connection, channelId, threadTs,
-                        ":arrows_counterclockwise: Working on it — " +
-                        $"conversation {convId}", CancellationToken.None);
-                    if (statusTs is not null)
-                    {
-                        // Scope novo: o DbContext injetado já foi disposed
-                        // quando o request webhook retornou.
-                        using var scope = scopeFactory.CreateScope();
-                        var db2 = scope.ServiceProvider
-                            .GetRequiredService<AppDbContext>();
-                        var b = await db2.ChatThreadBindings
-                            .IgnoreQueryFilters()
-                            .FirstOrDefaultAsync(x => x.ConversationId == convId
-                                && x.ThreadTs == threadTs, CancellationToken.None);
-                        if (b is not null)
-                        {
-                            b.StatusMessageTs = statusTs;
-                            await db2.SaveChangesAsync(CancellationToken.None);
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    logger.LogWarning(e, "chatops postback failed");
-                }
-            }, CancellationToken.None);
-
+        if (bound is not null)
+        {
+            // Reply no thread → send-message na conversa existente.
+            await AppendUserMessageAsync(
+                bound.ConversationId,
+                UntrustedInput.Wrap(StripMention(text),
+                    $"slack:{channelId}", "message.text"), ct);
             return (ChatOpsResult.Processed, null);
+        }
+
+        if (!isMention && !isIm && !isTriage)
+        {
+            return (ChatOpsResult.Ignored, null);
+        }
+
+        var ownerUserId = await ResolveOwnerAsync(connection, ct);
+        if (ownerUserId is null)
+        {
+            return (ChatOpsResult.Ignored, null);
+        }
+
+        // SPEC-59 RF-002: screening do texto do webhook antes de
+        // virar prompt — block → resposta educada + audit (sem o
+        // conteúdo, só categorias).
+        var verdict = await inputGuard.ScoreAsync(
+            text, "webhook:slack", connection.OrgId, ct);
+        if (verdict.Verdict
+            == Application.Security.InputGuardVerdict.Block)
+        {
+            await sink.PostMessageAsync(
+                connection, channelId, threadTs,
+                "Mensagem bloqueada pela política de segurança da "
+                    + "org — reformule e tente de novo.",
+                ct);
+            await audit.RecordAsync(
+                "guard.input_blocked", null, connection.OrgId,
+                "channel", channelId,
+                metadata: new
+                {
+                    channel = "webhook:slack",
+                    categories = verdict.Categories,
+                },
+                cancellationToken: ct);
+            return (ChatOpsResult.Blocked, null);
+        }
+
+        var prompt = BuildPrompt(text, isTriage, channelId);
+        var task = await conversations.CreateForUserAsync(
+            ownerUserId.Value, connection.OrgId,
+            new CreateConversationRequest(
+                new InitialMessage("user", [prompt], Run: true),
+                config?.SelectedRepository,
+                AgentType: null, LlmModel: null, SandboxSpecId: null),
+            ct);
+
+        var convId = task.AppConversationId ?? Guid.Empty;
+        db.ChatThreadBindings.Add(new ChatThreadBindingRecord
+        {
+            Id = Guid.NewGuid(),
+            ConnectionId = connection.Id,
+            ChannelId = channelId,
+            ThreadTs = threadTs!,
+            ConversationId = convId,
+            CreatedAt = DateTimeOffset.UtcNow,
+        });
+        await db.SaveChangesAsync(ct);
+
+        await audit.RecordAsync("chatops.thread_bound",
+            actorUserId: ownerUserId.Value.ToString(),
+            orgId: connection.OrgId,
+            targetType: "app_conversation", targetId: convId.ToString(),
+            metadata: new { channelId, threadTs, isTriage },
+            cancellationToken: ct);
+        await audit.RecordAsync("chatops.run_started",
+            orgId: connection.OrgId,
+            targetType: "app_conversation", targetId: convId.ToString(),
+            metadata: new { teamId, channelId },
+            cancellationToken: ct);
+
+        _ = Task.Run(() => PostbackAsync(
+                connection, channelId, ts, threadTs!, convId),
+            CancellationToken.None);
+
+        return (ChatOpsResult.Processed, null);
+    }
+
+    private async Task PostbackAsync(
+        ChatConnection connection, string channelId,
+        string ts, string threadTs, Guid convId)
+    {
+        try
+        {
+            await sink.AddReactionAsync(
+                connection, channelId, ts, "eyes",
+                CancellationToken.None);
+            var statusTs = await sink.PostMessageAsync(
+                connection, channelId, threadTs,
+                ":arrows_counterclockwise: Working on it — " +
+                $"conversation {convId}", CancellationToken.None);
+            if (statusTs is not null)
+            {
+                // Scope novo: o DbContext injetado já foi disposed
+                // quando o request webhook retornou.
+                using var scope = scopeFactory.CreateScope();
+                var db2 = scope.ServiceProvider
+                    .GetRequiredService<AppDbContext>();
+                var b = await db2.ChatThreadBindings
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(x => x.ConversationId == convId
+                        && x.ThreadTs == threadTs, CancellationToken.None);
+                if (b is not null)
+                {
+                    b.StatusMessageTs = statusTs;
+                    await db2.SaveChangesAsync(CancellationToken.None);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            logger.LogWarning(e, "chatops postback failed");
         }
     }
 
@@ -431,32 +444,38 @@ public sealed class SlackChatOpsService(
                 return ChatOpsResult.InvalidSignature;
             }
 
-            // confirm/cancel de ask_user → user message no thread bound.
-            var channelId = root.TryGetProperty("channel", out var ch)
-                && ch.TryGetProperty("id", out var ci)
-                    ? ci.GetString() : null;
-            var ts = root.TryGetProperty("message", out var msg)
-                && msg.TryGetProperty("thread_ts", out var th)
-                    ? th.GetString() : null;
-            var action = root.TryGetProperty("actions", out var acts)
-                && acts.GetArrayLength() > 0
-                && acts[0].TryGetProperty("value", out var av)
-                    ? av.GetString() : null;
-            if (channelId is null || ts is null || action is null)
-            {
-                return ChatOpsResult.Ignored;
-            }
-            var bound = await db.ChatThreadBindings.IgnoreQueryFilters()
-                .FirstOrDefaultAsync(b => b.ConnectionId == connection.Id
-                    && b.ChannelId == channelId && b.ThreadTs == ts, ct);
-            if (bound is null)
-            {
-                return ChatOpsResult.Ignored;
-            }
-            await AppendUserMessageAsync(bound.ConversationId,
-                $"[button:{action}]", ct);
-            return ChatOpsResult.Processed;
+            return await DispatchInteractionAsync(root, connection, ct);
         }
+    }
+
+    // confirm/cancel de ask_user → user message no thread bound.
+    private async Task<ChatOpsResult> DispatchInteractionAsync(
+        JsonElement root, ChatConnection connection, CancellationToken ct)
+    {
+        var channelId = root.TryGetProperty("channel", out var ch)
+            && ch.TryGetProperty("id", out var ci)
+                ? ci.GetString() : null;
+        var ts = root.TryGetProperty("message", out var msg)
+            && msg.TryGetProperty("thread_ts", out var th)
+                ? th.GetString() : null;
+        var action = root.TryGetProperty("actions", out var acts)
+            && acts.GetArrayLength() > 0
+            && acts[0].TryGetProperty("value", out var av)
+                ? av.GetString() : null;
+        if (channelId is null || ts is null || action is null)
+        {
+            return ChatOpsResult.Ignored;
+        }
+        var bound = await db.ChatThreadBindings.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(b => b.ConnectionId == connection.Id
+                && b.ChannelId == channelId && b.ThreadTs == ts, ct);
+        if (bound is null)
+        {
+            return ChatOpsResult.Ignored;
+        }
+        await AppendUserMessageAsync(bound.ConversationId,
+            $"[button:{action}]", ct);
+        return ChatOpsResult.Processed;
     }
 
     private async Task AppendUserMessageAsync(

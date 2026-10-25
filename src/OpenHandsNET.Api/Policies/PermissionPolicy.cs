@@ -142,24 +142,7 @@ public sealed class PermissionHandler(
             .GetRequiredService<Infrastructure.Persistence.AppDbContext>();
 
         // 1. target org resolution
-        Guid? targetOrg = null;
-        if (ctx.Request.RouteValues["org_id"] is { } routeOrg
-            && Guid.TryParse(routeOrg.ToString(), out var rg))
-        {
-            targetOrg = rg;
-        }
-        else if (ctx.Request.Headers.TryGetValue("X-Org-Id", out var headerOrg)
-            && Guid.TryParse(headerOrg.ToString(), out var hg))
-        {
-            targetOrg = hg;
-        }
-        else
-        {
-            var resolver = scope.ServiceProvider
-                .GetRequiredService<IEffectiveOrgResolver>();
-            targetOrg = (await resolver.ResolveAsync(
-                user, null, ctx.RequestAborted))?.OrgId;
-        }
+        var targetOrg = await ResolveTargetOrgAsync(ctx, scope, user);
 
         // 2. binding check — bound key can't cross to a different org
         if (targetOrg is { } orgId && user.BoundOrgId is { } bound && bound != orgId)
@@ -167,24 +150,11 @@ public sealed class PermissionHandler(
 
         // 3-4. org-role evaluation — service users carregam a role
         // no próprio registro (SPEC-57); humanos via OrgMembers.
-        if (targetOrg is { } oid)
+        if (targetOrg is { } oid
+            && await OrgRolePermitsAsync(db, oid, user, requirement.Permission))
         {
-            var org = await db.Organizations.FindAsync([oid]);
-            var suspended = org?.SuspendedAt is not null;
-            if (!suspended)
-            {
-                var role = user.ActorKind == ActorKind.ServiceUser
-                    ? user.Role
-                    : await db.OrgMembers
-                        .Where(m => m.OrgId == oid && m.UserId == user.UserId)
-                        .Select(m => m.Role)
-                        .FirstOrDefaultAsync();
-                if (RolePermissions.ForOrgRole(role).Contains(requirement.Permission))
-                {
-                    context.Succeed(requirement);
-                    return;
-                }
-            }
+            context.Succeed(requirement);
+            return;
         }
 
         // 5. super-role fallback — explicit perms, no org inheritance
@@ -194,5 +164,42 @@ public sealed class PermissionHandler(
         {
             context.Succeed(requirement);
         }
+    }
+
+    private static async Task<Guid?> ResolveTargetOrgAsync(
+        HttpContext ctx, AsyncServiceScope scope, AuthUser user)
+    {
+        if (ctx.Request.RouteValues["org_id"] is { } routeOrg
+            && Guid.TryParse(routeOrg.ToString(), out var rg))
+        {
+            return rg;
+        }
+        if (ctx.Request.Headers.TryGetValue("X-Org-Id", out var headerOrg)
+            && Guid.TryParse(headerOrg.ToString(), out var hg))
+        {
+            return hg;
+        }
+        var resolver = scope.ServiceProvider
+            .GetRequiredService<IEffectiveOrgResolver>();
+        return (await resolver.ResolveAsync(
+            user, null, ctx.RequestAborted))?.OrgId;
+    }
+
+    private static async Task<bool> OrgRolePermitsAsync(
+        Infrastructure.Persistence.AppDbContext db, Guid oid,
+        AuthUser user, Permission permission)
+    {
+        var org = await db.Organizations.FindAsync([oid]);
+        if (org?.SuspendedAt is not null)
+        {
+            return false;
+        }
+        var role = user.ActorKind == ActorKind.ServiceUser
+            ? user.Role
+            : await db.OrgMembers
+                .Where(m => m.OrgId == oid && m.UserId == user.UserId)
+                .Select(m => m.Role)
+                .FirstOrDefaultAsync();
+        return RolePermissions.ForOrgRole(role).Contains(permission);
     }
 }

@@ -90,7 +90,17 @@ public sealed class LlmSummarizingCondenser(
                 tokens, afterPrune);
         }
 
-        // ---- fase 2: summarization ----
+        return await SummarizePhaseAsync(
+            working, ids, pruned, tokens, afterPrune, trigger, model, co, o, ct);
+    }
+
+    // ---- fase 2: summarization ----
+    private async Task<CondenseResult> SummarizePhaseAsync(
+        List<LlmMessage> working, List<string?> ids, List<string> pruned,
+        int tokens, int afterPrune, CompactionTrigger trigger,
+        string? model, CompactionOptions co, AgentLlmOptions o,
+        CancellationToken ct)
+    {
         var start = working.Count > 0 && working[0].Role == "system" ? 1 : 0;
         var boundary = Math.Max(start, working.Count - co.KeepLastTurns);
         // nunca inicia o tail com tool results órfãos (a call ficaria fora).
@@ -101,9 +111,7 @@ public sealed class LlmSummarizingCondenser(
 
         if (boundary - start <= 0)
         {
-            return new CondenseResult(
-                working, ids, [], pruned, null, null, null,
-                tokens, afterPrune);
+            return Passthrough();
         }
 
         try

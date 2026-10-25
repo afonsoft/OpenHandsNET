@@ -97,40 +97,11 @@ public sealed class ConversationStartWorker(
         }
 
         await AdvanceAsync(db, task, StartTaskStatus.PreparingRepository, ct);
-        if (!string.IsNullOrEmpty(conv.SelectedRepository))
-        {
-            var gitOpt = scope.ServiceProvider
-                .GetRequiredService<IOptions<Git.GitOptions>>().Value;
-            var branch = gitOpt.WorkBranch
-                .Replace("{id}", conv.Id.ToString("N")[..8],
-                    StringComparison.Ordinal);
-            if (gitOpt.CloneMode.Equals("host", StringComparison.OrdinalIgnoreCase))
-            {
-                // Host mode: token do dono (ou system) via http.extraHeader.
-                var creds = scope.ServiceProvider.GetRequiredService<
-                    Git.GitCredentialProvider>();
-                var host = TryRepoHost(conv.SelectedRepository);
-                var token = host is null ? null
-                    : await creds.ResolveTokenAsync(host, conv.CreatedByUserId, ct);
-                await workspaces.CloneRepositoryAsync(
-                    conv.Id, conv.SelectedRepository, branch, token, ct);
-            }
-            else
-            {
-                // Default: clone dentro do container (isolado; token via askpass).
-                var sbDomain = sbForProvision
-                    ?? await sandboxService.GetAsync(sandbox.Id, ct);
-                if (sbDomain is not null)
-                {
-                    await gitService.CloneAsync(
-                        sbDomain, conv.SelectedRepository, branch,
-                        conv.CreatedByUserId, ct);
-                }
-            }
-        }
+        await CloneRepositoryAsync(scope, workspaces, sandboxService,
+            gitService, sbForProvision, sandbox, conv, ct);
 
-        // SPEC-17 RF-004: blueprint após o clone — SDK installers +
-        // .openhands/setup.sh dentro do container. Falha não bloqueia READY.
+        // SPEC-17 RF-004 + SPEC-25 RF-001: blueprint + descoberta de contexto
+        // — falha nunca bloqueia READY.
         var sbForBlueprint = await sandboxService.GetAsync(sandbox.Id, ct);
         if (sbForBlueprint is not null)
         {
@@ -144,43 +115,11 @@ public sealed class ConversationStartWorker(
                 conv.Id, conv.OrgId, ct);
             await blueprint.RunAsync(
                 sbForBlueprint, conv.Id, spec, executor, ct);
-        }
-
-        // SPEC-25 RF-001: descoberta de contexto do repo — AGENTS.md,
-        // skills versionadas, config — persistida como repo_context.
-        if (sbForBlueprint is not null)
-        {
             await RunDiscoveryAsync(scope, conv, sbForBlueprint, ct);
         }
 
         await AdvanceAsync(db, task, StartTaskStatus.SettingUpSkills, ct);
-        // SPEC-11 RF-005: resolve + persiste skills da conversa antes de READY.
-        {
-            var skillSvc = scope.ServiceProvider
-                .GetService<Application.Skills.ISkillService>();
-            if (skillSvc is not null)
-            {
-                // keyword triggers casam contra a última mensagem do usuário
-                // já persistida no event stream (initial_message).
-                var eventSvc = scope.ServiceProvider
-                    .GetRequiredService<Application.Events.IEventService>();
-                var page = await eventSvc.SearchAsync(conv.Id,
-                    new Application.Events.EventQuery(Limit: 100), ct);
-                var firstMessage = page.Items
-                    .OfType<Domain.Events.MessageEvent>()
-                    .Where(m => m.Source == Domain.Events.EventSource.User)
-                    .Select(m => m.LlmMessage.GetRawText())
-                    .LastOrDefault();
-                var resolved = await skillSvc.ResolveForConversationAsync(
-                    conv.Id, firstMessage, null,
-                    conv.CreatedByUserId, conv.OrgId?.ToString(), ct);
-                if (skillSvc is Infrastructure.Skills.SkillService concrete)
-                {
-                    await concrete.PinAsync(
-                        conv.Id, resolved.Select(s => s.Id), ct);
-                }
-            }
-        }
+        await ResolveSkillsAsync(scope, conv, ct);
 
         conv.ExecutionStatus = ConversationExecutionStatus.Running.ToString();
         conv.UpdatedAt = DateTimeOffset.UtcNow;
@@ -200,6 +139,75 @@ public sealed class ConversationStartWorker(
             var host = scope.ServiceProvider
                 .GetRequiredService<OpenHandsNET.Application.Agent.IAgentRunnerHost>();
             await host.NotifyMessageAsync(conv.Id, ct);
+        }
+    }
+
+    private static async Task CloneRepositoryAsync(
+        IServiceScope scope, OpenHandsNET.Sandboxing.WorkspaceProvisioner workspaces,
+        ISandboxService sandboxService, Application.Git.IGitService gitService,
+        Domain.Sandbox.Sandbox? sbForProvision, Domain.Sandbox.Sandbox sandbox,
+        ConversationRecord conv, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(conv.SelectedRepository))
+        {
+            return;
+        }
+        var gitOpt = scope.ServiceProvider
+            .GetRequiredService<IOptions<Git.GitOptions>>().Value;
+        var branch = gitOpt.WorkBranch
+            .Replace("{id}", conv.Id.ToString("N")[..8],
+                StringComparison.Ordinal);
+        if (gitOpt.CloneMode.Equals("host", StringComparison.OrdinalIgnoreCase))
+        {
+            // Host mode: token do dono (ou system) via http.extraHeader.
+            var creds = scope.ServiceProvider.GetRequiredService<
+                Git.GitCredentialProvider>();
+            var host = TryRepoHost(conv.SelectedRepository);
+            var token = host is null ? null
+                : await creds.ResolveTokenAsync(host, conv.CreatedByUserId, ct);
+            await workspaces.CloneRepositoryAsync(
+                conv.Id, conv.SelectedRepository, branch, token, ct);
+            return;
+        }
+        // Default: clone dentro do container (isolado; token via askpass).
+        var sbDomain = sbForProvision
+            ?? await sandboxService.GetAsync(sandbox.Id, ct);
+        if (sbDomain is not null)
+        {
+            await gitService.CloneAsync(
+                sbDomain, conv.SelectedRepository, branch,
+                conv.CreatedByUserId, ct);
+        }
+    }
+
+    // SPEC-11 RF-005: resolve + persiste skills da conversa antes de READY.
+    private static async Task ResolveSkillsAsync(
+        IServiceScope scope, ConversationRecord conv, CancellationToken ct)
+    {
+        var skillSvc = scope.ServiceProvider
+            .GetService<Application.Skills.ISkillService>();
+        if (skillSvc is null)
+        {
+            return;
+        }
+        // keyword triggers casam contra a última mensagem do usuário
+        // já persistida no event stream (initial_message).
+        var eventSvc = scope.ServiceProvider
+            .GetRequiredService<Application.Events.IEventService>();
+        var page = await eventSvc.SearchAsync(conv.Id,
+            new Application.Events.EventQuery(Limit: 100), ct);
+        var firstMessage = page.Items
+            .OfType<Domain.Events.MessageEvent>()
+            .Where(m => m.Source == Domain.Events.EventSource.User)
+            .Select(m => m.LlmMessage.GetRawText())
+            .LastOrDefault();
+        var resolved = await skillSvc.ResolveForConversationAsync(
+            conv.Id, firstMessage, null,
+            conv.CreatedByUserId, conv.OrgId?.ToString(), ct);
+        if (skillSvc is Infrastructure.Skills.SkillService concrete)
+        {
+            await concrete.PinAsync(
+                conv.Id, resolved.Select(s => s.Id), ct);
         }
     }
 

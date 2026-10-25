@@ -63,47 +63,9 @@ public sealed class RepoContextLoader(
         var skills = await repoSkills.LoadAsync(sandbox, executor, ct);
 
         var sb = new StringBuilder();
-        if (manifest.InstructionFiles.Count > 0)
-        {
-            sb.AppendLine("<repo_instructions>");
-            foreach (var file in manifest.InstructionFiles)
-            {
-                var content = await ReadCappedAsync(
-                    sandbox, $"/workspace/repo/{file}",
-                    InstructionCapBytes, ct);
-                if (content is null)
-                {
-                    continue;
-                }
-
-                sb.AppendLine($"<file path=\"{file}\">")
-                    .AppendLine(content)
-                    .AppendLine("</file>");
-            }
-
-            sb.AppendLine("</repo_instructions>");
-        }
-
-        if (manifest.ReadmePath is { } readme)
-        {
-            var content = await ReadCappedAsync(
-                sandbox, $"/workspace/repo/{readme}", ReadmeCapBytes, ct);
-            if (content is not null)
-            {
-                sb.AppendLine("<repo_readme>").AppendLine(content)
-                    .AppendLine("</repo_readme>");
-            }
-        }
-
-        if (skills.Count > 0)
-        {
-            sb.AppendLine("Repository skills (invoke via `invoke_skill`):");
-            foreach (var s in skills)
-            {
-                sb.AppendLine($"- {s.Name} ({s.RepoPath})"
-                    + (s.Description is { } d ? $" — {d}" : ""));
-            }
-        }
+        await AppendInstructionsAsync(sb, sandbox, manifest, ct);
+        await AppendReadmeAsync(sb, sandbox, manifest, ct);
+        AppendSkills(sb, skills);
 
         if (manifest.HasRepoConfig)
         {
@@ -118,6 +80,64 @@ public sealed class RepoContextLoader(
 
         var rendered = sb.Length > 0 ? sb.ToString() : null;
         return new LoadedContext(rendered, skills);
+    }
+
+    private async Task AppendInstructionsAsync(
+        StringBuilder sb, RuntimeSandbox sandbox,
+        RepoContextManifest manifest, CancellationToken ct)
+    {
+        if (manifest.InstructionFiles.Count == 0)
+        {
+            return;
+        }
+        sb.AppendLine("<repo_instructions>");
+        foreach (var file in manifest.InstructionFiles)
+        {
+            var content = await ReadCappedAsync(
+                sandbox, $"/workspace/repo/{file}",
+                InstructionCapBytes, ct);
+            if (content is null)
+            {
+                continue;
+            }
+
+            sb.AppendLine($"<file path=\"{file}\">")
+                .AppendLine(content)
+                .AppendLine("</file>");
+        }
+
+        sb.AppendLine("</repo_instructions>");
+    }
+
+    private async Task AppendReadmeAsync(
+        StringBuilder sb, RuntimeSandbox sandbox,
+        RepoContextManifest manifest, CancellationToken ct)
+    {
+        if (manifest.ReadmePath is not { } readme)
+        {
+            return;
+        }
+        var content = await ReadCappedAsync(
+            sandbox, $"/workspace/repo/{readme}", ReadmeCapBytes, ct);
+        if (content is not null)
+        {
+            sb.AppendLine("<repo_readme>").AppendLine(content)
+                .AppendLine("</repo_readme>");
+        }
+    }
+
+    private static void AppendSkills(StringBuilder sb, IReadOnlyList<Skill> skills)
+    {
+        if (skills.Count == 0)
+        {
+            return;
+        }
+        sb.AppendLine("Repository skills (invoke via `invoke_skill`):");
+        foreach (var s in skills)
+        {
+            sb.AppendLine($"- {s.Name} ({s.RepoPath})"
+                + (s.Description is { } d ? $" — {d}" : ""));
+        }
     }
 
     private RepoContextManifest? LatestManifest(IReadOnlyList<EventBase> events)
@@ -137,16 +157,7 @@ public sealed class RepoContextLoader(
                     .Where(x => x.ValueKind == JsonValueKind.String)
                     .Select(x => x.GetString()!).ToList()
                 : [];
-            var skills = v.TryGetProperty("skills", out var s)
-                && s.ValueKind == JsonValueKind.Array
-                ? s.EnumerateArray().Select(x => new RepoSkillRef(
-                    x.TryGetProperty("name", out var n)
-                        ? n.GetString() ?? "" : "",
-                    x.TryGetProperty("path", out var p)
-                        ? p.GetString() ?? "" : "",
-                    x.TryGetProperty("description", out var d)
-                        ? d.GetString() : null)).ToList()
-                : [];
+            var skills = ParseSkillRefs(v);
             var config = v.TryGetProperty("config", out var c)
                 && c.ValueKind == JsonValueKind.True;
             var readme = v.TryGetProperty("readme", out var r)
@@ -158,6 +169,22 @@ public sealed class RepoContextLoader(
             logger.LogDebug(ex, "repo_context manifest inválido");
             return null;
         }
+    }
+
+    private static List<RepoSkillRef> ParseSkillRefs(JsonElement v)
+    {
+        if (!(v.TryGetProperty("skills", out var s)
+            && s.ValueKind == JsonValueKind.Array))
+        {
+            return [];
+        }
+        return s.EnumerateArray().Select(x => new RepoSkillRef(
+            x.TryGetProperty("name", out var n)
+                ? n.GetString() ?? "" : "",
+            x.TryGetProperty("path", out var p)
+                ? p.GetString() ?? "" : "",
+            x.TryGetProperty("description", out var d)
+                ? d.GetString() : null)).ToList();
     }
 
     /// <summary>

@@ -5,6 +5,8 @@ using Microsoft.Extensions.Logging;
 
 using OpenHandsNET.Application.Insights;
 using OpenHandsNET.Infrastructure.Agent;
+using OpenHandsNET.Infrastructure.Conversations;
+using OpenHandsNET.Infrastructure.Eventing;
 using OpenHandsNET.Infrastructure.Persistence;
 
 namespace OpenHandsNET.Infrastructure.Insights;
@@ -51,17 +53,51 @@ public sealed class SessionInsightService : ISessionInsightService
             .Take(100)
             .ToListAsync(ct);
 
+        var a = BuildAnalysis(events, conv);
+
+        var insightRecord = existing ?? new SessionInsightRecord
+        {
+            Id = Guid.NewGuid(),
+            ConversationId = conversationId,
+            Outcome = a.Outcome,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        insightRecord.OrgId = conv.OrgId;
+        insightRecord.IssuesJson = JsonSerializer.Serialize(a.Issues);
+        insightRecord.DeadEndsJson = JsonSerializer.Serialize(a.DeadEnds);
+        insightRecord.PhaseCostsJson = JsonSerializer.Serialize(a.PhaseCosts);
+        insightRecord.LearningsJson = JsonSerializer.Serialize(a.Learnings);
+        insightRecord.SuggestedPrompt = a.SuggestedPrompt;
+        insightRecord.Model = conv.LlmModel ?? "gpt-4o";
+
+        if (existing == null)
+        {
+            await _db.SessionInsights.AddAsync(insightRecord, ct);
+        }
+
+        await _db.SaveChangesAsync(ct);
+        await SuggestLearningsAsync(a.Learnings, conv, conversationId, ct);
+
+        return ToDto(insightRecord);
+    }
+
+    private sealed record Analysis(
+        List<SessionIssue> Issues, List<string> DeadEnds,
+        List<string> Learnings, List<PhaseCost> PhaseCosts,
+        string Outcome, string? SuggestedPrompt);
+
+    private static Analysis BuildAnalysis(
+        List<EventRecord> events, ConversationRecord conv)
+    {
         var issues = new List<SessionIssue>();
         var deadEnds = new List<string>();
         var learnings = new List<string>();
-        var phaseCosts = new List<PhaseCost>();
-
-        bool hasError = false;
 
         var flagged = events.Where(ev =>
             ev.Payload.Contains("error", StringComparison.OrdinalIgnoreCase) ||
             ev.Payload.Contains("fail", StringComparison.OrdinalIgnoreCase));
-        hasError = flagged.Any();
+        var hasError = flagged.Any();
         foreach (var ev in flagged)
         {
             issues.Add(new SessionIssue("command_error", "medium",
@@ -69,7 +105,7 @@ public sealed class SessionInsightService : ISessionInsightService
                     ev.Payload[..Math.Min(120, ev.Payload.Length)])));
         }
 
-        string outcome = conv.ExecutionStatus switch
+        var outcome = conv.ExecutionStatus switch
         {
             "COMPLETED" or "ready" => hasError ? "partial" : "success",
             "FAILED" or "error" => "failed",
@@ -86,39 +122,27 @@ public sealed class SessionInsightService : ISessionInsightService
             learnings.Add("Sequência de passos executada de forma linear sem regressões");
         }
 
-        phaseCosts.Add(new PhaseCost("planning", 1500, 2.5));
-        phaseCosts.Add(new PhaseCost("tool_execution", 4200, 8.0));
-        phaseCosts.Add(new PhaseCost("verification", 1800, 3.2));
+        var phaseCosts = new List<PhaseCost>
+        {
+            new("planning", 1500, 2.5),
+            new("tool_execution", 4200, 8.0),
+            new("verification", 1800, 3.2),
+        };
 
-        string? suggestedPrompt = hasError
+        var suggestedPrompt = hasError
             ? $"Seja mais explícito ao definir os arquivos-alvo e adicione a instrução 'verifique com dotnet build antes de concluir' para evitar erros na tarefa original: {conv.Title}"
             : null;
 
-        var insightRecord = existing ?? new SessionInsightRecord
-        {
-            Id = Guid.NewGuid(),
-            ConversationId = conversationId,
-            Outcome = outcome,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
+        return new Analysis(issues, deadEnds, learnings, phaseCosts,
+            outcome, suggestedPrompt);
+    }
 
-        insightRecord.OrgId = conv.OrgId;
-        insightRecord.IssuesJson = JsonSerializer.Serialize(issues);
-        insightRecord.DeadEndsJson = JsonSerializer.Serialize(deadEnds);
-        insightRecord.PhaseCostsJson = JsonSerializer.Serialize(phaseCosts);
-        insightRecord.LearningsJson = JsonSerializer.Serialize(learnings);
-        insightRecord.SuggestedPrompt = suggestedPrompt;
-        insightRecord.Model = conv.LlmModel ?? "gpt-4o";
-
-        if (existing == null)
-        {
-            await _db.SessionInsights.AddAsync(insightRecord, ct);
-        }
-
-        await _db.SaveChangesAsync(ct);
-
-        // SPEC-63 RF-001a: learnings da sessão → fila de sugestões
-        // (fire-and-forget; nunca falha a análise).
+    // SPEC-63 RF-001a: learnings da sessão → fila de sugestões
+    // (fire-and-forget; nunca falha a análise).
+    private async Task SuggestLearningsAsync(
+        List<string> learnings, ConversationRecord conv,
+        Guid conversationId, CancellationToken ct)
+    {
         try
         {
             var knowledge = _services?.GetService(
@@ -141,8 +165,6 @@ public sealed class SessionInsightService : ISessionInsightService
             _logger.LogWarning(ex,
                 "knowledge suggestion hook failed for {Id}", conversationId);
         }
-
-        return ToDto(insightRecord);
     }
 
     public async Task<SessionInsightDto?> GetSessionInsightAsync(Guid conversationId, CancellationToken ct = default)

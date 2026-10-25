@@ -252,29 +252,9 @@
 
     private async Task OnKey(KeyboardEventArgs e)
     {
-        if ((_mentionOpen && _mentionItems.Count > 0)
-            || (_slashOpen && _slashItems.Count > 0))
+        if (await HandlePopupKeyAsync(e))
         {
-            var items = _mentionOpen
-                ? _mentionItems.Count : _slashItems.Count;
-            _idx = Math.Min(_idx, items - 1);
-            switch (e.Key)
-            {
-                case "ArrowDown":
-                    _idx = (_idx + 1) % items; return;
-                case "ArrowUp":
-                    _idx = (_idx - 1 + items) % items; return;
-                case "Tab":
-                case "Enter" when !e.ShiftKey:
-                    if (_mentionOpen)
-                    {
-                        PickMention(_mentionItems[_idx]);
-                    }
-                    else { await PickSlash(_slashItems[_idx]); }
-                    return;
-                case "Escape":
-                    ClosePopups(); return;
-            }
+            return;
         }
 
         if (e.Key is "Enter" && !e.ShiftKey)
@@ -289,6 +269,39 @@
         else if (e.Key is "ArrowDown" && _histIdx >= 0)
         {
             HistoryMove(-1);
+        }
+    }
+
+    /// <summary>Popup de mention/slash aberto → setas/enter/esc navegam.</summary>
+    private async Task<bool> HandlePopupKeyAsync(KeyboardEventArgs e)
+    {
+        if (!((_mentionOpen && _mentionItems.Count > 0)
+            || (_slashOpen && _slashItems.Count > 0)))
+        {
+            return false;
+        }
+
+        var items = _mentionOpen
+            ? _mentionItems.Count : _slashItems.Count;
+        _idx = Math.Min(_idx, items - 1);
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                _idx = (_idx + 1) % items; return true;
+            case "ArrowUp":
+                _idx = (_idx - 1 + items) % items; return true;
+            case "Tab":
+            case "Enter" when !e.ShiftKey:
+                if (_mentionOpen)
+                {
+                    PickMention(_mentionItems[_idx]);
+                }
+                else { await PickSlash(_slashItems[_idx]); }
+                return true;
+            case "Escape":
+                ClosePopups(); return true;
+            default:
+                return false;
         }
     }
 
