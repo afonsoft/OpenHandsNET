@@ -436,7 +436,7 @@ public static class GitEndpoints
             TimeSpan.FromSeconds(30), ct);
 
         // grep exit 1 = zero matches (não é erro); 2+ = erro real.
-        if (r.ExitCode > 1 && r.TimedOut is false)
+        if (r.ExitCode > 1 && !r.TimedOut)
         {
             return OpenHandsNetProblemFactory.Create(
                 http, 500, r.StdErr.Trim() is { Length: > 0 } e

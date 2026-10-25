@@ -18,12 +18,12 @@ public sealed class ScmStatusCommand : AsyncCommand<ScmStatusCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var api = await CloudApiClient.CreateAsync(
-            settings.ServerUrl, new CredentialStore(), ct: ct);
-        var orgId = settings.OrgId ?? await ResolveOrgAsync(api, ct);
-        var conns = await api.ListScmConnectionsAsync(orgId, ct);
+            settings.ServerUrl, new CredentialStore(), ct: cancellationToken);
+        var orgId = settings.OrgId ?? await ResolveOrgAsync(api, cancellationToken);
+        var conns = await api.ListScmConnectionsAsync(orgId, cancellationToken);
 
         var table = new Table().AddColumns(
             "KIND", "APP", "INSTALLATION", "REPOS", "ID");
@@ -87,16 +87,16 @@ public sealed class ScmConnectCommand : AsyncCommand<ScmConnectCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var api = await CloudApiClient.CreateAsync(
-            settings.ServerUrl, new CredentialStore(), ct: ct);
+            settings.ServerUrl, new CredentialStore(), ct: cancellationToken);
         if (settings.Kind == "github")
         {
             var redirect = settings.RedirectUri
                 ?? $"{api.BaseUrl}/api/v1/scm/github/callback";
             var manifest = await api.BuildScmManifestAsync(
-                redirect, settings.AppName, ct);
+                redirect, settings.AppName, cancellationToken);
             AnsiConsole.MarkupLine(
                 "[bold]GitHub App manifest[/] — crie o app em " +
                 "<https://github.com/settings/apps/new> (método manifest) e " +
@@ -147,15 +147,15 @@ public sealed class ScmPrCreateCommand
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var api = await CloudApiClient.CreateAsync(
-            settings.ServerUrl, new CredentialStore(), ct: ct);
+            settings.ServerUrl, new CredentialStore(), ct: cancellationToken);
         var pr = await api.CreatePullRequestAsync(
             settings.ConversationId,
             settings.Title ?? "OpenHandsNET changes",
             settings.Body ?? "", settings.BaseBranch,
-            settings.Draft, ct);
+            settings.Draft, cancellationToken);
         AnsiConsole.MarkupLine(
             $"[green]PR #{pr.GetProperty("number")}[/] " +
             Markup.Escape(pr.GetProperty("url").GetString() ?? ""));

@@ -18,7 +18,7 @@ public sealed class LoginCommand : AsyncCommand<LoginCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var url = settings.ServerUrl
             ?? Environment.GetEnvironmentVariable("OPENHANDSNET_SERVER_URL")
@@ -32,7 +32,7 @@ public sealed class LoginCommand : AsyncCommand<LoginCommand.Settings>
             {
                 ServerUrl = url,
                 ApiKey = key,
-            }, ct);
+            }, cancellationToken);
             AnsiConsole.MarkupLine(
                 $"[green]✓[/] API key gravada para [bold]{url}[/] " +
                 $"([grey]{Mask(key)}[/])");
@@ -43,7 +43,7 @@ public sealed class LoginCommand : AsyncCommand<LoginCommand.Settings>
         var flow = new DeviceFlowClient(new HttpClient());
         try
         {
-            var code = await flow.RequestCodeAsync(url, ct);
+            var code = await flow.RequestCodeAsync(url, cancellationToken);
             AnsiConsole.MarkupLine(
                 $"Abra [bold]{code.VerificationUri}[/] e informe o código " +
                 $"[bold yellow]{code.UserCode}[/]");
@@ -54,7 +54,7 @@ public sealed class LoginCommand : AsyncCommand<LoginCommand.Settings>
             }
 
             var token = await flow.PollTokenAsync(url, code,
-                s => AnsiConsole.MarkupLine($"[grey]{s}[/]"), ct);
+                s => AnsiConsole.MarkupLine($"[grey]{s}[/]"), cancellationToken);
             if (token is null)
             {
                 AnsiConsole.MarkupLine("[red]device flow expirado/negado.[/]");
@@ -66,7 +66,7 @@ public sealed class LoginCommand : AsyncCommand<LoginCommand.Settings>
                 ServerUrl = url,
                 AccessToken = token.AccessToken,
                 RefreshToken = token.RefreshToken,
-            }, ct);
+            }, cancellationToken);
             AnsiConsole.MarkupLine($"[green]✓[/] Login em [bold]{url}[/]");
             return 0;
         }

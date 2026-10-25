@@ -22,13 +22,13 @@ public sealed class ServiceUsersListCommand
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var api = await CloudApiClient.CreateAsync(
-            settings.ServerUrl, new CredentialStore(), ct: ct);
+            settings.ServerUrl, new CredentialStore(), ct: cancellationToken);
         var orgId = settings.OrgId
-            ?? await ScmStatusCommand.ResolveOrgAsync(api, ct);
-        var users = await api.ListServiceUsersAsync(orgId, ct);
+            ?? await ScmStatusCommand.ResolveOrgAsync(api, cancellationToken);
+        var users = await api.ListServiceUsersAsync(orgId, cancellationToken);
 
         var table = new Table().AddColumns("NAME", "ROLE", "STATUS", "ID");
         if (users.ValueKind == System.Text.Json.JsonValueKind.Array)
@@ -71,14 +71,14 @@ public sealed class ServiceUsersCreateCommand
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var api = await CloudApiClient.CreateAsync(
-            settings.ServerUrl, new CredentialStore(), ct: ct);
+            settings.ServerUrl, new CredentialStore(), ct: cancellationToken);
         var orgId = settings.OrgId
-            ?? await ScmStatusCommand.ResolveOrgAsync(api, ct);
+            ?? await ScmStatusCommand.ResolveOrgAsync(api, cancellationToken);
         var ok = await api.CreateServiceUserAsync(
-            orgId, settings.Name, settings.Role, ct);
+            orgId, settings.Name, settings.Role, cancellationToken);
         AnsiConsole.MarkupLine(ok
             ? $"[green]Criado[/] service user {settings.Name}."
             : "[red]Falhou[/] — veja logs do servidor.");
@@ -109,16 +109,16 @@ public sealed class ServiceUsersKeyCommand
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var api = await CloudApiClient.CreateAsync(
-            settings.ServerUrl, new CredentialStore(), ct: ct);
+            settings.ServerUrl, new CredentialStore(), ct: cancellationToken);
         var orgId = settings.OrgId
-            ?? await ScmStatusCommand.ResolveOrgAsync(api, ct);
+            ?? await ScmStatusCommand.ResolveOrgAsync(api, cancellationToken);
         var key = await api.CreateServiceUserKeyAsync(
             orgId, settings.ServiceUserId,
             settings.Scopes.Split(' ', StringSplitOptions.RemoveEmptyEntries),
-            ct);
+            cancellationToken);
         if (key is null)
         {
             AnsiConsole.MarkupLine("[red]Falhou[/] — escopo desconhecido?");

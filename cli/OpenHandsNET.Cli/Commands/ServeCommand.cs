@@ -33,7 +33,7 @@ public sealed class ServeCommand : AsyncCommand<ServeCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var api = settings.ApiPath ?? FindApiProject();
         if (api is null)
@@ -67,7 +67,7 @@ public sealed class ServeCommand : AsyncCommand<ServeCommand.Settings>
         AnsiConsole.MarkupLine(
             $"subindo servidor em [bold]http://localhost:{settings.Port}[/] …");
         var proc = System.Diagnostics.Process.Start(psi)!;
-        await proc.WaitForExitAsync(ct);
+        await proc.WaitForExitAsync(cancellationToken);
         return proc.ExitCode;
     }
 

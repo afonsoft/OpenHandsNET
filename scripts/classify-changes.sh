@@ -4,13 +4,14 @@
 # Output: key=value lines for $GITHUB_OUTPUT (or stdout when unset).
 set -uo pipefail
 
-if [ -n "${1:-}" ]; then
-  files=$(cat "$1")
+if [[ -n "${1:-}" ]]; then
+  input_file=$1
+  files=$(cat "$input_file")
 else
   files=$(cat)
 fi
 
-has() { printf '%s\n' "$files" | grep -qE "$1" && echo true || echo false; }
+has() { local pattern=$1; printf '%s\n' "$files" | grep -qE "$pattern" && { echo true; return 0; } || { echo false; return 0; }; }
 
 code=$(has '^(src|cli|runtime|tests|evals)/|\.(slnx?|csproj|props|targets)$|^(global\.json|nuget\.config|Directory\.)')
 docs=$(has '^(docs|migration-plan)/|\.md$')

@@ -302,7 +302,7 @@ public sealed class McpClientService(
                 Command = cmd,
                 Arguments = args,
                 EnvironmentVariables = cfg.Env?
-                    .ToDictionary(kv => kv.Key, kv => (string?)kv.Value),
+                    .ToDictionary(kv => kv.Key, kv => (string?)kv.Value) // NOSONAR S1905 — cast exigido pelo target IDictionary<string,string?>,
             });
         }
         else

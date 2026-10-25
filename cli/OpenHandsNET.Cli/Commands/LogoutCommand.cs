@@ -15,12 +15,12 @@ public sealed class LogoutCommand : AsyncCommand<LogoutCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var url = settings.ServerUrl
             ?? Environment.GetEnvironmentVariable("OPENHANDSNET_SERVER_URL")
             ?? "http://localhost:8080";
-        var removed = await new CredentialStore().DeleteAsync(url, ct);
+        var removed = await new CredentialStore().DeleteAsync(url, cancellationToken);
         AnsiConsole.MarkupLine(removed
             ? $"[green]✓[/] credencial de [bold]{url}[/] removida"
             : $"[grey]nenhuma credencial para {url}[/]");

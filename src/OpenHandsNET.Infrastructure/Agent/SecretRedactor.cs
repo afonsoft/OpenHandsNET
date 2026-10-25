@@ -20,12 +20,10 @@ public static partial class SecretRedactor
         var result = PlaceholderPattern().Replace(text, "***");
         if (secretValues is not null)
         {
-            foreach (var value in secretValues)
+            foreach (var value in secretValues.Where(
+                v => !string.IsNullOrEmpty(v)))
             {
-                if (!string.IsNullOrEmpty(value))
-                {
-                    result = result.Replace(value, "***", StringComparison.Ordinal);
-                }
+                result = result.Replace(value, "***", StringComparison.Ordinal);
             }
         }
 

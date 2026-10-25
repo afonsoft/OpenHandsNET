@@ -29,12 +29,10 @@ ENV DEBIAN_FRONTEND=noninteractive \
     OHN_WORKSPACE=/workspace
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates curl wget gnupg jq unzip zip tar xz-utils \
-        git git-lfs openssh-client \
-        python3 python3-pip python3-venv \
-        tini sudo locales procps file less vim-tiny \
-        ripgrep \
-        build-essential pkg-config libssl-dev \
+        build-essential ca-certificates curl file git git-lfs gnupg \
+        jq less libssl-dev locales openssh-client pkg-config procps \
+        python3 python3-pip python3-venv ripgrep sudo tar tini unzip \
+        vim-tiny wget xz-utils zip \
     && rm -rf /var/lib/apt/lists/*
 
 # GitHub CLI (repo oficial, pin de chave do apt)

@@ -62,7 +62,7 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
 
     /// <inheritdoc />
     public override async Task<int> ExecuteAsync(
-        CommandContext ctx, Settings s, CancellationToken ct)
+        CommandContext ctx, Settings s, CancellationToken cancellationToken)
     {
         if (s.Mode is not "live" and not "recorded")
         {
@@ -81,8 +81,8 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
             Path.Combine(s.EvalsDir, "recordings"));
 
         var results = s.Mode == "recorded"
-            ? await RunRecordedAsync(s, tasks, recordings, ct)
-            : await RunLiveAsync(s, tasks, recordings, ct);
+            ? await RunRecordedAsync(s, tasks, recordings, cancellationToken)
+            : await RunLiveAsync(s, tasks, recordings, cancellationToken);
         if (results is null)
         {
             return 1;
@@ -97,7 +97,7 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
             Directory.CreateDirectory(perTask);
             await File.WriteAllTextAsync(
                 Path.Combine(perTask, "result.json"),
-                EvalResult.ToJson(r), ct);
+                EvalResult.ToJson(r), cancellationToken);
         }
 
         await File.WriteAllTextAsync(
@@ -109,7 +109,7 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
                     pass = results.Count(r => r.Pass),
                     score = results.Average(r => r.Score)
                 },
-                Json), ct);
+                Json), cancellationToken);
 
         var regressions = CheckGate(s, results);
         if (s.Json)
@@ -305,7 +305,7 @@ public sealed class EvalReportCommand : Command<EvalReportCommand.Settings>
     }
 
     /// <inheritdoc />
-    public override int Execute(CommandContext ctx, Settings s, CancellationToken ct)
+    public override int Execute(CommandContext ctx, Settings s, CancellationToken cancellationToken)
     {
         var results = LoadResults(s.Dir);
         var regressions = s.Baseline is { } b && Directory.Exists(b)
@@ -354,7 +354,7 @@ public sealed class EvalReportCommand : Command<EvalReportCommand.Settings>
             ? Directory.EnumerateFiles(dir, "result.json",
                     SearchOption.AllDirectories)
                 .Select(f => EvalResult.FromJson(File.ReadAllText(f)))
-                .Where(r => r is not null).Cast<EvalResult>().ToList()
+                .OfType<EvalResult>().ToList()
             : [];
 }
 
@@ -369,7 +369,7 @@ public sealed class EvalListCommand : Command<EvalListCommand.Settings>
     }
 
     /// <inheritdoc />
-    public override int Execute(CommandContext ctx, Settings s, CancellationToken ct)
+    public override int Execute(CommandContext ctx, Settings s, CancellationToken cancellationToken)
     {
         var tasksDir = Path.Combine(s.EvalsDir, "tasks");
         var errors = 0;

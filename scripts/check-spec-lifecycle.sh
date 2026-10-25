@@ -9,17 +9,18 @@ cd "$(dirname "$0")/.."
 
 stale=0
 for f in .specs/*_spec.md; do
-  [ -e "$f" ] || continue
+  [[ -e "$f" ]] || continue
   status=$(grep -m1 -oP '\| Status \| \K[^|]+' "$f" | xargs || true)
   case "$status" in
     Done|Completed|Delivered)
-      echo "STALE  $f  status=$status (mover para docs/specs/ e fechar issue)"
+      echo "STALE  $f  status=$status (mover para docs/specs/ e fechar issue)" >&2
       stale=$((stale + 1))
       ;;
+    *) ;;
   esac
 done
 
-if [ "$stale" -gt 0 ]; then
+if [[ "$stale" -gt 0 ]]; then
   echo "error: $stale spec(s) entregue(s) ainda em .specs/ — veja SPEC-82"
   exit 1
 fi

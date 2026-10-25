@@ -12,7 +12,7 @@ namespace OpenHandsNET.Client.Services;
 /// <see cref="HtmlSanitizer"/> (sem script/iframe/on*/javascript:) —
 /// XSS é o vetor #1 do chat, sanitize é obrigatório em toda renderização.
 /// </summary>
-public sealed class MarkdownService
+public sealed class MarkdownService // NOSONAR S1118 — registrado no DI e instanciado em testes
 {
     private static readonly MarkdownPipeline Pipeline =
         new MarkdownPipelineBuilder()

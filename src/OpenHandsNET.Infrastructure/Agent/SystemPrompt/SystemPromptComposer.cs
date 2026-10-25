@@ -35,13 +35,9 @@ public sealed class SystemPromptComposer(
                 continue;
             }
 
-            foreach (var section in contributed)
-            {
-                if (!string.IsNullOrWhiteSpace(section))
-                {
-                    sections.Add(section.TrimEnd());
-                }
-            }
+            sections.AddRange(contributed
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s.TrimEnd()));
         }
 
         return sections.Count == 0

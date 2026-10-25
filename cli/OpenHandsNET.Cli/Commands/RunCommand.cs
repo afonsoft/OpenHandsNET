@@ -39,10 +39,10 @@ public sealed class RunCommand : AsyncCommand<RunCommand.Settings>
     }
 
     public override async Task<int> ExecuteAsync(
-        CommandContext context, Settings settings, CancellationToken ct)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
         var task = settings.Task ?? (settings.File is { } f
-            ? await System.IO.File.ReadAllTextAsync(f, ct) : null);
+            ? await System.IO.File.ReadAllTextAsync(f, cancellationToken) : null);
         if (string.IsNullOrWhiteSpace(task))
         {
             await Console.Error.WriteLineAsync("task required (-t or -f)");
@@ -50,14 +50,14 @@ public sealed class RunCommand : AsyncCommand<RunCommand.Settings>
         }
 
         var api = await CloudApiClient.CreateAsync(
-            settings.ServerUrl, new CredentialStore(), ct: ct);
+            settings.ServerUrl, new CredentialStore(), ct: cancellationToken);
         var runner = new RunExecutor(api);
 
         var created = await api.CreateConversationAsync(
             task, settings.Repository,
-            confirmationMode: settings.ConfirmationMode, ct: ct);
+            confirmationMode: settings.ConfirmationMode, ct: cancellationToken);
         var taskId = created.GetProperty("id").GetString()!;
-        var (convId, error) = await runner.WaitReadyAsync(taskId, ct: ct);
+        var (convId, error) = await runner.WaitReadyAsync(taskId, ct: cancellationToken);
         if (convId is null)
         {
             if (settings.Json)
@@ -75,7 +75,7 @@ public sealed class RunCommand : AsyncCommand<RunCommand.Settings>
 
         var result = await runner.WatchAsync(convId,
             TimeSpan.FromMinutes(settings.TimeoutMinutes),
-            settings.Json ? null : e => Tui.EventRenderer.Write(e), ct);
+            settings.Json ? null : e => Tui.EventRenderer.Write(e), cancellationToken);
         if (settings.Json)
         {
             Console.WriteLine(RunExecutor.ToJson(result));
