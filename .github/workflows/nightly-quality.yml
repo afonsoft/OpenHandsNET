@@ -124,8 +124,10 @@ jobs:
             "http://localhost:$PORT/api/v1/keys" \
             -H 'content-type: application/json' \
             -d '{"name":"nightly-fuzz"}' | jq -r '.key')
-          test -n "$KEY" && [ "$KEY" != "null" ] \
-            || { echo "::error::mint sk- falhou"; exit 1; }
+          if [ -z "$KEY" ] || [ "$KEY" = "null" ]; then
+            echo "::error::mint sk- falhou"
+            exit 1
+          fi
           echo "FUZZ_AUTH=Authorization: Bearer $KEY" >> "$GITHUB_ENV"
 
       # pipx is preinstalled on ubuntu-latest and sidesteps the runner's
