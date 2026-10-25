@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `s3776-remainder` |
 | Type | `Refactor` |
-| Status | `In Review` |
+| Status | `Completed` |
 | Ticket | gap-analysis 2026-10-24 · GAP-sonar-s3776-remainder |
 | Scope | `src/**` exceto `Api/Endpoints` (SPEC-103), `Infrastructure/Agent` (SPEC-102), `cli/` (SPEC-101) |
 

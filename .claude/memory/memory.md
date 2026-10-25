@@ -110,15 +110,16 @@
 
 ## Estado atual (2026-10-24/25 — sessão gap-analysis followup)
 
-**Branches/PRs:**
-- `feat/spec-107-s3776-remainder` → **PR #271** (34/35 sites + LoopAsync
-  deferido; ondas de fixes new-code — revert aplicado em SetStatusAsync).
-- `feat/spec-108-vuln-bug-triage` → **PR #272 MERGED** (S8949, S1751,
-  workflows, NOSONAR justificados).
-- `feat/spec-109-sonar-tail` → **PR #273** (S927×35 + tail rules;
-  rebaseado pós-#272 com fix de `ct` nos callsites novos).
-- `feat/spec-110-flake-hardening` → **PR #274** (probe 90s, apk retry,
-  SQLite Default Timeout=10).
+**Estado final (2026-10-25):**
+- Epic #265 COMPLETO: **PRs #271–#274 todas merged** (`b62647b`, `a6b50ba`,
+  `99eb329`, `3dfb87a`). Issues #266–#269 fechadas.
+- SPECs 107–110 arquivadas em `docs/specs/` (housekeeping chore).
+- 0 PRs abertas; branches feat/* deletados (local+remoto).
+- `tools/sonar-live.json` removido da árvore (artefato commitado por
+  engano no batch 1 do #271 — dropado antes do squash).
+- Pendente p/ próx. gap-analysis: `AgentRunner.LoopAsync` (CC~210)
+  dedicado; #248 verificação de exclusões sonar docs/monaco; #218
+  nightly pós-#255.
 
 **Lições:** renames S927 NÃO podem tocar named-arg labels (`ct:` = nome
 do param do callee); `insert_final_newline=false` no .editorconfig;
