@@ -141,3 +141,5 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | 108 | sonar-vuln-bug-triage — S8949/S1751 + NOSONAR justificados | PR #272 · #267 |
 | 109 | sonar-tail-rules — S927×35 + scripts/docker/k8s | PR #273 · #268 |
 | 110 | integration-flake-hardening — probes 90s + SQLite timeout | PR #274 · #269 |
+| 111 | AgentRunner LoopAsync decomposition | Done | PR #279 |
+| 112 | Fuzz findings round 2 | Done | PR #278 |
