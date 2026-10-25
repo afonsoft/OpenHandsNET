@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `sonar-tail-rules` |
 | Type | `Fix` |
-| Status | `Approved` |
+| Status | `In Review` |
 | Ticket | gap-analysis 2026-10-24 · GAP-sonar-tail-rules |
 | Scope | regras abertas não cobertas por SPECs 103–107 nem #155/#156 |
 
@@ -43,3 +43,35 @@ MINOR — cobre S8970×144):
 ## 4. Acceptance
 
 - [ ] Todas as regras do escopo zeradas ou won't-fix documentado.
+
+## 4. Execução (2026-10-24)
+
+**Fixes reais:**
+- `csharpsquid:S927` ×35 — params `ct`→`cancellationToken`,
+  `ctx`→`context` nos overrides `ExecuteAsync` do CLI.
+- python: S5655 ×2 (`Counter()` no lugar de `{}`), S1192
+  (`BASE_LOCALE` const), S3776 ×2 (`check_file` split em 4 checks;
+  `hub_first_event` extrai `_invocation_frame`).
+- shelldre ×13: `[[` condicionais, `>&2` no erro, `*)` default,
+  var local p/ $1 em `has()`, returns explícitos.
+- docker S7018: pacotes apt ordenados alfabeticamente.
+- kubernetes S6897: `ephemeral-storage` request; S6596: tag default
+  `latest`→`"1.0"` (chart appVersion) em ambos os images.
+- cs leftovers: S3267 ×5 (Where/Select), S1125 (`!TimedOut`),
+  S3400 (`SquidConf` const), S1172 (SetStatusAsync ct),
+  S2737 (catch-rethrow removido), S1135 (comentário reworded),
+  S1199 (já resolvido via SPEC-107 extração).
+
+**Won't-fix justificado:**
+- docker S7026 (curl→ADD): o setup NodeSource verifica SHA256 do
+  script — ADD remoto não suporta checksum (regressão de segurança).
+- docker S7031 ×2: RUNs são camadas lógicas distintas (apt base,
+  gh-cli, nodesource, ttyd) — merge prejudica cache/legibilidade.
+- S1905 McpClientService: cast `(string?)` exigido pelo target
+  `IDictionary<string,string?>` — confirmado por CS8619 sem ele.
+- S1118 MarkdownService: DI-registered + instanciado em testes.
+- S3267 OpenAiGatewayEndpoints: loop tem side-effect (WriteChunkAsync).
+- js leftovers (monacoInterop/boot/index.html): cobertura da
+  exclusão #248 — pending verificação do scanner.
+
+**Regressão:** `SquidConf_Is_Deny_By_Default` cobre a const S3400.
