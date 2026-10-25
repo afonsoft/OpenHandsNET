@@ -91,11 +91,6 @@ terminal permanecer aqui (SPEC-82).
 | 105 | s3218-s127-shadow-loop | Approved | Epic #152 |
 | 106 | s1075-s3903-uris-ns | Approved | Epic #152 |
 
-### Leva 2026-10-24 (gap-analysis — Epic #265)
+### Leva 2026-10-24 (gap-analysis — Epic #265) — entregue
 
-| SPEC | Título | Status | Issue |
-|---|---|---|---|
-| 107 | s3776-remainder (fora dos escopos 101–103) | Approved | #266 |
-| 108 | sonar-vuln-bug-triage (VULN 15 + BUG 18) | Approved | #267 |
-| 109 | sonar-tail-rules (S927 + scripts/infra) | Approved | #268 |
-| 110 | integration-flake-hardening-2 | Approved | #269 |
+SPECs 107–110 entregues via PRs #271–#274 e arquivadas em `docs/specs/`.

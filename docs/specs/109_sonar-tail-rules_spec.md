@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `sonar-tail-rules` |
 | Type | `Fix` |
-| Status | `In Review` |
+| Status | `Completed` |
 | Ticket | gap-analysis 2026-10-24 · GAP-sonar-tail-rules |
 | Scope | regras abertas não cobertas por SPECs 103–107 nem #155/#156 |
 

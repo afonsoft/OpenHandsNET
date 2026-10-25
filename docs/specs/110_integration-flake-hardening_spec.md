@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `integration-flake-hardening-2` |
 | Type | `Fix` |
-| Status | `In Review` |
+| Status | `Completed` |
 | Ticket | gap-analysis 2026-10-24 · GAP-tests-integration-flakes |
 | Scope | `tests/OpenHandsNET.IntegrationTests/**` sandbox-dependent |
 

@@ -137,3 +137,7 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | 98 | i18n-locale-slices — 6 locales 451/451, baseline 0 | PRs #256–#261 · #250/#244 |
 | 101 | s3776-cli — 10 sites refactor + EventRendererTests | PR #263 |
 | 102 | s3776-infra-agent — 15 sites refactor + testes | PR #264 |
+| 107 | s3776-remainder — 34/35 sites; LoopAsync deferido | PR #271 · #266 |
+| 108 | sonar-vuln-bug-triage — S8949/S1751 + NOSONAR justificados | PR #272 · #267 |
+| 109 | sonar-tail-rules — S927×35 + scripts/docker/k8s | PR #273 · #268 |
+| 110 | integration-flake-hardening — probes 90s + SQLite timeout | PR #274 · #269 |

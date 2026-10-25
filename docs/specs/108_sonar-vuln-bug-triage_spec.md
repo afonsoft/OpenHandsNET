@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `sonar-vuln-bug-triage` |
 | Type | `Fix` |
-| Status | `In Review` |
+| Status | `Completed` |
 | Ticket | gap-analysis 2026-10-24 · GAP-sonar-vuln-bug-triage |
 | Scope | repo-wide VULNERABILITY (15) + BUG (18) abertos |
 
