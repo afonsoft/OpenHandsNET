@@ -58,7 +58,7 @@ public sealed class ScmStatusCommand : AsyncCommand<ScmStatusCommand.Settings>
             return orgs[0].GetProperty("id").GetString()!;
         }
         return await AnsiConsole.PromptAsync(new TextPrompt<string>("Org id:")
-            .ValidationErrorMessage("required"));
+            .ValidationErrorMessage("required"), ct);
     }
 }
 

@@ -85,7 +85,7 @@ public sealed class TuiCommand : AsyncCommand<TuiCommand.Settings>
         CloudApiClient api, CancellationToken ct)
     {
         var task = await AnsiConsole.AskAsync<string>(
-            "[green]nova tarefa[/] ([grey]ou /list /exit[/])");
+            "[green]nova tarefa[/] ([grey]ou /list /exit[/])", ct);
         if (task.StartsWith('/'))
         {
             if (task is "/exit" or "/quit")

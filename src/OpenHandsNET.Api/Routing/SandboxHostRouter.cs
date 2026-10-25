@@ -74,7 +74,7 @@ public sealed class SandboxHostRouter(
         // Upstream interno: nome do container resolve na rede interna
         // (compose/k8s DNS ou control network do SPEC-35).
         var upstream = new Uri(
-            $"http://{sandbox.ContainerId[..12]}:{port}");
+            $"http://{sandbox.ContainerId[..12]}:{port}"); // NOSONAR S5332 — internal container/pod network (no TLS trust boundary)
         var path = mode == "path"
             ? StripPathPrefix(ctx.Request.Path)
             : ctx.Request.Path.Value ?? "/";

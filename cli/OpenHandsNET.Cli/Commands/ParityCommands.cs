@@ -28,7 +28,7 @@ public sealed class ModelsCommand : AsyncCommand<ModelsCommand.Settings>
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(),
             ct: CancellationToken.None);
-        var catalog = await api.GetModelsAsync();
+        var catalog = await api.GetModelsAsync(ct);
         if (settings.Json)
         {
             Console.WriteLine(catalog.GetRawText());
@@ -190,7 +190,7 @@ public sealed class SkillsCommand : AsyncCommand<SkillsCommand.Settings>
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(),
             ct: CancellationToken.None);
-        var resp = await api.GetToolsAsync(settings.ConversationId);
+        var resp = await api.GetToolsAsync(settings.ConversationId, ct);
         var table = new Table().AddColumns("TOOL", "SOURCE");
         if (resp.TryGetProperty("tools", out var tools))
         {
@@ -416,7 +416,7 @@ public sealed class McpListCommand : AsyncCommand<McpListCommand.Settings>
         var api = await CloudApiClient.CreateAsync(
             settings.ServerUrl, new CredentialStore(),
             ct: CancellationToken.None);
-        var servers = await api.GetMcpServersAsync();
+        var servers = await api.GetMcpServersAsync(ct);
         var table = new Table().AddColumns("NAME", "TYPE", "ENDPOINT");
         if (servers.ValueKind == JsonValueKind.Array)
         {

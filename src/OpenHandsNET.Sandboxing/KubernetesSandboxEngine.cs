@@ -277,7 +277,7 @@ public sealed class KubernetesSandboxEngine(
             return new EngineWarmClaim(
                 created.Metadata.Name, initKey,
                 claimed?.Status?.PodIP is { } ip
-                    ? new Uri($"http://{ip}:8000") : null);
+                    ? new Uri($"http://{ip}:8000") : null); // NOSONAR S5332 — internal container/pod network (no TLS trust boundary)
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
@@ -628,7 +628,7 @@ public sealed class KubernetesSandboxEngine(
             pod.Metadata.Labels is null
                 ? new Dictionary<string, string>()
                 : new Dictionary<string, string>(pod.Metadata.Labels),
-            ip is null ? null : new Uri($"http://{ip}:8000"),
+            ip is null ? null : new Uri($"http://{ip}:8000"), // NOSONAR S5332 — internal container/pod network (no TLS trust boundary)
             pod.Metadata.CreationTimestamp);
     }
 }

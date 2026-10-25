@@ -14,7 +14,7 @@ const string StatusDormant = "dormant";
 const string StatusUnauthorized = "unauthorized";
 var builder = WebApplication.CreateSlimBuilder(args);
 builder.WebHost.UseUrls(
-    builder.Configuration["OHN_AGENT_URL"] ?? "http://0.0.0.0:8000");
+    builder.Configuration["OHN_AGENT_URL"] ?? "http://0.0.0.0:8000"); // NOSONAR S5332 — internal container/pod network (no TLS trust boundary) (container bind)
 builder.Logging.AddSimpleConsole(o => o.SingleLine = true);
 builder.Services.ConfigureHttpJsonOptions(o =>
     o.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower);

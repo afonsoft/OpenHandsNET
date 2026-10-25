@@ -196,7 +196,7 @@ public sealed class SupportBundleService(
         ZipArchive zip, string name, object content, CancellationToken ct)
     {
         var entry = zip.CreateEntry(name);
-        await using var stream = await entry.OpenAsync();
+        await using var stream = await entry.OpenAsync(ct);
         await JsonSerializer.SerializeAsync(stream, content, JsonOptions(), ct);
     }
 
@@ -204,7 +204,7 @@ public sealed class SupportBundleService(
         ZipArchive zip, string name, string content, CancellationToken ct)
     {
         var entry = zip.CreateEntry(name);
-        await using var stream = await entry.OpenAsync();
+        await using var stream = await entry.OpenAsync(ct);
         await using var writer = new StreamWriter(stream);
         await writer.WriteAsync(content.AsMemory(), ct);
     }

@@ -250,7 +250,7 @@ public sealed class GitHubAppClientFactory(
         // RS256 (RFC 7518) exige padding PKCS1 — exigência do GitHub App JWT.
         var signature = Base64Url(rsa.SignData(
             Encoding.ASCII.GetBytes(input),
-            HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1));
+            HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)); // NOSONAR S5542 — RS256/GitHub App JWT exige PKCS1 (RFC 7518)
         return string.Create(
             CultureInfo.InvariantCulture, $"{input}.{signature}");
     }

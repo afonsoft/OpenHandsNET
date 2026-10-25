@@ -21,7 +21,7 @@ spec:
       {{- if eq .Values.sandbox.provider "kubernetes" }}
       serviceAccountName: openhandsnet-runtime
       # SA bound à Role sandbox-manager (necessário p/ gerir sandboxes).
-      automountServiceAccountToken: true
+      automountServiceAccountToken: true # NOSONAR S6865 — a SA precisa do token p/ chamar a API do k8s
       {{- end }}
       containers:
         - name: api
