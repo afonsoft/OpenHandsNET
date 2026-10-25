@@ -289,7 +289,15 @@ public static class OrgEndpoints
             var user = current.User;
             if (user is null)
                 return Results.Unauthorized();
-            await quotas.SetAsync(org_id, req.DailyMax, req.ConcurrentMax, ct);
+            try
+            {
+                await quotas.SetAsync(
+                    org_id, req.DailyMax, req.ConcurrentMax, ct);
+            }
+            catch (ArgumentException)
+            {
+                return Results.NotFound(new { error = "org_not_found" });
+            }
             return Results.NoContent();
         }).RequireAuthorization("perm:manage_org_quota");
 

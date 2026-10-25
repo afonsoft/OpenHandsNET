@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 using Microsoft.EntityFrameworkCore;
@@ -54,10 +55,18 @@ public static class EdgeEndpoints
             IEffectiveOrgResolver orgs, ICurrentUserAccessor current,
             CancellationToken ct) =>
         {
-            var body = await JsonNode.ParseAsync(
-                ctx.Request.Body, cancellationToken: ct);
-            var ipStr = body?["ip"]?.GetValue<string>();
-            var message = body?["message"]?.GetValue<string>();
+            JsonNode? body;
+            try
+            {
+                body = await JsonNode.ParseAsync(
+                    ctx.Request.Body, cancellationToken: ct);
+            }
+            catch (JsonException)
+            {
+                return Results.BadRequest(new { error = "invalid_json" });
+            }
+            var ipStr = StringField(body, "ip");
+            var message = StringField(body, "message");
             var result = new JsonObject();
             if (!string.IsNullOrEmpty(ipStr)
                 && System.Net.IPAddress.TryParse(ipStr, out var ip))
@@ -108,15 +117,30 @@ public static class EdgeEndpoints
             })
             .ToArrayAsync(ct);
 
+    /// <summary>String field tolerant to wrong JSON kinds (fuzz 500s).</summary>
+    private static string? StringField(JsonNode? body, string key) =>
+        body?[key] is JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
+
+    private static int IntField(JsonNode? body, string key, int fallback) =>
+        body?[key] is JsonValue v && v.TryGetValue<int>(out var n) ? n : fallback;
+
     private static async Task<IResult> CreateAsync(
         HttpContext ctx, AppDbContext db, ICurrentUserAccessor current,
         IAuditService audit, string scope, CancellationToken ct)
     {
-        var body = await JsonNode.ParseAsync(
-            ctx.Request.Body, cancellationToken: ct);
-        var cidr = body?["cidr"]?.GetValue<string>();
-        var action = body?["action"]?.GetValue<string>() ?? "deny";
-        var priority = body?["priority"]?.GetValue<int>() ?? 0;
+        JsonNode? body;
+        try
+        {
+            body = await JsonNode.ParseAsync(
+                ctx.Request.Body, cancellationToken: ct);
+        }
+        catch (JsonException)
+        {
+            return Results.BadRequest(new { error = "invalid_json" });
+        }
+        var cidr = StringField(body, "cidr");
+        var action = StringField(body, "action") ?? "deny";
+        var priority = IntField(body, "priority", 0);
         var cidrOk = !string.IsNullOrWhiteSpace(cidr)
             && System.Net.IPAddress.TryParse(cidr.Split('/')[0], out _)
             && (!cidr.Contains('/')

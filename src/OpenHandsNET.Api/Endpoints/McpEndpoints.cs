@@ -23,7 +23,8 @@ public static class McpEndpoints
         app.MapPost("/api/v1/mcp/servers", SaveAsync).WithTags("Mcp");
         app.MapDelete("/api/v1/mcp/servers/{name}", DeleteAsync).WithTags("Mcp");
         app.MapPost("/api/v1/mcp/test", ProbeAsync).WithTags("Mcp");
-        app.MapPost("/api/v1/mcp/tool-call", ToolCallAsync).WithTags("Mcp");
+        app.MapPost("/api/v1/mcp/tool-call", ToolCallAsync).WithTags("Mcp")
+            .ProducesProblem(400).ProducesProblem(502);
         app.MapGet("/api/v1/mcp/oauth/authorize", AuthorizeAsync)
             .WithTags("Mcp");
         app.MapGet("/api/v1/mcp/oauth/callback", CallbackAsync).WithTags("Mcp");
@@ -100,14 +101,28 @@ public static class McpEndpoints
         ToolCallRequest req, IMcpClientService mcp, HttpContext http,
         CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(req.Server)
+            || string.IsNullOrWhiteSpace(req.Tool))
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 400, "server and tool are required");
+        }
         var result = await mcp.CallToolAsync(
             req.ConversationId, req.Server, req.Tool, req.Arguments, ct);
-        return result.IsError
-            ? OpenHandsNetProblemFactory.Create(
-                http, 502,
-                $"mcp tool call falhou: {result.Observation.GetRawText()}")
-            : Results.Ok(JsonDocument.Parse(
+        if (!result.IsError)
+        {
+            return Results.Ok(JsonDocument.Parse(
                 result.Observation.GetRawText()).RootElement);
+        }
+        var err = result.Observation.GetRawText();
+        // Server desconhecido/não configurado = erro do cliente, não 502.
+        // GetRawText devolve o JSON escapado ("n\u00E3o") — match em
+        // substrings ASCII seguras.
+        var clientError = err.Contains("configurado",
+                              StringComparison.OrdinalIgnoreCase)
+            || err.Contains("ausente", StringComparison.OrdinalIgnoreCase);
+        return OpenHandsNetProblemFactory.Create(
+            http, clientError ? 400 : 502, $"mcp tool call falhou: {err}");
     }
 
     private static async Task<IResult> AuthorizeAsync(

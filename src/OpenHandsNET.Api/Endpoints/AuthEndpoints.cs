@@ -125,6 +125,8 @@ public static class AuthEndpoints
         {
             if (!string.Equals(config["Auth:Provider"], "none", StringComparison.Ordinal))
                 return Results.NotFound();
+            if (string.IsNullOrWhiteSpace(req.Email))
+                return Results.BadRequest(new { error = "email_required" });
             var user = await users.GetOrCreateAsync(
                 req.Email, req.DisplayName, "local",
                 multiTenancyEnabled: config.GetValue("MultiTenancy:Enabled", false),

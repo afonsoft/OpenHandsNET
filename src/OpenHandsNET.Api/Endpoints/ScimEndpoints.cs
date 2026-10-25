@@ -446,15 +446,27 @@ public static class ScimEndpoints
             if (actor is null)
                 return Results.Unauthorized();
             var org = await orgs.ResolveAsync(actor, ctx.Request.Headers["X-Org-Id"].ToString(), ct);
-            var body = await JsonNode.ParseAsync(ctx.Request.Body, cancellationToken: ct);
-            DateTimeOffset? expires = body?["expires_at"] is JsonNode en
+            JsonNode? body;
+            try
+            {
+                body = await JsonNode.ParseAsync(
+                    ctx.Request.Body, cancellationToken: ct);
+            }
+            catch (JsonException)
+            {
+                return Results.BadRequest(new { error = "invalid_json" });
+            }
+            DateTimeOffset? expires =
+                body?["expires_at"] is JsonValue en
+                && en.TryGetValue<string>(out var enStr)
                 && DateTimeOffset.TryParse(
-                    en.GetValue<string>(), CultureInfo.InvariantCulture,
+                    enStr, CultureInfo.InvariantCulture,
                     DateTimeStyles.None, out var ex) ? ex : null;
             var r = await svc.SetUserOverrideAsync(
                 org?.OrgId ?? Guid.Empty, id, actor.UserId,
-                body?["limits_json"]?.GetValue<string>()
-                    ?? body?["limits"]?.ToJsonString(), expires, ct);
+                body?["limits_json"] is JsonValue lj
+                    && lj.TryGetValue<string>(out var ljStr) ? ljStr
+                    : body?["limits"]?.ToJsonString(), expires, ct);
             return Results.Ok(r);
         }).RequireAuthorization(PermEditOrgSettings);
 

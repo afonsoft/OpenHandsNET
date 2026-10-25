@@ -1,10 +1,13 @@
 using System.Text.Json;
 
+using Microsoft.EntityFrameworkCore;
+
 using OpenHandsNET.Api.DTOs;
 using OpenHandsNET.Api.ProblemDetails;
 using OpenHandsNET.Application.Conversations;
 using OpenHandsNET.Application.Events;
 using OpenHandsNET.Domain.Events;
+using OpenHandsNET.Infrastructure.Persistence;
 
 namespace OpenHandsNET.Api.Endpoints;
 
@@ -25,16 +28,36 @@ public static class WebhookEndpoints
         // Injeta um evento externo (ex.: CI, GitHub webhook) no stream da conversa.
         group.MapPost("/events/{conversationId:guid}", async (
             Guid conversationId, WebhookEventRequest body,
-            IEventService events, HttpContext http, CancellationToken ct) =>
+            IEventService events, AppDbContext db, HttpContext http,
+            CancellationToken ct) =>
         {
-            var e = JsonSerializer.Deserialize<EventBase>(
-                body.Event.GetRawText(), EventJson.Options);
+            EventBase? e;
+            try
+            {
+                e = JsonSerializer.Deserialize<EventBase>(
+                    body.Event.GetRawText(), EventJson.Options);
+            }
+            catch (JsonException)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 400, "Invalid event payload");
+            }
+            catch (NotSupportedException)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 400, "Invalid event payload");
+            }
             if (e is null)
             {
                 return OpenHandsNetProblemFactory.Create(
                     http, 400, "Invalid event payload");
             }
-
+            if (!await db.Conversations
+                    .AnyAsync(c => c.Id == conversationId, ct))
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, "conversation not found");
+            }
             await events.AppendAsync(conversationId, e, ct);
             return Results.Accepted();
         });
