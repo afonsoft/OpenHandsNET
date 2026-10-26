@@ -72,6 +72,7 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | `64_browser_profiles_spec` | SPEC — 64 · Browser Auth Profiles (storage state + site cookies/TOT | #141 |
 | `68_nextgen_improvements_spec` | Devin Web & Upstream OpenHands Next-Gen Improvements | #123/#124 |
 | `69_enterprise_sandbox_hardening_spec` | SPEC-69: Enterprise Sandbox Hardening, Live Handover & Session Time-Tr | #134 |
+| `114_light_theme_ui_refresh` | SPEC — 114 · Light theme default + UI/UX refresh | this PR |
 
 ## Entregues em 2026-10-19 (gap-analysis 2026-10-19 / Epic #146)
 

@@ -124,7 +124,8 @@ public class Spec26UiTests : TestContext
         });
         var theme = new ThemeService(JSInterop.JSRuntime, api);
         await theme.InitAsync();
-        theme.Theme.ShouldBe(ThemeService.Dark);
+        // SPEC-114 RF-001: default sem preferência persistida = light.
+        theme.Theme.ShouldBe(ThemeService.Light);
         await theme.SetAsync(ThemeService.Light);
         theme.Theme.ShouldBe(ThemeService.Light);
         theme.EffectiveTheme.ShouldBe(ThemeService.Light);
@@ -132,7 +133,7 @@ public class Spec26UiTests : TestContext
     }
 
     [Fact]
-    public async Task Theme_Invalid_Value_Falls_Back_To_Dark()
+    public async Task Theme_Invalid_Value_Falls_Back_To_Light()
     {
         var api = new OpenHandsNetApiClient(new HttpClient
         {
@@ -140,7 +141,8 @@ public class Spec26UiTests : TestContext
         });
         var theme = new ThemeService(JSInterop.JSRuntime, api);
         await theme.SetAsync("rainbow");
-        theme.Theme.ShouldBe(ThemeService.Dark);
+        // SPEC-114 RF-001: fallback de valor inválido = light (novo default).
+        theme.Theme.ShouldBe(ThemeService.Light);
     }
 
     // ---------- Icon ----------

@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `light-theme-ui-refresh` |
 | Type | `Feature` |
-| Status | `Draft` |
+| Status | `Completed` |
 | Ticket | pedido direto do usuário (2026-10-26): "default tema claro, melhorar fonte/layout/usabilidade, parecer Open-WebUI/Devin Web" |
 | Scope | `src/OpenHandsNET.Client/` (css, layout, componentes, index.html) + `tests/OpenHandsNET.Client.Tests` |
 
