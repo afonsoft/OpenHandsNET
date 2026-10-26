@@ -131,6 +131,40 @@ internal static class ProgramParts
                             = [],
                     },
                 ];
+                // #218: route constraints `{x:int}` geram `pattern` regex em
+                // schema `type: integer` — regex inválido para inteiros
+                // (ex.: `^-?(?:0|[1-9]\d*)$` com negative lookahead
+                // dispara bug 'many' do hypothesis no schemathesis
+                // nightly, mascarando falhas reais). Inteiro não pode
+                // levar pattern: removemos em todo path-param.
+                if (doc.Paths is not null)
+                {
+                    foreach (var item in doc.Paths.Values)
+                    {
+                        if (item.Operations is null)
+                        {
+                            continue;
+                        }
+
+                        foreach (var op in item.Operations.Values)
+                        {
+                            if (op.Parameters is null)
+                            {
+                                continue;
+                            }
+
+                            foreach (var p in op.Parameters)
+                            {
+                                if (p?.Schema is OpenApiSchema s
+                                    && s.Type == JsonSchemaType.Integer
+                                    && s.Pattern is not null)
+                                {
+                                    s.Pattern = null;
+                                }
+                            }
+                        }
+                    }
+                }
                 return Task.CompletedTask;
             });
             o.AddOperationTransformer((op, ctx, _) =>
