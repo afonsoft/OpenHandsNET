@@ -1,0 +1,41 @@
+# OpenHandsNET — beta deploy (single host, docker.sock mount)
+#
+# O compose base NÃO dá ao app acesso ao daemon Docker — necessário para
+# criar sandboxes. Para beta de testes em host próprio usamos o caminho
+# mais simples: socket mount (docs/deployment/dind.md explica o trade-off;
+# produção deve usar socket proxy, rootless docker ou provider remoto).
+#
+# Uso:
+#   cp .env.exemplo .env   # preencha LLM_* / OmniRoute e senhas
+#   docker compose -f docker-compose.beta.yaml up -d --build
+#
+# O app sobe em http://<host>:3032. Sandbox surfaces (VNC/IDE) só passam
+# pela API — nenhuma porta de container precisa ser publicada.
+services:
+  app:
+    build: .
+    image: openhandsnet:beta
+    container_name: openhandsnet
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - OPENHANDSNET_Database__ConnectionString=Data Source=/app/data/openhandsnet.db
+      - OPENHANDSNET_Sandbox__DockerSocketMount=true
+    ports:
+      - "${OPENHANDSNET_PORT:-3032}:8080"
+    volumes:
+      - openhandsnet-data:/app/data
+      - openhandsnet-workspace:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  openhandsnet-data:
+  openhandsnet-workspace:

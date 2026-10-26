@@ -49,6 +49,8 @@
 ## Deployment
 
 - [deployment/local.md](deployment/local.md) — quickstart local.
+- [deployment/beta.md](deployment/beta.md) — deploy beta single-host
+  (docker.sock, env vars, smoke test).
 - [deployment/kubernetes.md](deployment/kubernetes.md) — Helm + Sysbox
   (conclusão aprovada na SPEC-49).
 - [deployment/enterprise.md](deployment/enterprise.md) — visão enterprise:
