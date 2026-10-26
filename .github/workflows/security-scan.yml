@@ -63,8 +63,14 @@ jobs:
           ZIZMOR_VERSION: "1.25.2"
         run: |
           mkdir -p "$HOME/.local/bin"
-          bash <(curl --proto '=https' --tlsv1.2 -fsSL "https://raw.githubusercontent.com/rhysd/actionlint/${ACTIONLINT_VERSION}/scripts/download-actionlint.bash") \
-            "${ACTIONLINT_VERSION#v}" "$HOME/.local/bin"
+          # SonarCloud S8482: não executar script baixado sem verificação —
+          # baixa, confere sha256 do download-actionlint.bash (v1.7.12)
+          # e só então executa.
+          curl --proto '=https' --tlsv1.2 -fsSL \
+            -o /tmp/download-actionlint.bash \
+            "https://raw.githubusercontent.com/rhysd/actionlint/${ACTIONLINT_VERSION}/scripts/download-actionlint.bash"
+          echo "72fa3e45ac20f3c3a512d6747b4fcf719e21f890e8c43e78d48a41fdfb900c4e  /tmp/download-actionlint.bash" | sha256sum --check --strict
+          bash /tmp/download-actionlint.bash "${ACTIONLINT_VERSION#v}" "$HOME/.local/bin"
           pipx install "zizmor==$ZIZMOR_VERSION" --pip-args="--only-binary :all:" \
             || pip install --user --only-binary :all: "zizmor==$ZIZMOR_VERSION"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"

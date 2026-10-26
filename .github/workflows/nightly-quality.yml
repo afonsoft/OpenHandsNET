@@ -132,8 +132,15 @@ jobs:
 
       # pipx is preinstalled on ubuntu-latest and sidesteps the runner's
       # PEP-668 externally-managed Python (plain `pip install --user` fails).
+      # hypothesis pin: 6.140+ removeu o internals `cu.many(...).more` que
+      # hypothesis-jsonschema 0.23.1 usa → todo op crashava com
+      # "AttributeError: 'many' object has no attribute 'more'" (nightly
+      # 2026-10-25/26, 256 erros idênticos).
       - name: install schemathesis
-        run: pipx install "schemathesis==4.3.8" && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        run: |
+          pipx install "schemathesis==4.3.8"
+          pipx inject schemathesis "hypothesis==6.139.2"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       # Contract fuzz: schema-violating requests must not produce 5xx and
       # schema-conforming requests must not be rejected. Fails loudly — this is
