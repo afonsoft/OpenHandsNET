@@ -142,6 +142,9 @@ jobs:
           python3 tools/check-form-a11y.py
           python3 tools/check-i18n-parity.py
           python3 tools/check-i18n-placeholders.py
+          # SPEC-115: client nunca conecta direto no sandbox (sem ws://
+          # literal nem URL com containerId — só proxy same-origin/SignalR)
+          bash tools/check-no-direct-sandbox-url.sh
 
       - name: upload raw coverage
         if: always()
