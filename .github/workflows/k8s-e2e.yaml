@@ -26,10 +26,10 @@ jobs:
       - name: setup dotnet
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: "10.0.112"   # pinned: WASM lockfiles capture SDK-band implicit package versions — bump with lockfile regen
+          dotnet-version: "10.0.x"   # pinned: WASM lockfiles capture SDK-band implicit package versions — bump with lockfile regen
 
       - name: helm lint + template
-        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
       - run: |
           helm lint charts/openhandsnet
           helm template ohn charts/openhandsnet \
@@ -42,7 +42,7 @@ jobs:
             echo "no plaintext secrets"
 
       - name: create kind cluster
-        uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1
+        uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa # v1.15.1
         with:
           # SPEC-81: o action default é "chart-testing"; os steps abaixo
           # (`kind load docker-image`) assumem "kind".
