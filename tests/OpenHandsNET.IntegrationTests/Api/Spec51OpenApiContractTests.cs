@@ -148,8 +148,11 @@ public sealed class Spec51OpenApiContractTests
                 foreach (var p in oa)
                 {
                     var schema = p?["schema"];
-                    if (schema?["type"]?.GetValue<string>() == "integer"
-                        && schema["pattern"] is not null)
+                    var t = schema?["type"];
+                    var isInteger = t is JsonValue v
+                        && v.TryGetValue<string>(out var s)
+                        && s == "integer";
+                    if (isInteger && schema!["pattern"] is not null)
                     {
                         offenders.Add(
                             $"{method.ToUpperInvariant()} {path} → "
