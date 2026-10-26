@@ -108,6 +108,62 @@ essas features atrás de Polyform.
 | Knowledge | playbooks | suggestion queue + human review + groom automático (SPEC-63) |
 | Browser | — | browser profiles: storage state criptografado + site cookies + TOTP (SPEC-64) |
 
+## Devin Web e Cursor Cloud (referências SaaS)
+
+Comparativo com os produtos SaaS que o OpenHandsNET emula — Devin Web
+(app.devin.ai) e Cursor Background Agents (cursor.com/agents) — e com o
+OpenHands Cloud.
+
+| Capability | Devin Web | Cursor Cloud Agents | OpenHands Cloud | OpenHandsNET |
+|---|---|---|---|---|
+| Sessões paralelas | sim (lista + busca) | sim | sim | sim — conversas + sub-sessões (`task`) |
+| VM por sessão | sim (snapshot/restore) | VM dedicada | pod/sandbox | container Docker por conversa (+k8s em SPEC-49) |
+| Sleep/wake | memória snapshot | suspend/resume | sim | `docker pause`/`stop` + idle sleep (SPEC-16) |
+| Desktop/stream | Desktop tab ao vivo | logs + diffs | preview + VSCode | surfaces terminal/VSCode/preview/ACP (SPEC-40) |
+| IDE embutido | VS Code web | web editor | VS Code | workbench Monaco+SCM+search+tests (SPEC-42) |
+| Checkpoints | snapshots | diff revert | snapshots | snapshots/turno + revert (SPEC-43) |
+| Secrets | org/user secrets mascarados | env vars | BYO LLM keys | `SecretNamesJson` + device keys `sk-*` (SPEC-33/08) |
+| Browser preview | previews de porta | — | preview | surfaces preview + `RoutingMode` |
+| Automações | triggers+schedules+webhooks | schedules | schedules | routines + webhooks + tool `routine` (SPEC-47) |
+| Slack/ChatOps | bot nativo | Slack | — | Slack app + auto-triage (SPEC-54) |
+| PR loop | abre PR + CI watch | abre PR | GitHub App | GitHub App + workspace PRs (SPEC-52) |
+| Billing/quotas | ACU + tags | usage | Stripe | metering + plans CRUD (SPEC-20) |
+| Skills/playbooks | playbooks+skills | rules | microagents | skills settings + `task` presets + knowledge (SPEC-63) |
+| CLI | `devin` CLI | `cursor-agent` | `openhands` | `openhandsnet` CLI (Spectre) |
+| API pública | REST v3 | REST | REST V1 | `/api/v1` + OpenAPI golden (SPEC-51) |
+
+### Diferenças estruturais
+
+- **Devin Web** roda uma VM completa por sessão (filesystem + processos
+  persistem entre sleeps via snapshot). OpenHandsNET usa containers
+  Docker com workspace bind-mounted — mais leve, sem restore de memória
+  de processo; sleep/wake preserva workspace + eventos, não o heap.
+- **Cursor Cloud Agents** foca no loop task→PR (agente roda, abre PR,
+  encerra). Não tem chat interativo nem surfaces — OpenHandsNET já cobre
+  esse fluxo via GitHub App + automações.
+- **OpenHands Cloud** é a referência mais próxima (mesma linhagem):
+  paridade por domínio nas tabelas acima; os gaps restantes são
+  hospedagem multi-host (k8s+sysbox — SPEC-49) e billing PSP.
+
+## Roadmap de paridade (priorizado)
+
+Itens que mais aproximam o OpenHandsNET do Devin Web, em ordem de valor:
+
+1. ~~**Clamp de recursos do sandbox**~~ — `NanoCPUs` agora é clampado ao
+   NCPU do host (specs `large` funcionam em hosts pequenos). *Feito.*
+2. **Warm pool por imagem** — já existe (`WarmPoolSize`/`WarmPoolImages`);
+   próximo passo: TTL + refresh proativo (SPEC-49 cobre o reaper).
+3. **Resume de sessão em sandbox novo** — hoje resume reusa o evento
+   ledger; falta reidratar checkpoint em sandbox novo (paridade com o
+   "wake" de VM do Devin). SPEC-62 em andamento cobre parte disso.
+4. **Desktop/streaming ao vivo** — surface de tela do sandbox (VNC/stream)
+   é o maior gap de UX vs Devin; hoje há terminal/VSCode/preview, sem
+   framebuffer. Sem SPEC — candidato a próxima spec.
+5. **Billing tags / cost codes** — metering existe por usuário/org;
+   agrupamento arbitrário por tag (cost centers) não existe.
+6. **PSP billing** — fora de escopo (Stripe-like), metering já emite os
+   contadores necessários.
+
 ## Gaps residuais conhecidos
 
 1. **SPEC-62** — managed conversations / delegate cross-sandbox (em andamento).

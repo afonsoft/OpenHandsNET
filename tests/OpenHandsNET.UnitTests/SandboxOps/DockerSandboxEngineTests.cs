@@ -69,6 +69,19 @@ public sealed class DockerSandboxEngineTests
         cfg.Binds.ShouldBe(["/a:/b"]);
     }
 
+    [Theory]
+    [InlineData(4_000_000_000L, 2_000_000_000L, 2_000_000_000L)] // spec 4 CPU on a 2-CPU host
+    [InlineData(2_000_000_000L, 8_000_000_000L, 2_000_000_000L)] // fits — untouched
+    [InlineData(1_500_000_000L, 2_000_000_000L, 1_500_000_000L)] // fractional fits
+    [InlineData(0L, 2_000_000_000L, 0L)]                        // 0 = unlimited, untouched
+    [InlineData(-1L, 2_000_000_000L, -1L)]                      // negative = unset, untouched
+    [InlineData(5_000_000_000L, long.MaxValue, 5_000_000_000L)] // unknown ceiling
+    public void ClampNanoCpus_ClampsToHostCeiling(
+        long requested, long ceiling, long expected)
+    {
+        DockerSandboxEngine.ClampNanoCpus(requested, ceiling).ShouldBe(expected);
+    }
+
     [Fact]
     public void BuildHostConfig_PublishesAgentPort_OnlyForAgentImages()
     {

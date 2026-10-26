@@ -25,17 +25,72 @@ public sealed class DockerSandboxEngine(
     ILogger<DockerSandboxEngine> logger,
     EgressProxyService? egressProxy = null) : ISandboxEngine
 {
+    // Cached host CPU ceiling (NanoCPUs) — null = not queried yet;
+    // long.MaxValue = unknown/unbounded (daemon info call failed).
+    private long? _hostNanoCpusCeiling;
+
     /// <inheritdoc />
     public bool IsRemote => false;
 
     /// <inheritdoc />
     public bool SupportsPause => true;
 
+    /// <summary>
+    /// Pure clamp — internal static so unit tests cover the boundary math
+    /// without a Docker daemon.
+    /// </summary>
+    internal static long ClampNanoCpus(long requested, long hostCeiling) =>
+        requested <= 0 ? requested : Math.Min(requested, hostCeiling);
+
+    /// <summary>
+    /// Clamps a requested CPU limit to the daemon's visible CPU count.
+    /// Docker rejects <c>NanoCPUs</c> above host capacity outright
+    /// ("range of CPUs is from 0.01 to N"), which would make any spec or
+    /// org profile sized for a bigger host fail on a smaller one.
+    /// </summary>
+    internal async Task<long> ClampNanoCpusAsync(long requested, CancellationToken ct)
+    {
+        if (requested <= 0)
+        {
+            return requested;
+        }
+        if (_hostNanoCpusCeiling is null)
+        {
+            try
+            {
+                var info = await docker.System.GetSystemInfoAsync(ct);
+                _hostNanoCpusCeiling = info.NCPU > 0
+                    ? info.NCPU * 1_000_000_000L
+                    : long.MaxValue;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogDebug(ex,
+                    "docker system info unavailable — no CPU clamp applied");
+                _hostNanoCpusCeiling = long.MaxValue;
+            }
+        }
+        var clamped = ClampNanoCpus(requested, _hostNanoCpusCeiling.Value);
+        if (clamped < requested)
+        {
+            logger.LogWarning(
+                "sandbox CPU limit {RequestedCpus:F2} exceeds host capacity " +
+                "({HostCpus} CPUs) — clamped to fit",
+                requested / 1_000_000_000.0,
+                _hostNanoCpusCeiling.Value / 1_000_000_000L);
+        }
+        return clamped;
+    }
+
     /// <inheritdoc />
     public async Task<EngineSandboxInfo> CreateAndStartAsync(
         EngineCreateRequest request, CancellationToken ct)
     {
         await EnsureImageAsync(request.Image, ct);
+        request = request with
+        {
+            NanoCpus = await ClampNanoCpusAsync(request.NanoCpus, ct),
+        };
 
         var env = new List<string>(request.Env);
         env.AddRange(egress.EgressEnv());

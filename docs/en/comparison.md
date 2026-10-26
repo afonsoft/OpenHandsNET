@@ -108,6 +108,61 @@ those features behind Polyform.
 | Knowledge | playbooks | suggestion queue + human review + auto-groom (SPEC-63) |
 | Browser | — | browser profiles: encrypted storage state + site cookies + TOTP (SPEC-64) |
 
+## Devin Web and Cursor Cloud (SaaS references)
+
+Comparison with the SaaS products OpenHandsNET emulates — Devin Web
+(app.devin.ai) and Cursor Background Agents — plus OpenHands Cloud.
+
+| Capability | Devin Web | Cursor Cloud Agents | OpenHands Cloud | OpenHandsNET |
+|---|---|---|---|---|
+| Parallel sessions | yes (list + search) | yes | yes | yes — conversations + sub-sessions (`task`) |
+| VM per session | yes (snapshot/restore) | dedicated VM | pod/sandbox | Docker container per conversation (+k8s in SPEC-49) |
+| Sleep/wake | memory snapshot | suspend/resume | yes | `docker pause`/`stop` + idle sleep (SPEC-16) |
+| Desktop/stream | live Desktop tab | logs + diffs | preview + VSCode | terminal/VSCode/preview/ACP surfaces (SPEC-40) |
+| Embedded IDE | VS Code web | web editor | VS Code | Monaco+SCM+search+tests workbench (SPEC-42) |
+| Checkpoints | snapshots | diff revert | snapshots | per-turn snapshots + revert (SPEC-43) |
+| Secrets | masked org/user secrets | env vars | BYO LLM keys | `SecretNamesJson` + `sk-*` device keys (SPEC-33/08) |
+| Browser preview | port previews | — | preview | preview surfaces + `RoutingMode` |
+| Automations | triggers+schedules+webhooks | schedules | schedules | routines + webhooks + `routine` tool (SPEC-47) |
+| Slack/ChatOps | native bot | Slack | — | Slack app + auto-triage (SPEC-54) |
+| PR loop | opens PR + CI watch | opens PR | GitHub App | GitHub App + workspace PRs (SPEC-52) |
+| Billing/quotas | ACU + tags | usage | Stripe | metering + plans CRUD (SPEC-20) |
+| Skills/playbooks | playbooks+skills | rules | microagents | skills settings + `task` presets + knowledge (SPEC-63) |
+| CLI | `devin` CLI | `cursor-agent` | `openhands` | `openhandsnet` CLI (Spectre) |
+| Public API | REST v3 | REST | REST V1 | `/api/v1` + golden OpenAPI (SPEC-51) |
+
+### Structural differences
+
+- **Devin Web** runs a full VM per session (filesystem + processes
+  persist across sleeps via snapshot). OpenHandsNET uses Docker
+  containers with bind-mounted workspaces — lighter, no process-memory
+  restore; sleep/wake preserves workspace + events, not the heap.
+- **Cursor Cloud Agents** focuses on the task→PR loop (agent runs, opens
+  a PR, exits). No interactive chat or surfaces — OpenHandsNET already
+  covers that flow via GitHub App + automations.
+- **OpenHands Cloud** is the closest reference (same lineage): parity by
+  domain in the tables above; remaining gaps are multi-host hosting
+  (k8s+sysbox — SPEC-49) and PSP billing.
+
+## Parity roadmap (prioritized)
+
+Items that bring OpenHandsNET closest to Devin Web, by value:
+
+1. ~~**Sandbox resource clamp**~~ — `NanoCPUs` is now clamped to host
+   NCPU (`large` specs work on small hosts). *Done.*
+2. **Per-image warm pool** — exists (`WarmPoolSize`/`WarmPoolImages`);
+   next: TTL + proactive refresh (SPEC-49 covers the reaper).
+3. **Session resume on a new sandbox** — resume reuses the event ledger;
+   rehydrating a checkpoint into a fresh sandbox (Devin's VM "wake") is
+   missing. SPEC-62 in progress covers part of it.
+4. **Live desktop/streaming** — a screen surface from the sandbox
+   (VNC/stream) is the biggest UX gap vs Devin; terminal/VSCode/preview
+   exist but no framebuffer. No SPEC — candidate for the next one.
+5. **Billing tags / cost codes** — metering exists per user/org; arbitrary
+   tag grouping (cost centers) does not.
+6. **PSP billing** — out of scope (Stripe-like); metering already emits
+   the required counters.
+
 ## Known remaining gaps
 
 1. **SPEC-62** — managed conversations / cross-sandbox delegation (in progress).
