@@ -1,5 +1,20 @@
 # memory.md — estado corrente (max 100 linhas)
 
+## Sessão 2026-10-26 — SPEC-114/115 (tema claro + proxy sandbox)
+
+- **SPEC-114** (#300): default light theme, Inter self-hosted, tokens
+  refined — merged.
+- **SPEC-115** (#301): `ResolveSurfaceUrl` extraído; em `internal`
+  RoutingMode o client só recebe path same-origin do proxy (teste de
+  contrato `Spec115SurfaceUrlTests`). Warning de boot se
+  `PublishAgentPort`+`AgentHost` → 0.0.0.0. Guard
+  `tools/check-no-direct-sandbox-url.sh` (sh, standalone — CI não
+  alterado). Docs `docs/security/sandbox-networking.md` + `en/`.
+- Gotcha: `BuildHostConfig` é static → primary-ctor `logger` não pode ser
+  usado dentro (CS9105) — passei `ILogger?` como parâmetro.
+- `dotnet format` exige final newline exata; e
+  `tools/check-spec-status.py` não existe neste repo (é do open-webui).
+
 ## Sessão 2026-10-23 (cont. 3) — SPEC-98 i18n COMPLETO + stack de PRs
 
 - **SPEC-98 entregue** (#250/#244): 6 PRs stacked **#256–#261**
@@ -130,14 +145,4 @@ args do CORPO — restringir à signature.
 ## 2026-10-25 — SPEC-111/112 implementadas
 
 - **PR #278** `feat/spec-112-fuzz-round2`: dev-login email ausente→400; usage-override/webhooks JsonException→400; webhook conv desconhecida→404; mcp/tool-call server vazio→400; `GET /keys` DateTimeOffset→ordenação em memória (SQLite); OpenAPI documenta 503 legit (checkpoint/tool-call); nightly fuzz auth cookie→Bearer `sk-*` mint via POST /keys. 10/10 testes Spec112 verdes.
-- **PR #279** `feat/spec-111-loop-decomposition`: `LoopAsync` (CC~210, ~890 linhas) → orquestração ~230 linhas + `MaybeCompactAsync`/`StreamAttemptAsync`/`DispatchToolCallsAsync`/`ExecuteToolCallAsync` sobre `LoopState`/`TurnState`; assinaturas ≤6 params. Build 0/0, format limpo, 269/269 testes Agent.
-- **Erros/lições**: rename `\b` em bloco movido corrompeu strings (`"turn.Text"`, `permission st.Policy`) e membros anônimos — fix pontual pós-diff; `ref` não compila em async → `StreamOutcome` record; `continue` em corpo extraído → verdict enum; `tcMsgIdx` mutado em fase interna → `TurnState.TcMsgIdx`.
-- **Pendente**: CI #278/#279 → merges → fechar #276/#277 → arquivar SPECs 111/112 → re-rodar nightly fuzz (#218) e gap-analysis. GATE humano: SONAR_TOKEN.
-
-## 2026-10-25 (final) — SPEC-111/112 merged
-
-- **PR #278** merged (SPEC-112 fuzz round 2) — golden regenerado + SC2015 fix.
-- **PR #279** merged (SPEC-111) — `PR test policy` exigiu teste: `Multiple_ToolCalls_One_Turn_Emit_Composite_Action_Ids` adicionado (mock aceita `"tool_calls":[...]` array).
-- Issues #276/#277 auto-fechadas via "Closes". Repo: 0 PRs, só `main` (spec-111 estava stacked em spec-112 — `git rebase --skip` o commit squashado).
-- SPECs 111/112 arquivadas neste housekeeping PR.
-- Pendente: re-rodar nightly fuzz p/ validar #218; gap-analysis; GATE SONAR_TOKEN.
+- **PR #279** `feat/spec-111-loop-decomposition`: `LoopAsync` (CC~210, ~890 linhas) → 

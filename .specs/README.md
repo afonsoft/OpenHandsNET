@@ -38,7 +38,6 @@ gates (aprovação de SPEC, merge).
 | `74_sonar_minor_code_smells_spec.md` | SonarCloud — 331 smells MINOR/INFO | `Approved` | #156 (Epic #152) |
 | `89_sonar_deferred_refactors_spec.md` | Sonar — defer Lote D (S3776/S107/S3903/S1075) | `Draft` | gap-analysis 2026-10-22 |
 | `92_client_drift_guards_spec.md` | Client/CI — drift guards (css-classes, form-a11y, i18n parity/placeholders) | `Completed` | PR #241 · #235 (Epic #231) |
-| `115_sandbox_access_proxy_hardening_spec.md` | Segurança — sandbox alcançável só via API proxy (contrato/testes/docs) | `Draft` | pedido usuário 2026-10-26 |
 | `93_perf_loadtest_harness_spec.md` | Tooling — mock LLM OpenAI-compat + loadtest (rps/conversations/subagents) | `Completed` | PR #242 · #236 (Epic #231) |
 | `94_wasm_boot_resilience_spec.md` | Infra — boot.js autostart=false + `/framework-assets` mirror (proxies corporativos) | `Completed` | PR #243 · #237 (Epic #231) |
 | `95_declarative_agent_catalog_spec.md` | Agent runtime — catálogo `*.agent.md` em camadas + `agent_catalog` tool (dep: SPEC-90) | `Completed` | PR #240 · #234 (Epic #231) |
