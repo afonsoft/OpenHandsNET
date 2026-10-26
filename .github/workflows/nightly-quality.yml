@@ -30,7 +30,7 @@ jobs:
       - name: setup dotnet 10
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: "10.0.112"   # pinned: WASM lockfiles capture SDK-band implicit package versions — bump with lockfile regen
+          dotnet-version: "10.0.x"   # pinned: WASM lockfiles capture SDK-band implicit package versions — bump with lockfile regen
 
       - name: install stryker
         run: dotnet tool install --global dotnet-stryker
@@ -72,7 +72,7 @@ jobs:
       - name: setup dotnet 10
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: "10.0.112"   # pinned: WASM lockfiles capture SDK-band implicit package versions — bump with lockfile regen
+          dotnet-version: "10.0.x"   # pinned: WASM lockfiles capture SDK-band implicit package versions — bump with lockfile regen
 
       - name: build api
         run: dotnet build src/OpenHandsNET.Api -c Release
@@ -212,7 +212,7 @@ jobs:
 
       - name: open tracking issue
         if: failure()
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        uses: actions/github-script@d746ffe35508b1917358783b479e04febd2b8f71 # v9.0.0
         with:
           script: |
             const needs = ${{ toJSON(needs) }};
