@@ -22,8 +22,10 @@ public sealed class SandboxSurfaceProxy(IHttpClientFactory httpFactory)
     ];
 
     /// <summary>Resolve o upstream pelo record (nome/id do container).</summary>
+#pragma warning disable S5332 // plaintext HTTP by design: docker bridge network, never leaves the host
     public static Uri UpstreamFor(string containerId, int port) =>
         new($"http://{containerId[..Math.Min(12, containerId.Length)]}:{port}");
+#pragma warning restore S5332
 
     /// <summary>Proxies a request (HTTP ou upgrade WebSocket).</summary>
     public async Task ProxyAsync(HttpContext ctx, Uri upstream, string path)
