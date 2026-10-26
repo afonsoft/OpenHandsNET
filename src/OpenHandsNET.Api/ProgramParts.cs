@@ -323,6 +323,9 @@ internal static class ProgramParts
         app.UseAuthorization();
         // SPEC-36/59: rate limit por ator+bucket — depois do auth p/ claims.
         app.UseMiddleware<Middleware.ApiRateLimitMiddleware>();
+        // SPEC-113 RF-003: habilita upgrade WS — router e o proxy
+        // same-origin de surfaces transportam websockify/ttyd.
+        app.UseWebSockets();
         // SPEC-38: sandbox host/path router (no-op em RoutingMode=internal).
         app.UseMiddleware<Routing.SandboxHostRouter>();
 

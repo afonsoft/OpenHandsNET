@@ -8769,6 +8769,49 @@
         ]
       }
     },
+    "/api/v1/sandboxes/{id}/surfaces/{port}/{rest}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "port",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "rest",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [],
+        "summary": "GET /api/v1/sandboxes/{id:guid}/surfaces/{port:int}/{**rest}",
+        "tags": [
+          "Sandboxes"
+        ]
+      }
+    },
     "/api/v1/scm/connections/{id}/test": {
       "post": {
         "parameters": [

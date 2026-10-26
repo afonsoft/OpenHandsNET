@@ -103,6 +103,10 @@
                 {
                     <BrowserTab State="State" />
                 }
+                else if (_tab == "desktop")
+                {
+                    <DesktopTab State="State" />
+                }
                 else if (_tab == "files")
                 {
                     <FilesTab State="State" />
@@ -133,7 +137,7 @@
     private static readonly (string Tab, string Label)[] _tabs =
     [
         ("ide", "conv.tab_ide"),
-        ("terminal", "conv.tab_terminal"), ("browser", "conv.tab_browser"), ("files", "conv.tab_files"),
+        ("terminal", "conv.tab_terminal"), ("browser", "conv.tab_browser"), ("desktop", "conv.tab_desktop"), ("files", "conv.tab_files"),
         ("diff", "conv.tab_diff"), ("commits", "conv.tab_commits"), ("usage", "conv.tab_usage"),
     ];
 

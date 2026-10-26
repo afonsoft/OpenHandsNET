@@ -50,6 +50,7 @@ if (OpenHandsNET.Infrastructure.Cache.CacheRegistration
 }
 builder.Services.AddSingleton<TerminalBridgeService>();
 builder.Services.AddSingleton<OpenHandsNET.Api.Routing.PreviewTokenService>();
+builder.Services.AddSingleton<OpenHandsNET.Api.Routing.SandboxSurfaceProxy>();
 builder.Services.AddProblemDetails();
 OpenHandsNET.Api.ProgramParts.AddOpenApiDoc(builder.Services);
 // SPEC-36 RF-002: rate limit global (IDistributedCounter; off por default).

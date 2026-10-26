@@ -34,6 +34,12 @@ surfaces.Register("vscode", "SANDBOX_VSCODE", 8080, "http",
     s => ["--bind-addr", "0.0.0.0:8080", "--auth", "none",
         "--disable-telemetry", "--disable-update-check", s],
     installer: "/opt/ohn/sdks/code-server.sh");
+// SPEC-113 RF-002: desktop ao vivo (Xvfb+x11vnc+noVNC :6080) — o script
+// self-instala os pacotes via sudo apt na primeira ativação.
+surfaces.Register("desktop", "SANDBOX_DESKTOP", 6080, "http",
+    "/opt/ohn/sdks/desktop.sh",
+    s => [],
+    installer: null);
 surfaces.StartEnabled(builder.Configuration);
 
 AgentState LoadState(IConfiguration cfg)

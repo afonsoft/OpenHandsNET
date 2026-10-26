@@ -89,6 +89,37 @@ public static class SandboxEndpoints
             return Results.Ok(new { token, expires_at = exp, port });
         }).RequireAuthorization();
 
+        // SPEC-113 RF-003: proxy same-origin para surfaces do sandbox —
+        // funciona em qualquer RoutingMode (no "internal" o middleware
+        // SandboxHostRouter é no-op). Auth: sessão (FallbackPolicy) ou
+        // ?token= preview token (SPEC-40 RF-004) para links compartilhados.
+        sandboxes.MapGet("/{id:guid}/surfaces/{port:int}/{**rest}", async (
+            Guid id, int port, string? rest,
+            ISandboxService svc,
+            Routing.SandboxSurfaceProxy proxy,
+            Routing.PreviewTokenService tokens,
+            HttpContext http, CancellationToken ct) =>
+        {
+            if (http.User.Identity?.IsAuthenticated != true
+                && !tokens.Validate(http.Request.Query["token"], id, port))
+            {
+                return Results.Unauthorized();
+            }
+
+            var sandbox = await svc.GetAsync(id, ct);
+            if (sandbox?.ContainerId is null)
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 404, $"Sandbox {id} not found");
+            }
+
+            await proxy.ProxyAsync(http,
+                Routing.SandboxSurfaceProxy.UpstreamFor(
+                    sandbox.ContainerId, port),
+                "/" + (rest ?? ""));
+            return Results.Empty;
+        }).AllowAnonymous(); // auth dentro do handler: sessão OU ?token= preview
+
         // SPEC-24 RF-007: probe /alive v2 do agent in-container
         // (agent_version nulo = v1/sem agent → sem streaming).
         sandboxes.MapGet("/{id:guid}/agent", async (

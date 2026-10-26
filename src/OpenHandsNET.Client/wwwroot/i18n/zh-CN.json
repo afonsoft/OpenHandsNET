@@ -449,5 +449,8 @@
   "chat.worklog.steps": "{{count}} 个步骤",
   "chat.subchat_open": "打开子对话",
   "ide.zen_mode": "禅模式",
-  "ide.vscode": "VS Code（沙箱）"
+  "ide.vscode": "VS Code（沙箱）",
+  "conv.tab_desktop": "桌面",
+  "desktop.title": "实时桌面 (noVNC)",
+  "desktop.empty": "无实时桌面 — 启用沙箱桌面 surface (SANDBOX_DESKTOP=1)。"
 }

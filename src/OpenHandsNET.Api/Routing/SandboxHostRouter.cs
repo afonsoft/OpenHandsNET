@@ -1,5 +1,3 @@
-using System.Net.WebSockets;
-
 using Microsoft.Extensions.Options;
 
 using OpenHandsNET.Application.Sandbox;
@@ -18,20 +16,13 @@ namespace OpenHandsNET.Api.Routing;
 /// </summary>
 public sealed class SandboxHostRouter(
     RequestDelegate next,
-    IHttpClientFactory httpFactory,
     IOptions<SandboxOptions> options)
 {
-    /// <summary>Hop-by-hop headers nunca propagados.</summary>
-    private static readonly string[] Strip =
-    [
-        "Host", "Connection", "Keep-Alive", "Transfer-Encoding",
-        "Upgrade", "Proxy-Authenticate", "Proxy-Authorization",
-        "TE", "Trailer",
-    ];
 
     /// <summary>Middleware entrypoint.</summary>
     public async Task InvokeAsync(
-        HttpContext ctx, ISandboxService sandboxes)
+        HttpContext ctx, ISandboxService sandboxes,
+        SandboxSurfaceProxy proxy)
     {
         var mode = (options.Value.RoutingMode ?? "internal")
             .ToLowerInvariant();
@@ -73,19 +64,13 @@ public sealed class SandboxHostRouter(
 
         // Upstream interno: nome do container resolve na rede interna
         // (compose/k8s DNS ou control network do SPEC-35).
-        var upstream = new Uri(
-            $"http://{sandbox.ContainerId[..12]}:{port}"); // NOSONAR S5332 — internal container/pod network (no TLS trust boundary)
+        var upstream = SandboxSurfaceProxy.UpstreamFor(
+            sandbox.ContainerId, port);
         var path = mode == "path"
             ? StripPathPrefix(ctx.Request.Path)
             : ctx.Request.Path.Value ?? "/";
 
-        if (ctx.WebSockets.IsWebSocketRequest)
-        {
-            await ProxyWebSocketAsync(ctx, upstream, path);
-            return;
-        }
-
-        await ProxyHttpAsync(ctx, upstream, path);
+        await proxy.ProxyAsync(ctx, upstream, path);
     }
 
     private static (Guid Id, int Port)? MatchHost(
@@ -143,75 +128,5 @@ public sealed class SandboxHostRouter(
         }
 
         return path[idx..];
-    }
-
-    private async Task ProxyHttpAsync(
-        HttpContext ctx, Uri upstream, string path)
-    {
-        var req = new HttpRequestMessage(
-            new HttpMethod(ctx.Request.Method),
-            new Uri(upstream, path + ctx.Request.QueryString));
-        foreach (var (k, v) in ctx.Request.Headers)
-        {
-            if (!Strip.Contains(k, StringComparer.OrdinalIgnoreCase))
-            {
-                req.Headers.TryAddWithoutValidation(k, v.ToArray());
-            }
-        }
-
-        if (ctx.Request.ContentLength > 0)
-        {
-            req.Content = new StreamContent(ctx.Request.Body);
-        }
-
-        req.Headers.TryAddWithoutValidation("X-Forwarded-For",
-            ctx.Connection.RemoteIpAddress?.ToString());
-        req.Headers.TryAddWithoutValidation("X-Forwarded-Host",
-            ctx.Request.Host.Value);
-        req.Headers.TryAddWithoutValidation("X-Forwarded-Proto",
-            ctx.Request.Scheme);
-
-        using var res = await httpFactory.CreateClient("sandbox-router")
-            .SendAsync(req, HttpCompletionOption.ResponseHeadersRead,
-                ctx.RequestAborted);
-        ctx.Response.StatusCode = (int)res.StatusCode;
-        foreach (var (k, v) in res.Headers.Concat(res.Content.Headers))
-        {
-            ctx.Response.Headers[k] = v.ToArray();
-        }
-
-        await res.Content.CopyToAsync(ctx.Response.Body, ctx.RequestAborted);
-    }
-
-    private static async Task ProxyWebSocketAsync(
-        HttpContext ctx, Uri upstream, string path)
-    {
-        using var client = new ClientWebSocket();
-        var wsUri = new UriBuilder(upstream)
-        {
-            Scheme = "ws",
-            Path = path,
-            Query = ctx.Request.QueryString.Value?.TrimStart('?'),
-        }.Uri;
-        await client.ConnectAsync(wsUri, ctx.RequestAborted);
-        using var server = await ctx.WebSockets.AcceptWebSocketAsync();
-        var pump = async (WebSocket from, WebSocket to) =>
-        {
-            var buf = new byte[64 * 1024];
-            while (from.State == WebSocketState.Open)
-            {
-                var r = await from.ReceiveAsync(buf, ctx.RequestAborted);
-                if (r.MessageType == WebSocketMessageType.Close)
-                {
-                    await to.CloseAsync(WebSocketCloseStatus.NormalClosure,
-                        null, CancellationToken.None);
-                    return;
-                }
-
-                await to.SendAsync(buf.AsMemory(0, r.Count),
-                    r.MessageType, r.EndOfMessage, CancellationToken.None);
-            }
-        };
-        await Task.WhenAny(pump(server, client), pump(client, server));
     }
 }

@@ -1,0 +1,39 @@
+@using OpenHandsNET.Client.Services
+@inject LocalizationService L
+@inject OpenHandsNetApiClient Api
+
+@* SPEC-113 RF-004: desktop ao vivo do sandbox — iframe do noVNC via
+   proxy same-origin (ou URL pública+token conforme RoutingMode). *@
+@if (_url is { } url)
+{
+    <iframe class="desktop-frame" src="@_frameSrc"
+            title="@L["desktop.title"]"
+            allow="clipboard-read; clipboard-write"></iframe>
+}
+else
+{
+    <div class="empty-state">@L["desktop.empty"]</div>
+}
+
+@code {
+    [Parameter, EditorRequired] public ConversationStateService State { get; set; } = default!;
+
+    private string? _url;
+    private string? _frameSrc;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var surfaces = await Api.GetSurfacesAsync(State.Conversation!.Id);
+            _url = surfaces.FirstOrDefault(
+                s => s.Name == "desktop" && s.Url is not null)?.Url;
+            if (_url is { } u)
+            {
+                var sep = u.Contains('?') ? "&" : "?";
+                _frameSrc = $"{u}vnc.html{sep}autoconnect=true&resize=scale&reconnect=true";
+            }
+        }
+        catch { _url = null; }
+    }
+}

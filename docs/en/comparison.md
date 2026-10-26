@@ -155,9 +155,11 @@ Items that bring OpenHandsNET closest to Devin Web, by value:
 3. **Session resume on a new sandbox** — resume reuses the event ledger;
    rehydrating a checkpoint into a fresh sandbox (Devin's VM "wake") is
    missing. SPEC-62 in progress covers part of it.
-4. **Live desktop/streaming** — a screen surface from the sandbox
-   (VNC/stream) is the biggest UX gap vs Devin; terminal/VSCode/preview
-   exist but no framebuffer. No SPEC — candidate for the next one.
+4. ~~**Live desktop/streaming**~~ — `desktop` surface (Xvfb + x11vnc +
+   noVNC :6080, opt-in `SANDBOX_DESKTOP=1` default-on) embedded in the
+   conversation's Desktop tab via the same-origin proxy
+   `/api/v1/sandboxes/{id}/surfaces/{port}/` (works under
+   `RoutingMode=internal`). *SPEC-113 delivered.*
 5. **Billing tags / cost codes** — metering exists per user/org; arbitrary
    tag grouping (cost centers) does not.
 6. **PSP billing** — out of scope (Stripe-like); metering already emits
