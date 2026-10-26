@@ -94,7 +94,7 @@ public static class SandboxEndpoints
         // SandboxHostRouter é no-op). Auth: sessão (FallbackPolicy) ou
         // ?token= preview token (SPEC-40 RF-004) para links compartilhados.
         sandboxes.MapGet("/{id:guid}/surfaces/{port:int}/{**rest}", async (
-            Guid id, int port, string? rest,
+            Guid id, int port,
             ISandboxService svc,
             Routing.SandboxSurfaceProxy proxy,
             Routing.PreviewTokenService tokens,
@@ -113,10 +113,11 @@ public static class SandboxEndpoints
                     http, 404, $"Sandbox {id} not found");
             }
 
+            var rest = http.Request.RouteValues["rest"] as string;
             await proxy.ProxyAsync(http,
                 Routing.SandboxSurfaceProxy.UpstreamFor(
                     sandbox.ContainerId, port),
-                "/" + (rest ?? ""));
+                string.Concat("/", rest));
             return Results.Empty;
         }).AllowAnonymous(); // auth dentro do handler: sessão OU ?token= preview
 
