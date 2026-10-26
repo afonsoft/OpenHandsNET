@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `sandbox-api-only-access` |
 | Type | `Hardening` |
-| Status | `Draft` |
+| Status | `Completed` |
 | Ticket | pedido direto do usuário (2026-10-26): "front não conecta direto no sandbox/VNC; tudo passa pela API (WS/SignalR); só front+api expostos" |
 | Scope | `src/OpenHandsNET.Api`, `src/OpenHandsNET.Sandboxing`, `src/OpenHandsNET.Client`, `docker-compose*.yaml`, `docs/`, `tests/` |
 
@@ -96,3 +96,16 @@ TerminalBridge para streaming real de PTY (já coberto por SPEC-09).
   direta e que o modo host exige config consciente.
 - Preview token é necessário para iframes em contextos sem cookie —
   mantido; escopo por sandbox+porta, TTL curto (já implementado).
+
+## Delivered (2026-10-26)
+
+- `AppConversationEndpoints.ResolveSurfaceUrl` extraído — `internal`
+  (default) retorna só path same-origin `/api/v1/sandboxes/{id}/surfaces/{port}/`.
+- `Spec115SurfaceUrlTests` (UnitTests): contrato same-origin em todos os
+  casos internal; modos path/host levam `?token=` assinado.
+- `DockerSandboxEngine.BuildHostConfig`: warning de boot quando
+  `PublishAgentPort` + `AgentHost` → bind `0.0.0.0`.
+- `tools/check-no-direct-sandbox-url.sh`: guard — client sem `ws(s)://`
+  literal e sem URL com `containerId`/host de sandbox.
+- `docs/security/sandbox-networking.md` + `docs/en/security/` — modelo
+  de acesso (só front+API expostos; tudo via proxy/SignalR).
