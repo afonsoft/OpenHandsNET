@@ -4,18 +4,28 @@
     "net10.0": {
       "AngleSharp": {
         "type": "Direct",
-        "requested": "[1.8.5, )",
-        "resolved": "1.8.5",
-        "contentHash": "BUgFIpmkjwMPi6QneHUHaprjUOGSXoWEF/xi/2seHCpnI8XMHACNiC09rn9qL8jbxrP8jWyJ3DnOjsGvXWNGmw=="
+        "requested": "[1.8.6, )",
+        "resolved": "1.8.6",
+        "contentHash": "tdvrWSsHz8iRcb8U2cbFtYF6/1Mvhbe5ZxN/VdhVeIfp5vOvbwz3Bn7OZknnm2QSyGvM9ZaZLNLvfanPzNa61Q=="
       },
       "bunit": {
         "type": "Direct",
-        "requested": "[1.40.0, )",
-        "resolved": "1.40.0",
-        "contentHash": "1AgaBAjP4pyX3v7Y5y8oCufZQ7Gd+AHm0QzNp2l4/q12/wg5g9+X4GnqHPHdbbfTA7GEBsueu1Y7fpSoaMKUiA==",
+        "requested": "[2.13.3, )",
+        "resolved": "2.13.3",
+        "contentHash": "CzF30KIYqLTBdKOCydGHBzGEpWuPhVhYcjXOq8MzOLhX21078ZK+beEJ+wWpHBJifxAxJzIQ67PS31IztSnv7w==",
         "dependencies": {
-          "bunit.core": "1.40.0",
-          "bunit.web": "1.40.0"
+          "AngleSharp": "1.8.6",
+          "AngleSharp.Css": "1.2.0",
+          "AngleSharp.Diffing": "1.1.1",
+          "Microsoft.AspNetCore.Components": "10.0.13",
+          "Microsoft.AspNetCore.Components.Authorization": "10.0.13",
+          "Microsoft.AspNetCore.Components.Web": "10.0.13",
+          "Microsoft.AspNetCore.Components.WebAssembly": "10.0.13",
+          "Microsoft.AspNetCore.Components.WebAssembly.Authentication": "10.0.13",
+          "Microsoft.Extensions.Caching.Memory": "10.0.13",
+          "Microsoft.Extensions.Localization.Abstractions": "10.0.13",
+          "Microsoft.Extensions.Logging": "10.0.13",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.13"
         }
       },
       "coverlet.collector": {
@@ -63,49 +73,19 @@
       },
       "AngleSharp.Css": {
         "type": "Transitive",
-        "resolved": "1.0.2",
-        "contentHash": "XeBxh0h/73+MWFsGfeMwiK7xbzAK3YeHFdUIrMH1P90amIrDFD/vUDIrPlF3CixqaMH5MRIUvT6Ux+2zvhJ3SA==",
+        "resolved": "1.2.0",
+        "contentHash": "x8/yrKJF0kfVdNW152SYn0KqlTzsI3h67ypMFiYR09iT0BMB/zAi3WvJhsV+GH1tlHFiNoZsGgjalTyWraD0gQ==",
         "dependencies": {
           "AngleSharp": "[1.5.0, 2.0.0)"
         }
       },
       "AngleSharp.Diffing": {
         "type": "Transitive",
-        "resolved": "1.0.0",
-        "contentHash": "6OeF2VvqyVaxMOP+wE0fjeaP+0ox2Og26tKDmY3Zf/qugRbd86OjmqoF6ZGyQonyP/zPjJ/TAB9VUR4HG3Dq5A==",
+        "resolved": "1.1.1",
+        "contentHash": "Uzz5895TpRyMA4t8GExmq4TxXqi3+bZTgb3kJgH+tdwrSuo9CO6Dlmv+Oqyhb2pNRfbnReLUzhlHAuT7c+3jSg==",
         "dependencies": {
           "AngleSharp": "1.1.2",
           "AngleSharp.Css": "1.0.0-beta.144"
-        }
-      },
-      "bunit.core": {
-        "type": "Transitive",
-        "resolved": "1.40.0",
-        "contentHash": "LOtMYBccI7AkDeZki1FwEj0NPXewx/fXy1cMiiKvY01hX5nqXRkqhwx+nmxyvKd5tPPB0UpUw0noA/kU8cBfZQ==",
-        "dependencies": {
-          "Microsoft.AspNetCore.Components": "9.0.5",
-          "Microsoft.Extensions.Logging": "9.0.5",
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.5"
-        }
-      },
-      "bunit.web": {
-        "type": "Transitive",
-        "resolved": "1.40.0",
-        "contentHash": "66pv5g2/Fw9hz5elgqoy6UX6zIyGRPfUbGxmrrj9XRlCXNisgKzgZB3J8nUy94q5fyI9Y3DzH7t/NBlWI8ZQGg==",
-        "dependencies": {
-          "AngleSharp": "1.2.0",
-          "AngleSharp.Css": "1.0.0-beta.154",
-          "AngleSharp.Diffing": "1.0.0",
-          "Microsoft.AspNetCore.Components": "9.0.5",
-          "Microsoft.AspNetCore.Components.Authorization": "9.0.5",
-          "Microsoft.AspNetCore.Components.Web": "9.0.5",
-          "Microsoft.AspNetCore.Components.WebAssembly": "9.0.5",
-          "Microsoft.AspNetCore.Components.WebAssembly.Authentication": "9.0.5",
-          "Microsoft.Extensions.Caching.Memory": "9.0.5",
-          "Microsoft.Extensions.Localization.Abstractions": "9.0.5",
-          "Microsoft.Extensions.Logging": "9.0.5",
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.5",
-          "bunit.core": "1.40.0"
         }
       },
       "DiffEngine": {
@@ -149,11 +129,11 @@
       },
       "Microsoft.AspNetCore.Components.Authorization": {
         "type": "Transitive",
-        "resolved": "9.0.5",
-        "contentHash": "amVsHIy/+712NIC246Hwtha2GFRVxAwEl5REhNSpgY++aRAKRU6S0x3xrJT8/kU9tfNpXjHbMd3xMedqBb5iJA==",
+        "resolved": "10.0.13",
+        "contentHash": "cIEc6Eqx2f6w4wXvuEBazpjjfgVcETIAHlBRN2LoneDziS1cup+Q3ddwpWNOoIbZ1RMRvITXKZDcuXif68iinQ==",
         "dependencies": {
-          "Microsoft.AspNetCore.Authorization": "9.0.5",
-          "Microsoft.AspNetCore.Components": "9.0.5"
+          "Microsoft.AspNetCore.Authorization": "10.0.13",
+          "Microsoft.AspNetCore.Components": "10.0.13"
         }
       },
       "Microsoft.AspNetCore.Components.Forms": {
@@ -179,11 +159,11 @@
       },
       "Microsoft.AspNetCore.Components.WebAssembly.Authentication": {
         "type": "Transitive",
-        "resolved": "9.0.5",
-        "contentHash": "ORmNJ2sa6v/YWywDhfwFEXcglH5lM0+zuT2q8XTJVnPYL3Xcjz9Z+dSO5fzdgL/GlY3+/sZBpMf0tFSKrwEyFQ==",
+        "resolved": "10.0.13",
+        "contentHash": "zS+Mr95eeC5NjVBawlOIWYUelUbcTV/EdudX0eVzYGwdamf1+pU8QIVzwXH7mtEs1I2rCAkmta1QhOcw1EUEsQ==",
         "dependencies": {
-          "Microsoft.AspNetCore.Components.Authorization": "9.0.5",
-          "Microsoft.AspNetCore.Components.Web": "9.0.5"
+          "Microsoft.AspNetCore.Components.Authorization": "10.0.13",
+          "Microsoft.AspNetCore.Components.Web": "10.0.13"
         }
       },
       "Microsoft.AspNetCore.Connections.Abstractions": {
@@ -250,29 +230,24 @@
         "resolved": "18.11.0",
         "contentHash": "MhN9wpvL1Es4hfIYslrsVgIsUdDFxuOBTbAl9mGIMvFo8PP5CLf4DrGdNrfwWSyn0lqi6sssm+I/qkkLL3MU+g=="
       },
-      "Microsoft.DotNet.HotReload.WebAssembly.Browser": {
-        "type": "Transitive",
-        "resolved": "10.0.113",
-        "contentHash": "pS9mHASF3rXnE3KUhosqIg0b/PqHhnQY67LUzgE3MrmfQSqD5c/e0ZBOdX8TPO0LRTn4fF7DWUEqOGKODz3CYg=="
-      },
       "Microsoft.Extensions.Caching.Abstractions": {
         "type": "Transitive",
-        "resolved": "9.0.5",
-        "contentHash": "RV6wOTvH5BeVRs6cvxFuaV1ut05Dklpvq19XRO1JxAayfLWYIEP7K94aamY0iSUhoehWk1X5H6gMcbZkHuBjew==",
+        "resolved": "10.0.13",
+        "contentHash": "UOJqcdNMoFcV/5RUcOlVKq9pPmbrcmbpLx5iYz9QtrmMcWRQzlL5Q/NZRfbPPLNyIEc1HWjjs5Z7nIwqewU1sg==",
         "dependencies": {
-          "Microsoft.Extensions.Primitives": "9.0.5"
+          "Microsoft.Extensions.Primitives": "10.0.13"
         }
       },
       "Microsoft.Extensions.Caching.Memory": {
         "type": "Transitive",
-        "resolved": "9.0.5",
-        "contentHash": "qDmoAzIUBup5KZG1Abv51ifbHMCWFnaXbt05l+Sd92mLOpF9OwHOuoxu3XhzXaPGfq0Ns3pv1df5l8zuKjFgGw==",
+        "resolved": "10.0.13",
+        "contentHash": "q+At65RACuCtGwUDVI08TmmrC73YFouimMkJAtlhsGhFcU/dVpqYEKpNBOF9TUxkJ6aefEOShqe7StLK7q3NqA==",
         "dependencies": {
-          "Microsoft.Extensions.Caching.Abstractions": "9.0.5",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.5",
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.5",
-          "Microsoft.Extensions.Options": "9.0.5",
-          "Microsoft.Extensions.Primitives": "9.0.5"
+          "Microsoft.Extensions.Caching.Abstractions": "10.0.13",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.13",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.13",
+          "Microsoft.Extensions.Options": "10.0.13",
+          "Microsoft.Extensions.Primitives": "10.0.13"
         }
       },
       "Microsoft.Extensions.Configuration": {
@@ -386,8 +361,8 @@
       },
       "Microsoft.Extensions.Localization.Abstractions": {
         "type": "Transitive",
-        "resolved": "9.0.5",
-        "contentHash": "zCS+W4FyyzAyUbE72ltvaukBLBm5t83MFHWKRmijLphAAjC8XGT/mVsGQTHTHHFPkrksI2tplDuIAoYQc9GT9A=="
+        "resolved": "10.0.13",
+        "contentHash": "f9/eI5sYNGaDyneg580D4mFzJBe0rRxJtnmRj/W1m8rrEMus3r+NO4Ttld/KCuD7Ex9FPE7zSrD3TDRXJOsnzg=="
       },
       "Microsoft.Extensions.Logging": {
         "type": "Transitive",
@@ -535,7 +510,6 @@
           "Markdig": "[1.4.2, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.13, )",
           "Microsoft.AspNetCore.SignalR.Client": "[10.0.13, )",
-          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.113, )",
           "OpenHandsNET.Application": "[1.0.0, )"
         }
       },
