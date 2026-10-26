@@ -14,7 +14,7 @@ hits=$(grep -rEn 'wss?://' \
     src/OpenHandsNET.Client \
     --include='*.razor' --include='*.cs' --include='*.js' \
     --exclude-dir=bin --exclude-dir=obj --exclude-dir=lib || true)
-if [ -n "$hits" ]; then
+if [[ -n "$hits" ]]; then
     echo "FAIL: client abre WebSocket direto (use SignalR/proxy via API):"
     echo "$hits"
     fail=1
@@ -25,13 +25,13 @@ hits=$(grep -rEn 'surfaces/[0-9]+\?token=|\.docker\.internal|containerId' \
     src/OpenHandsNET.Client \
     --include='*.razor' --include='*.cs' \
     --exclude-dir=bin --exclude-dir=obj || true)
-if [ -n "$hits" ]; then
+if [[ -n "$hits" ]]; then
     echo "FAIL: client monta URL direta para host de sandbox:"
     echo "$hits"
     fail=1
 fi
 
-if [ "$fail" -ne 0 ]; then
+if [[ "$fail" -ne 0 ]]; then
     exit 1
 fi
 echo "check-no-direct-sandbox-url: OK — client só usa proxy same-origin/SignalR"

@@ -384,7 +384,9 @@
 
         try
         {
-            var bytes = new byte[(int)f.Size]; // NOSONAR S5693 — OpenReadStream(MaxUploadBytes) limita o tamanho
+            // OpenReadStream(MaxUploadBytes) já limita o tamanho; o buffer
+            // também é clamped para nunca exceder o máximo aceito.
+            var bytes = new byte[(int)Math.Min(f.Size, MaxUploadBytes)];
             await using var s = f.OpenReadStream(MaxUploadBytes);
             var read = 0;
             while (read < bytes.Length)
