@@ -129,6 +129,15 @@ public sealed class SandboxService(
                     {
                         env.Add("SANDBOX_VSCODE=1");
                     }
+
+                    // SPEC-113 RF-002: desktop ao vivo (noVNC :6080) por
+                    // default — instalador lazy sob demanda. Blueprint
+                    // pode desligar via env SANDBOX_DESKTOP=0.
+                    if (!env.Any(e => e.StartsWith("SANDBOX_DESKTOP=",
+                            StringComparison.Ordinal)))
+                    {
+                        env.Add("SANDBOX_DESKTOP=1");
+                    }
                 }
             }
 

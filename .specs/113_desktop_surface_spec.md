@@ -62,12 +62,14 @@ porta/WS que a infra já proxya).
 
 ## 3. Requisitos
 
-- RF-001: `runtime/Dockerfile` instala `xvfb x11vnc openbox novnc
-  websockify chromium-browser fonts-*` e copia
-  `/opt/ohn/sdks/desktop.sh` (launcher: `Xvfb :0` → `openbox` → `x11vnc`
-  → `websockify --web=/usr/share/novnc 6080 localhost:5900`; espera
-  filhos, propaga exit). Imagem base sem a flag continua válida — o
-  launcher só roda quando a surface está habilitada.
+- RF-001: `runtime/sdks/desktop.sh` (launcher supervisionado: lazy
+  `apt install xvfb x11vnc openbox xterm novnc websockify` via sudo →
+  `Xvfb :0` → `openbox` → `x11vnc -localhost :5900` →
+  `websockify --web=/usr/share/novnc 0.0.0.0:6080`; sai quando um filho
+  morre e o supervisor respawna). Segue o padrão lazy-install do
+  `code-server.sh` — a imagem base não carrega a stack gráfica por
+  default. Chrome entra na tela quando `/usr/local/bin/chrome` existe
+  (sdk `chrome.sh`), senão `xterm`.
 - RF-002: `SurfaceRegistry` registra `"desktop"` — env `SANDBOX_DESKTOP`,
   porta 6080, protocolo `http`, binário `/opt/ohn/sdks/desktop.sh`.
   `SandboxService` injeta `SANDBOX_DESKTOP=1` por default em imagens

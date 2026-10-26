@@ -63,4 +63,30 @@ public sealed class SurfacesEndpointsTests : IDisposable
             $"/api/v1/app-conversations/{Guid.NewGuid()}/surfaces");
         res.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
+
+    // SPEC-113 RF-003: proxy same-origin de surfaces — 401 sem sessão e
+    // sem ?token=; 404 com sessão e sandbox inexistente.
+    [Fact]
+    public async Task SurfaceProxy_Requires_Auth_Or_Token()
+    {
+        var anon = _factory.CreateClient(
+            new WebApplicationFactoryClientOptions { HandleCookies = false });
+        var res = await anon.GetAsync(
+            $"/api/v1/sandboxes/{Guid.NewGuid()}/surfaces/6080/vnc.html");
+        res.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task SurfaceProxy_404_For_Unknown_Sandbox()
+    {
+        var http = _factory.CreateClient(
+            new WebApplicationFactoryClientOptions { HandleCookies = true });
+        (await http.PostAsJsonAsync("/api/v1/auth/dev-login",
+            new { email = "s2@example.com", displayName = "s2" }))
+            .StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var res = await http.GetAsync(
+            $"/api/v1/sandboxes/{Guid.NewGuid()}/surfaces/6080/vnc.html");
+        res.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
 }

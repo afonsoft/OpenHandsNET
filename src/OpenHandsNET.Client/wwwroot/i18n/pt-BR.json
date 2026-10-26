@@ -449,5 +449,8 @@
   "chat.worklog.steps": "{{count}} passos",
   "chat.subchat_open": "abrir sub-conversa",
   "ide.zen_mode": "Modo zen",
-  "ide.vscode": "VS Code (sandbox)"
+  "ide.vscode": "VS Code (sandbox)",
+  "conv.tab_desktop": "Desktop",
+  "desktop.title": "Desktop ao vivo (noVNC)",
+  "desktop.empty": "Sem desktop ao vivo — habilite a surface de desktop do sandbox (SANDBOX_DESKTOP=1)."
 }

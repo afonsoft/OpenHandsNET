@@ -449,5 +449,8 @@
   "chat.worklog.steps": "{{count}} ステップ",
   "chat.subchat_open": "サブ会話を開く",
   "ide.zen_mode": "禅モード",
-  "ide.vscode": "VS Code（サンドボックス）"
+  "ide.vscode": "VS Code（サンドボックス）",
+  "conv.tab_desktop": "デスクトップ",
+  "desktop.title": "ライブデスクトップ (noVNC)",
+  "desktop.empty": "ライブデスクトップなし — サンドボックスのデスクトップsurfaceを有効化 (SANDBOX_DESKTOP=1)。"
 }

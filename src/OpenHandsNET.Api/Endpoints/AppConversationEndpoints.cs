@@ -104,8 +104,8 @@ public static class AppConversationEndpoints
         group.MapPost("/stream-start", StreamStartAsync);
 
         // SPEC-40 RF-002: surfaces do sandbox (terminal ttyd…) resolvidas
-        // para URL pública (SPEC-38) + preview token (RF-004). RoutingMode
-        // internal → url null (surface não é alcançável fora da rede).
+        // para URL pública (SPEC-38) + preview token (RF-004). SPEC-113
+        // RF-003: RoutingMode internal → proxy same-origin /api/v1/….
         group.MapGet("/{id:guid}/surfaces", async (
             Guid id, IAppConversationService convs,
             ISandboxService sandboxes, ISandboxExecutor executor,
@@ -131,9 +131,15 @@ public static class AppConversationEndpoints
                 .Equals("internal", StringComparison.OrdinalIgnoreCase);
             return Results.Ok(surfaces.Select(s =>
             {
-                string? url = null;
+                string? url;
                 DateTimeOffset? expires = null;
-                if (!internalMode)
+                if (internalMode)
+                {
+                    // SPEC-113 RF-003: proxy same-origin sempre disponível —
+                    // cookie de sessão cobre o iframe/WS do client.
+                    url = $"/api/v1/sandboxes/{sandbox.Id}/surfaces/{s.Port}/";
+                }
+                else
                 {
                     var (token, exp) = tokens.Mint(sandbox.Id, s.Port);
                     var base_ = OpenHandsNET.Sandboxing.SandboxUrlBuilder

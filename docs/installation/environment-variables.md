@@ -72,6 +72,9 @@ English: [../en/installation/environment-variables.md](../en/installation/enviro
 | `OPENHANDSNET_Sandbox__BlueprintTimeoutMinutes` | `15` | Timeout de sdk installers + setup.sh |
 | `OPENHANDSNET_Sandbox__ControlNetwork` | — | Rede docker compartilhada Api↔agente (runtime-split) |
 | `OPENHANDSNET_Sandbox__RoutingMode` | `internal` | `internal` \| `path` \| `host` (preview de surfaces) |
+| `SANDBOX_DESKTOP` | `1` (imagens agente) | Env do container: surface de desktop noVNC :6080 (`0` desliga; instalação lazy) |
+| `SANDBOX_VSCODE` | `1` (imagens agente) | Env do container: surface code-server :8080 (`0` desliga) |
+| `SANDBOX_TERMINAL` | — | Env do container: surface ttyd :7681 (opt-in) |
 | `OPENHANDSNET_Sandbox__PublicBaseDomain` | — | Base pública no modo `host` (ex.: `sandboxes.example.com`) |
 | `OPENHANDSNET_Sandbox__RemoteBaseUrl` | — | Endpoint do `openhandsnet-runtime-api` |
 | `OPENHANDSNET_Sandbox__RemoteApiKey` | — | `X-Runtime-Key` aceito pelo runtime-api |
