@@ -64,7 +64,7 @@ public sealed class TuiCommand : AsyncCommand<TuiCommand.Settings>
             }
 
             await PumpLoopAsync(api, convId, cancellationToken);
-            var input = await AnsiConsole.AskAsync<string>("[green]>[/]");
+            var input = await AnsiConsole.AskAsync<string>("[green]>[/]", cancellationToken);
             (var nextConvId, var quit) = await DispatchAsync(
                 api, keys, input, convId, cancellationToken);
             convId = nextConvId;

@@ -127,6 +127,46 @@ public sealed class Spec51OpenApiContractTests
     }
 
     [Fact]
+    public async Task Integer_Params_Have_No_Pattern()
+    {
+        // #218: constraints {x:int} geram `pattern` regex em schema
+        // `type: integer` (inválido — pattern só se aplica a strings);
+        // a regex emitida dispara bug do hypothesis/schemathesis que
+        // mascarava falhas reais no nightly fuzz.
+        using var factory = CreateFactory();
+        using var http = factory.CreateClient();
+        var doc = await http.GetFromJsonAsync<JsonObject>(
+            "/openapi/v1.json");
+
+        var offenders = new List<string>();
+        foreach (var (path, item) in doc!["paths"]!.AsObject())
+        {
+            foreach (var (method, op) in item!.AsObject())
+            {
+                if (method == "parameters") { continue; }
+                if (op?["parameters"] is not JsonArray oa) { continue; }
+                foreach (var p in oa)
+                {
+                    var schema = p?["schema"];
+                    var t = schema?["type"];
+                    var isInteger = t is JsonValue v
+                        && v.TryGetValue<string>(out var s)
+                        && s == "integer";
+                    if (isInteger && schema!["pattern"] is not null)
+                    {
+                        offenders.Add(
+                            $"{method.ToUpperInvariant()} {path} → "
+                            + $"{p?["name"]?.GetValue<string>()}");
+                    }
+                }
+            }
+        }
+
+        offenders.ShouldBeEmpty(
+            "params integer com pattern: " + string.Join(", ", offenders));
+    }
+
+    [Fact]
     public async Task Security_Schemes_And_401_Documented()
     {
         // SPEC-80 RF-002: bearer + cookie schemes, security global, e

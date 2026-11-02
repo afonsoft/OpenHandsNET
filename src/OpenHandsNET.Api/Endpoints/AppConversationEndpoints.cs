@@ -127,26 +127,10 @@ public static class AppConversationEndpoints
             }
 
             var surfaces = await executor.SurfacesAsync(sandbox, ct);
-            var internalMode = (options.Value.RoutingMode ?? "internal")
-                .Equals("internal", StringComparison.OrdinalIgnoreCase);
             return Results.Ok(surfaces.Select(s =>
             {
-                string? url;
-                DateTimeOffset? expires = null;
-                if (internalMode)
-                {
-                    // SPEC-113 RF-003: proxy same-origin sempre disponível —
-                    // cookie de sessão cobre o iframe/WS do client.
-                    url = $"/api/v1/sandboxes/{sandbox.Id}/surfaces/{s.Port}/";
-                }
-                else
-                {
-                    var (token, exp) = tokens.Mint(sandbox.Id, s.Port);
-                    var base_ = OpenHandsNET.Sandboxing.SandboxUrlBuilder
-                        .BuildFor(options.Value, sandbox.Id, s.Port);
-                    url = $"{base_}?token={Uri.EscapeDataString(token)}";
-                    expires = exp;
-                }
+                var (url, expires) = ResolveSurfaceUrl(
+                    options.Value, tokens, sandbox, s);
 
                 return (object)new
                 {
@@ -837,6 +821,33 @@ public static class AppConversationEndpoints
         CreatedAt = t.CreatedAt,
         UpdatedAt = t.UpdatedAt,
     };
+
+    /// <summary>
+    /// SPEC-115 RF-001: resolve a URL user-facing de uma surface. Em
+    /// <c>RoutingMode=internal</c> (default OSS) é SEMPRE o path relativo
+    /// same-origin do proxy — o client nunca recebe host/porta do sandbox.
+    /// Modos <c>path</c>/<c>host</c> (opt-in enterprise) levam preview token.
+    /// </summary>
+    internal static (string Url, DateTimeOffset? Expires) ResolveSurfaceUrl(
+        OpenHandsNET.Sandboxing.SandboxOptions options,
+        Routing.PreviewTokenService tokens,
+        Domain.Sandbox.Sandbox sandbox,
+        Application.Sandbox.AgentSurface surface)
+    {
+        var internalMode = (options.RoutingMode ?? "internal")
+            .Equals("internal", StringComparison.OrdinalIgnoreCase);
+        if (internalMode)
+        {
+            // SPEC-113 RF-003: proxy same-origin — cookie de sessão cobre
+            // o iframe/WS do client em qualquer RoutingMode.
+            return ($"/api/v1/sandboxes/{sandbox.Id}/surfaces/{surface.Port}/", null);
+        }
+
+        var (token, exp) = tokens.Mint(sandbox.Id, surface.Port);
+        var base_ = OpenHandsNET.Sandboxing.SandboxUrlBuilder
+            .BuildFor(options, sandbox.Id, surface.Port);
+        return ($"{base_}?token={Uri.EscapeDataString(token)}", exp);
+    }
 
     private static AppConversationDto ToDto(AppConversation c) => new()
     {

@@ -147,7 +147,7 @@ public sealed class DockerSandboxEngine(
             [EngineLabels.Owner] = options.Value.InstanceOwner,
         };
 
-        var hostConfig = BuildHostConfig(request, options.Value, binds);
+        var hostConfig = BuildHostConfig(request, options.Value, binds, logger);
 
         var container = await docker.Containers.CreateContainerAsync(
             new CreateContainerParameters
@@ -206,7 +206,7 @@ public sealed class DockerSandboxEngine(
     /// </summary>
     internal static HostConfig BuildHostConfig(
         EngineCreateRequest request, SandboxOptions options,
-        IList<string> binds)
+        IList<string> binds, ILogger? logger = null)
     {
         var hostConfig = new HostConfig
         {
@@ -226,6 +226,14 @@ public sealed class DockerSandboxEngine(
         {
             // Docker Desktop / daemon remoto: publica 8000; HostIP 0.0.0.0
             // quando Sandbox:AgentHost aponta para um host acessível.
+            if (options.AgentHost is not null)
+            {
+                // SPEC-115 RF-003: bind 0.0.0.0 expõe a porta do agente fora do
+                // host — caminho suportado para clientes é sempre via API proxy.
+                logger?.LogWarning(
+                    "PublishAgentPort with AgentHost={AgentHost} binds the sandbox agent port on 0.0.0.0 — reachable off-host. The API surface proxy is the only supported client path; ensure the firewall restricts this port.",
+                    options.AgentHost);
+            }
             hostConfig.PortBindings = new Dictionary<string, IList<PortBinding>>
             {
                 ["8000/tcp"] = [new PortBinding
