@@ -13,7 +13,7 @@ using Shouldly;
 namespace OpenHandsNET.Client.Tests;
 
 /// <summary>SPEC-43 RF-004: CheckpointList — render, expand, revert+409.</summary>
-public class Spec43CheckpointListTests : TestContext
+public class Spec43CheckpointListTests : BunitContext
 {
     public Spec43CheckpointListTests()
     {
@@ -63,7 +63,7 @@ public class Spec43CheckpointListTests : TestContext
         Func<HttpRequestMessage, HttpResponseMessage> fn)
     {
         Services.AddSingleton(Api(fn));
-        return RenderComponent<CheckpointList>(p =>
+        return Render<CheckpointList>(p =>
             p.Add(x => x.ConversationId, "conv-1"));
     }
 

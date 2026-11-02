@@ -17,7 +17,7 @@ namespace OpenHandsNET.Client.Tests;
 /// SPEC-75 RF-005: AttentionFeed — sino com badge + dropdown do inbox;
 /// item navega para a conversa e fecha o dropdown.
 /// </summary>
-public class Spec75AttentionFeedTests : TestContext
+public class Spec75AttentionFeedTests : BunitContext
 {
     public Spec75AttentionFeedTests()
     {
@@ -71,7 +71,7 @@ public class Spec75AttentionFeedTests : TestContext
         await inbox.EnsureStartedAsync();
         Services.AddSingleton(inbox);
 
-        var cut = RenderComponent<AttentionFeed>();
+        var cut = Render<AttentionFeed>();
         cut.Find(".attention-count").TextContent.Trim().ShouldBe("2");
         cut.FindAll(".attention-drop").ShouldBeEmpty();
 
@@ -90,12 +90,12 @@ public class Spec75AttentionFeedTests : TestContext
         await inbox.EnsureStartedAsync();
         Services.AddSingleton(inbox);
 
-        var cut = RenderComponent<AttentionFeed>();
+        var cut = Render<AttentionFeed>();
         cut.Find(".attention-badge").Click();
         cut.FindAll(".attention-item").ElementAt(1).Click();
 
         var nav = Services.GetRequiredService<
-            Bunit.TestDoubles.FakeNavigationManager>();
+            Bunit.TestDoubles.BunitNavigationManager>();
         nav.Uri.ShouldEndWith("/conversations/bbb");
         cut.FindAll(".attention-drop").ShouldBeEmpty();
     }

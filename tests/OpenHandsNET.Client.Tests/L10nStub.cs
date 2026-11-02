@@ -52,7 +52,7 @@ public static class L10nStub
     }
 
     /// <summary>Cria serviço inicializado com os JSONs reais.</summary>
-    public static LocalizationService Create(TestContext ctx)
+    public static LocalizationService Create(BunitContext ctx)
     {
         var http = new HttpClient(new DiskHandler(I18nDir()))
         {
@@ -63,8 +63,8 @@ public static class L10nStub
         return svc;
     }
 
-    /// <summary>Registra o stub no DI do <see cref="TestContext"/>.</summary>
-    public static LocalizationService Register(TestContext ctx)
+    /// <summary>Registra o stub no DI do <see cref="BunitContext"/>.</summary>
+    public static LocalizationService Register(BunitContext ctx)
     {
         var svc = Create(ctx);
         ctx.Services.AddSingleton(svc);

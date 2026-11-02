@@ -10,7 +10,7 @@ using OpenHandsNET.Client.Services;
 namespace OpenHandsNET.Client.Tests;
 
 /// <summary>SPEC-05 — EventCard/ConfirmationBanner/Planner/State.</summary>
-public class ConversationComponentTests : TestContext
+public class ConversationComponentTests : BunitContext
 {
     public ConversationComponentTests()
     {
@@ -51,7 +51,7 @@ public class ConversationComponentTests : TestContext
              "llm_message":{"role":"user",
                "content":[{"type":"text","text":"hello agent"}]}}
             """);
-        var cut = RenderComponent<EventCard>(p => p.Add(x => x.Event, e));
+        var cut = Render<EventCard>(p => p.Add(x => x.Event, e));
         cut.Find(".msg.user").TextContent.ShouldContain("hello agent");
     }
 
@@ -63,7 +63,7 @@ public class ConversationComponentTests : TestContext
              "timestamp":"2026-01-01T00:00:00Z",
              "tool":{"name":"bash","arguments":{"command":"ls -la /workspace"}}}
             """);
-        var cut = RenderComponent<EventCard>(p => p.Add(x => x.Event, e));
+        var cut = Render<EventCard>(p => p.Add(x => x.Event, e));
         cut.Markup.ShouldContain("bash");
         cut.Markup.ShouldContain("ls -la /workspace");
     }
@@ -75,7 +75,7 @@ public class ConversationComponentTests : TestContext
             {"id":"e3","kind":"ServerErrorEvent","source":"environment",
              "timestamp":"2026-01-01T00:00:00Z","error":"sandbox boom"}
             """);
-        var cut = RenderComponent<EventCard>(p => p.Add(x => x.Event, e));
+        var cut = Render<EventCard>(p => p.Add(x => x.Event, e));
         cut.Find(".ev-card.error").TextContent.ShouldContain("sandbox boom");
     }
 
@@ -85,7 +85,7 @@ public class ConversationComponentTests : TestContext
         var results = new List<bool>();
         var pending = new ConversationStateService.PendingActionInfo(
             "a1", "bash: rm -rf /");
-        var cut = RenderComponent<ConfirmationBanner>(p => p
+        var cut = Render<ConfirmationBanner>(p => p
             .Add(x => x.Pending, pending)
             .Add(x => x.OnConfirm, b => results.Add(b)));
 
@@ -136,7 +136,7 @@ public class ConversationComponentTests : TestContext
                  {"title":"write fix","status":"in_progress"},
                  {"title":"run tests","status":"pending"}]}}}
             """));
-        var cut = RenderComponent<PlannerPane>(p => p.Add(x => x.State, state));
+        var cut = Render<PlannerPane>(p => p.Add(x => x.State, state));
         cut.Markup.ShouldContain("inspect repo");
         cut.Markup.ShouldContain("write fix");
         cut.FindAll(".planner li.done").Count.ShouldBe(1);
@@ -153,7 +153,7 @@ public class ConversationComponentTests : TestContext
         state.ApplyDelta(new ConversationHubClient.DeltaItem("item-1", 2, "world"));
         state.LiveDeltas["item-1"].ShouldBe("hello world");
 
-        var cut = RenderComponent<ChatPane>(p => p.Add(x => x.State, state));
+        var cut = Render<ChatPane>(p => p.Add(x => x.State, state));
         cut.Find(".ev-card.delta pre").TextContent
             .ShouldContain("hello world");
     }

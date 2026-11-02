@@ -398,8 +398,8 @@
       },
       "Microsoft.DotNet.HotReload.WebAssembly.Browser": {
         "type": "Transitive",
-        "resolved": "10.0.113",
-        "contentHash": "pS9mHASF3rXnE3KUhosqIg0b/PqHhnQY67LUzgE3MrmfQSqD5c/e0ZBOdX8TPO0LRTn4fF7DWUEqOGKODz3CYg=="
+        "resolved": "10.0.114",
+        "contentHash": "/5vjMWPo2tTac0g8x6hh0fMu2OwU7rnUGhTeOtn52IwYzjLUGNWTde/jatpkNOsoufdZpgkpTdMV6EibfEoSTA=="
       },
       "Microsoft.EntityFrameworkCore": {
         "type": "Transitive",
@@ -732,7 +732,7 @@
           "Markdig": "[1.4.2, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.13, )",
           "Microsoft.AspNetCore.SignalR.Client": "[10.0.13, )",
-          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.113, )",
+          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.114, )",
           "OpenHandsNET.Application": "[1.0.0, )"
         }
       },
@@ -776,7 +776,7 @@
       },
       "AngleSharp": {
         "type": "CentralTransitive",
-        "requested": "[1.8.5, )",
+        "requested": "[1.8.6, )",
         "resolved": "1.8.5",
         "contentHash": "BUgFIpmkjwMPi6QneHUHaprjUOGSXoWEF/xi/2seHCpnI8XMHACNiC09rn9qL8jbxrP8jWyJ3DnOjsGvXWNGmw=="
       },

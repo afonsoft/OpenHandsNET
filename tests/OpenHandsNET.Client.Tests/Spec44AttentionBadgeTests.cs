@@ -17,7 +17,7 @@ namespace OpenHandsNET.Client.Tests;
 /// SPEC-44 RF-003: AttentionBadge — contador do inbox, breakdown no
 /// title e callback de toggle do filtro.
 /// </summary>
-public class Spec44AttentionBadgeTests : TestContext
+public class Spec44AttentionBadgeTests : BunitContext
 {
     public Spec44AttentionBadgeTests()
     {
@@ -72,7 +72,7 @@ public class Spec44AttentionBadgeTests : TestContext
         await inbox.EnsureStartedAsync();
         Services.AddSingleton(inbox);
 
-        var cut = RenderComponent<AttentionBadge>();
+        var cut = Render<AttentionBadge>();
         cut.Find(".attention-count").TextContent.Trim().ShouldBe("2");
         cut.Find("button").GetAttribute("title")!
             .ShouldContain("confirmação");
@@ -89,7 +89,7 @@ public class Spec44AttentionBadgeTests : TestContext
         Services.AddSingleton(inbox);
 
         var clicked = 0;
-        var cut = RenderComponent<AttentionBadge>(p =>
+        var cut = Render<AttentionBadge>(p =>
             p.Add(x => x.OnClick, () => clicked++));
         cut.FindAll(".attention-count").ShouldBeEmpty();
         cut.Find("button").Click();
@@ -111,7 +111,7 @@ public class Spec44AttentionBadgeTests : TestContext
         await inbox.EnsureStartedAsync();
         Services.AddSingleton(inbox);
 
-        var cut = RenderComponent<AttentionBadge>();
+        var cut = Render<AttentionBadge>();
         cut.FindAll(".attention-count").ShouldBeEmpty();
         await inbox.RefreshAsync(notifyNew: false);
         cut.Find(".attention-count").TextContent.Trim().ShouldBe("2");

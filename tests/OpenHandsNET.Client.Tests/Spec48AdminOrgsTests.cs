@@ -17,7 +17,7 @@ namespace OpenHandsNET.Client.Tests;
 /// SPEC-48 RF-003 — página /admin/orgs: picker de org + card de
 /// security policy (GET popula campos; PUT envia overrides; reset).
 /// </summary>
-public class Spec48AdminOrgsTests : TestContext
+public class Spec48AdminOrgsTests : BunitContext
 {
     public Spec48AdminOrgsTests()
     {
@@ -103,7 +103,7 @@ public class Spec48AdminOrgsTests : TestContext
     public void OrgsPage_Loads_Policy_For_Selected_Org()
     {
         Wire();
-        var cut = RenderComponent<AdminOrgsPage>();
+        var cut = Render<AdminOrgsPage>();
         cut.WaitForAssertion(() =>
             cut.Markup.ShouldContain("Acme"), TimeSpan.FromSeconds(5));
 
@@ -121,7 +121,7 @@ public class Spec48AdminOrgsTests : TestContext
     public void Save_Puts_Policy_With_Overrides()
     {
         var handler = Wire();
-        var cut = RenderComponent<AdminOrgsPage>();
+        var cut = Render<AdminOrgsPage>();
         cut.WaitForAssertion(() =>
             cut.Markup.ShouldContain("Acme"), TimeSpan.FromSeconds(5));
         cut.Find("select").Change(

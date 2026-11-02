@@ -16,7 +16,7 @@ namespace OpenHandsNET.Client.Tests;
 /// SPEC-45: composer — slash expansion, send text, chips de mention,
 /// popup @ com árvore do workspace (stub <c>/exec find</c>).
 /// </summary>
-public class Spec45ComposerTests : TestContext
+public class Spec45ComposerTests : BunitContext
 {
     public Spec45ComposerTests()
     {
@@ -80,7 +80,7 @@ public class Spec45ComposerTests : TestContext
     {
         RegisterDeps(Api(_ => Json("[]")));
         string? sent = null;
-        var cut = RenderComponent<ChatComposer>(p => p
+        var cut = Render<ChatComposer>(p => p
             .Add(x => x.ConversationId, "conv-1")
             .Add(x => x.OnSend, (string t) => sent = t));
 
@@ -101,7 +101,7 @@ public class Spec45ComposerTests : TestContext
             ? Json("""{"exit_code":0,"stdout":"/workspace/repo/a.cs\n/workspace/repo/b.ts\n","stderr":"","timed_out":false}""")
             : Json("[]"));
         RegisterDeps(api);
-        var cut = RenderComponent<ChatComposer>(p => p
+        var cut = Render<ChatComposer>(p => p
             .Add(x => x.ConversationId, "conv-1")
             .Add(x => x.OnSend, _ => { }));
 
@@ -122,7 +122,7 @@ public class Spec45ComposerTests : TestContext
     {
         var api = Api(_ => Json("[]"));
         RegisterDeps(api);
-        var cut = RenderComponent<ChatComposer>(p => p
+        var cut = Render<ChatComposer>(p => p
             .Add(x => x.ConversationId, "conv-1")
             .Add(x => x.OnSend, _ => { }));
 
@@ -147,7 +147,7 @@ public class Spec45ComposerTests : TestContext
                 ? Json(skillsJson) : Json("[]"));
         RegisterDeps(api);
         string? sent = null;
-        var cut = RenderComponent<ChatComposer>(p => p
+        var cut = Render<ChatComposer>(p => p
             .Add(x => x.ConversationId, "conv-1")
             .Add(x => x.OnSend, (string t) => sent = t));
 
