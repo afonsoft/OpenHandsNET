@@ -12,7 +12,7 @@ namespace OpenHandsNET.IntegrationTests.Api;
 
 /// <summary>
 /// SPEC-43: contrato dos endpoints de checkpoint — 400 hash inválido,
-/// 503 sem sandbox running, 404 sem repo, 409 run_active / drift,
+/// 404 sem conversa/repo, 409 sandbox_not_running / run_active / drift,
 /// e roundtrip Docker snapshot→edit→revert.
 /// </summary>
 public sealed class Spec43CheckpointEndpointsTests : IDisposable
@@ -75,16 +75,16 @@ public sealed class Spec43CheckpointEndpointsTests : IDisposable
     }
 
     [Fact]
-    public async Task No_Sandbox_503()
+    public async Task No_Sandbox_409()
     {
         var id = await SeedConversationAsync("Finished");
         (await _http.GetAsync(
             $"/api/v1/app-conversations/{id}/checkpoints"))
-            .StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+            .StatusCode.ShouldBe(HttpStatusCode.Conflict);
         (await _http.PostAsJsonAsync(
             $"/api/v1/app-conversations/{id}/checkpoints",
             new { label = "x" }))
-            .StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+            .StatusCode.ShouldBe(HttpStatusCode.Conflict);
     }
 
     [Fact]

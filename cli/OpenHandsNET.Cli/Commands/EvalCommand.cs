@@ -62,15 +62,15 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
 
     /// <inheritdoc />
     public override async Task<int> ExecuteAsync(
-        CommandContext ctx, Settings s, CancellationToken cancellationToken)
+        CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
-        if (s.Mode is not "live" and not "recorded")
+        if (settings.Mode is not "live" and not "recorded")
         {
             AnsiConsole.MarkupLine("[red]--mode deve ser live|recorded[/]");
             return 1;
         }
 
-        var tasks = ResolveTasks(s, out var suiteName);
+        var tasks = ResolveTasks(settings, out var suiteName);
         if (tasks is null || tasks.Count == 0)
         {
             AnsiConsole.MarkupLine("[red]nenhuma task resolvida[/]");
@@ -78,17 +78,17 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
         }
 
         var recordings = new RecordingStore(
-            Path.Combine(s.EvalsDir, "recordings"));
+            Path.Combine(settings.EvalsDir, "recordings"));
 
-        var results = s.Mode == "recorded"
-            ? await RunRecordedAsync(s, tasks, recordings, cancellationToken)
-            : await RunLiveAsync(s, tasks, recordings, cancellationToken);
+        var results = settings.Mode == "recorded"
+            ? await RunRecordedAsync(settings, tasks, recordings, cancellationToken)
+            : await RunLiveAsync(settings, tasks, recordings, cancellationToken);
         if (results is null)
         {
             return 1;
         }
 
-        var outDir = Path.Combine(s.Out,
+        var outDir = Path.Combine(settings.Out,
             $"{suiteName}-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}");
         Directory.CreateDirectory(outDir);
         foreach (var r in results)
@@ -109,10 +109,10 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
                     pass = results.Count(r => r.Pass),
                     score = results.Average(r => r.Score)
                 },
-                Json), cancellationToken);
+                JsonOpts), cancellationToken);
 
-        var regressions = CheckGate(s, results);
-        if (s.Json)
+        var regressions = CheckGate(settings, results);
+        if (settings.Json)
         {
             AnsiConsole.WriteLine(JsonSerializer.Serialize(new
             {
@@ -138,7 +138,7 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
             }
         }
 
-        if (regressions.Count > 0 && s.Gate)
+        if (regressions.Count > 0 && settings.Gate)
         {
             return 2;
         }
@@ -147,25 +147,25 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
     }
 
     private static async Task<IReadOnlyList<EvalResult>> RunRecordedAsync(
-        Settings s, IReadOnlyList<EvalTask> tasks,
+        Settings settings, IReadOnlyList<EvalTask> tasks,
         RecordingStore recordings, CancellationToken ct)
     {
         var runner = new EvalRunner(new NullBackend(), recordings);
         return await runner.RunAsync(tasks,
-            new EvalRunOptions(s.Parallel, s.Model, "recorded"), ct: ct);
+            new EvalRunOptions(settings.Parallel, settings.Model, "recorded"), ct: ct);
     }
 
     /// <summary>Modo live — null se o host remoto não tiver --allow-remote.</summary>
     private static async Task<IReadOnlyList<EvalResult>?> RunLiveAsync(
-        Settings s, IReadOnlyList<EvalTask> tasks,
+        Settings settings, IReadOnlyList<EvalTask> tasks,
         RecordingStore recordings, CancellationToken ct)
     {
-        var url = s.Url
+        var url = settings.Url
             ?? Environment.GetEnvironmentVariable("OPENHANDSNET_SERVER_URL")
             ?? "http://localhost:8080";
         if (!url.StartsWith("http://localhost", StringComparison.Ordinal)
             && !url.StartsWith("http://127.0.0.1", StringComparison.Ordinal)
-            && !s.AllowRemote)
+            && !settings.AllowRemote)
         {
             AnsiConsole.MarkupLine(
                 "[red]eval contra host remoto exige --allow-remote[/]");
@@ -174,38 +174,38 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
 
         var http = new HttpClient();
         var api = await CloudApiClient.CreateAsync(
-            s.Url, new CredentialStore(), http, ct);
+            settings.Url, new CredentialStore(), http, ct);
         var runner = new EvalRunner(new EvalBackend(api, http),
             recordings);
         return await runner.RunAsync(tasks,
-            new EvalRunOptions(s.Parallel, s.Model, "live", s.Record),
-            onTaskDone: s.Json ? null : r => AnsiConsole.MarkupLine(
+            new EvalRunOptions(settings.Parallel, settings.Model, "live", settings.Record),
+            onTaskDone: settings.Json ? null : r => AnsiConsole.MarkupLine(
                 r.Pass
                     ? $"[green]✓[/] {r.Name} [grey]({r.Score:F2})[/]"
                     : $"[red]✗[/] {r.Name} [grey]({r.Score:F2})[/]"),
             ct: ct);
     }
 
-    private static readonly JsonSerializerOptions Json = new()
+    private static readonly JsonSerializerOptions JsonOpts = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         WriteIndented = true,
     };
 
-    private static List<EvalTask>? ResolveTasks(Settings s, out string suiteName)
+    private static List<EvalTask>? ResolveTasks(Settings settings, out string suiteName)
     {
-        var tasksDir = Path.Combine(s.EvalsDir, "tasks");
-        var suitePath = Path.Combine(s.EvalsDir, "suites",
-            s.Target.EndsWith(".yaml") ? s.Target : $"{s.Target}.yaml");
+        var tasksDir = Path.Combine(settings.EvalsDir, "tasks");
+        var suitePath = Path.Combine(settings.EvalsDir, "suites",
+            settings.Target.EndsWith(".yaml") ? settings.Target : $"{settings.Target}.yaml");
         var taskPath = Path.Combine(tasksDir,
-            s.Target.EndsWith(".yaml") ? s.Target : $"{s.Target}.yaml");
+            settings.Target.EndsWith(".yaml") ? settings.Target : $"{settings.Target}.yaml");
 
         List<EvalTask> tasks;
         if (File.Exists(suitePath))
         {
             var suite = EvalParser.ParseSuite(File.ReadAllText(suitePath));
             suiteName = string.IsNullOrWhiteSpace(suite.Name)
-                ? s.Target : suite.Name;
+                ? settings.Target : suite.Name;
             tasks = suite.Tasks
                 .Select(t => EvalParser.ParseTask(File.ReadAllText(
                     Path.Combine(tasksDir,
@@ -216,17 +216,17 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
         }
         else if (File.Exists(taskPath))
         {
-            suiteName = s.Target;
+            suiteName = settings.Target;
             tasks = [EvalParser.ParseTask(File.ReadAllText(taskPath))];
         }
-        else if (File.Exists(s.Target))
+        else if (File.Exists(settings.Target))
         {
-            suiteName = Path.GetFileNameWithoutExtension(s.Target);
-            tasks = [EvalParser.ParseTask(File.ReadAllText(s.Target))];
+            suiteName = Path.GetFileNameWithoutExtension(settings.Target);
+            tasks = [EvalParser.ParseTask(File.ReadAllText(settings.Target))];
         }
         else
         {
-            suiteName = s.Target;
+            suiteName = settings.Target;
             return null;
         }
 
@@ -243,14 +243,14 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
     }
 
     private static IReadOnlyList<Regression> CheckGate(
-        Settings s, IReadOnlyList<EvalResult> results)
+        Settings settings, IReadOnlyList<EvalResult> results)
     {
-        if (s.Baseline is null || !Directory.Exists(s.Baseline))
+        if (settings.Baseline is null || !Directory.Exists(settings.Baseline))
         {
             return [];
         }
 
-        var baseline = Directory.EnumerateFiles(s.Baseline, "result.json",
+        var baseline = Directory.EnumerateFiles(settings.Baseline, "result.json",
                 SearchOption.AllDirectories)
             .Select(f => EvalResult.FromJson(File.ReadAllText(f)))
             .OfType<EvalResult>()
@@ -305,13 +305,13 @@ public sealed class EvalReportCommand : Command<EvalReportCommand.Settings>
     }
 
     /// <inheritdoc />
-    public override int Execute(CommandContext ctx, Settings s, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
-        var results = LoadResults(s.Dir);
-        var regressions = s.Baseline is { } b && Directory.Exists(b)
+        var results = LoadResults(settings.Dir);
+        var regressions = settings.Baseline is { } b && Directory.Exists(b)
             ? Scorer.Regressions(results, LoadResults(b)) : [];
 
-        if (s.Json)
+        if (settings.Json)
         {
             AnsiConsole.WriteLine(JsonSerializer.Serialize(new
             {
@@ -346,7 +346,7 @@ public sealed class EvalReportCommand : Command<EvalReportCommand.Settings>
             }
         }
 
-        return regressions.Count > 0 && s.Gate ? 2 : 0;
+        return regressions.Count > 0 && settings.Gate ? 2 : 0;
     }
 
     private static List<EvalResult> LoadResults(string dir) =>
@@ -369,9 +369,9 @@ public sealed class EvalListCommand : Command<EvalListCommand.Settings>
     }
 
     /// <inheritdoc />
-    public override int Execute(CommandContext ctx, Settings s, CancellationToken cancellationToken)
+    public override int Execute(CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
-        var tasksDir = Path.Combine(s.EvalsDir, "tasks");
+        var tasksDir = Path.Combine(settings.EvalsDir, "tasks");
         var errors = 0;
         var table = new Table().AddColumns("task", "asserts", "tags", "status");
         if (Directory.Exists(tasksDir))
@@ -383,7 +383,7 @@ public sealed class EvalListCommand : Command<EvalListCommand.Settings>
         }
 
         AnsiConsole.Write(table);
-        var suitesDir = Path.Combine(s.EvalsDir, "suites");
+        var suitesDir = Path.Combine(settings.EvalsDir, "suites");
         if (Directory.Exists(suitesDir))
         {
             foreach (var f in Directory.EnumerateFiles(suitesDir, "*.yaml"))
@@ -407,7 +407,7 @@ public sealed class EvalListCommand : Command<EvalListCommand.Settings>
                 string.Join(",", t.Assert.Select(a => a.Type)),
                 string.Join(",", t.Tags),
                 errs.Count == 0
-                    ? "[green]ok[/]" : $"[red]{errs.Count} erro(s)[/]");
+                    ? "[green]ok[/]" : $"[red]{errs.Count} erro(settings)[/]");
             foreach (var e in errs)
             {
                 AnsiConsole.MarkupLine($"[red]✗[/] {f}: {e}");

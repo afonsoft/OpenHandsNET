@@ -78,8 +78,9 @@ public static class KeysEndpoints
             .RequireAuthorization();
 
         // SPEC-50 RF-002: BYOR LiteLLM — fail-closed: proxy não
-        // configurado/indisponível → 503 litellm_unavailable (nunca
-        // cai para providers locais). A chave sai em claro SÓ no refresh.
+        // configurado → 404 byor_not_configured; proxy indisponível →
+        // 503 litellm_unavailable (nunca cai para providers locais).
+        // A chave sai em claro SÓ no refresh.
         g.MapGet("/llm/byor", async (
             ICurrentUserAccessor current, IByorKeyService byor,
             CancellationToken ct) =>
@@ -88,7 +89,7 @@ public static class KeysEndpoints
             if (user is null)
                 return Results.Unauthorized();
             if (!byor.Enabled)
-                return ProxyUnavailable();
+                return ByorNotConfigured();
             try
             {
                 var info = await byor.GetActiveAsync(
@@ -107,7 +108,7 @@ public static class KeysEndpoints
             {
                 return ProxyUnavailable();
             }
-        }).RequireAuthorization().ProducesProblem(503);
+        }).RequireAuthorization().ProducesProblem(404).ProducesProblem(503);
 
         g.MapPost("/llm/byor/refresh", async (
             [FromBody] ByorRefreshRequest? req,
@@ -119,7 +120,7 @@ public static class KeysEndpoints
             if (user is null)
                 return Results.Unauthorized();
             if (!byor.Enabled)
-                return ProxyUnavailable();
+                return ByorNotConfigured();
             try
             {
                 var effective = await resolver.ResolveAsync(
@@ -145,7 +146,7 @@ public static class KeysEndpoints
             {
                 return ProxyUnavailable();
             }
-        }).RequireAuthorization().ProducesProblem(503);
+        }).RequireAuthorization().ProducesProblem(404).ProducesProblem(503);
 
         g.MapGet("/llm/byor/permitted", async (
             ICurrentUserAccessor current, IByorKeyService byor,
@@ -155,7 +156,7 @@ public static class KeysEndpoints
             if (user is null)
                 return Results.Unauthorized();
             if (!byor.Enabled)
-                return ProxyUnavailable();
+                return ByorNotConfigured();
             try
             {
                 return Results.Ok(new
@@ -167,7 +168,7 @@ public static class KeysEndpoints
             {
                 return ProxyUnavailable();
             }
-        }).RequireAuthorization().ProducesProblem(503);
+        }).RequireAuthorization().ProducesProblem(404).ProducesProblem(503);
 
         g.MapDelete("/llm/byor", async (
             ICurrentUserAccessor current, IByorKeyService byor,
@@ -177,7 +178,7 @@ public static class KeysEndpoints
             if (user is null)
                 return Results.Unauthorized();
             if (!byor.Enabled)
-                return ProxyUnavailable();
+                return ByorNotConfigured();
             try
             {
                 if (!await byor.RevokeAsync(user.UserId.ToString(), ct))
@@ -191,10 +192,18 @@ public static class KeysEndpoints
             {
                 return ProxyUnavailable();
             }
-        }).RequireAuthorization().ProducesProblem(503);
+        }).RequireAuthorization().ProducesProblem(404).ProducesProblem(503);
 
         return app;
     }
+
+    private static IResult ByorNotConfigured() => Results.Problem(
+        statusCode: 404, title: "byor_not_configured",
+        detail: "LiteLLM proxy is not configured for this deployment",
+        extensions: new Dictionary<string, object?>
+        {
+            ["code"] = "byor_not_configured",
+        });
 
     private static IResult ProxyUnavailable() => Results.Problem(
         statusCode: 503, title: "litellm_unavailable",

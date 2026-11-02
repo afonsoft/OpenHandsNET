@@ -32,10 +32,24 @@ public sealed class OrgService(AppDbContext db, IAuditService audit) : IOrgServi
         AuthUser user, string name, string? slug,
         CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("name is required", nameof(name));
+        }
+
+        var resolvedSlug = string.IsNullOrWhiteSpace(slug)
+            ? Slugify(name) : slug!;
+        if (resolvedSlug.Length == 0)
+        {
+            throw new ArgumentException(
+                "name must contain at least one letter or digit",
+                nameof(name));
+        }
+
         var org = new OrganizationRecord
         {
             Id = Guid.NewGuid(),
-            Slug = string.IsNullOrWhiteSpace(slug) ? Slugify(name) : slug!,
+            Slug = resolvedSlug,
             Name = name,
             CreatedAt = DateTimeOffset.UtcNow,
         };
@@ -47,7 +61,16 @@ public sealed class OrgService(AppDbContext db, IAuditService audit) : IOrgServi
             Role = RoleName.Owner,
             CreatedAt = DateTimeOffset.UtcNow,
         });
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException e) when (
+            e.InnerException?.Message.Contains(
+                "organizations.slug", StringComparison.Ordinal) is true)
+        {
+            throw new OrgSlugConflictException(resolvedSlug, e);
+        }
         await audit.RecordAsync(
             "org.create", user.UserId.ToString(), org.Id,
             "organization", org.Id.ToString(),
@@ -201,3 +224,7 @@ public sealed class OrgService(AppDbContext db, IAuditService audit) : IOrgServi
             .Select(c => char.IsLetterOrDigit(c) ? c : '-')
             .ToArray()).Trim('-');
 }
+
+/// <summary>Org slug já em uso — UNIQUE(organizations.slug).</summary>
+public sealed class OrgSlugConflictException(string slug, Exception? inner = null)
+    : Exception($"slug already taken: {slug}", inner);
