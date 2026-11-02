@@ -37,7 +37,8 @@ executadas por agentes, revisadas por humanos.
   (deltas efêmeros + durable events).
 - **UI Devin-like** (Blazor WASM): chat streaming com reasoning, composer
   rico (@menções, /slash, uploads, drafts), IDE workbench (Monaco + SCM +
-  busca), checkpoints com revert, attention inbox, i18n em 8 locales.
+  busca), checkpoints com revert, attention inbox, i18n em 8 locales,
+  tab **Desktop** com noVNC ao vivo do sandbox (SPEC-113).
 - **Enterprise open-source**: OIDC + API keys `sk-*`, orgs/RBAC,
   multi-tenancy, planos/quotas/billing, auditoria, egress allowlist,
   security analyzer, secrets by-reference, S3 artifacts.
@@ -65,6 +66,7 @@ executadas por agentes, revisadas por humanos.
 | Deploy | docker run/compose | Helm + KOTS/k0s | **compose + Helm chart (SPEC-49)** | SaaS apenas |
 | Multi-réplica | — | Valkey/Redis backplane | **`IDistributedCache` + backplane SignalR** | Sim |
 | UI | Agent Canvas (React) | Cloud UI | **Devin-like Blazor: chat, IDE, surfaces** | Referência de UX |
+| Live desktop | — | VNC | **tab Desktop noVNC + surface proxy same-origin (SPEC-113)** | Live desktop |
 | CLI | `openhands` TUI | cloud mode | **`openhandsnet` parity + eval + doctor** | `devin` API |
 | i18n | en | en | **8 locales (pt-BR default)** | en |
 | Automações | webhooks GitHub | schedules internas | **routines + hook triggers + `routine` tool** | Devin automations |
@@ -101,6 +103,22 @@ Configuração por env vars com prefixo `OPENHANDSNET_` (ex.:
 `data/openhandsnet.db` (migrado no boot). Endpoints: `GET /api/v1/health`,
 `/api/v1/ready`, `/api/v1/config`.
 
+Guias completos de instalação:
+[Docker](docs/installation/docker.md) ·
+[Host](docs/installation/host.md) ·
+[Variáveis de ambiente](docs/installation/environment-variables.md)
+(English: [docs/en/installation/](docs/en/installation/)).
+
+## Screenshots
+
+| Home | Configurações | Automações |
+|---|---|---|
+| ![home](docs/images/app-home.png) | ![settings](docs/images/app-settings.png) | ![automations](docs/images/app-automations.png) |
+
+| Admin | Desktop ao vivo do sandbox (noVNC — SPEC-113) |
+|---|---|
+| ![admin](docs/images/admin-usage.png) | ![desktop](docs/images/desktop-novnc.png) |
+
 ## Layout do repositório
 
 ```
@@ -121,7 +139,8 @@ tests/              UnitTests · IntegrationTests · Client.Tests (bUnit)
 
 - **[docs/README.md](docs/README.md)** — índice completo (pt-BR).
 - **[docs/en/](docs/en/README.md)** — English docs.
-- Destaques: [deployment/local](docs/deployment/local.md) ·
+- Destaques: [installation](docs/installation/) ·
+  [deployment/local](docs/deployment/local.md) ·
   [kubernetes](docs/deployment/kubernetes.md) ·
   [security](docs/deployment/security.md) ·
   [automations](docs/automations.md) · [cli](docs/cli.md) ·

@@ -6,13 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OpenHandsNET</title>
     <base href="/" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="light" />
     <link rel="preload" id="webassembly" />
     <!-- SPEC-26: aplica data-theme ANTES do CSS — zero flash de tema errado. -->
     <script>
         (function () {
-            var t = 'dark';
-            try { t = localStorage.getItem('ohn.theme') || 'dark'; } catch (e) { }
+            var t = 'light';
+            try { t = localStorage.getItem('ohn.theme') || 'light'; } catch (e) { }
             if (t === 'system') {
                 t = window.matchMedia('(prefers-color-scheme: light)').matches
                     ? 'light' : 'dark';

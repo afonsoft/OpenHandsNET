@@ -151,7 +151,7 @@
     /// <summary>SPEC-26: troca de tema — persiste local + remoto, toast.</summary>
     private async Task OnThemeChange(ChangeEventArgs e)
     {
-        await Theme.SetAsync(e.Value?.ToString() ?? ThemeService.Dark);
+        await Theme.SetAsync(e.Value?.ToString() ?? ThemeService.Light);
         Toasts.Success(L.T("settings.theme_toast", ("theme", Theme.Theme)));
     }
 

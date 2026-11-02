@@ -25,10 +25,10 @@ public sealed class ThemeService : IAsyncDisposable
     }
 
     /// <summary>Tema selecionado (sempre resolvido após <see cref="InitAsync"/>).</summary>
-    public string Theme { get; private set; } = Dark;
+    public string Theme { get; private set; } = Light;
 
     /// <summary>Tema efetivo aplicado (dark/light — nunca "system").</summary>
-    public string EffectiveTheme { get; private set; } = Dark;
+    public string EffectiveTheme { get; private set; } = Light;
 
     /// <summary>Dispara quando o tema efetivo muda.</summary>
     public event Action? Changed;
@@ -40,7 +40,7 @@ public sealed class ThemeService : IAsyncDisposable
     public async Task InitAsync()
     {
         var stored = await SafeJs<string?>("ohnTheme.get");
-        Theme = Valid(stored) ? stored! : Dark;
+        Theme = Valid(stored) ? stored! : Light;
 
         try
         {
@@ -58,7 +58,7 @@ public sealed class ThemeService : IAsyncDisposable
     /// <summary>Define o tema, aplica, e persiste local + remoto.</summary>
     public async Task SetAsync(string theme)
     {
-        Theme = Valid(theme) ? theme : Dark;
+        Theme = Valid(theme) ? theme : Light;
         await ApplyAsync();
         await SafeJs("ohnTheme.set", Theme);
         _ = PersistRemoteAsync();
@@ -67,7 +67,7 @@ public sealed class ThemeService : IAsyncDisposable
     private async Task ApplyAsync()
     {
         EffectiveTheme = Theme == System
-            ? await SafeJs<string>("ohnTheme.system") ?? Dark
+            ? await SafeJs<string>("ohnTheme.system") ?? Light
             : Theme;
         _selfRef ??= await SafeJs<IJSObjectReference?>(
             "ohnTheme.watch", DotNetObjectReference.Create(this));

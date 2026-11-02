@@ -38,7 +38,8 @@ of truth: specs written for agents, executed by agents, reviewed by humans.
 - **Devin-like UI** (Blazor WASM): streaming chat with reasoning, rich
   composer (@mentions, /slash, uploads, drafts), IDE workbench (Monaco +
   SCM + search), checkpoints with revert, attention inbox, i18n in
-  8 locales.
+  8 locales, and a **Desktop** tab streaming the sandbox live via noVNC
+  (SPEC-113).
 - **Open-source enterprise**: OIDC + `sk-*` API keys, orgs/RBAC,
   multi-tenancy, plans/quotas/billing, audit, egress allowlist,
   pluggable security analyzer, by-reference secrets, S3 artifacts.
@@ -66,6 +67,7 @@ of truth: specs written for agents, executed by agents, reviewed by humans.
 | Deploy | docker run/compose | Helm + KOTS/k0s | **compose + Helm chart (SPEC-49)** | SaaS only |
 | Multi-replica | — | Valkey/Redis backplane | **`IDistributedCache` + SignalR backplane** | Yes |
 | UI | Agent Canvas (React) | Cloud UI | **Devin-like Blazor: chat, IDE, surfaces** | UX reference |
+| Live desktop | — | VNC | **Desktop tab with noVNC + same-origin surface proxy (SPEC-113)** | Live desktop |
 | CLI | `openhands` TUI | cloud mode | **`openhandsnet` parity + eval + doctor** | `devin` API |
 | i18n | en | en | **8 locales (pt-BR default)** | en |
 | Automations | GitHub webhooks | internal schedules | **routines + hook triggers + `routine` tool** | Devin automations |
@@ -102,6 +104,21 @@ Configuration via `OPENHANDSNET_`-prefixed env vars (e.g.
 `data/openhandsnet.db` (migrated on boot). Endpoints: `GET /api/v1/health`,
 `/api/v1/ready`, `/api/v1/config`.
 
+Full installation guides:
+[Docker](docs/en/installation/docker.md) ·
+[Host](docs/en/installation/host.md) ·
+[Environment variables](docs/en/installation/environment-variables.md).
+
+## Screenshots
+
+| Home | Settings | Automations |
+|---|---|---|
+| ![home](docs/images/app-home.png) | ![settings](docs/images/app-settings.png) | ![automations](docs/images/app-automations.png) |
+
+| Admin | Live sandbox desktop (noVNC — SPEC-113) |
+|---|---|
+| ![admin](docs/images/admin-usage.png) | ![desktop](docs/images/desktop-novnc.png) |
+
 ## Repository layout
 
 ```
@@ -122,7 +139,8 @@ tests/              UnitTests · IntegrationTests · Client.Tests (bUnit)
 
 - **[docs/README.md](docs/README.md)** — full index (pt-BR).
 - **[docs/en/](docs/en/README.md)** — English docs.
-- Highlights: [deployment/local](docs/en/deployment/local.md) ·
+- Highlights: [installation](docs/en/installation/) ·
+  [deployment/local](docs/en/deployment/local.md) ·
   [kubernetes](docs/en/deployment/kubernetes.md) ·
   [security](docs/en/deployment/security.md) ·
   [automations](docs/en/automations.md) · [cli](docs/en/cli.md) ·

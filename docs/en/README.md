@@ -47,6 +47,8 @@ Documentation index (English). Versão em português na raiz: [`../README.md`](.
 ## Deployment
 
 - [deployment/local.md](deployment/local.md) — local quickstart.
+- [deployment/beta.md](deployment/beta.md) — single-host beta deploy
+  (docker.sock, env vars, smoke test).
 - [deployment/kubernetes.md](deployment/kubernetes.md) — Helm + Sysbox
   (completion approved in SPEC-49).
 - [deployment/enterprise.md](deployment/enterprise.md) — enterprise stack:
