@@ -385,8 +385,18 @@ public sealed class AutomationService(
             .Select(a => a.Id);
         var q = db.AutomationRuns.AsNoTracking()
             .Where(r => ownedIds.Contains(r.AutomationId));
-        if (from is not null) { q = q.Where(r => r.StartedAt >= from); }
-        if (to is not null) { q = q.Where(r => r.StartedAt <= to); }
+        // SQLite não traduz comparação de DateTimeOffset — filtra pela
+        // coluna espelho em ticks (StartedAtTicks = StartedAt.UtcTicks).
+        if (from is not null)
+        {
+            var fromTicks = from.Value.UtcTicks;
+            q = q.Where(r => r.StartedAtTicks >= fromTicks);
+        }
+        if (to is not null)
+        {
+            var toTicks = to.Value.UtcTicks;
+            q = q.Where(r => r.StartedAtTicks <= toTicks);
+        }
         var rows = await q.OrderByDescending(r => r.StartedAtTicks)
             .Take(Math.Clamp(take, 1, 200)).ToListAsync(ct);
         return rows.Select(ToRunInfo).ToList();

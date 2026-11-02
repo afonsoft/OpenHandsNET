@@ -148,8 +148,16 @@ public static class OpenAiGatewayEndpoints
     private static async Task<ChatRequest> ParseAsync(
         HttpRequest request, CancellationToken ct)
     {
-        var body = await JsonDocument.ParseAsync(request.Body,
-            cancellationToken: ct);
+        JsonDocument body;
+        try
+        {
+            body = await JsonDocument.ParseAsync(request.Body,
+                cancellationToken: ct);
+        }
+        catch (JsonException)
+        {
+            throw new GatewayException("request body must be valid JSON");
+        }
         var root = body.RootElement;
         foreach (var bad in Rejected)
         {

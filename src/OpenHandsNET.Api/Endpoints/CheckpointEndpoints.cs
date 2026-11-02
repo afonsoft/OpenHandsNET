@@ -26,10 +26,10 @@ public static partial class CheckpointEndpoints
         var conv = app.MapGroup("/api/v1/app-conversations")
             .WithTags("Checkpoints");
 
-        conv.MapGet("/{id:guid}/checkpoints", ListAsync).ProducesProblem(503);
-        conv.MapPost("/{id:guid}/checkpoints", SnapshotAsync).ProducesProblem(503);
-        conv.MapGet("/{id:guid}/checkpoints/{hash}", GetAsync).ProducesProblem(503);
-        conv.MapPost("/{id:guid}/checkpoints/{hash}/revert", RevertAsync).ProducesProblem(503);
+        conv.MapGet("/{id:guid}/checkpoints", ListAsync).ProducesProblem(404).ProducesProblem(409);
+        conv.MapPost("/{id:guid}/checkpoints", SnapshotAsync).ProducesProblem(404).ProducesProblem(409);
+        conv.MapGet("/{id:guid}/checkpoints/{hash}", GetAsync).ProducesProblem(404).ProducesProblem(409);
+        conv.MapPost("/{id:guid}/checkpoints/{hash}/revert", RevertAsync).ProducesProblem(404).ProducesProblem(409);
         return app;
     }
 
@@ -140,8 +140,9 @@ public static partial class CheckpointEndpoints
 
     /// <summary>
     /// Guarda comum: conversa + sandbox RUNNING + repo git.
-    /// 503 <c>sandbox_not_running</c> (sleeping — client oferece wake) e
-    /// 404 <c>no_repository</c> desabilitam a feature.
+    /// 404 sem conversa, 409 <c>sandbox_not_running</c> (sleeping —
+    /// client oferece wake) e 404 <c>no_repository</c> desabilitam a
+    /// feature.
     /// </summary>
     private static async Task<(Domain.Sandbox.Sandbox? Sandbox,
         IResult? Error)> SandboxOrProblem(Guid id,
@@ -149,10 +150,16 @@ public static partial class CheckpointEndpoints
             HttpContext http, CancellationToken ct)
     {
         var conv = await svc.GetAsync(id, ct);
-        if (conv?.SandboxId is null)
+        if (conv is null)
         {
             return (null, OpenHandsNetProblemFactory.Create(
-                http, 503, OpenHandsNetProblemFactory.SandboxNotRunning));
+                http, 404, "conversation not found"));
+        }
+
+        if (conv.SandboxId is null)
+        {
+            return (null, OpenHandsNetProblemFactory.Create(
+                http, 409, OpenHandsNetProblemFactory.SandboxNotRunning));
         }
 
         var sandboxes = http.RequestServices
@@ -161,7 +168,7 @@ public static partial class CheckpointEndpoints
         if (sb?.Status is not Domain.Sandbox.SandboxStatus.Running)
         {
             return (null, OpenHandsNetProblemFactory.Create(
-                http, 503, OpenHandsNetProblemFactory.SandboxNotRunning));
+                http, 409, OpenHandsNetProblemFactory.SandboxNotRunning));
         }
 
         if (!await ckpts.IsAvailableAsync(sb, ct))

@@ -3083,7 +3083,7 @@
           "403": {
             "description": "Forbidden"
           },
-          "503": {
+          "404": {
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -3091,7 +3091,17 @@
                 }
               }
             },
-            "description": "Service Unavailable"
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflict"
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}/checkpoints",
@@ -3134,7 +3144,7 @@
           "403": {
             "description": "Forbidden"
           },
-          "503": {
+          "404": {
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -3142,7 +3152,17 @@
                 }
               }
             },
-            "description": "Service Unavailable"
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflict"
           }
         },
         "summary": "POST /api/v1/app-conversations/{id:guid}/checkpoints",
@@ -3179,7 +3199,7 @@
           "403": {
             "description": "Forbidden"
           },
-          "503": {
+          "404": {
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -3187,7 +3207,17 @@
                 }
               }
             },
-            "description": "Service Unavailable"
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflict"
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}/checkpoints/{hash}",
@@ -3240,7 +3270,7 @@
           "403": {
             "description": "Forbidden"
           },
-          "503": {
+          "404": {
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -3248,7 +3278,17 @@
                 }
               }
             },
-            "description": "Service Unavailable"
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflict"
           }
         },
         "summary": "POST /api/v1/app-conversations/{id:guid}/checkpoints/{hash}/revert",
@@ -5620,6 +5660,16 @@
           "403": {
             "description": "Forbidden"
           },
+          "404": {
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
           "503": {
             "content": {
               "application/problem\u002Bjson": {
@@ -5643,6 +5693,16 @@
           },
           "403": {
             "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
           },
           "503": {
             "content": {
@@ -5669,6 +5729,16 @@
           },
           "403": {
             "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
           },
           "503": {
             "content": {
@@ -5711,6 +5781,16 @@
           },
           "403": {
             "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
           },
           "503": {
             "content": {

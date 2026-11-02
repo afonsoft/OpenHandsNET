@@ -32,8 +32,19 @@ public static class OrgEndpoints
             var user = current.User;
             if (user is null)
                 return Results.Unauthorized();
-            return Results.Ok(
-                await orgs.CreateAsync(user, req.Name, req.Slug, ct));
+            try
+            {
+                return Results.Ok(
+                    await orgs.CreateAsync(user, req.Name, req.Slug, ct));
+            }
+            catch (ArgumentException e)
+            {
+                return Results.BadRequest(new { detail = e.Message });
+            }
+            catch (OrgSlugConflictException)
+            {
+                return Results.Conflict(new { detail = "slug already taken" });
+            }
         }).RequireAuthorization("perm:create_organization");
 
         g.MapGet("/{org_id:guid}", async (

@@ -15,11 +15,22 @@ public static class KnowledgeEndpoints
         var g = app.MapGroup("/api/v1/knowledge").RequireAuthorization();
 
         g.MapGet("/suggestions", async (string? status, string? scope,
-            IKnowledgeService svc, CancellationToken ct) =>
-            Results.Ok(await svc.ListSuggestionsAsync(
-                status is null ? null
-                    : Enum.Parse<SuggestionStatus>(status, true),
-                scope, ct)));
+            IKnowledgeService svc, HttpContext http, CancellationToken ct) =>
+        {
+            SuggestionStatus? parsed = null;
+            if (status is not null)
+            {
+                if (!Enum.TryParse(status, true, out SuggestionStatus s))
+                {
+                    return OpenHandsNetProblemFactory.Create(
+                        http, 400, $"invalid status '{status}'");
+                }
+                parsed = s;
+            }
+
+            return Results.Ok(await svc.ListSuggestionsAsync(
+                parsed, scope, ct));
+        });
         g.MapPost("/suggestions", async (SuggestRequest body,
             IKnowledgeService svc, CancellationToken ct) =>
         {

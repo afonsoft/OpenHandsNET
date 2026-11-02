@@ -16,8 +16,9 @@ namespace OpenHandsNET.IntegrationTests.Api;
 
 /// <summary>
 /// SPEC-50 RF-002 + DoD: contrato dos 4 endpoints
-/// <c>/api/v1/keys/llm/byor*</c> — não são mais 403; 503 fail-closed
-/// quando o proxy está off; refresh retorna a key <b>uma única vez</b>
+/// <c>/api/v1/keys/llm/byor*</c> — não são mais 403; 404 quando o proxy
+/// não é provisionado, 503 fail-closed quando o proxy cai; refresh
+/// retorna a key <b>uma única vez</b>
 /// e audita; delete revoga; permitted devolve a allowlist do proxy.
 /// </summary>
 public sealed class Spec50ByorEndpointsTests : IDisposable
@@ -84,7 +85,7 @@ public sealed class Spec50ByorEndpointsTests : IDisposable
     }
 
     [Fact]
-    public async Task Endpoints_503_When_Proxy_Disabled()
+    public async Task Endpoints_404_When_Proxy_Disabled()
     {
         _byor.Enabled = false;
         var http = await LoginAsync("byor-off@example.com");
@@ -98,10 +99,10 @@ public sealed class Spec50ByorEndpointsTests : IDisposable
             await http.DeleteAsync("/api/v1/keys/llm/byor"),
         })
         {
-            res.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+            res.StatusCode.ShouldBe(HttpStatusCode.NotFound);
             (await res.Content.ReadFromJsonAsync<JsonElement>())
                 .GetProperty("code").GetString()
-                .ShouldBe("litellm_unavailable");
+                .ShouldBe("byor_not_configured");
         }
     }
 

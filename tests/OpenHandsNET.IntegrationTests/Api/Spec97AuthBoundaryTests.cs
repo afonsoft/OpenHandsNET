@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 
 using Microsoft.AspNetCore.Mvc.Testing;
 
@@ -147,6 +148,78 @@ public sealed class Spec97AuthBoundaryTests : IDisposable
     {
         using var http = Anon();
         var res = await http.GetAsync("/oauth/oidc/login");
+        res.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    // ---- RF-002: nightly wave — 500s restantes do fuzz -----------------
+
+    [Fact]
+    public async Task Chat_Completions_Empty_Body_Is_400_Not_500()
+    {
+        using var http = await TestAuth.LoginAsync(_factory);
+        var res = await http.PostAsync("/v1/chat/completions",
+            new StringContent("", Encoding.UTF8, "application/json"));
+        res.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Knowledge_Suggestions_Invalid_Status_Is_400()
+    {
+        using var http = await TestAuth.LoginAsync(_factory);
+        var res = await http.GetAsync(
+            "/api/v1/knowledge/suggestions?status=&scope=");
+        res.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        res = await http.GetAsync(
+            "/api/v1/knowledge/suggestions?status=bogus");
+        res.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Org_Create_Empty_Name_Is_4xx_Not_500()
+    {
+        using var http = await TestAuth.LoginAsync(_factory);
+        var res = await http.PostAsJsonAsync("/api/v1/organizations",
+            new { name = " ", slug = (string?)null });
+        ((int)res.StatusCode).ShouldBeLessThan(500);
+        res.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Org_Create_Duplicate_Slug_Is_409_Not_500()
+    {
+        using var http = await TestAuth.LoginAsync(_factory);
+        var slug = $"dup-{Guid.NewGuid():N}";
+        (await http.PostAsJsonAsync("/api/v1/organizations",
+            new { name = "Dup Org", slug })).EnsureSuccessStatusCode();
+        var res = await http.PostAsJsonAsync("/api/v1/organizations",
+            new { name = "Dup Org 2", slug });
+        res.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task Automation_Runs_From_To_Does_Not_500()
+    {
+        using var http = await TestAuth.LoginAsync(_factory);
+        var res = await http.GetAsync(
+            "/api/v1/automations/runs?from=2024-01-01T00:00:00Z"
+                + "&to=2030-01-01T00:00:00Z&take=10");
+        ((int)res.StatusCode).ShouldBeLessThan(500);
+    }
+
+    [Fact]
+    public async Task Checkpoints_Unknown_Conversation_Is_404_Not_503()
+    {
+        using var http = await TestAuth.LoginAsync(_factory);
+        var res = await http.GetAsync(
+            $"/api/v1/app-conversations/{Guid.NewGuid()}/checkpoints");
+        res.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Byor_Disabled_Is_404_Not_503()
+    {
+        using var http = await TestAuth.LoginAsync(_factory);
+        var res = await http.GetAsync("/api/v1/keys/llm/byor");
         res.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 }
