@@ -225,7 +225,7 @@ public static class AutomationEndpoints
             private int _used;
             private DateTimeOffset _windowStart = DateTimeOffset.UtcNow;
 
-            public bool Allow()
+            public bool TryConsume()
             {
                 var now = DateTimeOffset.UtcNow;
                 if (now - _windowStart >= TimeSpan.FromMinutes(1))
@@ -242,11 +242,11 @@ public static class AutomationEndpoints
 
         /// <summary>10 disparos/minuto por token.</summary>
         public static bool Allow(string token) =>
-            Tokens.GetOrAdd(token, _ => new Bucket(10)).Allow();
+            Tokens.GetOrAdd(token, _ => new Bucket(10)).TryConsume();
 
         /// <summary>60 disparos/minuto por IP.</summary>
         public static bool AllowIp(string? ip) =>
-            Ips.GetOrAdd(ip ?? "unknown", _ => new Bucket(60)).Allow();
+            Ips.GetOrAdd(ip ?? "unknown", _ => new Bucket(60)).TryConsume();
 
         /// <summary>Test hook: limpa os buckets.</summary>
         public static void Reset()

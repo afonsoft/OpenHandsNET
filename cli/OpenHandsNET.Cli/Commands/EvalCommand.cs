@@ -109,7 +109,7 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
                     pass = results.Count(r => r.Pass),
                     score = results.Average(r => r.Score)
                 },
-                Json), cancellationToken);
+                JsonOpts), cancellationToken);
 
         var regressions = CheckGate(settings, results);
         if (settings.Json)
@@ -186,7 +186,7 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
             ct: ct);
     }
 
-    private static readonly JsonSerializerOptions Json = new()
+    private static readonly JsonSerializerOptions JsonOpts = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         WriteIndented = true,
