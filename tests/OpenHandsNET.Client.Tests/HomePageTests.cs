@@ -15,7 +15,7 @@ namespace OpenHandsNET.Client.Tests;
 /// SPEC-05 bUnit tests — componentes-chave renderizam estados
 /// (running / confirmation / error) sem depender de backend real.
 /// </summary>
-public class HomePageTests : TestContext
+public class HomePageTests : BunitContext
 {
     public HomePageTests()
     {
@@ -51,7 +51,7 @@ public class HomePageTests : TestContext
         Services.AddSingleton(Api(_ =>
             Json("""{"items":[],"next_page_id":null}""")));
 
-        var cut = RenderComponent<Home>();
+        var cut = Render<Home>();
         cut.WaitForAssertion(() =>
         {
             cut.Markup.ShouldContain("OpenHandsNET");
@@ -70,7 +70,7 @@ public class HomePageTests : TestContext
               "next_page_id":null}
             """)));
 
-        var cut = RenderComponent<Home>();
+        var cut = Render<Home>();
         cut.WaitForAssertion(() =>
         {
             cut.Markup.ShouldContain("fix bug");

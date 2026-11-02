@@ -15,7 +15,7 @@ namespace OpenHandsNET.Client.Tests;
 /// ToolCallCard com status done/pending + reasoning persistido, e
 /// heartbeat run_progress que não renderiza card.
 /// </summary>
-public class Spec41ChatUxTests : TestContext
+public class Spec41ChatUxTests : BunitContext
 {
     public Spec41ChatUxTests()
     {
@@ -45,7 +45,7 @@ public class Spec41ChatUxTests : TestContext
     [Fact]
     public void Thinking_Streaming_Without_Content_Is_Expanded()
     {
-        var cut = RenderComponent<ThinkingSection>(p => p
+        var cut = Render<ThinkingSection>(p => p
             .Add(x => x.Reasoning, "hmm…")
             .Add(x => x.Streaming, true)
             .Add(x => x.ContentStarted, false));
@@ -56,7 +56,7 @@ public class Spec41ChatUxTests : TestContext
     [Fact]
     public void Thinking_Auto_Collapses_When_Content_Starts()
     {
-        var cut = RenderComponent<ThinkingSection>(p => p
+        var cut = Render<ThinkingSection>(p => p
             .Add(x => x.Reasoning, "hmm…")
             .Add(x => x.Streaming, true)
             .Add(x => x.ContentStarted, true));
@@ -66,7 +66,7 @@ public class Spec41ChatUxTests : TestContext
     [Fact]
     public void Thinking_Manual_Toggle_Wins_Over_Auto()
     {
-        var cut = RenderComponent<ThinkingSection>(p => p
+        var cut = Render<ThinkingSection>(p => p
             .Add(x => x.Reasoning, "hmm…")
             .Add(x => x.Streaming, true)
             .Add(x => x.ContentStarted, true));
@@ -131,7 +131,7 @@ public class Spec41ChatUxTests : TestContext
              "timestamp":"2026-01-01T00:00:00Z",
              "tool":{"name":"file_read","arguments":{"path":"/x"}}}
             """);
-        var cut = RenderComponent<EventCard>(p => p
+        var cut = Render<EventCard>(p => p
             .Add(x => x.Event, e).Add(x => x.Siblings, [e]));
         cut.Markup.ShouldContain("pending");
     }
@@ -149,7 +149,7 @@ public class Spec41ChatUxTests : TestContext
              "action_id":"a1","timestamp":"2026-01-01T00:00:02Z",
              "observation":{"output":"file body"}}
             """);
-        var cut = RenderComponent<EventCard>(p => p
+        var cut = Render<EventCard>(p => p
             .Add(x => x.Event, action)
             .Add(x => x.Siblings, [action, obs]));
         cut.Markup.ShouldContain("done");
@@ -165,7 +165,7 @@ public class Spec41ChatUxTests : TestContext
              "reasoning_content":"thought about files",
              "tool":{"name":"file_read","arguments":{"path":"/x"}}}
             """);
-        var cut = RenderComponent<EventCard>(p => p.Add(x => x.Event, e));
+        var cut = Render<EventCard>(p => p.Add(x => x.Event, e));
         cut.Find(".ev-card.thinking").ShouldNotBeNull();
         // Persistido chega colapsado — re-expansível via clique.
         cut.FindAll(".thinking-body").ShouldBeEmpty();
@@ -182,7 +182,7 @@ public class Spec41ChatUxTests : TestContext
              "timestamp":"2026-01-01T00:00:00Z",
              "phase":"heartbeat","iteration":0,"max_iterations":0}
             """);
-        var cut = RenderComponent<EventCard>(p => p.Add(x => x.Event, e));
+        var cut = Render<EventCard>(p => p.Add(x => x.Event, e));
         cut.FindAll(".ev-card").ShouldBeEmpty();
     }
 
@@ -193,13 +193,13 @@ public class Spec41ChatUxTests : TestContext
             {"id":"p1","kind":"PauseEvent","source":"user",
              "timestamp":"2026-01-01T00:00:00Z"}
             """);
-        RenderComponent<EventCard>(p => p.Add(x => x.Event, pause))
+        Render<EventCard>(p => p.Add(x => x.Event, pause))
             .Markup.ShouldContain("execução pausada");
         var intr = Ev("""
             {"id":"i1","kind":"InterruptEvent","source":"user",
              "timestamp":"2026-01-01T00:00:00Z"}
             """);
-        RenderComponent<EventCard>(p => p.Add(x => x.Event, intr))
+        Render<EventCard>(p => p.Add(x => x.Event, intr))
             .Markup.ShouldContain("execução interrompida");
     }
 }
