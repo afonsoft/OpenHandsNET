@@ -313,6 +313,27 @@ internal static class ProgramParts
 
         app.UseSerilogRequestLogging();
 
+        // #218: bodies nulos/malformados que o model-binding rejeita com
+        // BadHttpRequestException retornam 400 vazio — converte para
+        // problem+json conforme o schema documentado no OpenAPI.
+        app.Use(async (ctx, next) =>
+        {
+            try
+            {
+                await next();
+            }
+            catch (BadHttpRequestException ex)
+                when (!ctx.Response.HasStarted)
+            {
+                ctx.Response.Clear();
+                await Results.Problem(
+                        statusCode: ex.StatusCode,
+                        title: "bad_request",
+                        detail: ex.Message)
+                    .ExecuteAsync(ctx);
+            }
+        });
+
         // SPEC-13 RF-004: correlation enrichers em cada log do request.
         // (Middleware roda pré-routing → conversation_id vem do path.)
         app.Use(async (ctx, next) =>

@@ -27,9 +27,12 @@ public static class ScmEndpoints
         // Manifest flow — devolve o manifest JSON p/ criar o GitHub App.
         scm.MapPost("/github/manifest", (
             [FromBody] ScmManifestRequest req,
-            IScmConnectionService svc) =>
-            Results.Ok(svc.BuildGitHubAppManifest(
-                req.RedirectUri, req.AppName ?? "openhandsnet")))
+            IScmConnectionService svc, HttpContext http) =>
+            !Uri.TryCreate(req.RedirectUri, UriKind.Absolute, out _)
+                ? OpenHandsNetProblemFactory.Create(
+                    http, 400, "redirect_uri must be an absolute URI")
+                : Results.Ok(svc.BuildGitHubAppManifest(
+                    req.RedirectUri, req.AppName ?? "openhandsnet")))
             .RequireAuthorization();
 
         // Callback do manifest flow — troca code → credenciais do app.
