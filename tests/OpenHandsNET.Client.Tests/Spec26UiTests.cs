@@ -12,7 +12,7 @@ namespace OpenHandsNET.Client.Tests;
 /// SPEC-26 AC: markdown sanitizado, fuzzy da palette, toasts, ciclo de
 /// tema, ícones SVG, host de toasts, banner offline.
 /// </summary>
-public class Spec26UiTests : TestContext
+public class Spec26UiTests : BunitContext
 {
     public Spec26UiTests()
     {
@@ -150,7 +150,7 @@ public class Spec26UiTests : TestContext
     [Fact]
     public void Icon_Renders_Svg_With_Known_Path()
     {
-        var cut = RenderComponent<Icon>(p => p.Add(x => x.Name, "terminal"));
+        var cut = Render<Icon>(p => p.Add(x => x.Name, "terminal"));
         var svg = cut.Find("svg.ohn-icon");
         svg.GetAttribute("viewBox").ShouldBe("0 0 24 24");
         cut.Markup.ShouldContain("<path");
@@ -159,7 +159,7 @@ public class Spec26UiTests : TestContext
     [Fact]
     public void Icon_Unknown_Name_Falls_Back_To_Info()
     {
-        var cut = RenderComponent<Icon>(p => p.Add(x => x.Name, "inexistente"));
+        var cut = Render<Icon>(p => p.Add(x => x.Name, "inexistente"));
         cut.Markup.ShouldContain("<circle"); // ícone info
     }
 
@@ -170,7 +170,7 @@ public class Spec26UiTests : TestContext
     {
         var toasts = new ToastService();
         Services.AddSingleton(toasts);
-        var cut = RenderComponent<ToastHost>();
+        var cut = Render<ToastHost>();
         toasts.Warn("atenção");
         cut.Find(".toast.warn .msg").TextContent.ShouldContain("atenção");
         cut.Find(".toast .x").Click();

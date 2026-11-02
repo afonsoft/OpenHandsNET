@@ -17,7 +17,7 @@ namespace OpenHandsNET.Client.Tests;
 /// SPEC-47 RF-004: página <c>/automations</c> — tabela + toggle +
 /// run-now + formulário de criação; detalhe com histórico e hook.
 /// </summary>
-public class Spec47AutomationsPageTests : TestContext
+public class Spec47AutomationsPageTests : BunitContext
 {
     public Spec47AutomationsPageTests()
     {
@@ -68,7 +68,7 @@ public class Spec47AutomationsPageTests : TestContext
     public void List_Renders_Rows_With_Schedule_And_NextRun()
     {
         Api(_ => Json($"[{AutomationJson}]"));
-        var cut = RenderComponent<AutomationsPage>();
+        var cut = Render<AutomationsPage>();
         cut.WaitForAssertion(() =>
         {
             cut.Markup.ShouldContain("nightly");
@@ -84,7 +84,7 @@ public class Spec47AutomationsPageTests : TestContext
         Api(req => req.Method == HttpMethod.Patch
             ? (patched = true, Json(AutomationJson)).Item2
             : Json($"[{AutomationJson}]"));
-        var cut = RenderComponent<AutomationsPage>();
+        var cut = Render<AutomationsPage>();
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("nightly"));
         cut.Find("input[type=checkbox]").Change(false);
         patched.ShouldBeTrue();
@@ -103,7 +103,7 @@ public class Spec47AutomationsPageTests : TestContext
             """;
         Api(req => req.RequestUri!.AbsolutePath.Contains("/runs")
             ? Json(runs) : Json(AutomationJson));
-        var cut = RenderComponent<AutomationDetailPage>(p =>
+        var cut = Render<AutomationDetailPage>(p =>
             p.Add(x => x.Id,
                 Guid.Parse("11111111-1111-1111-1111-111111111111")));
         cut.WaitForAssertion(() =>
