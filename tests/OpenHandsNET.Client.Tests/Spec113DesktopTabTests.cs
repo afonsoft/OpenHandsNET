@@ -18,7 +18,7 @@ namespace OpenHandsNET.Client.Tests;
 /// noVNC via iframe (<c>{url}vnc.html?autoconnect…</c>); sem a surface,
 /// empty-state.
 /// </summary>
-public class Spec113DesktopTabTests : TestContext
+public class Spec113DesktopTabTests : BunitContext
 {
     public Spec113DesktopTabTests()
     {
@@ -86,7 +86,7 @@ public class Spec113DesktopTabTests : TestContext
                 ? Json(SurfacesJson) : Empty(), out var api);
         Services.AddSingleton(api);
 
-        var cut = RenderComponent<DesktopTab>(
+        var cut = Render<DesktopTab>(
             p => p.Add(x => x.State, state));
         cut.WaitForAssertion(() =>
             cut.Find("iframe.desktop-frame").ShouldNotBeNull());
@@ -105,7 +105,7 @@ public class Spec113DesktopTabTests : TestContext
         var state = StateWith(_ => Empty(), out var api);
         Services.AddSingleton(api);
 
-        var cut = RenderComponent<DesktopTab>(
+        var cut = Render<DesktopTab>(
             p => p.Add(x => x.State, state));
         cut.WaitForAssertion(() =>
             cut.FindAll("iframe.desktop-frame").ShouldBeEmpty());

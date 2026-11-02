@@ -15,7 +15,7 @@ namespace OpenHandsNET.Client.Tests;
 /// <summary>
 /// SPEC-21 — AdminState gate + páginas admin com HTTP stub (bUnit).
 /// </summary>
-public class AdminPageTests : TestContext
+public class AdminPageTests : BunitContext
 {
     public AdminPageTests()
     {
@@ -139,8 +139,8 @@ public class AdminPageTests : TestContext
     {
         Wire(_ => Json(new { is_super_admin = false }));
         var nav = Services.GetRequiredService<NavigationManager>()
-            as Bunit.TestDoubles.FakeNavigationManager;
-        RenderComponent<AdminUsersPage>();
+            as Bunit.TestDoubles.BunitNavigationManager;
+        Render<AdminUsersPage>();
         nav!.Uri.ShouldBe("http://localhost/");
     }
 
@@ -148,7 +148,7 @@ public class AdminPageTests : TestContext
     public void UsersPage_Renders_Rows_For_Admin()
     {
         Wire();
-        var cut = RenderComponent<AdminUsersPage>();
+        var cut = Render<AdminUsersPage>();
         cut.WaitForAssertion(() =>
             cut.Markup.ShouldContain("a@x.io"), TimeSpan.FromSeconds(5));
         cut.Markup.ShouldContain("b@x.io");
@@ -159,7 +159,7 @@ public class AdminPageTests : TestContext
     public void AdminsPage_Grant_Posts_Email()
     {
         var (_, _, handler) = Wire();
-        var cut = RenderComponent<AdminAdminsPage>();
+        var cut = Render<AdminAdminsPage>();
         cut.WaitForAssertion(() =>
             cut.Markup.ShouldContain("a@x.io"), TimeSpan.FromSeconds(5));
         cut.Find("input").Input("new@x.io");
@@ -175,7 +175,7 @@ public class AdminPageTests : TestContext
     public void FlagsPage_Renders_Toggle_State()
     {
         Wire();
-        var cut = RenderComponent<AdminFlagsPage>();
+        var cut = Render<AdminFlagsPage>();
         cut.WaitForAssertion(() =>
             cut.Markup.ShouldContain("beta_ui"), TimeSpan.FromSeconds(5));
         cut.Markup.ShouldContain(">on<");
@@ -185,7 +185,7 @@ public class AdminPageTests : TestContext
     public void Index_Shows_Counts_And_Bundle_Link()
     {
         Wire();
-        var cut = RenderComponent<AdminIndexPage>();
+        var cut = Render<AdminIndexPage>();
         cut.WaitForAssertion(() =>
             cut.Markup.ShouldContain("pacote de suporte"),
             TimeSpan.FromSeconds(5));
@@ -198,7 +198,7 @@ public class AdminPageTests : TestContext
         Wire(r => r.RequestUri!.ToString().Contains("super-admins/me")
             ? Json(new { is_super_admin = true })
             : new HttpResponseMessage(HttpStatusCode.Forbidden));
-        var cut = RenderComponent<AdminUsersPage>();
+        var cut = Render<AdminUsersPage>();
         cut.WaitForAssertion(() =>
             cut.Markup.ShouldContain("403"), TimeSpan.FromSeconds(5));
     }

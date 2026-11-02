@@ -19,7 +19,7 @@ namespace OpenHandsNET.Client.Tests;
 /// na activity bar e embute o code-server via iframe (URL já traz o
 /// preview token).
 /// </summary>
-public class Spec77VscodeSurfaceTests : TestContext
+public class Spec77VscodeSurfaceTests : BunitContext
 {
     public Spec77VscodeSurfaceTests()
     {
@@ -90,7 +90,7 @@ public class Spec77VscodeSurfaceTests : TestContext
                 ? Json(SurfacesJson) : Empty(), out var api);
         Services.AddSingleton(api);
 
-        var cut = RenderComponent<IdeTab>(p => p.Add(x => x.State, state));
+        var cut = Render<IdeTab>(p => p.Add(x => x.State, state));
         cut.WaitForAssertion(() =>
             cut.Find(".ide-activity-vscode").ShouldNotBeNull());
 
@@ -112,7 +112,7 @@ public class Spec77VscodeSurfaceTests : TestContext
         var state = StateWith(_ => Empty(), out var api);
         Services.AddSingleton(api);
 
-        var cut = RenderComponent<IdeTab>(p => p.Add(x => x.State, state));
+        var cut = Render<IdeTab>(p => p.Add(x => x.State, state));
         cut.WaitForAssertion(() =>
             cut.FindAll(".ide-activity-vscode").ShouldBeEmpty());
     }
