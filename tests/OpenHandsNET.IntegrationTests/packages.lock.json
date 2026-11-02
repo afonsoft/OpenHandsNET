@@ -375,8 +375,8 @@
       },
       "Microsoft.DotNet.HotReload.WebAssembly.Browser": {
         "type": "Transitive",
-        "resolved": "10.0.113",
-        "contentHash": "pS9mHASF3rXnE3KUhosqIg0b/PqHhnQY67LUzgE3MrmfQSqD5c/e0ZBOdX8TPO0LRTn4fF7DWUEqOGKODz3CYg=="
+        "resolved": "10.0.114",
+        "contentHash": "/5vjMWPo2tTac0g8x6hh0fMu2OwU7rnUGhTeOtn52IwYzjLUGNWTde/jatpkNOsoufdZpgkpTdMV6EibfEoSTA=="
       },
       "Microsoft.EntityFrameworkCore": {
         "type": "Transitive",
@@ -1086,7 +1086,7 @@
           "Markdig": "[1.4.2, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.13, )",
           "Microsoft.AspNetCore.SignalR.Client": "[10.0.13, )",
-          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.113, )",
+          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.114, )",
           "OpenHandsNET.Application": "[1.0.0, )"
         }
       },
@@ -1119,7 +1119,7 @@
           "StackExchange.Redis": "[3.4.5, )",
           "System.Security.Cryptography.Xml": "[10.0.13, )",
           "Ulid": "[1.4.1, )",
-          "YamlDotNet": "[16.3.0, )",
+          "YamlDotNet": "[18.1.0, )",
           "prometheus-net.AspNetCore": "[8.2.1, )"
         }
       },
@@ -1544,9 +1544,9 @@
       },
       "YamlDotNet": {
         "type": "CentralTransitive",
-        "requested": "[16.3.0, )",
-        "resolved": "16.3.0",
-        "contentHash": "SgMOdxbz8X65z8hraIs6hOEdnkH6hESTAIUa7viEngHOYaH+6q5XJmwr1+yb9vJpNQ19hCQY69xbFsLtXpobQA=="
+        "requested": "[18.1.0, )",
+        "resolved": "18.1.0",
+        "contentHash": "5K+9KFg2TdTl7VXv88Qzi/0lqK6JFoNP3lRuImPYGRV7K/QYklDyTrj4+A+KAki1JsQi6qKY+hDyY7d6WRqjrw=="
       }
     }
   }
