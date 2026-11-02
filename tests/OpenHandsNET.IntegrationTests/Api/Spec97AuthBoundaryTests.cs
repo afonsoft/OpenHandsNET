@@ -222,4 +222,26 @@ public sealed class Spec97AuthBoundaryTests : IDisposable
         var res = await http.GetAsync("/api/v1/keys/llm/byor");
         res.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task McpToolCall_Null_Body_Is_400_ProblemJson()
+    {
+        // Model-binding rejeita JSON null com BadHttpRequestException —
+        // middleware converte p/ problem+json (schema-conforme).
+        using var http = await TestAuth.LoginAsync(_factory);
+        var res = await http.PostAsync("/api/v1/mcp/tool-call",
+            new StringContent("null", Encoding.UTF8, "application/json"));
+        res.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        res.Content.Headers.ContentType?.MediaType
+            .ShouldBe("application/problem+json");
+    }
+
+    [Fact]
+    public async Task Scm_Manifest_Missing_RedirectUri_Is_400_Not_500()
+    {
+        using var http = await TestAuth.LoginAsync(_factory);
+        var res = await http.PostAsJsonAsync(
+            "/api/v1/scm/github/manifest", new { app_name = "x" });
+        res.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
 }
