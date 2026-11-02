@@ -305,6 +305,11 @@
           "SQLitePCLRaw.core": "2.1.13"
         }
       },
+      "Microsoft.DotNet.HotReload.WebAssembly.Browser": {
+        "type": "Transitive",
+        "resolved": "10.0.114",
+        "contentHash": "/5vjMWPo2tTac0g8x6hh0fMu2OwU7rnUGhTeOtn52IwYzjLUGNWTde/jatpkNOsoufdZpgkpTdMV6EibfEoSTA=="
+      },
       "Microsoft.EntityFrameworkCore": {
         "type": "Transitive",
         "resolved": "10.0.14",
@@ -929,6 +934,7 @@
           "Markdig": "[1.5.1, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.14, )",
           "Microsoft.AspNetCore.SignalR.Client": "[10.0.14, )",
+          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.114, )",
           "OpenHandsNET.Application": "[1.0.0, )"
         }
       },
@@ -954,7 +960,7 @@
           "Microsoft.AspNetCore.DataProtection.EntityFrameworkCore": "[10.0.14, )",
           "Microsoft.EntityFrameworkCore.Sqlite": "[10.0.14, )",
           "Microsoft.Extensions.Caching.StackExchangeRedis": "[10.0.14, )",
-          "Microsoft.Extensions.Diagnostics.HealthChecks": "[10.0.13, )",
+          "Microsoft.Extensions.Diagnostics.HealthChecks": "[10.0.14, )",
           "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore": "[10.0.14, )",
           "Microsoft.Extensions.Hosting.Abstractions": "[10.0.14, )",
           "Microsoft.Extensions.Http": "[10.0.14, )",
@@ -1165,7 +1171,7 @@
       },
       "Microsoft.Extensions.Diagnostics.HealthChecks": {
         "type": "CentralTransitive",
-        "requested": "[10.0.13, )",
+        "requested": "[10.0.14, )",
         "resolved": "10.0.14",
         "contentHash": "QwCCJ8J80dwDgNk4YZJWjFqq0UEoiNr3E3V7ZQRQLdlgkYS6MmB3gn5rQe2rc8Y815CpCy5DIujcRxYEksJK+g==",
         "dependencies": {
