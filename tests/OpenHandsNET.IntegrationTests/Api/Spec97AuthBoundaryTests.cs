@@ -226,8 +226,9 @@ public sealed class Spec97AuthBoundaryTests : IDisposable
     [Fact]
     public async Task McpToolCall_Null_Body_Is_400_ProblemJson()
     {
-        // Model-binding rejeita JSON null com BadHttpRequestException —
-        // middleware converte p/ problem+json (schema-conforme).
+        // JSON null em param de body inferido → short-circuit 400 vazio
+        // (sem exceção) — middleware reescreve p/ problem+json (schema-
+        // conforme) quando o endpoint declara ProducesProblem(400).
         using var http = await TestAuth.LoginAsync(_factory);
         var res = await http.PostAsync("/api/v1/mcp/tool-call",
             new StringContent("null", Encoding.UTF8, "application/json"));

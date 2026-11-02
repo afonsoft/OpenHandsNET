@@ -313,11 +313,44 @@ internal static class ProgramParts
 
         app.UseSerilogRequestLogging();
 
-        // #218: bodies nulos/malformados que o model-binding rejeita com
-        // BadHttpRequestException retornam 400 vazio — converte para
-        // problem+json conforme o schema documentado no OpenAPI.
+        // #218: bodies nulos/malformados geram 400 vazio por dois caminhos:
+        // (a) JSON malformado → BadHttpRequestException → convertido abaixo;
+        // (b) JSON `null` em param de body inferido → o RequestDelegateFactory
+        // faz short-circuit com 400 SEM corpo e SEM exceção → coberto pelo
+        // OnStarting, que reescreve qualquer 400 vazio-sem-content-type em
+        // problem+json quando o endpoint declara ProducesProblem(400).
         app.Use(async (ctx, next) =>
         {
+            ctx.Response.OnStarting(static state =>
+            {
+                var http = (HttpContext)state;
+                var res = http.Response;
+                if (res.StatusCode != StatusCodes.Status400BadRequest
+                    || !string.IsNullOrEmpty(res.ContentType)
+                    || (res.ContentLength ?? 0) > 0)
+                {
+                    return Task.CompletedTask;
+                }
+
+                var declaresProblem = http.GetEndpoint()?.Metadata
+                    .OfType<Microsoft.AspNetCore.Http.Metadata
+                        .IProducesResponseTypeMetadata>()
+                    .Any(m => m.StatusCode == StatusCodes.Status400BadRequest
+                        && (m.ContentTypes?.Any(mt => string.Equals(mt,
+                            "application/problem+json",
+                            StringComparison.OrdinalIgnoreCase)) ?? false));
+                if (declaresProblem != true)
+                {
+                    return Task.CompletedTask;
+                }
+
+                res.ContentLength = null;
+                return ProblemDetails.OpenHandsNetProblemFactory
+                    .Create(http, StatusCodes.Status400BadRequest,
+                        "Request body is missing, empty, or could not be deserialized.")
+                    .ExecuteAsync(http);
+            }, ctx);
+
             try
             {
                 await next();
