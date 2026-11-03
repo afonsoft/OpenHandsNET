@@ -96,8 +96,12 @@ public static class HealthEndpoints
             // SPEC-36: provider redis → reporta conectividade (fail-open:
             // degraded, nunca derruba o endpoint).
             var mux = sp.GetService<StackExchange.Redis.IConnectionMultiplexer>();
-            checks["cache"] = mux is null ? "memory"
-                : mux.IsConnected ? "ok" : "degraded";
+            checks["cache"] = mux switch
+            {
+                null => "memory",
+                { IsConnected: true } => "ok",
+                _ => "degraded",
+            };
             // kubernetes: o substrate é a API do cluster — a presença do pod
             // já prova agendamento; dockerStatus "n/a" não degrada.
             var healthy = report.Status == HealthStatus.Healthy &&

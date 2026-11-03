@@ -42,7 +42,7 @@ public sealed class DoctorCommand : AsyncCommand<DoctorCommand.Settings>
         var url = settings.ServerUrl
             ?? Environment.GetEnvironmentVariable("OPENHANDSNET_SERVER_URL")
             ?? Environment.GetEnvironmentVariable("OPENHANDSNET_CLOUD_URL")
-            ?? "http://localhost:8080";
+            ?? CliDefaults.DefaultServerUrl;
         var svc = new DoctorService(new HttpClient());
         var report = settings.Preflight
             ? await DoctorService.RunPreflightAsync(

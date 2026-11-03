@@ -20,6 +20,8 @@ public sealed class OpenAiCompatLlmProvider(
     IOptions<AgentLlmOptions> agentOptions,
     ILogger<OpenAiCompatLlmProvider> logger) : IAgentLlmProvider
 {
+    private const string DefaultLiteLlmBaseUrl = "http://localhost:4000";
+
     private static readonly JsonSerializerOptions Json = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -172,7 +174,7 @@ public sealed class OpenAiCompatLlmProvider(
         // virtual key do owner; X-LiteLLM-Key carrega o key_id (tracking).
         var byor = llmOptions.Byor;
         var baseUrl = (byor?.BaseUrl ?? cfg.BaseUrl
-            ?? "http://localhost:4000").TrimEnd('/');
+            ?? DefaultLiteLlmBaseUrl).TrimEnd('/');
         var request = new HttpRequestMessage(
             HttpMethod.Post, $"{baseUrl}/chat/completions")
         {

@@ -231,7 +231,6 @@ public sealed class AgentRunner(
         var history = rebuilt.Messages;
         var ids = rebuilt.EventIds;
         var lastEventId = rebuilt.LastEventId;
-        var confirmationMode = conv.ConfirmationMode;
         var hooks = services.GetService<Application.Hooks.IHookService>();
         // SPEC-33 RF-001: analyzer por ação — High força confirmação
         // (mesmo com permission allow), diagnostic security_risk redacted.

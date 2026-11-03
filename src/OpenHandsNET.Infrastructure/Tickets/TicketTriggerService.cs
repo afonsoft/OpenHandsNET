@@ -238,32 +238,32 @@ public sealed class TicketTriggerService(
         if (template is not null)
         {
             return template
-                .Replace("{identifier}", env.Wrap(ev.IssueKey, src, "key"))
-                .Replace("{title}", env.Wrap(ev.Title, src, "title"))
-                .Replace("{description}", env.Wrap(ev.Description, src, "description"))
-                .Replace("{labels}", env.Wrap(labels, src, "labels"))
-                .Replace("{url}", env.Wrap(ev.Url, src, "url"))
-                .Replace("{comment}", env.Wrap(ev.CommentBody, src, "comment"));
+                .Replace("{identifier}", env.WrapField(ev.IssueKey, src, "key"))
+                .Replace("{title}", env.WrapField(ev.Title, src, "title"))
+                .Replace("{description}", env.WrapField(ev.Description, src, "description"))
+                .Replace("{labels}", env.WrapField(labels, src, "labels"))
+                .Replace("{url}", env.WrapField(ev.Url, src, "url"))
+                .Replace("{comment}", env.WrapField(ev.CommentBody, src, "comment"));
         }
         var sb = new System.Text.StringBuilder();
-        sb.Append("Ticket ").Append(env.Wrap(ev.IssueKey, src, "key"));
+        sb.Append("Ticket ").Append(env.WrapField(ev.IssueKey, src, "key"));
         if (ev.Title is not null)
         {
-            sb.Append(": ").Append(env.Wrap(ev.Title, src, "title"));
+            sb.Append(": ").Append(env.WrapField(ev.Title, src, "title"));
         }
         sb.Append('\n');
         if (ev.Description is not null)
         {
-            sb.Append('\n').Append(env.Wrap(ev.Description, src, "description")).Append('\n');
+            sb.Append('\n').Append(env.WrapField(ev.Description, src, "description")).Append('\n');
         }
         if (labels.Length > 0)
         {
-            sb.Append("\nLabels: ").Append(env.Wrap(labels, src, "labels"));
+            sb.Append("\nLabels: ").Append(env.WrapField(labels, src, "labels"));
         }
         if (ev.CommentBody is not null)
         {
             sb.Append("\n\nTrigger comment: ")
-                .Append(env.Wrap(ev.CommentBody, src, "comment"));
+                .Append(env.WrapField(ev.CommentBody, src, "comment"));
         }
         if (repo is not null)
         {

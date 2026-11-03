@@ -11,7 +11,7 @@ namespace OpenHandsNET.Cli.Services;
 /// </summary>
 public sealed class CloudApiClient
 {
-    private const string DefaultUrl = "http://localhost:8080";
+    private const string DefaultUrl = CliDefaults.DefaultServerUrl;
     private readonly HttpClient _http;
     private static readonly JsonSerializerOptions Json = new()
     {

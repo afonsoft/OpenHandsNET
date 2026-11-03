@@ -73,8 +73,8 @@ public sealed class Spec91UntrustedInputTests
     public void Budget_Caps_Aggregate_At_8KB()
     {
         var env = new UntrustedInput.Envelope();
-        var a = env.Wrap(new string('a', 4096), "s", "f1");
-        var b = env.Wrap(new string('b', 4096), "s", "f2");
+        var a = env.WrapField(new string('a', 4096), "s", "f1");
+        var b = env.WrapField(new string('b', 4096), "s", "f2");
         a.ShouldNotContain(UntrustedInput.TruncatedMark);
         b.ShouldContain(UntrustedInput.TruncatedMark);
     }

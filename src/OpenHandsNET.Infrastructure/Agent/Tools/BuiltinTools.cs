@@ -20,6 +20,7 @@ public static class BuiltinTools
 {
     private const string Project = "project";
     private const string Content = "content";
+    private const string Action = "action";
     /// <summary>Creates the bash exec tool (risky — confirmation-gated).</summary>
     public static AgentTool Bash(TimeSpan timeout) => new(
         new ToolSchema("bash",
@@ -470,7 +471,7 @@ public static class BuiltinTools
             return ToolResult.Error("conversation owner unresolved");
         }
 
-        return args.GetProperty("action").GetString() switch
+        return args.GetProperty(Action).GetString() switch
         {
             "list" => await ListRoutinesAsync(svc, ownerId, ct),
             "create" => await CreateRoutineAsync(
@@ -536,7 +537,7 @@ public static class BuiltinTools
             return ToolResult.Error("id required");
         }
 
-        if (Str(args, "action") == "delete")
+        if (Str(args, Action) == "delete")
         {
             return await svc.DeleteAsync(id, ownerId, ct)
                 ? ToolResult.Ok(new { deleted = id })
@@ -547,7 +548,7 @@ public static class BuiltinTools
             new OpenHandsNET.Application.Automations
                 .AutomationUpsert(null, null, null, null,
                     null, null, null, null,
-                    Enabled: Str(args, "action") == "enable",
+                    Enabled: Str(args, Action) == "enable",
                     NextRunAt: null),
             ownerId, ct);
         return info is null
@@ -823,7 +824,7 @@ public static class BuiltinTools
             return ToolResult.Error("browser service unavailable");
         }
 
-        var actionName = args.GetProperty("action").GetString()!;
+        var actionName = args.GetProperty(Action).GetString()!;
         // SPEC-64 RF-004: TOTP — o código é computado aqui a
         // partir do segredo 'totp:<name>'; o segredo nunca sai
         // do vault e só o código efêmero vai ao input.
@@ -1053,6 +1054,8 @@ public static class BuiltinTools
         var globArg = glob is null ? "" : $" -g {ShellQuote(glob)}";
         var ctxArg = mode == Content && contextLines > 0
             ? $" -C{contextLines}" : "";
+        var globInclude = glob is null
+            ? "" : $" --include={ShellQuote(glob)}";
         return mode == "files"
             ? $"cd {ShellQuote(dir)} 2>/dev/null && "
                 + $"(rg --files{globArg} 2>/dev/null | head -{max}"
@@ -1060,7 +1063,7 @@ public static class BuiltinTools
             : $"cd {ShellQuote(dir)} 2>/dev/null && "
                 + $"(rg --line-number --max-count {max}{ctxArg}{globArg}"
                 + $" -- {shell} 2>/dev/null || grep -Rn"
-                + $"{(glob is null ? "" : $" --include={ShellQuote(glob)}")}"
+                + globInclude
                 + $" -- {shell} . 2>/dev/null | head -{max * 8})";
     }
 
@@ -1465,9 +1468,15 @@ public static class BuiltinTools
                     path = path[(arrow + 4)..];
                 }
 
-                var op = xy.Contains('D') ? "delete"
-                    : xy == "??" || xy.Contains('A') ? "create"
-                    : "modify";
+                var op = "modify";
+                if (xy.Contains('D'))
+                {
+                    op = "delete";
+                }
+                else if (xy == "??" || xy.Contains('A'))
+                {
+                    op = "create";
+                }
                 paths.Add((path, op));
             }
 

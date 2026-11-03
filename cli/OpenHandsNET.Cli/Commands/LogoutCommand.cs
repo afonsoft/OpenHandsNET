@@ -19,7 +19,7 @@ public sealed class LogoutCommand : AsyncCommand<LogoutCommand.Settings>
     {
         var url = settings.ServerUrl
             ?? Environment.GetEnvironmentVariable("OPENHANDSNET_SERVER_URL")
-            ?? "http://localhost:8080";
+            ?? CliDefaults.DefaultServerUrl;
         var removed = await new CredentialStore().DeleteAsync(url, cancellationToken);
         AnsiConsole.MarkupLine(removed
             ? $"[green]✓[/] credencial de [bold]{url}[/] removida"

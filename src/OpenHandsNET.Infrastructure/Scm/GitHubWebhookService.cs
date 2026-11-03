@@ -606,18 +606,18 @@ public sealed class GitHubWebhookService(
         var env = new UntrustedInput.Envelope();
         var sb = new StringBuilder();
         sb.Append("[SCM trigger: github webhook]\n");
-        sb.Append($"Repository: {env.Wrap(mention.Repository, src, "repository")}\n");
+        sb.Append($"Repository: {env.WrapField(mention.Repository, src, "repository")}\n");
         if (mention.PullRequestNumber is { } n)
         {
-            sb.Append($"Pull request: #{n} ({env.Wrap(mention.PullRequestUrl, src, "pull_request.url")})\n");
+            sb.Append($"Pull request: #{n} ({env.WrapField(mention.PullRequestUrl, src, "pull_request.url")})\n");
         }
         if (mention.Branch is not null)
         {
-            sb.Append($"Branch: {env.Wrap(mention.Branch, src, "branch")}\n");
+            sb.Append($"Branch: {env.WrapField(mention.Branch, src, "branch")}\n");
         }
-        sb.Append($"Mentioned by: {env.Wrap(mention.CommentAuthor, src, "comment.author")}\n");
+        sb.Append($"Mentioned by: {env.WrapField(mention.CommentAuthor, src, "comment.author")}\n");
         sb.Append("Instruction:\n");
-        sb.Append(env.Wrap(mention.CommentBody.Replace(Mention, "").Trim(),
+        sb.Append(env.WrapField(mention.CommentBody.Replace(Mention, "").Trim(),
             src, "comment.body"));
         return sb.ToString();
     }
