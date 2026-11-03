@@ -20,7 +20,7 @@ public sealed class OpenAiCompatLlmProvider(
     IOptions<AgentLlmOptions> agentOptions,
     ILogger<OpenAiCompatLlmProvider> logger) : IAgentLlmProvider
 {
-    private const string DefaultLiteLlmBaseUrl = "http://localhost:4000";
+    private const string DefaultLiteLlmBaseUrl = "http://localhost:4000"; // NOSONAR S1075 — default local LiteLLM
 
     private static readonly JsonSerializerOptions Json = new()
     {

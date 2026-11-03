@@ -105,7 +105,7 @@ public sealed class AgentRunner(
         }
 
         await SetStatusAsync(events, db, conv, "running",
-            ConversationExecutionStatus.Running, ct);
+            ConversationExecutionStatus.Running);
         using var pump = Subscribe(events);
 
         // SPEC-11: hooks de ciclo de vida — falhas não abortam (salvo blocking).
@@ -184,8 +184,7 @@ public sealed class AgentRunner(
             _pauseRequested ? Paused : "idle",
             _pauseRequested
                 ? ConversationExecutionStatus.Paused
-                : ConversationExecutionStatus.Running,
-            CancellationToken.None);
+                : ConversationExecutionStatus.Running);
         // SPEC-43 RF-002: pausa também fecha o turno com checkpoint
         // (ct já cancelado aqui → token neutro).
         if (_pauseRequested)
@@ -278,7 +277,7 @@ public sealed class AgentRunner(
                         Message = rejection[(sep + 2)..],
                     }, CancellationToken.None);
                 await SetStatusAsync(events, db, conv, Error,
-                    ConversationExecutionStatus.Error, CancellationToken.None);
+                    ConversationExecutionStatus.Error);
                 return;
             }
         }
@@ -314,7 +313,9 @@ public sealed class AgentRunner(
             Selection = selection,
         };
 
-        for (var iteration = 0; iteration < opt.MaxIterations; iteration++)
+        var extraAttempts = 0;
+        for (var iteration = 0; iteration < opt.MaxIterations + extraAttempts;
+            iteration++)
         {
             using var iterSpan = Telemetry.OpenNetTelemetry.StartSpan(
                 "agent_iteration", conversationId, sandbox.Id.ToString());
@@ -381,7 +382,7 @@ public sealed class AgentRunner(
                 st, request, toolSchemas, turn, conversationId, ct);
             if (stream.Verdict == StreamVerdict.Retry)
             {
-                iteration--; // retenta a mesma iteração
+                extraAttempts++; // retenta a mesma iteração
                 continue;
             }
             if (stream.Verdict == StreamVerdict.Abort)
@@ -413,7 +414,7 @@ public sealed class AgentRunner(
         await activity.SummaryAsync(events, conversationId, "stuck", null,
             CancellationToken.None);
         await SetStatusAsync(events, db, conv, "stuck",
-            ConversationExecutionStatus.Error, CancellationToken.None);
+            ConversationExecutionStatus.Error);
     }
 
     /// <summary>
@@ -653,7 +654,7 @@ public sealed class AgentRunner(
             await st.Activity.SummaryAsync(st.Events, conversationId,
                 Error, "context overflow", CancellationToken.None);
             await SetStatusAsync(st.Events, st.Db, st.Conv, Error,
-                ConversationExecutionStatus.Error, CancellationToken.None);
+                ConversationExecutionStatus.Error);
             return new StreamOutcome(StreamVerdict.Abort, "");
         }
         catch (LlmCallException lce) when (st.Router is not null
@@ -685,8 +686,7 @@ public sealed class AgentRunner(
                     Error = SecretRedactor.Redact(lce.Message),
                 }, CancellationToken.None);
                 await SetStatusAsync(st.Events, st.Db, st.Conv, Error,
-                    ConversationExecutionStatus.Error,
-                    CancellationToken.None);
+                    ConversationExecutionStatus.Error);
                 return new StreamOutcome(StreamVerdict.Abort, "");
             }
 
@@ -702,8 +702,7 @@ public sealed class AgentRunner(
                         $"route budget exceeded: {lce.Message}"),
                 }, CancellationToken.None);
                 await SetStatusAsync(st.Events, st.Db, st.Conv, Error,
-                    ConversationExecutionStatus.Error,
-                    CancellationToken.None);
+                    ConversationExecutionStatus.Error);
                 return new StreamOutcome(StreamVerdict.Abort, "");
             }
 
@@ -719,8 +718,7 @@ public sealed class AgentRunner(
                     Error = SecretRedactor.Redact(lce.Message),
                 }, CancellationToken.None);
                 await SetStatusAsync(st.Events, st.Db, st.Conv, Error,
-                    ConversationExecutionStatus.Error,
-                    CancellationToken.None);
+                    ConversationExecutionStatus.Error);
                 return new StreamOutcome(StreamVerdict.Abort, "");
             }
 
@@ -747,7 +745,7 @@ public sealed class AgentRunner(
                 Error, SecretRedactor.Redact(ex.Message),
                 CancellationToken.None);
             await SetStatusAsync(st.Events, st.Db, st.Conv, Error,
-                ConversationExecutionStatus.Error, CancellationToken.None);
+                ConversationExecutionStatus.Error);
             return new StreamOutcome(StreamVerdict.Abort, "");
         }
     }
@@ -773,7 +771,7 @@ public sealed class AgentRunner(
             {
                 // Completion vazio → nada a fazer; encerra em idle.
                 await SetStatusAsync(st.Events, st.Db, st.Conv, "idle",
-                    ConversationExecutionStatus.Running, CancellationToken.None);
+                    ConversationExecutionStatus.Running);
                 return DispatchVerdict.Abort;
             }
 
@@ -988,7 +986,7 @@ public sealed class AgentRunner(
         if (needsConfirm)
         {
             await SetStatusAsync(st.Events, st.Db, st.Conv,
-                "waiting_for_confirmation", null, ct,
+                "waiting_for_confirmation", null,
                 pendingAction: actionEvent.Id,
                 pendingTool: call.Name);
             var approved = await WaitConfirmationAsync(
@@ -1007,7 +1005,7 @@ public sealed class AgentRunner(
             }
 
             await SetStatusAsync(st.Events, st.Db, st.Conv, "running",
-                ConversationExecutionStatus.Running, ct);
+                ConversationExecutionStatus.Running);
         }
 
         ToolResult result;
@@ -1144,7 +1142,7 @@ public sealed class AgentRunner(
             await st.Activity.SummaryAsync(st.Events, conversationId,
                 "completed", finalText, CancellationToken.None);
             await SetStatusAsync(st.Events, st.Db, st.Conv, "finished",
-                ConversationExecutionStatus.Finished, ct);
+                ConversationExecutionStatus.Finished);
             // SPEC-52 RF-005: commit status no head SHA do PR
             // (fire-and-forget — nunca falha a run).
             _ = Task.Run(() => st.Services
@@ -1393,8 +1391,7 @@ public sealed class AgentRunner(
             _pauseRequested ? Paused : "idle",
             _pauseRequested
                 ? ConversationExecutionStatus.Paused
-                : ConversationExecutionStatus.Running,
-            CancellationToken.None);
+                : ConversationExecutionStatus.Running);
         return true;
     }
 
@@ -1411,7 +1408,7 @@ public sealed class AgentRunner(
         AgentLlmOptions opt, CancellationToken ct)
     {
         await SetStatusAsync(events, db, conv, "waiting_for_question",
-            null, ct,
+            null,
             attentionKind: Application.Conversations
                 .AttentionKinds.Question);
         try
@@ -1424,7 +1421,7 @@ public sealed class AgentRunner(
             var text = Context.ConversationHistoryBuilder
                 .ToLlmMessage(msg).Content ?? "";
             await SetStatusAsync(events, db, conv, "running",
-                ConversationExecutionStatus.Running, ct);
+                ConversationExecutionStatus.Running);
             return ToolResult.Ok(
                 string.IsNullOrWhiteSpace(text) ? "(empty answer)" : text);
         }
@@ -1436,8 +1433,7 @@ public sealed class AgentRunner(
                 _pauseRequested ? Paused : "idle",
                 _pauseRequested
                     ? ConversationExecutionStatus.Paused
-                    : ConversationExecutionStatus.Running,
-                CancellationToken.None);
+                    : ConversationExecutionStatus.Running);
             return null;
         }
     }
@@ -1465,8 +1461,7 @@ public sealed class AgentRunner(
                 _pauseRequested ? Paused : "idle",
                 _pauseRequested
                     ? ConversationExecutionStatus.Paused
-                    : ConversationExecutionStatus.Running,
-                CancellationToken.None);
+                    : ConversationExecutionStatus.Running);
             return null;
         }
     }
@@ -1569,7 +1564,7 @@ public sealed class AgentRunner(
     private async Task SetStatusAsync(
         IEventService events, AppDbContext db, ConversationRecord conv,
         string status, ConversationExecutionStatus? recordStatus,
-        CancellationToken ct, string? pendingAction = null,
+        string? pendingAction = null,
         string? pendingTool = null, string? attentionKind = null)
     {
         await events.AppendAsync(conversationId, new ConversationStateUpdateEvent
@@ -1759,7 +1754,7 @@ public sealed class AgentRunner(
                         Message = msg,
                     }, CancellationToken.None);
                 await SetStatusAsync(events, db, conv, Error,
-                    ConversationExecutionStatus.Error, CancellationToken.None);
+                    ConversationExecutionStatus.Error);
                 return false;
             }
 

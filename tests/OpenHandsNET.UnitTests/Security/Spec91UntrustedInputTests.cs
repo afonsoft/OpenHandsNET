@@ -79,6 +79,15 @@ public sealed class Spec91UntrustedInputTests
         b.ShouldContain(UntrustedInput.TruncatedMark);
     }
 
+    // RF-003: budget agregado customizado trunca antes do cap de campo
+    [Fact]
+    public void Envelope_WrapField_Respects_Custom_Aggregate_Budget()
+    {
+        var env = new UntrustedInput.Envelope(maxTotalChars: 20);
+        var s = env.WrapField(new string('z', 100), "src", "field");
+        s.ShouldContain(UntrustedInput.TruncatedMark);
+    }
+
     // RF-004/RF-007 + AC: header intacto, payload só dentro de envelope,
     // close-tag injetado neutralizado
     [Fact]
