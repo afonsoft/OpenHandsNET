@@ -245,4 +245,14 @@ public sealed class Spec97AuthBoundaryTests : IDisposable
             "/api/v1/scm/github/manifest", new { app_name = "x" });
         res.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     }
+
+    [Fact]
+    public async Task Admin_Plans_Empty_Object_Is_400_Not_500()
+    {
+        // #218: {} deixa Name nulo → NRE no service. Validação devolve 400.
+        using var http = await TestAuth.LoginAsync(_factory);
+        var res = await http.PostAsJsonAsync(
+            "/api/v1/admin/plans", new { });
+        res.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
 }

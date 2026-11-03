@@ -11,6 +11,16 @@ var builder = WebApplication.CreateBuilder(args);
 // OPENHANDSNET_Foo__Bar env vars -> Foo:Bar configuration sections.
 builder.Configuration.AddEnvironmentVariables("OPENHANDSNET_");
 
+// #218: clients/fuzz podem enviar headers com bytes não-UTF8 (o httpx da
+// schemathesis codifica valores unicode em Latin-1). O parser default do
+// Kestrel rejeita bytes UTF-8 inválidos com um 400 de transporte
+// (connection: close, corpo vazio) ANTES do pipeline — nenhum middleware
+// alcança, e a resposta viola o contrato problem+json documentado.
+// Latin-1 é o obs-text clássico do HTTP/1.1: decodifica qualquer byte, o
+// request chega à app e a resposta sai schema-conforme (4xx problem).
+builder.WebHost.ConfigureKestrel(o =>
+    o.RequestHeaderEncodingSelector = _ => System.Text.Encoding.Latin1);
+
 OpenHandsNET.Api.ProgramParts.AddObservability(builder);
 
 // Options

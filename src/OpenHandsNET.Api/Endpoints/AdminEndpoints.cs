@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+using OpenHandsNET.Api.ProblemDetails;
 using OpenHandsNET.Application.Identity;
 using OpenHandsNET.Domain.Identity;
 using OpenHandsNET.Infrastructure.Identity;
@@ -166,12 +167,24 @@ public static class AdminEndpoints
 
         g.MapPost("/plans", async (
             [FromBody] PlanCreateRequest req, IPlanAdminService plans,
-            CancellationToken ct) =>
-            await plans.CreateAsync(
+            HttpContext http, CancellationToken ct) =>
+        {
+            // #218: `{}` deixa Name nulo — validar antes do service (NRE→500).
+            if (string.IsNullOrWhiteSpace(req.Name))
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 400, "name é obrigatório");
+            }
+            return await plans.CreateAsync(
                 req.Name, req.Limits ?? new(), req.MonthlyPriceUsd, ct)
                 is { } p ? Results.Created($"/api/v1/admin/plans/{p.Id}", p)
-                : Results.Conflict(new { detail = "plan name already exists" }))
-            .RequireAuthorization(PermManageSuperAdmins);
+                : OpenHandsNetProblemFactory.Create(
+                    http, 409, "plan name already exists");
+        })
+            .RequireAuthorization(PermManageSuperAdmins)
+            .Produces<PlanInfo>(201)
+            .ProducesProblem(400)
+            .ProducesProblem(409);
 
         g.MapPatch("/plans/{id:guid}", async (
             Guid id, [FromBody] PlanPatchRequest req,
