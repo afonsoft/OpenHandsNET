@@ -908,6 +908,45 @@
         ],
         "type": "object"
       },
+      "PlanInfo": {
+        "description": "Plan catalog row for admin APIs (SPEC-20 RF-005).",
+        "properties": {
+          "has_active_subscriptions": {
+            "type": "boolean"
+          },
+          "has_orgs": {
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/PlanLimits"
+          },
+          "monthly_price_usd": {
+            "format": "double",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "limits",
+          "monthly_price_usd",
+          "has_active_subscriptions",
+          "has_orgs"
+        ],
+        "type": "object"
+      },
       "PlanLimits": {
         "description": "Plan limits parsed from \u0060PlanRecord.LimitsJson\u0060 (SPEC-20 RF-001).\n\u0060null\u0060 on a field means unlimited. Parse is fail-open \u2014 malformed\nJSON or invalid values yield PlanLimits PlanLimits.Empty (a config error must\nnever take the product down).",
         "properties": {
@@ -2201,14 +2240,41 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK"
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanInfo"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "401": {
             "description": "Unauthorized"
           },
           "403": {
             "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflict"
           }
         },
         "summary": "POST /api/v1/admin/plans",
