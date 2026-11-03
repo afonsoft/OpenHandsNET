@@ -69,7 +69,7 @@ public static partial class UntrustedInput
 
     /// <summary>
     /// Budget agregado de envelopes num prompt (RF-003): cada
-    /// <see cref="Wrap"/> consome do total (default 8KB) — campos
+    /// <see cref="WrapField"/> consome do total (default 8KB) — campos
     /// excedentes truncam com marcador.
     /// </summary>
     public sealed class Envelope
@@ -83,7 +83,7 @@ public static partial class UntrustedInput
 
         /// <summary>Envelopa consumindo do budget agregado — o cap
         /// por campo é <c>min(4KB, budget restante)</c>.</summary>
-        public string Wrap(string? value, string source, string? field = null)
+        public string WrapField(string? value, string source, string? field = null)
         {
             var cap = Math.Min(MaxFieldChars, Math.Max(0, remaining));
             var s = UntrustedInput.Wrap(value, source, field, cap);

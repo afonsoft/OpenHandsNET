@@ -162,7 +162,7 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
     {
         var url = settings.Url
             ?? Environment.GetEnvironmentVariable("OPENHANDSNET_SERVER_URL")
-            ?? "http://localhost:8080";
+            ?? CliDefaults.DefaultServerUrl;
         if (!url.StartsWith("http://localhost", StringComparison.Ordinal)
             && !url.StartsWith("http://127.0.0.1", StringComparison.Ordinal)
             && !settings.AllowRemote)

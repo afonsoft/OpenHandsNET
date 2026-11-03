@@ -5,6 +5,11 @@ namespace OpenHandsNET.Sandboxing;
 /// <summary>Docker.DotNet client factory (unix socket default, DOCKER_HOST honored).</summary>
 public static class DockerClientFactory
 {
+    private static readonly Uri WindowsDockerUri =
+        new("npipe://./pipe/docker_engine");
+    private static readonly Uri LinuxDockerUri =
+        new("unix:///var/run/docker.sock");
+
     /// <summary>Creates a client from <c>DOCKER_HOST</c> or the default local socket.</summary>
     public static IDockerClient Create()
     {
@@ -13,8 +18,8 @@ public static class DockerClientFactory
         if (host is null)
         {
             uri = OperatingSystem.IsWindows()
-                ? new Uri("npipe://./pipe/docker_engine")
-                : new Uri("unix:///var/run/docker.sock");
+                ? WindowsDockerUri
+                : LinuxDockerUri;
         }
         else
         {

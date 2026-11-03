@@ -23,6 +23,7 @@ public sealed class AgentCatalogService(ILogger<AgentCatalogService> logger)
     private const string RepoRoot = "/workspace/repo";
     private const int MaxFileBytes = 64 * 1024;
     private const int MaxAgents = 64;
+    private const string BuiltinSource = "builtin";
 
     /// <summary>Host user-level agent dirs, in precedence order.</summary>
     public static readonly string[] UserAgentDirs =
@@ -93,18 +94,18 @@ public sealed class AgentCatalogService(ILogger<AgentCatalogService> logger)
         new("explore",
             "Explore the workspace: search, file_read, bash",
             ["search", "file_read", "bash", "think", "finish"],
-            null, "", "builtin", ""),
+            null, "", BuiltinSource, ""),
         new("scout",
             "Web research: web_fetch, search, file_read",
             ["web_fetch", "search", "file_read", "think", "finish"],
-            null, "", "builtin", ""),
+            null, "", BuiltinSource, ""),
         new("plan",
             "Read-only planning: search, file_read, task_tracker",
             ["search", "file_read", "think", "task_tracker", "finish"],
-            null, "", "builtin", ""),
+            null, "", BuiltinSource, ""),
         new("general",
             "Full toolset minus task tools (no nested delegation)",
-            null, null, "", "builtin", ""),
+            null, null, "", BuiltinSource, ""),
     ];
 
     private IEnumerable<AgentDefinition> ScanUserLayer()

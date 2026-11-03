@@ -21,7 +21,7 @@ helm=$(has '^charts/')
 tests_changed=$(has '^tests/.*\.(cs|csproj)$')
 
 # testsOnly: every changed path lives under tests/ (nothing else touched)
-if [ -n "$files" ] && ! printf '%s\n' "$files" | grep -vqE '^tests/'; then
+if [[ -n $files ]] && ! printf '%s\n' "$files" | grep -vqE '^tests/'; then
   tests_only=true
 else
   tests_only=false

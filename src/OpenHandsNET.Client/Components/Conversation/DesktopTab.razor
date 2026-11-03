@@ -4,7 +4,7 @@
 
 @* SPEC-113 RF-004: desktop ao vivo do sandbox — iframe do noVNC via
    proxy same-origin (ou URL pública+token conforme RoutingMode). *@
-@if (_url is { } url)
+@if (_url is not null)
 {
     <iframe class="desktop-frame" src="@_frameSrc"
             title="@L["desktop.title"]"

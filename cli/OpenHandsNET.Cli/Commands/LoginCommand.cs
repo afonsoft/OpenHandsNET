@@ -23,7 +23,7 @@ public sealed class LoginCommand : AsyncCommand<LoginCommand.Settings>
         var url = settings.ServerUrl
             ?? Environment.GetEnvironmentVariable("OPENHANDSNET_SERVER_URL")
             ?? Environment.GetEnvironmentVariable("OPENHANDSNET_CLOUD_URL")
-            ?? "http://localhost:8080";
+            ?? CliDefaults.DefaultServerUrl;
         var store = new CredentialStore();
 
         if (settings.ApiKey is { } key)

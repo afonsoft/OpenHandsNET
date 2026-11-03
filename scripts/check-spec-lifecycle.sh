@@ -21,7 +21,7 @@ for f in .specs/*_spec.md; do
 done
 
 if [[ "$stale" -gt 0 ]]; then
-  echo "error: $stale spec(s) entregue(s) ainda em .specs/ — veja SPEC-82"
+  echo "error: $stale spec(s) entregue(s) ainda em .specs/ — veja SPEC-82" >&2
   exit 1
 fi
 echo "spec lifecycle ok — nenhuma spec entregue em .specs/"

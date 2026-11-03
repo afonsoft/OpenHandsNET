@@ -27,7 +27,7 @@
     };
     var locale = (typeof localStorage !== "undefined" &&
         localStorage.getItem("locale")) || navigator.language || "pt-BR";
-    var strings = STRINGS[locale] || STRINGS[locale && locale.split("-")[0]]
+    var strings = STRINGS[locale] || STRINGS[locale?.split("-")[0]]
         || STRINGS["pt-BR"];
 
     var frameworkSegment = "/_framework/";
@@ -68,9 +68,9 @@
         }
         var hash = null;
         var tokens = integrity.split(/\s+/);
-        for (var i = 0; i < tokens.length; i++) {
-            if (tokens[i].indexOf("sha256-") === 0) {
-                hash = tokens[i].substring(7);
+        for (var token of tokens) {
+            if (token.indexOf("sha256-") === 0) {
+                hash = token.substring(7);
                 break;
             }
         }
@@ -80,8 +80,8 @@
         return crypto.subtle.digest("SHA-256", bytes).then(function (buf) {
             var digest = new Uint8Array(buf);
             var bin = "";
-            for (var j = 0; j < digest.length; j++) {
-                bin += String.fromCodePoint(digest[j]);
+            for (var byte of digest) {
+                bin += String.fromCodePoint(byte);
             }
             return btoa(bin) === hash;
         });

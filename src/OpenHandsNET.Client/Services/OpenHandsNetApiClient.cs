@@ -13,7 +13,7 @@ namespace OpenHandsNET.Client.Services;
 public sealed class OpenHandsNetApiClient(HttpClient http)
 {
     private const string Content = "content";
-    private const string Items = "items";
+    private const string ItemsProp = "items";
     private static readonly JsonSerializerOptions Json = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -60,7 +60,7 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
         var page = await http.GetFromJsonAsync<JsonElement>(
             "/api/v1/app-conversations/search?limit=100", ct);
         var items = new List<ConversationItem>();
-        if (page.TryGetProperty(Items, out var arr))
+        if (page.TryGetProperty(ItemsProp, out var arr))
         {
             foreach (var el in arr.EnumerateArray())
             {
@@ -82,7 +82,7 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
         var page = await http.GetFromJsonAsync<JsonElement>(
             "/api/v1/app-conversations/search?attention=1&limit=100", ct);
         var items = new List<ConversationItem>();
-        if (page.TryGetProperty(Items, out var arr))
+        if (page.TryGetProperty(ItemsProp, out var arr))
         {
             foreach (var el in arr.EnumerateArray())
             {
@@ -335,7 +335,7 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
 
         var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(Json, ct);
         var items = new List<ClientEvent>();
-        if (doc.TryGetProperty(Items, out var arr))
+        if (doc.TryGetProperty(ItemsProp, out var arr))
         {
             foreach (var el in arr.EnumerateArray())
             {
@@ -368,7 +368,7 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
         {
             var doc = await resp.Content
                 .ReadFromJsonAsync<JsonElement>(Json, ct);
-            if (doc.TryGetProperty(Items, out var arr))
+            if (doc.TryGetProperty(ItemsProp, out var arr))
             {
                 foreach (var el in arr.EnumerateArray())
                 {
@@ -402,7 +402,7 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
             + (pageId is null ? "" : $"&page_id={Uri.EscapeDataString(pageId)}");
         var page = await http.GetFromJsonAsync<JsonElement>(url, ct);
         var items = new List<ClientEvent>();
-        if (page.TryGetProperty(Items, out var arr))
+        if (page.TryGetProperty(ItemsProp, out var arr))
         {
             foreach (var el in arr.EnumerateArray())
             {

@@ -28,6 +28,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     TZ=UTC \
     OHN_WORKSPACE=/workspace
 
+# NOSONAR S7031 — RUNs separados por propósito preservam cache de camada
+# e legibilidade (apt-base, gh cli, node, ttyd, usuário).
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential ca-certificates curl file git git-lfs gnupg \
         jq less libssl-dev locales openssh-client pkg-config procps \
@@ -47,6 +49,8 @@ RUN mkdir -p -m 755 /etc/apt/keyrings \
 
 # Node LTS (22.x) via NodeSource — agente precisa para tools web/npx.
 ARG NODESOURCE_SETUP_SHA256=575583bbac2fccc0b5edd0dbc03e222d9f9dc8d724da996d22754d6411104fd1
+# NOSONAR S7026 — curl+sha256sum no mesmo RUN verifica o script antes de
+# executar; ADD deixaria camada não-verificada no cache.
 RUN curl -fsSL --proto '=https' --tlsv1.2 https://deb.nodesource.com/setup_22.x \
         -o /tmp/nodesource-setup.sh \
     && echo "${NODESOURCE_SETUP_SHA256}  /tmp/nodesource-setup.sh" | sha256sum -c - \
@@ -58,6 +62,7 @@ RUN curl -fsSL --proto '=https' --tlsv1.2 https://deb.nodesource.com/setup_22.x 
 # SANDBOX_TERMINAL=1; o sandbox-agent supervisiona o processo e expõe
 # /surfaces. Binário estático multi-arch do release oficial.
 ARG TTYD_VERSION=1.7.7
+# NOSONAR S7031 — ver comentário acima: RUN por propósito, não mergeado.
 RUN arch="$(dpkg --print-architecture)" \
     && case "$arch" in \
         amd64) ttyd_arch=x86_64 ;; \

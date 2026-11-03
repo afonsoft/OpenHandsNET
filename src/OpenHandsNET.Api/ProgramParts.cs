@@ -139,28 +139,17 @@ internal static class ProgramParts
                 // levar pattern: removemos em todo path-param.
                 if (doc.Paths is not null)
                 {
-                    foreach (var item in doc.Paths.Values)
+                    foreach (var op in doc.Paths.Values
+                        .SelectMany(item => item.Operations?.Values
+                            ?? Enumerable.Empty<OpenApiOperation>()))
                     {
-                        if (item.Operations is null)
+                        foreach (var p in op.Parameters ?? [])
                         {
-                            continue;
-                        }
-
-                        foreach (var op in item.Operations.Values)
-                        {
-                            if (op.Parameters is null)
+                            if (p?.Schema is OpenApiSchema s
+                                && s.Type == JsonSchemaType.Integer
+                                && s.Pattern is not null)
                             {
-                                continue;
-                            }
-
-                            foreach (var p in op.Parameters)
-                            {
-                                if (p?.Schema is OpenApiSchema s
-                                    && s.Type == JsonSchemaType.Integer
-                                    && s.Pattern is not null)
-                                {
-                                    s.Pattern = null;
-                                }
+                                s.Pattern = null;
                             }
                         }
                     }

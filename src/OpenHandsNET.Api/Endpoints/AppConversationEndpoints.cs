@@ -822,6 +822,24 @@ public static class AppConversationEndpoints
         UpdatedAt = t.UpdatedAt,
     };
 
+    private static AppConversationDto ToDto(AppConversation c) => new()
+    {
+        Id = c.Id.ToString(),
+        Title = c.Title,
+        SandboxId = c.SandboxId?.ToString(),
+        SelectedRepository = c.SelectedRepository,
+        AgentType = c.AgentType,
+        LlmModel = c.LlmModel,
+        SandboxProfile = c.SandboxProfile,
+        ExecutionStatus = c.ExecutionStatus.ToString().ToUpperInvariant(),
+        Tags = c.Tags,
+        Pinned = c.Pinned,
+        ConfirmationMode = c.ConfirmationMode,
+        NeedsAttention = c.NeedsAttentionKind,
+        CreatedAt = c.CreatedAt,
+        UpdatedAt = c.UpdatedAt,
+    };
+
     /// <summary>
     /// SPEC-115 RF-001: resolve a URL user-facing de uma surface. Em
     /// <c>RoutingMode=internal</c> (default OSS) é SEMPRE o path relativo
@@ -849,21 +867,4 @@ public static class AppConversationEndpoints
         return ($"{base_}?token={Uri.EscapeDataString(token)}", exp);
     }
 
-    private static AppConversationDto ToDto(AppConversation c) => new()
-    {
-        Id = c.Id.ToString(),
-        Title = c.Title,
-        SandboxId = c.SandboxId?.ToString(),
-        SelectedRepository = c.SelectedRepository,
-        AgentType = c.AgentType,
-        LlmModel = c.LlmModel,
-        SandboxProfile = c.SandboxProfile,
-        ExecutionStatus = c.ExecutionStatus.ToString().ToUpperInvariant(),
-        Tags = c.Tags,
-        Pinned = c.Pinned,
-        ConfirmationMode = c.ConfirmationMode,
-        NeedsAttention = c.NeedsAttentionKind,
-        CreatedAt = c.CreatedAt,
-        UpdatedAt = c.UpdatedAt,
-    };
 }
