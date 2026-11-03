@@ -405,8 +405,10 @@ public static class OpenAiGatewayEndpoints
             TaskScheduler.Default);
         try
         {
-            await foreach (var frame in activity
-                .SubscribeAsync(convId, linked.Token)) // NOSONAR S3267 — loop tem side-effect (WriteChunkAsync); Select exigiria IAsyncEnumerable LINQ
+            // S3267: o loop tem side-effect (WriteChunkAsync) — Select
+            // exigiria IAsyncEnumerable LINQ.
+            await foreach (var frame in activity // NOSONAR
+                .SubscribeAsync(convId, linked.Token))
             {
                 sentText.Add(frame.Text);
                 await WriteChunkAsync(new

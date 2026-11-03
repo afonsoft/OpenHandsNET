@@ -136,7 +136,7 @@ internal static class ProgramParts
                 // (ex.: `^-?(?:0|[1-9]\d*)$` com negative lookahead
                 // dispara bug 'many' do hypothesis no schemathesis
                 // nightly, mascarando falhas reais). Inteiro não pode
-                // levar pattern: removemos em todo path-param.
+                // levar pattern: removemos em cada path-param.
                 if (doc.Paths is not null)
                 {
                     foreach (var op in doc.Paths.Values
