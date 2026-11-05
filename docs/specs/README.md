@@ -159,3 +159,14 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | 122 | lsp-code-intelligence — 6 tools `lsp_*` via bridge Python one-shot no sandbox | PR #327 · #324 |
 | 123 | tool-infra-hooks-permissions — DeferredToolState + `tool_search`, SmartPermissionJudge, 4 `.agent.md` embutidos, EmbeddedPrompts | PR #327 · #325 |
 | 124 | mcp-acp-exposure — `OpenHandsNET.Mcp` stdio (12 `ohn_*` tools) + `mcp serve` + gen-context | PR #327 · #326 |
+
+### Follow-ups #329 (2026-11-05) — entregues
+
+| SPEC | Título | PR / Issue |
+|---|---|---|
+| 125 | advisor-role — parecer opt-in em ações risky + tool `advisor` + evento `advisor` | PR #336 · #330 |
+| 126 | lsp-persistent-sessions — daemon `lsp_*` via Unix socket + fallback one-shot | PR #336 · #331 |
+| 127 | hooks-command-prompt — `.openhands/hooks/*.hook.json` + `hook_fired` | PR #336 · #332 |
+| 128 | context-memory-db — `context_*`/`memory_*` DB-backed + migrations | PR #336 · #333 |
+| 129 | mcp-hardening — golden `tools/list` + E2E stdio↔mock | PR #336 · #334 |
+| 130 | ux-followups — `SettingsModal` + rail OWUIC 260↔56 | PR #336 · #335 |

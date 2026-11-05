@@ -6,8 +6,8 @@
 |---|---|
 | Feature | `mcp-hardening` |
 | Type | `Tooling/QA` |
-| Status | `In review` |
-| Ticket | #334 (umbrella #329, Epic #317) — débito SPEC-124 |
+| Status | `Completed` |
+| Ticket | #334 · PR #336 |
 | Scope | `src/OpenHandsNET.Mcp/`, `tests/` (MCP E2E), `tools/` (drift guard), `docs/mcp-server.md` |
 
 ## 1. User Story
