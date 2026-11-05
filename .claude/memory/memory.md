@@ -214,3 +214,10 @@ args do CORPO — restringir à signature.
 - DONE: Dependabot #2 fixed via PR #341 (merge 494bc6e) — npm override
   postcss-selector-parser → 6.1.5 (CVE-2026-104844, transitiva de
   @tailwindcss/typography que pinna 6.0.10). npm audit 0 vulns.
+- DONE: validação E2E SPEC-131 — `docker build` runtime OK (Chrome for Testing
+  156.0.8078.4 em /opt/ohn/ms-playwright); como user openhands: chromium --version
+  OK, playwright screenshot funcional, chrome-devtools-mcp responde initialize+
+  tools/list via `docker exec -i` (caminho real do McpClientService). Imagem
+  local: openhandsnet-runtime:spec131.
+- #314: PR #342 mergeado (62bc0ba) — bare-400 rewrite cobre /api/**/oauth/**;
+  388 leaks no run; issue aberta até nightly confirmar.
