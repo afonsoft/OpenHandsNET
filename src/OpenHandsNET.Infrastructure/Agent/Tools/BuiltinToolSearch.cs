@@ -38,6 +38,7 @@ public static class BuiltinToolSearch
                 return Task.FromResult(ToolResult.Error("registry indisponível"));
             }
 
+            var deferred = ctx.Services.GetService<IDeferredToolState>();
             var hits = registry.All
                 .Where(t =>
                     t.Schema.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
@@ -49,6 +50,8 @@ public static class BuiltinToolSearch
                     description = t.Schema.Description,
                     risky = t.Risky,
                     parameters = t.Schema.InputSchema,
+                    was_deferred = deferred?.Load(
+                        ctx.ConversationId, t.Schema.Name) == true,
                 })
                 .ToList();
             return Task.FromResult(ToolResult.Ok(

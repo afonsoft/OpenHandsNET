@@ -16,6 +16,21 @@ public sealed class ToolRegistry : IToolRegistry
 {
     private readonly IReadOnlyList<AgentTool> _tools;
 
+    /// <summary>
+    /// SPEC-123: tools deferidas — fora do anúncio inicial até
+    /// <c>tool_search</c> promover. Pesadas/raras (LSP, worktree, jobs,
+    /// notebooks) economizam tokens de system prompt.
+    /// </summary>
+    public static readonly IReadOnlySet<string> DeferredNames =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "lsp_diagnostics", "lsp_symbols", "lsp_workspace_symbols",
+            "lsp_definition", "lsp_references", "lsp_hover",
+            "worktree_list", "worktree_add", "worktree_diff", "worktree_merge",
+            "job_run", "job_list", "job_output", "job_kill",
+            "notebook_read", "notebook_edit",
+        };
+
     /// <summary>Builds the built-in catalog.</summary>
     public ToolRegistry(ITaskTrackerService tracker, IOptions<AgentLlmOptions> options)
     {

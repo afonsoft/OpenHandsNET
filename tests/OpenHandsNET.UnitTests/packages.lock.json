@@ -305,6 +305,11 @@
           "SQLitePCLRaw.core": "2.1.13"
         }
       },
+      "Microsoft.DotNet.HotReload.WebAssembly.Browser": {
+        "type": "Transitive",
+        "resolved": "10.0.114",
+        "contentHash": "/5vjMWPo2tTac0g8x6hh0fMu2OwU7rnUGhTeOtn52IwYzjLUGNWTde/jatpkNOsoufdZpgkpTdMV6EibfEoSTA=="
+      },
       "Microsoft.EntityFrameworkCore": {
         "type": "Transitive",
         "resolved": "10.0.14",
@@ -932,6 +937,7 @@
           "Markdig": "[1.5.1, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.14, )",
           "Microsoft.AspNetCore.SignalR.Client": "[10.0.14, )",
+          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.114, )",
           "OpenHandsNET.Application": "[1.0.0, )"
         }
       },

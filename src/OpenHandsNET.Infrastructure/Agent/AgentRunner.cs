@@ -211,6 +211,12 @@ public sealed class AgentRunner(
             db, conv, opt, ct);
         var effectiveTools = ConversationPermissionResolver.Catalog(
             tools, permissions);
+        // SPEC-123: deferred tool loading — tools pesadas/raras saem do
+        // anúncio inicial e voltam via tool_search (reduz tokens).
+        var deferred = services.GetService<IDeferredToolState>();
+        deferred?.Set(conversationId,
+            effectiveTools.All.Select(t => t.Schema.Name)
+                .Where(ToolRegistry.DeferredNames.Contains));
         // SPEC-48 RF-001/002: política por org — resolvida UMA vez por run
         // (cache TTL 60s); restart do run pega a policy nova.
         var policyService = services.GetService<ISecurityPolicyService>();
@@ -303,6 +309,7 @@ public sealed class AgentRunner(
             Policy = policy,
             Security = security,
             Hooks = hooks,
+            Deferred = deferred,
             Bus = bus,
             Router = router,
             ByorCtx = byorCtx,
@@ -314,107 +321,118 @@ public sealed class AgentRunner(
         };
 
         var extraAttempts = 0;
-        for (var iteration = 0; iteration < opt.MaxIterations + extraAttempts;
-            iteration++)
+        try
         {
-            using var iterSpan = Telemetry.OpenNetTelemetry.StartSpan(
-                "agent_iteration", conversationId, sandbox.Id.ToString());
-            iterSpan?.SetTag("iteration", iteration);
-            await activity.ProgressAsync(events, conversationId, iteration,
-                opt.MaxIterations, "iteration", ct);
-            if (await CheckSignalsAsync(services, events, db, conv))
+            for (var iteration = 0; iteration < opt.MaxIterations + extraAttempts;
+                iteration++)
             {
-                return;
-            }
+                using var iterSpan = Telemetry.OpenNetTelemetry.StartSpan(
+                    "agent_iteration", conversationId, sandbox.Id.ToString());
+                iterSpan?.SetTag("iteration", iteration);
+                await activity.ProgressAsync(events, conversationId, iteration,
+                    opt.MaxIterations, "iteration", ct);
+                if (await CheckSignalsAsync(services, events, db, conv))
+                {
+                    return;
+                }
 
-            // pending_messages: usuário falou durante o run → entra no histórico.
-            st.LastEventId = await DrainPendingAsync(
-                hooks, sandbox, st.History, st.Ids, st.LastEventId, ct);
+                // pending_messages: usuário falou durante o run → entra no histórico.
+                st.LastEventId = await DrainPendingAsync(
+                    hooks, sandbox, st.History, st.Ids, st.LastEventId, ct);
 
-            // SPEC-22: compaction — forced (manual/overflow/stop_length) ou
-            // threshold avaliado pelo condenser. Modelo pode promover antes.
-            // + ledger periódico (RF-005). Consome os pending flags do turno.
-            await MaybeCompactAsync(st, conversationId, ct);
+                // SPEC-22: compaction — forced (manual/overflow/stop_length) ou
+                // threshold avaliado pelo condenser. Modelo pode promover antes.
+                // + ledger periódico (RF-005). Consome os pending flags do turno.
+                await MaybeCompactAsync(st, conversationId, ct);
 
-            var request = st.History;
-            var toolSchemas = effectiveTools.All.Select(t => t.Schema).ToList();
-            // SPEC-07: catálogo MCP dinâmico da conversa (falha → degradado);
-            // SPEC-29: mcp__* também respeita o evaluator (glob `mcp__*` deny).
-            if (mcp is not null)
-            {
-                toolSchemas.AddRange(
-                    (await mcp.ListToolsAsync(conversationId, ct))
-                    .Select(Application.Mcp.McpToolCatalog.ToSchema)
-                    .Where(s => permissions.Decide(s.Name)
-                        != Application.Agent.PermissionDecision.Deny));
-            }
+                var request = st.History;
+                var toolSchemas = effectiveTools.All
+                    .Where(t => deferred?.IsDeferredOnly(
+                        conversationId, t.Schema.Name) != true)
+                    .Select(t => t.Schema).ToList();
+                // SPEC-07: catálogo MCP dinâmico da conversa (falha → degradado);
+                // SPEC-29: mcp__* também respeita o evaluator (glob `mcp__*` deny).
+                if (mcp is not null)
+                {
+                    toolSchemas.AddRange(
+                        (await mcp.ListToolsAsync(conversationId, ct))
+                        .Select(Application.Mcp.McpToolCatalog.ToSchema)
+                        .Where(s => permissions.Decide(s.Name)
+                            != Application.Agent.PermissionDecision.Deny));
+                }
 
-            // SPEC-111: buffers do turno — o stream preenche Text/Reasoning/
-            // Calls e o dispatch consome (inclui o item_id efêmero e o
-            // batcher de deltas — SPEC-34 RF-001 / SPEC-41 RF-001).
-            var itemId = Ulid.NewUlid().ToString();
-            var turn = new TurnState
-            {
-                ItemId = itemId,
-                Batcher = st.Bus is null
-                    ? null
-                    : new Deltas.DeltaBatcher(conversationId, itemId, st.Bus),
-            };
-            // SPEC-23 RF-003: cada tentativa de modelo emite llm_route —
-            // a UI mostra "tentando X (fallback de Y)" em tempo real.
-            if (st.Selection is not null)
-            {
-                await st.Events.AppendAsync(conversationId,
-                    new ConversationStateUpdateEvent
-                    {
-                        Key = "llm_route",
-                        Value = JsonSerializer.SerializeToElement(new
+                // SPEC-111: buffers do turno — o stream preenche Text/Reasoning/
+                // Calls e o dispatch consome (inclui o item_id efêmero e o
+                // batcher de deltas — SPEC-34 RF-001 / SPEC-41 RF-001).
+                var itemId = Ulid.NewUlid().ToString();
+                var turn = new TurnState
+                {
+                    ItemId = itemId,
+                    Batcher = st.Bus is null
+                        ? null
+                        : new Deltas.DeltaBatcher(conversationId, itemId, st.Bus),
+                };
+                // SPEC-23 RF-003: cada tentativa de modelo emite llm_route —
+                // a UI mostra "tentando X (fallback de Y)" em tempo real.
+                if (st.Selection is not null)
+                {
+                    await st.Events.AppendAsync(conversationId,
+                        new ConversationStateUpdateEvent
                         {
-                            model = st.Selection.Model,
-                            role = "worker",
-                            attempt = st.Selection.Attempt,
-                            fallback_from = st.Selection.FallbackFrom,
-                        }, EventJson.Options),
-                    }, CancellationToken.None);
+                            Key = "llm_route",
+                            Value = JsonSerializer.SerializeToElement(new
+                            {
+                                model = st.Selection.Model,
+                                role = "worker",
+                                attempt = st.Selection.Attempt,
+                                fallback_from = st.Selection.FallbackFrom,
+                            }, EventJson.Options),
+                        }, CancellationToken.None);
+                }
+
+                var stream = await StreamAttemptAsync(
+                    st, request, toolSchemas, turn, conversationId, ct);
+                if (stream.Verdict == StreamVerdict.Retry)
+                {
+                    extraAttempts++; // retenta a mesma iteração
+                    continue;
+                }
+                if (stream.Verdict == StreamVerdict.Abort)
+                {
+                    return;
+                }
+                turn.ResponseId = stream.ResponseId;
+                turn.Iteration = iteration;
+
+                var dverdict = await DispatchToolCallsAsync(
+                    st, turn, conversationId, ct);
+                if (dverdict == DispatchVerdict.Abort)
+                {
+                    return;
+                }
+
             }
 
-            var stream = await StreamAttemptAsync(
-                st, request, toolSchemas, turn, conversationId, ct);
-            if (stream.Verdict == StreamVerdict.Retry)
+            await events.AppendAsync(conversationId, new AgentErrorEvent
             {
-                extraAttempts++; // retenta a mesma iteração
-                continue;
-            }
-            if (stream.Verdict == StreamVerdict.Abort)
-            {
-                return;
-            }
-            turn.ResponseId = stream.ResponseId;
-            turn.Iteration = iteration;
-
-            var dverdict = await DispatchToolCallsAsync(
-                st, turn, conversationId, ct);
-            if (dverdict == DispatchVerdict.Abort)
-            {
-                return;
-            }
-
+                ToolName = "loop",
+                ToolCallId = "",
+                Error = $"max_iterations ({opt.MaxIterations}) reached",
+            }, CancellationToken.None);
+            await activity.DiagnosticAsync(events, conversationId, "warn",
+                "max_iterations",
+                $"max_iterations ({opt.MaxIterations}) reached",
+                CancellationToken.None);
+            await activity.SummaryAsync(events, conversationId, "stuck", null,
+                CancellationToken.None);
+            await SetStatusAsync(events, db, conv, "stuck",
+                ConversationExecutionStatus.Error);
         }
-
-        await events.AppendAsync(conversationId, new AgentErrorEvent
+        finally
         {
-            ToolName = "loop",
-            ToolCallId = "",
-            Error = $"max_iterations ({opt.MaxIterations}) reached",
-        }, CancellationToken.None);
-        await activity.DiagnosticAsync(events, conversationId, "warn",
-            "max_iterations",
-            $"max_iterations ({opt.MaxIterations}) reached",
-            CancellationToken.None);
-        await activity.SummaryAsync(events, conversationId, "stuck", null,
-            CancellationToken.None);
-        await SetStatusAsync(events, db, conv, "stuck",
-            ConversationExecutionStatus.Error);
+            // SPEC-123: libera o estado deferred da conversa.
+            deferred?.Clear(conversationId);
+        }
     }
 
     /// <summary>
@@ -861,6 +879,23 @@ public sealed class AgentRunner(
 
         var tool = st.EffectiveTools.Find(call.Name);
         var decision = st.Permissions.Decide(call.Name);
+        // SPEC-123: tool deferida ainda não promovida via tool_search —
+        // observa o erro e segue (mesmo shape do unknown-tool).
+        if (tool is not null
+            && st.Deferred?.IsDeferredOnly(conversationId, call.Name) == true)
+        {
+            var obsId = await ObserveAsync(st.Events, conversationId,
+                actionEvent,
+                ToolResult.Error(
+                    $"tool '{call.Name}' está deferida — chame tool_search "
+                    + "para carregar o schema antes de usar"),
+                st.Sandbox, st.Executor, ct);
+            st.History.Add(LlmMessage.ToolResult(call.Id,
+                $"{{\"error\":\"tool '{call.Name}' deferred — use tool_search first\"}}"));
+            st.Ids.Add(obsId);
+            st.LastEventId = obsId;
+            return ToolCallVerdict.Next;
+        }
         if (tool is null)
         {
             // SPEC-29 RF-002: chamada a tool negada é observabilidade
@@ -1252,6 +1287,7 @@ public sealed class AgentRunner(
         public required SecurityPolicy Policy { get; init; }
         public ISecurityAnalyzer? Security { get; init; }
         public Application.Hooks.IHookService? Hooks { get; init; }
+        public IDeferredToolState? Deferred { get; init; }
         public IAgentActivityBus? Bus { get; init; }
         public IModelRouter? Router { get; init; }
         public ByorCallContext? ByorCtx { get; init; }
