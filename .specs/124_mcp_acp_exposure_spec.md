@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `mcp-acp-exposure` |
 | Type | `API` |
-| Status | `Approved` |
+| Status | `In implementation` |
 | Ticket | #326 (Epic #317) — gap-analysis OpenWebUiCode 2026-11-04 |
 | Scope | novo `src/OpenHandsNET.Mcp` + `src/OpenHandsNET.Acp` (ou hosting no Api), `OpenHandsNET.Api` (endpoints consumidos), `cli/` |
 

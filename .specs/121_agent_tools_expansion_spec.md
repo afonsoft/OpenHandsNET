@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `agent-tools-expansion` |
 | Type | `Feature` |
-| Status | `Approved` |
+| Status | `In implementation` |
 | Ticket | #323 (Epic #317) — gap-analysis OpenWebUiCode 2026-11-04 |
 | Scope | `src/OpenHandsNET.Infrastructure/Agent/Tools/`, `Application/Agent/`, `Domain/Events/`, `SystemPrompt/` |
 

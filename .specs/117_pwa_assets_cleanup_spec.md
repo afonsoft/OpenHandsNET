@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `pwa-assets-cleanup` |
 | Type | `Infra` |
-| Status | `Approved` |
+| Status | `In implementation` |
 | Ticket | #319 (Epic #317) — gap-analysis OpenWebUiCode 2026-11-04 |
 | Scope | `src/OpenHandsNET.Client/wwwroot/` + `index.html` + hosting WASM no `OpenHandsNET.Api` |
 
