@@ -107,6 +107,12 @@ public sealed class AgentLlmOptions
     public string SecurityAnalyzer { get; set; } = "pattern";
 
     /// <summary>
+    /// SPEC-125 RF-001: model id do advisor (2ª opinião em ações risky e
+    /// tool <c>advisor</c>). Vazio/null = feature inerte, zero overhead.
+    /// </summary>
+    public string? AdvisorModel { get; set; }
+
+    /// <summary>
     /// SPEC-33 RF-004: resume with a reduced toolset fails hard instead of
     /// emitting a <c>resume_drift</c> diagnostic (default fail-open).
     /// </summary>

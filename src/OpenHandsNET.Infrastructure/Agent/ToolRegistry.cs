@@ -33,6 +33,8 @@ public sealed class ToolRegistry : IToolRegistry
             "context_save", "context_get", "context_list",
             "context_delete", "context_summary",
             "memory_get", "memory_set", "memory_search",
+            // SPEC-125: segunda opinião sob demanda.
+            "advisor",
         };
 
     /// <summary>Builds the built-in catalog.</summary>
@@ -76,6 +78,8 @@ public sealed class ToolRegistry : IToolRegistry
             BuiltinContextDb.MemorySet(),
             BuiltinContextDb.MemoryGet(),
             BuiltinContextDb.MemorySearch(),
+            // SPEC-125: segunda opinião do advisor (opt-in AdvisorModel).
+            BuiltinAdvisor.Advisor(),
             // SPEC-122: code intelligence LSP no sandbox.
             BuiltinLsp.LspDiagnostics(),
             BuiltinLsp.LspSymbols(),

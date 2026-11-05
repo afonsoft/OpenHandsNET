@@ -553,6 +553,16 @@ public static class DependencyInjection
                         .PatternSecurityAnalyzer(),
             };
         });
+        // SPEC-125 RF-001: advisor (2º modelo opinando em ações risky) —
+        // inerte quando Agent:AdvisorModel não configurado.
+        services.AddSingleton<
+            OpenHandsNET.Application.Agent.IAdvisorService>(sp =>
+            new OpenHandsNET.Infrastructure.Agent.AdvisorService(
+                sp.GetRequiredService<OpenHandsNET.Application.Agent
+                    .IAgentLlmProvider>(),
+                sp.GetRequiredService<Microsoft.Extensions.Options
+                    .IOptions<OpenHandsNET.Application.Agent
+                        .AgentLlmOptions>>()));
         // SPEC-48 RF-001: política de segurança por org — presets +
         // overrides, cache distribuído (TTL 60s) com invalidação no write.
         services.AddScoped<

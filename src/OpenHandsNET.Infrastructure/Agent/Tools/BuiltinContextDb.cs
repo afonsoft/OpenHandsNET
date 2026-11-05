@@ -142,7 +142,9 @@ public static class BuiltinContextDb
             {
                 notes = notes.Select(n => new
                 {
-                    id = n.Id, title = n.Title, created_at = n.CreatedAt,
+                    id = n.Id,
+                    title = n.Title,
+                    created_at = n.CreatedAt,
                 }).ToList(),
                 count = notes.Count,
             });
@@ -206,7 +208,9 @@ public static class BuiltinContextDb
                 total_bytes = notes.Sum(n => n.Size),
                 notes = notes.Select(n => new
                 {
-                    id = n.Id, title = n.Title, bytes = n.Size,
+                    id = n.Id,
+                    title = n.Title,
+                    bytes = n.Size,
                 }).ToList(),
             });
         });
@@ -342,7 +346,8 @@ public static class BuiltinContextDb
                 count = rows.Count,
                 hits = rows.Select(m => new
                 {
-                    key = m.Key, value = m.Value,
+                    key = m.Key,
+                    value = m.Value,
                     updated_at = m.UpdatedAt,
                 }).ToList(),
             });

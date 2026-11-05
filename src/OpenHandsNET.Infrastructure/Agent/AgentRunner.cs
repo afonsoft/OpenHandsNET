@@ -975,6 +975,31 @@ public sealed class AgentRunner(
                             .ToLowerInvariant() + ")",
                     ParentId = actionEvent.Id,
                 }, ct);
+
+            // SPEC-125 RF-003: advisor opina sobre ação risky-mas-
+            // permitida — observacional (o usuário/juiz decide), evento
+            // advisor no stream; fail-open se AdvisorModel ausente.
+            if (st.Services.GetService<
+                    Application.Agent.IAdvisorService>()
+                is { Enabled: true } advisor)
+            {
+                var verdict = await advisor.ConsultAsync(
+                    $"tool={call.Name} action={actionEvent.Action}",
+                    "Is this action safe and on-scope for the task?",
+                    ct);
+                if (verdict is not null)
+                {
+                    await st.Events.AppendAsync(conversationId,
+                        new Domain.Events.AdvisorEvent
+                        {
+                            Question = $"risky action: {call.Name}",
+                            Answer = verdict.Answer,
+                            Model = verdict.Model,
+                            ElapsedMs = verdict.ElapsedMs,
+                            ParentId = actionEvent.Id,
+                        }, ct);
+                }
+            }
         }
 
         // SPEC-15 RF-003 + SPEC-29 RF-002 + SPEC-33 + SPEC-48:
