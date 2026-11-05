@@ -170,3 +170,4 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | 128 | context-memory-db — `context_*`/`memory_*` DB-backed + migrations | PR #336 · #333 |
 | 129 | mcp-hardening — golden `tools/list` + E2E stdio↔mock | PR #336 · #334 |
 | 130 | ux-followups — `SettingsModal` + rail OWUIC 260↔56 | PR #336 · #335 |
+| 131 | sandbox-browser-playwright — Playwright + `chrome-devtools` MCP no runtime | PR #339 · #338 |

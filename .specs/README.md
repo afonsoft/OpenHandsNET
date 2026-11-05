@@ -103,8 +103,8 @@ SPECs 116–124 entregues via PR #327 (Epic #317) e arquivadas em
 tool-call UX, tools do agente (21 → 45 builtins), hooks/permissões/
 deferred-loading, exposição MCP/ACP e assets PWA.
 
-### Leva 2026-11-05 (sandbox browser)
+### Leva 2026-11-05 (sandbox browser) — entregue
 
-| SPEC | Título | Status | Ticket |
-|---|---|---|---|
-| 131 | sandbox-browser-playwright (Playwright + chrome-devtools MCP no runtime) | Approved | #338 |
+SPEC-131 entregue via PR #339 e arquivada em `docs/specs/` — Playwright +
+`chrome-devtools-mcp` na imagem de runtime, env pass-through em
+`docker exec` e servidor MCP builtin `chrome-devtools`.
