@@ -6,8 +6,8 @@
 |---|---|
 | Feature | `sandbox-browser-playwright` |
 | Type | `Infra` |
-| Status | `Approved` |
-| Ticket | #338 |
+| Status | `In review` |
+| Ticket | #338 · PR #339 |
 | Scope | `runtime/Dockerfile`, `src/OpenHandsNET.Infrastructure/Mcp/`, `docs/` |
 
 ## 1. User Story
