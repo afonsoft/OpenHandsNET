@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `shell-sidebar-ux` |
 | Type | `Frontend` |
-| Status | `In implementation` |
+| Status | `In review` |
 | Ticket | #320 (Epic #317) — gap-analysis OpenWebUiCode 2026-11-04 |
 | Scope | `src/OpenHandsNET.Client/Layout/MainLayout.razor`, `Components/` (Sidebar extraído, NotificationBell, BannerBar), `Services/` |
 

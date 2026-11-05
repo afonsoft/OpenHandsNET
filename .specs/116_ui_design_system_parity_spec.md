@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `ui-design-system-parity` |
 | Type | `Frontend` |
-| Status | `In implementation` |
+| Status | `In review` |
 | Ticket | #318 (Epic #317) — gap-analysis OpenWebUiCode 2026-11-04 |
 | Scope | `src/OpenHandsNET.Client/` (Styles, wwwroot/css, index.html, componentes .razor) + `tools/` (baselines) |
 
