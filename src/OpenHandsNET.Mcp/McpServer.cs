@@ -162,21 +162,21 @@ public sealed class McpServer
 
     private static JsonObject Tool(
         string name, string description, JsonObject inputSchema) => new()
-    {
-        ["name"] = name,
-        ["description"] = description,
-        ["inputSchema"] = inputSchema,
-    };
+        {
+            ["name"] = name,
+            ["description"] = description,
+            ["inputSchema"] = inputSchema,
+        };
 
     private static JsonObject Schema(
         JsonObject properties, string[]? required = null) => new()
-    {
-        ["type"] = "object",
-        ["properties"] = properties,
-        ["required"] = required is null
+        {
+            ["type"] = "object",
+            ["properties"] = properties,
+            ["required"] = required is null
             ? new JsonArray()
             : new JsonArray([.. required.Select(r => (JsonNode)r)]),
-    };
+        };
 
     private static JsonObject Prop(string type, string description) => new()
     {

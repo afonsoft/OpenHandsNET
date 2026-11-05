@@ -71,8 +71,11 @@ public static class BuiltinJobs
                 .Where(p => p.Length >= 5)
                 .Select(p => new
                 {
-                    job_id = p[0], status = p[1], exit_code = p[2],
-                    name = p[3], pid = p[4],
+                    job_id = p[0],
+                    status = p[1],
+                    exit_code = p[2],
+                    name = p[3],
+                    pid = p[4],
                 }).ToList();
             return ToolResult.Ok(new { jobs });
         });

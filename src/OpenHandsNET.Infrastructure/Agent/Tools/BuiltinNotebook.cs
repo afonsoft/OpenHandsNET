@@ -74,7 +74,8 @@ public static class BuiltinNotebook
             return r.ExitCode == 0
                 ? ToolResult.Ok(new
                 {
-                    path = rel, op,
+                    path = rel,
+                    op,
                     index = int.Parse(r.StdOut.Trim()),
                 })
                 : ToolResult.Error($"notebook_edit falhou: {r.StdErr.Trim()}");
