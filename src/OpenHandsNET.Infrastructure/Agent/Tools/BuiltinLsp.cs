@@ -249,6 +249,7 @@ public static class BuiltinLsp
         }
         catch (JsonException)
         {
+            // stdout não-JSON (daemon morto, traceback) → reporta genérico.
         }
         return null;
     }

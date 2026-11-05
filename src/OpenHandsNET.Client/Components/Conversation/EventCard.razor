@@ -294,7 +294,7 @@
                 await JS.InvokeVoidAsync("ohn.codeBlocks.enhance", _md);
             }
             catch (JSException) { /* SSR/bUnit — sem DOM real */ }
-            catch (InvalidOperationException) { }
+            catch (InvalidOperationException) { /* idem */ }
         }
     }
 

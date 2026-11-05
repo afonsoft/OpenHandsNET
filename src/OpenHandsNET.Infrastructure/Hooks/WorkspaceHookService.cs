@@ -62,7 +62,7 @@ public sealed class WorkspaceHookService(
             {
                 if (hook.Type == "prompt")
                 {
-                    await InjectPromptAsync(context, hook, ct);
+                    await InjectPromptAsync(context, hook);
                 }
                 else
                 {
@@ -336,8 +336,7 @@ public sealed class WorkspaceHookService(
     }
 
     private async Task InjectPromptAsync(
-        HookContext context, WorkspaceHookDefinition hook,
-        CancellationToken ct) =>
+        HookContext context, WorkspaceHookDefinition hook) =>
         await events.AppendAsync(context.ConversationId,
             new MessageEvent
             {
