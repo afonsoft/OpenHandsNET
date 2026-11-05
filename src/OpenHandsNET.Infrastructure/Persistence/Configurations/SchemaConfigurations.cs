@@ -296,3 +296,30 @@ public sealed class InsightReportConfiguration : IEntityTypeConfiguration<Insigh
         b.HasIndex(e => e.OrgId);
     }
 }
+/// <inheritdoc />
+public sealed class ConversationContextNoteConfiguration
+    : IEntityTypeConfiguration<ConversationContextNoteRecord>
+{
+    /// <inheritdoc />
+    public void Configure(EntityTypeBuilder<ConversationContextNoteRecord> b)
+    {
+        b.ToTable("context_notes");
+        b.HasKey(e => e.Id);
+        b.Property(e => e.Title).HasMaxLength(200);
+        b.HasIndex(e => new { e.ConversationId, e.CreatedAt });
+    }
+}
+
+/// <inheritdoc />
+public sealed class ConversationMemoryConfiguration
+    : IEntityTypeConfiguration<ConversationMemoryRecord>
+{
+    /// <inheritdoc />
+    public void Configure(EntityTypeBuilder<ConversationMemoryRecord> b)
+    {
+        b.ToTable("conversation_memories");
+        b.HasKey(e => new { e.ConversationId, e.Key });
+        b.Property(e => e.Key).HasMaxLength(200);
+        b.HasIndex(e => e.UpdatedAt);
+    }
+}

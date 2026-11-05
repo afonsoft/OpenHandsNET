@@ -134,6 +134,14 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// <summary>Billing plans.</summary>
     public DbSet<PlanRecord> Plans => Set<PlanRecord>();
 
+    /// <summary>SPEC-128: notas de contexto por conversa (DB-backed).</summary>
+    public DbSet<ConversationContextNoteRecord> ContextNotes =>
+        Set<ConversationContextNoteRecord>();
+
+    /// <summary>SPEC-128: memória key/value granular por conversa.</summary>
+    public DbSet<ConversationMemoryRecord> ConversationMemories =>
+        Set<ConversationMemoryRecord>();
+
     /// <summary>Org subscriptions.</summary>
     public DbSet<SubscriptionRecord> Subscriptions => Set<SubscriptionRecord>();
 

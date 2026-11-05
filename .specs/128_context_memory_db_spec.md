@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `context-memory-db` |
 | Type | `Feature` |
-| Status | `Approved` |
+| Status | `In implementation` |
 | Ticket | #333 (umbrella #329, Epic #317) — débito SPEC-121 |
 | Scope | `src/OpenHandsNET.Infrastructure/Agent/Tools/` (context/memory), EF Core entities + migration, `src/OpenHandsNET.Domain` |
 

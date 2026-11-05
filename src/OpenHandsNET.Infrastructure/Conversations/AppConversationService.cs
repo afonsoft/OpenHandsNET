@@ -388,6 +388,14 @@ public sealed class AppConversationService(
             await browser.CloseAsync(record.Id, ct);
         }
 
+        // SPEC-128 RF-006: working memory morre junto com a conversa.
+        await db.ContextNotes
+            .Where(n => n.ConversationId == record.Id)
+            .ExecuteDeleteAsync(ct);
+        await db.ConversationMemories
+            .Where(m => m.ConversationId == record.Id)
+            .ExecuteDeleteAsync(ct);
+
         return true;
     }
 
