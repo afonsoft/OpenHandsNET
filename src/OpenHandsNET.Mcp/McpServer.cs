@@ -15,6 +15,7 @@ public sealed class McpServer
 {
     private const string StringType = "string";
     private const string ConvId = "conversation_id";
+    private const string ConvIdDesc = "Conversation id.";
     private const string Content = "content";
     /// <summary>Versão do protocolo MCP anunciada no handshake.</summary>
     public const string ProtocolVersion = "2024-11-05";
@@ -114,14 +115,14 @@ public sealed class McpServer
                 "Send a user message to a conversation (starts a run).",
                 Schema(new JsonObject
                 {
-                    [ConvId] = Prop(StringType, "Conversation id."),
+                    [ConvId] = Prop(StringType, ConvIdDesc),
                     [Content] = Prop(StringType, "Message text."),
                 }, required: [ConvId, Content])),
             Tool("ohn_list_events",
                 "List durable events of a conversation (paged).",
                 Schema(new JsonObject
                 {
-                    [ConvId] = Prop(StringType, "Conversation id."),
+                    [ConvId] = Prop(StringType, ConvIdDesc),
                     ["limit"] = Prop("integer",
                         "Max events (default 50)."),
                 }, required: [ConvId])),
@@ -129,7 +130,7 @@ public sealed class McpServer
                 "Full-text search over a conversation's events.",
                 Schema(new JsonObject
                 {
-                    [ConvId] = Prop(StringType, "Conversation id."),
+                    [ConvId] = Prop(StringType, ConvIdDesc),
                     ["query"] = Prop(StringType, "Search query."),
                 }, required: [ConvId, "query"])),
             Tool("ohn_get_task_status",
@@ -143,7 +144,7 @@ public sealed class McpServer
                 "Request cancellation of the current run on a conversation.",
                 Schema(new JsonObject
                 {
-                    [ConvId] = Prop(StringType, "Conversation id."),
+                    [ConvId] = Prop(StringType, ConvIdDesc),
                 }, required: [ConvId])),
             Tool("ohn_list_skills",
                 "List skills available to agents (repo + user level).",

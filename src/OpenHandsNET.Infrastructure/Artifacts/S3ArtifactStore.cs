@@ -97,7 +97,7 @@ internal sealed class AwsS3Backend : IS3Backend, IDisposable
                 }, ct);
             }
 
-            token = page.IsTruncated == true
+            token = page.IsTruncated is true
                 ? page.NextContinuationToken : null;
         }
         while (token is not null);

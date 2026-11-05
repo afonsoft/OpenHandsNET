@@ -19,6 +19,9 @@ namespace OpenHandsNET.Infrastructure.Agent.Tools;
 /// </summary>
 public static class BuiltinContextDb
 {
+    private const string ContextDbUnavailable =
+        "context db indisponível";
+
     private const int MaxNoteBytes = 32 * 1024;
     private const int MaxNotesPerConversation = 200;
     private const int MaxValueBytes = 8 * 1024;
@@ -41,7 +44,7 @@ public static class BuiltinContextDb
             var db = Db(ctx);
             if (db is null)
             {
-                return ToolResult.Error("context db indisponível");
+                return ToolResult.Error(ContextDbUnavailable);
             }
 
             var title = Str(a, "title");
@@ -96,7 +99,7 @@ public static class BuiltinContextDb
             var db = Db(ctx);
             if (db is null)
             {
-                return ToolResult.Error("context db indisponível");
+                return ToolResult.Error(ContextDbUnavailable);
             }
             if (!Guid.TryParse(Str(a, "id"), out var id))
             {
@@ -127,7 +130,7 @@ public static class BuiltinContextDb
             var db = Db(ctx);
             if (db is null)
             {
-                return ToolResult.Error("context db indisponível");
+                return ToolResult.Error(ContextDbUnavailable);
             }
 
             // SQLite não ordena DateTimeOffset — ordena em memória
@@ -165,7 +168,7 @@ public static class BuiltinContextDb
             var db = Db(ctx);
             if (db is null)
             {
-                return ToolResult.Error("context db indisponível");
+                return ToolResult.Error(ContextDbUnavailable);
             }
             if (!Guid.TryParse(Str(a, "id"), out var id))
             {
@@ -193,7 +196,7 @@ public static class BuiltinContextDb
             var db = Db(ctx);
             if (db is null)
             {
-                return ToolResult.Error("context db indisponível");
+                return ToolResult.Error(ContextDbUnavailable);
             }
 
             var notes = (await db.ContextNotes
@@ -232,7 +235,7 @@ public static class BuiltinContextDb
             var db = Db(ctx);
             if (db is null)
             {
-                return ToolResult.Error("context db indisponível");
+                return ToolResult.Error(ContextDbUnavailable);
             }
 
             var key = Str(a, "key");
@@ -287,7 +290,7 @@ public static class BuiltinContextDb
             var db = Db(ctx);
             if (db is null)
             {
-                return ToolResult.Error("context db indisponível");
+                return ToolResult.Error(ContextDbUnavailable);
             }
 
             var key = Str(a, "key");
@@ -325,7 +328,7 @@ public static class BuiltinContextDb
             var db = Db(ctx);
             if (db is null)
             {
-                return ToolResult.Error("context db indisponível");
+                return ToolResult.Error(ContextDbUnavailable);
             }
 
             var query = Str(a, "query");

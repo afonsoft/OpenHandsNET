@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
   <PropertyGroup>
+    <Nullable>enable</Nullable>
     <OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>
     <!-- Lockfile opt-out: the Blazor WASM SDK injects implicit pack references
          (WebAssembly.Pack, ILLink.Tasks, HotReload.Browser) whose versions are
