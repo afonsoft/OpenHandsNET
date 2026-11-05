@@ -333,6 +333,11 @@ public static class DependencyInjection
         });
         services.AddScoped<OpenHandsNET.Application.Hooks.IHookService,
             OpenHandsNET.Infrastructure.Hooks.HookService>();
+        // SPEC-127: hooks de arquivo (.openhands/hooks/*.hook.json) —
+        // singleton: estado só o cache TTL por conversa.
+        services.AddSingleton<
+            OpenHandsNET.Application.Hooks.IWorkspaceHookService,
+            OpenHandsNET.Infrastructure.Hooks.WorkspaceHookService>();
         // SPEC-30 RF-001: memória org-scoped (DB + audit trail).
         services.AddScoped<OpenHandsNET.Application.Memory.IMemoryService,
             OpenHandsNET.Infrastructure.Memory.MemoryService>();

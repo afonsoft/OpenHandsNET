@@ -110,9 +110,24 @@ public sealed class AgentRunner(
 
         // SPEC-11: hooks de ciclo de vida — falhas não abortam (salvo blocking).
         var hooks = services.GetService<Application.Hooks.IHookService>();
+        var wsHooks = services
+            .GetService<Application.Hooks.IWorkspaceHookService>();
         if (hooks is not null)
         {
             await hooks.RunAsync(Domain.Hooks.HookEvent.OnConversationStart,
+                new Application.Hooks.HookContext
+                {
+                    ConversationId = conversationId,
+                    Sandbox = sandbox,
+                    Services = services,
+                }, ct);
+        }
+
+        // SPEC-127: hooks de arquivo (.openhands/hooks/*.hook.json)
+        // rodam nos mesmos pontos dos hooks de DB.
+        if (wsHooks is not null)
+        {
+            await wsHooks.RunAsync(Domain.Hooks.HookEvent.OnConversationStart,
                 new Application.Hooks.HookContext
                 {
                     ConversationId = conversationId,
@@ -237,6 +252,8 @@ public sealed class AgentRunner(
         var ids = rebuilt.EventIds;
         var lastEventId = rebuilt.LastEventId;
         var hooks = services.GetService<Application.Hooks.IHookService>();
+        var wsHooks = services
+            .GetService<Application.Hooks.IWorkspaceHookService>();
         // SPEC-33 RF-001: analyzer por ação — High força confirmação
         // (mesmo com permission allow), diagnostic security_risk redacted.
         // SPEC-48 RF-002: AnalyzerOverride da policy troca o analyzer do run
@@ -309,6 +326,7 @@ public sealed class AgentRunner(
             Policy = policy,
             Security = security,
             Hooks = hooks,
+            WsHooks = wsHooks,
             Deferred = deferred,
             Bus = bus,
             Router = router,
@@ -338,7 +356,8 @@ public sealed class AgentRunner(
 
                 // pending_messages: usuário falou durante o run → entra no histórico.
                 st.LastEventId = await DrainPendingAsync(
-                    hooks, sandbox, st.History, st.Ids, st.LastEventId, ct);
+                    hooks, st.WsHooks, sandbox, st.History, st.Ids,
+                    st.LastEventId, ct);
 
                 // SPEC-22: compaction — forced (manual/overflow/stop_length) ou
                 // threshold avaliado pelo condenser. Modelo pode promover antes.
@@ -930,17 +949,31 @@ public sealed class AgentRunner(
         }
 
         // SPEC-11: on_tool_pre — hook blocking pode vetar a ação.
-        if (st.Hooks is not null && await st.Hooks.RunAsync(
-                Domain.Hooks.HookEvent.OnToolPre,
-                new Application.Hooks.HookContext
-                {
-                    ConversationId = conversationId,
-                    Sandbox = st.Sandbox,
-                    Services = st.Services,
-                    ToolName = call.Name,
-                    ActionId = actionEvent.Id,
-                    HookInput = actionEvent.Action,
-                }, ct))
+        // SPEC-127: hooks de arquivo avaliam junto (ambos rodam, sem
+        // short-circuit — cada firing vira evento durável).
+        var hookVeto = st.Hooks is not null && await st.Hooks.RunAsync(
+            Domain.Hooks.HookEvent.OnToolPre,
+            new Application.Hooks.HookContext
+            {
+                ConversationId = conversationId,
+                Sandbox = st.Sandbox,
+                Services = st.Services,
+                ToolName = call.Name,
+                ActionId = actionEvent.Id,
+                HookInput = actionEvent.Action,
+            }, ct);
+        hookVeto |= st.WsHooks is not null && await st.WsHooks.RunAsync(
+            Domain.Hooks.HookEvent.OnToolPre,
+            new Application.Hooks.HookContext
+            {
+                ConversationId = conversationId,
+                Sandbox = st.Sandbox,
+                Services = st.Services,
+                ToolName = call.Name,
+                ActionId = actionEvent.Id,
+                HookInput = actionEvent.Action,
+            }, ct);
+        if (hookVeto)
         {
             var vetoId = await ObserveAsync(st.Events, conversationId,
                 actionEvent,
@@ -1177,6 +1210,19 @@ public sealed class AgentRunner(
                 }, ct);
         }
 
+        if (st.WsHooks is not null)
+        {
+            await st.WsHooks.RunAsync(Domain.Hooks.HookEvent.OnToolPost,
+                new Application.Hooks.HookContext
+                {
+                    ConversationId = conversationId,
+                    Sandbox = st.Sandbox,
+                    Services = st.Services,
+                    ToolName = call.Name,
+                    ActionId = actionEvent.Id,
+                }, ct);
+        }
+
         if (call.Name == "finish")
         {
             var finalText = result.Observation.TryGetProperty(
@@ -1235,6 +1281,19 @@ public sealed class AgentRunner(
             if (st.Hooks is not null)
             {
                 await st.Hooks.RunAsync(Domain.Hooks.HookEvent.OnFinish,
+                    new Application.Hooks.HookContext
+                    {
+                        ConversationId = conversationId,
+                        Sandbox = st.Sandbox,
+                        Services = st.Services,
+                        ToolName = call.Name,
+                        ActionId = actionEvent.Id,
+                    }, CancellationToken.None);
+            }
+
+            if (st.WsHooks is not null)
+            {
+                await st.WsHooks.RunAsync(Domain.Hooks.HookEvent.OnFinish,
                     new Application.Hooks.HookContext
                     {
                         ConversationId = conversationId,
@@ -1312,6 +1371,7 @@ public sealed class AgentRunner(
         public required SecurityPolicy Policy { get; init; }
         public ISecurityAnalyzer? Security { get; init; }
         public Application.Hooks.IHookService? Hooks { get; init; }
+        public Application.Hooks.IWorkspaceHookService? WsHooks { get; init; }
         public IDeferredToolState? Deferred { get; init; }
         public IAgentActivityBus? Bus { get; init; }
         public IModelRouter? Router { get; init; }
@@ -1395,6 +1455,7 @@ public sealed class AgentRunner(
 
     private async Task<string?> DrainPendingAsync(
         Application.Hooks.IHookService? hooks,
+        Application.Hooks.IWorkspaceHookService? wsHooks,
         Domain.Sandbox.Sandbox sandbox, List<LlmMessage> history,
         List<string?> ids, string? lastEventId, CancellationToken ct)
     {
@@ -1407,6 +1468,18 @@ public sealed class AgentRunner(
             if (hooks is not null)
             {
                 await hooks.RunAsync(Domain.Hooks.HookEvent.OnMessage,
+                    new Application.Hooks.HookContext
+                    {
+                        ConversationId = conversationId,
+                        Sandbox = sandbox,
+                        Services = services,
+                        MessageId = pending.Id,
+                    }, ct);
+            }
+
+            if (wsHooks is not null)
+            {
+                await wsHooks.RunAsync(Domain.Hooks.HookEvent.OnMessage,
                     new Application.Hooks.HookContext
                     {
                         ConversationId = conversationId,

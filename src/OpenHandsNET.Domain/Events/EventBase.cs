@@ -41,6 +41,7 @@ public static class EventTree
 [JsonDerivedType(typeof(ServerErrorEvent), "ServerErrorEvent")]
 [JsonDerivedType(typeof(AcpToolCallEvent), "ACPToolCallEvent")]
 [JsonDerivedType(typeof(HookExecutionEvent), "HookExecutionEvent")]
+[JsonDerivedType(typeof(HookFiredEvent), "hook_fired")]
 [JsonDerivedType(typeof(LlmCompletionLogEvent), "LLMCompletionLogEvent")]
 [JsonDerivedType(typeof(DecisionAutoEvent), "decision_auto")]
 [JsonDerivedType(typeof(CommandOutputEvent), "command_output")]
