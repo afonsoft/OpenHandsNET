@@ -211,3 +211,6 @@ args do CORPO — restringir à signature.
   Docker (pesado) ficou como validação manual.
 - DONE: PR #339 mergeado (bfa4d94), SPEC-131 arquivada via PR #340 (8bcca1f),
   issue #338 fechada, branches deletadas. main limpa.
+- DONE: Dependabot #2 fixed via PR #341 (merge 494bc6e) — npm override
+  postcss-selector-parser → 6.1.5 (CVE-2026-104844, transitiva de
+  @tailwindcss/typography que pinna 6.0.10). npm audit 0 vulns.
