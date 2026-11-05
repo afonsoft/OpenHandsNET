@@ -200,3 +200,12 @@ args do CORPO — restringir à signature.
 
 - **PR #278** `feat/spec-112-fuzz-round2`: dev-login email ausente→400; usage-override/webhooks JsonException→400; webhook conv desconhecida→404; mcp/tool-call server vazio→400; `GET /keys` DateTimeOffset→ordenação em memória (SQLite); OpenAPI documenta 503 legit (checkpoint/tool-call); nightly fuzz auth cookie→Bearer `sk-*` mint via POST /keys. 10/10 testes Spec112 verdes.
 - **PR #279** `feat/spec-111-loop-decomposition`: `LoopAsync` (CC~210, ~890 linhas) → 
+## SPEC-131 (2026-11-05) — sandbox browser
+- PR #339 (branch feature/spec-131-sandbox-browser, 2 commits): runtime/Dockerfile
+  com playwright@1.64.1 + chrome-devtools-mcp@1.12.0 + chromium em
+  /opt/ohn/ms-playwright (/usr/local/bin/chromium, CHROME_PATH/PUPPETEER_EXECUTABLE_PATH);
+  McpClientService.DockerExecArgs encaminha cfg.Env como docker exec -e (bug: era descartado);
+  McpSettingsService.BuiltinServers + MergeBuiltin — chrome-devtools headless/isolated,
+  override por mesmo nome. Docs em docs/mcp-server.md. 4 testes novos (706 unit).
+- Pendente: merge #339 → arquivar SPEC-131 → fechar #338. Build real da imagem
+  Docker (pesado) ficou como validação manual.
