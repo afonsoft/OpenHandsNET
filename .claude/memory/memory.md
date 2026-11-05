@@ -209,3 +209,5 @@ args do CORPO — restringir à signature.
   override por mesmo nome. Docs em docs/mcp-server.md. 4 testes novos (706 unit).
 - Pendente: merge #339 → arquivar SPEC-131 → fechar #338. Build real da imagem
   Docker (pesado) ficou como validação manual.
+- DONE: PR #339 mergeado (bfa4d94), SPEC-131 arquivada via PR #340 (8bcca1f),
+  issue #338 fechada, branches deletadas. main limpa.
