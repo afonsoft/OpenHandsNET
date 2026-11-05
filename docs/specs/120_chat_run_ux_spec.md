@@ -6,8 +6,8 @@
 |---|---|
 | Feature | `chat-run-ux` |
 | Type | `Frontend` |
-| Status | `In review` |
-| Ticket | #322 (Epic #317) — gap-analysis OpenWebUiCode 2026-11-04 |
+| Status | `Completed` |
+| Ticket | #322 (Epic #317) · PR #327 — gap-analysis OpenWebUiCode 2026-11-04 |
 | Scope | `src/OpenHandsNET.Client/Components/Conversation/*`, `Components/*`, `Services/` (ToolActivityMap, ToolArgsPreview, ToolCallView, GitDiffRender, ChatNotificationsService) |
 
 ## 1. User Story

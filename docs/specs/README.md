@@ -145,3 +145,17 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | 110 | integration-flake-hardening — probes 90s + SQLite timeout | PR #274 · #269 |
 | 111 | AgentRunner LoopAsync decomposition | Done | PR #279 |
 | 112 | Fuzz findings round 2 | Done | PR #278 |
+
+## Entregues (Epic #317 — gap-analysis vs OpenWebUiCode, 2026-11-04/05)
+
+| SPEC | Título | Entrega |
+|---|---|---|
+| 116 | ui-design-system-parity — tokens oklch + classes componentes + themes custom | PR #327 · #318 |
+| 117 | pwa-assets-cleanup — manifest/SW/icons + remoção `lib/bootstrap` | PR #327 · #319 |
+| 118 | shell-sidebar-ux — menu ⋯ por conversa + NotificationBell + rail | PR #327 · #320 |
+| 119 | dialogs-settings-modal — DialogService/Host + share/lightbox + settings rail + offline retry | PR #327 · #321 |
+| 120 | chat-run-ux — ToolActivityMap/ToolArgsPreview/GitDiffRender + notificações | PR #327 · #322 |
+| 121 | agent-tools-expansion — file ops, apply_patch, jobs, worktree, specs/plans, context, notebook (21→45 builtins) | PR #327 · #323 |
+| 122 | lsp-code-intelligence — 6 tools `lsp_*` via bridge Python one-shot no sandbox | PR #327 · #324 |
+| 123 | tool-infra-hooks-permissions — DeferredToolState + `tool_search`, SmartPermissionJudge, 4 `.agent.md` embutidos, EmbeddedPrompts | PR #327 · #325 |
+| 124 | mcp-acp-exposure — `OpenHandsNET.Mcp` stdio (12 `ohn_*` tools) + `mcp serve` + gen-context | PR #327 · #326 |

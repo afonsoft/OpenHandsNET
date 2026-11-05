@@ -6,8 +6,8 @@
 |---|---|
 | Feature | `lsp-code-intelligence` |
 | Type | `Feature` |
-| Status | `In review` |
-| Ticket | #324 (Epic #317) — gap-analysis OpenWebUiCode 2026-11-04 |
+| Status | `Completed` |
+| Ticket | #324 (Epic #317) · PR #327 — gap-analysis OpenWebUiCode 2026-11-04 |
 | Scope | `src/OpenHandsNET.Infrastructure/Agent/Tools/Lsp*` + `OpenHandsNET.SandboxAgent`/`Sandboxing` (language servers no runtime image) |
 
 ## 1. User Story
