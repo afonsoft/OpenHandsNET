@@ -12,7 +12,7 @@
 {
     case "MessageEvent":
         <div class="msg @(Event.Role() == "user" ? "user" : "agent")">
-            <div class="md">@MarkdownService.Render(Event.MessageText())</div>
+            <div class="md" @ref="_md">@MarkdownService.Render(Event.MessageText())</div>
             @* SPEC-41 RF-006: copy da saída de texto do agente. *@
             @if (Event.Role() != "user")
             {
@@ -275,8 +275,23 @@
 
     private bool _expanded;
     private bool _copied;
+    private ElementReference _md;
 
     protected override void OnParametersSet() => _expanded = Expanded;
+
+    /// <summary>SPEC-116: toolbar de codeblock + inline copy no markdown.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Event.Kind == "MessageEvent" && _md.Context is not null)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("ohn.codeBlocks.enhance", _md);
+            }
+            catch (JSException) { /* SSR/bUnit — sem DOM real */ }
+            catch (InvalidOperationException) { }
+        }
+    }
 
     /// <summary>ObservationEvent cujo action_id casa com este ActionEvent.</summary>
     private ClientEvent? LinkedObservation() =>

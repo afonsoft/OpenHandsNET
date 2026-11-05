@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using Microsoft.JSInterop;
 
 namespace OpenHandsNET.Client.Services;
@@ -16,12 +17,14 @@ public sealed class ThemeService : IAsyncDisposable
 
     private readonly IJSRuntime _js;
     private readonly OpenHandsNetApiClient _api;
+    private readonly HttpClient _http;
     private IJSObjectReference? _selfRef;
 
-    public ThemeService(IJSRuntime js, OpenHandsNetApiClient api)
+    public ThemeService(IJSRuntime js, OpenHandsNetApiClient api, HttpClient http)
     {
         _js = js;
         _api = api;
+        _http = http;
     }
 
     /// <summary>Tema selecionado (sempre resolvido após <see cref="InitAsync"/>).</summary>
@@ -97,6 +100,52 @@ public sealed class ThemeService : IAsyncDisposable
                 new Dictionary<string, string> { ["theme"] = Theme });
         }
         catch (HttpRequestException) { /* offline — local já persistiu */ }
+    }
+
+    // ---- SPEC-116: paletas custom (themes/builtin.json) ----
+
+    /// <summary>Id da paleta ativa (<c>default</c> = stock, sem overrides).</summary>
+    public string PaletteId { get; private set; } = "default";
+
+    private List<CustomThemeDefinition> _palettes = [];
+
+    /// <summary>Presets carregados de <c>wwwroot/themes/builtin.json</c>.</summary>
+    public IReadOnlyList<CustomThemeDefinition> Palettes => _palettes;
+
+    /// <summary>Carrega os presets; idempotente.</summary>
+    public async Task LoadPalettesAsync()
+    {
+        if (_palettes.Count > 0)
+        {
+            return;
+        }
+
+        try
+        {
+            var list = await _http.GetFromJsonAsync<List<CustomThemeDefinition>>(
+                "themes/builtin.json");
+            if (list is not null)
+            {
+                _palettes = list;
+            }
+        }
+        catch (HttpRequestException) { /* offline — catálogo vazio */ }
+    }
+
+    /// <summary>
+    /// Define a paleta ativa: gera o CSS via <see cref="ThemeCssBuilder"/> e
+    /// injeta <c>&lt;style id="user-theme"&gt;</c> + classe
+    /// <c>theme-{id}</c> no <c>&lt;html&gt;</c>.
+    /// </summary>
+    public async Task SetPaletteAsync(string paletteId)
+    {
+        PaletteId = paletteId;
+        var palette = _palettes.FirstOrDefault(p => p.Id == paletteId);
+        var css = palette is null || palette.Id == "default"
+            ? ""
+            : ThemeCssBuilder.Build(palette);
+        await SafeJs("ohnTheme.setCustom", palette?.Id ?? "default", css);
+        Changed?.Invoke();
     }
 
     private async Task<T?> SafeJs<T>(string id, params object?[] args)

@@ -29,6 +29,18 @@
                 var lang = localStorage.getItem('ohn.locale');
                 if (lang) document.documentElement.lang = lang;
             } catch (e) { }
+            // SPEC-116: re-aplica paleta custom persistida antes do paint.
+            try {
+                var tid = localStorage.getItem('ohn.theme.id');
+                var tcss = localStorage.getItem('ohn.theme.css') || '';
+                if (tid && tid !== 'default') {
+                    document.documentElement.classList.add('theme-' + tid);
+                    var st = document.createElement('style');
+                    st.id = 'user-theme';
+                    st.textContent = tcss;
+                    document.head.appendChild(st);
+                }
+            } catch (e) { }
         })();
     </script>
     <link rel="stylesheet" href="lib/xterm/xterm.css" />
@@ -60,6 +72,7 @@
     <script src="js/xtermInterop.js"></script>
     <script src="js/splitPane.js"></script>
     <script src="js/monacoInterop.js"></script>
+    <script src="js/codeblocks.js"></script>
     <script src="_framework/blazor.webassembly.js" autostart="false" defer></script>
     <script src="js/boot.js" defer></script>
     <!-- SPEC-117 RF-002: service worker do shell PWA (framework-assets

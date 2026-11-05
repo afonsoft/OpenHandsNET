@@ -1,8 +1,875 @@
-/* SPEC-21 RF-005 — Tailwind v4 entry. Utilities layer sobre o app.css
-   hand-written; migração dos componentes é incremental. */
-@import "tailwindcss";
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
 
-/* fontes de classe: todo markup razor + js interop */
-@source "../**/*.razor";
-@source "../**/*.html";
-@source "../../src/**/*.razor";
+@source '../**/*.razor';
+@source '../**/*.html';
+@source '../**/*.js';
+@source '../../src/**/*.razor';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+@theme {
+	--font-sans:
+		'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+		'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', 'Vazirmatn', sans-serif;
+
+	--font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+		'Courier New', monospace;
+
+	--color-gray-50: oklch(0.98 0 0);
+	--color-gray-100: oklch(0.96 0 0);
+	--color-gray-200: oklch(0.9 0 0);
+	--color-gray-300: oklch(0.86 0 0);
+	--color-gray-400: oklch(0.7 0 0);
+	--color-gray-500: oklch(0.55 0 0);
+	--color-gray-600: oklch(0.44 0 0);
+	--color-gray-700: oklch(0.37 0 0);
+	--color-gray-750: oklch(0.33 0 0);
+	--color-gray-800: oklch(0.3 0 0);
+	--color-gray-850: oklch(0.27 0 0);
+	--color-gray-900: oklch(0.2 0 0);
+	--color-gray-925: oklch(0.18 0 0);
+	--color-gray-950: oklch(0.16 0 0);
+}
+
+@layer base {
+	@font-face {
+		font-family: 'Inter Variable';
+		src: url('/fonts/inter-var-latin.woff2') format('woff2');
+		font-weight: 100 900;
+		font-style: normal;
+		font-display: swap;
+	}
+
+	html {
+		scrollbar-color: rgba(255 255 255 / 0.2) transparent;
+	}
+
+	*,
+	::before,
+	::after {
+		border-color: var(--color-gray-200);
+	}
+
+	[data-theme='dark'] *,
+	[data-theme='dark'] ::before,
+	[data-theme='dark'] ::after {
+		border-color: var(--color-gray-800);
+	}
+
+	body {
+		font-family: var(--font-sans);
+		font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+		-webkit-font-smoothing: antialiased;
+		text-rendering: optimizeLegibility;
+		letter-spacing: -0.011em;
+	}
+
+	::selection {
+		background: oklch(0.75 0.1 250 / 0.3);
+	}
+
+	/* Indicador de foco global: qualquer elemento interativo focável via
+	   teclado recebe um anel visível em :focus-visible (mouse não dispara).
+	   Elementos com `outline-none` no markup ficam cobertos por esta regra. */
+	:where(
+		button,
+		[role='button'],
+		[role='menuitem'],
+		[role='option'],
+		[role='tab'],
+		a[href],
+		input,
+		select,
+		textarea,
+		summary,
+		[tabindex]
+	):focus-visible {
+		outline: 2px solid transparent; /* fallback forced-colors */
+		outline-offset: 1px;
+		box-shadow:
+			0 0 0 2px var(--color-white, #fff),
+			0 0 0 4px var(--color-gray-500);
+	}
+
+	[data-theme='dark'] :where(
+		button,
+		[role='button'],
+		[role='menuitem'],
+		[role='option'],
+		[role='tab'],
+		a[href],
+		input,
+		select,
+		textarea,
+		summary,
+		[tabindex]
+	):focus-visible {
+		box-shadow:
+			0 0 0 2px var(--color-gray-950),
+			0 0 0 4px var(--color-gray-400);
+	}
+}
+
+@layer components {
+	.boot-splash {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 1rem;
+		height: 100%;
+		font-size: 1.5rem;
+		font-weight: 400;
+		color: var(--color-gray-700);
+		background: #fff;
+	}
+
+	[data-theme='dark'] .boot-splash {
+		color: var(--color-gray-200);
+		background: var(--color-gray-900);
+	}
+
+	.boot-splash img {
+		width: 8rem;
+		height: 8rem;
+		border-radius: 9999px;
+	}
+
+	.typing {
+		display: inline-block;
+		animation: typing-blink 1s steps(2, start) infinite;
+		color: var(--color-gray-500);
+	}
+
+	@keyframes typing-blink {
+		to {
+			visibility: hidden;
+		}
+	}
+
+	/* Indicador "Pensando": brain pulsante + reticências que crescem
+	   (. → .. → ...) por steps — sem JS, sem reflow (sombras/emoji). */
+	.thinking-brain {
+		display: inline-block;
+		font-size: 1rem;
+		animation: thinking-brain-pulse 1.6s ease-in-out infinite;
+	}
+
+	@keyframes thinking-brain-pulse {
+		0%, 100% {
+			transform: scale(1);
+			opacity: 0.85;
+		}
+
+		50% {
+			transform: scale(1.18);
+			opacity: 1;
+		}
+	}
+
+	.thinking-dots::after {
+		display: inline-block;
+		content: "...";
+		width: 0;
+		overflow: hidden;
+		vertical-align: bottom;
+		animation: thinking-dots-steps 1.5s steps(4, end) infinite;
+	}
+
+	@keyframes thinking-dots-steps {
+		to {
+			width: 1.25em;
+		}
+	}
+
+	/* Anel de streaming do avatar: a `animate-ping` do Tailwind escala a
+	   200% e invade o texto ao lado — esta versão fica colada na borda
+	   (o span usa -inset-0.5) e esmaece antes de passar de 1.3×. */
+	.avatar-ping {
+		animation: avatar-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+	}
+
+	@keyframes avatar-ping {
+		0% {
+			transform: scale(1);
+			opacity: 0.9;
+		}
+
+		75%,
+		100% {
+			transform: scale(1.3);
+			opacity: 0;
+		}
+	}
+
+	/* prefers-reduced-motion: neutraliza animações/transições/blink no app
+	   inteiro. O estado funcional continua visível (spinner estático, dot
+	   parado) — só o movimento some. */
+	/* css:S9423 won't-fix — os 5 !important do reset reduced-motion são
+	   deliberados: precisam vencer estilos inline e de libs para garantir
+	   a preferência de acessibilidade (padrão canônico do WCAG). Sem
+	   alternativa que não perca a garantia. */
+	@media (prefers-reduced-motion: reduce) {
+		*,
+		::before,
+		::after {
+			animation-duration: 0.01ms !important;
+			animation-iteration-count: 1 !important;
+			transition-duration: 0.01ms !important;
+			transition-delay: 0ms !important;
+			scroll-behavior: auto !important;
+		}
+	}
+
+	/* ----- Componentes compartilhados (páginas secundárias, modais) ----- */
+
+	.page {
+		@apply flex-1 overflow-y-auto scrollbar-hidden h-full w-full px-6 py-5 max-sm:px-3 max-sm:py-4;
+	}
+
+	.page-header {
+		@apply flex items-center justify-between mb-5 max-sm:flex-wrap max-sm:gap-2;
+	}
+
+	.page-title {
+		@apply text-xl font-normal text-gray-800 dark:text-gray-100;
+	}
+
+	.page-new {
+		@apply rounded-full bg-gray-700/5 hover:bg-gray-700/10 dark:bg-gray-100/5 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition text-sm px-4 py-1.5 cursor-pointer;
+	}
+
+	.page-tabs {
+		@apply flex gap-1 mb-4 border-b border-gray-100 dark:border-gray-800 pb-2;
+	}
+
+	.page-tabs button,
+	.page-tabs a {
+		@apply rounded-full px-3 py-1 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer;
+	}
+
+	.page-tabs button.active,
+	.page-tabs a.active {
+		@apply bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100;
+	}
+
+	.skip-link {
+		@apply fixed left-3 top-3 z-[100] rounded-lg bg-gray-900 px-3 py-2 text-sm text-white dark:bg-white dark:text-gray-900 transition focus:outline-none;
+		transform: translateY(-200%);
+	}
+	.skip-link:focus-visible {
+		transform: translateY(0);
+	}
+
+	.card-list {
+		@apply flex flex-col gap-2;
+	}
+
+	.card-row {
+		@apply flex items-center justify-between gap-3 rounded-2xl border border-gray-100 dark:border-gray-850 bg-gray-50/50 dark:bg-gray-850/40 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-850 transition;
+	}
+
+	.card-main {
+		@apply flex flex-col min-w-0 flex-1;
+	}
+
+	.card-title {
+		@apply text-sm font-normal text-gray-800 dark:text-gray-100 truncate;
+	}
+
+	.card-sub {
+		@apply text-xs text-gray-400 dark:text-gray-500 truncate;
+	}
+
+	.card-meta {
+		@apply text-xs text-gray-400 dark:text-gray-500;
+	}
+
+	.card-pre {
+		@apply text-xs text-gray-500 dark:text-gray-400 font-mono whitespace-pre-wrap mt-1;
+	}
+
+	/* SPEC-20261019-chat-window-perf RF-002: content-visibility pula
+	   layout/paint de mensagens fora da viewport — o tamanho estimado evita
+	   saltos de scrollbar ao entrar na tela. */
+	.msg-cv {
+		content-visibility: auto;
+		contain-intrinsic-size: auto 140px;
+	}
+
+	/* SPEC-20261019-codeblock-toolbar: wrapper + barra injetados por
+	   codeblocks.js em cada <pre><code> do conteúdo renderizado. */
+	.codeblock {
+		@apply my-3 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800;
+	}
+
+	.codeblock-bar {
+		@apply flex items-center justify-between gap-2 px-3 py-1.5 text-[0.75rem]
+			bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 select-none;
+	}
+
+	.codeblock-lang {
+		@apply font-mono lowercase;
+	}
+
+	.codeblock-actions {
+		@apply flex items-center gap-1;
+	}
+
+	.codeblock-btn {
+		@apply px-2 py-0.5 rounded-md text-[0.7rem] font-medium cursor-pointer
+			text-gray-600 dark:text-gray-300
+			hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors;
+	}
+
+	.codeblock-pre {
+		@apply m-0! rounded-none border-0;
+	}
+
+	.codeblock-wrapped {
+		white-space: pre-wrap;
+		/* css:S1874 — word-break:break-word é keyword deprecated;
+		   overflow-wrap:break-word é o equivalente padronizado. */
+		overflow-wrap: break-word;
+	}
+
+	.codeblock-inline {
+		@apply cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors;
+	}
+
+	.card-actions {
+		@apply flex items-center gap-1 shrink-0;
+	}
+
+	.role-badge {
+		@apply text-[0.6875rem] rounded-full px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400;
+	}
+
+	.field {
+		@apply mb-4;
+	}
+
+	.field label,
+	.field .field-label {
+		@apply block text-sm font-normal text-gray-600 dark:text-gray-300 mb-1;
+	}
+
+	.field-note {
+		@apply text-xs text-gray-500 dark:text-gray-400 mt-1;
+	}
+
+	.field-actions {
+		@apply flex gap-3 mt-1.5;
+	}
+
+	.input {
+		@apply w-full rounded-xl bg-gray-50 dark:bg-gray-850 border border-gray-200 dark:border-gray-800 px-3 py-2 text-sm outline-none text-gray-800 dark:text-gray-100 transition focus:border-gray-300 dark:focus:border-gray-700 focus:ring-2 focus:ring-gray-300/30 dark:focus:ring-gray-700/40;
+	}
+
+	/* Selects modernos: chevron próprio, sem appearance nativo */
+	select.input {
+		@apply appearance-none cursor-pointer pe-8 bg-no-repeat;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.8' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='m19.5 8.25-7.5 7.5-7.5-7.5'/%3E%3C/svg%3E");
+		background-position: right 0.625rem center;
+		background-size: 0.875rem;
+	}
+
+	[data-theme='dark'] select.input {
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.8' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='m19.5 8.25-7.5 7.5-7.5-7.5'/%3E%3C/svg%3E");
+	}
+
+	select.input option {
+		@apply bg-white text-gray-800 dark:bg-gray-900 dark:text-gray-100;
+	}
+
+	/* Dropdowns padronizados (menus de contexto, pickers) */
+	.menu {
+		@apply rounded-2xl bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-800 shadow-xl py-1;
+	}
+
+	.menu-item {
+		@apply flex h-7 w-full items-center gap-2 rounded-lg px-2.5 text-[0.8125rem] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900 cursor-pointer transition;
+	}
+
+	.menu-sep {
+		@apply border-gray-100 dark:border-gray-800 my-1;
+	}
+
+	.auth-submit {
+		@apply w-full rounded-full bg-gray-700/5 hover:bg-gray-700/10 dark:bg-gray-100/5 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition font-normal text-sm py-2.5 disabled:opacity-50 cursor-pointer;
+	}
+
+	.primary-btn {
+		@apply rounded-full bg-gray-800 dark:bg-gray-100 hover:bg-gray-700 dark:hover:bg-white px-4 py-1.5 text-sm font-medium text-gray-50 dark:text-gray-900 transition disabled:opacity-50 cursor-pointer;
+	}
+
+	.button-sm {
+		@apply rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 transition disabled:opacity-50 cursor-pointer;
+	}
+
+	.danger-btn {
+		@apply text-red-500 hover:bg-red-500/10;
+	}
+
+	.check {
+		@apply flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 py-1 cursor-pointer;
+	}
+
+	.check input[type='checkbox'] {
+		@apply size-4 accent-gray-700 dark:accent-gray-300;
+	}
+
+	/* Switch (SAML/SCIM e toggles de admin): checkbox nativo escondido,
+	   track + knob via CSS puro — mesma família visual do .check. */
+	.toggle {
+		@apply flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 py-1 cursor-pointer;
+	}
+
+	.toggle input[type='checkbox'] {
+		@apply relative h-5 w-9 shrink-0 cursor-pointer appearance-none rounded-full bg-gray-300 dark:bg-gray-700 transition-colors;
+	}
+
+	.toggle input[type='checkbox']::after {
+		content: '';
+		@apply absolute left-0.5 top-0.5 size-4 rounded-full bg-white shadow transition-transform;
+	}
+
+	.toggle input[type='checkbox']:checked {
+		@apply bg-gray-800 dark:bg-gray-100;
+	}
+
+	.toggle input[type='checkbox']:checked::after {
+		@apply translate-x-4 dark:bg-gray-800;
+	}
+
+	.memory-row {
+		@apply flex items-center justify-between gap-2 rounded-xl bg-gray-50 dark:bg-gray-850 px-3 py-2 mb-1.5;
+	}
+
+	.memory-text {
+		@apply text-sm text-gray-700 dark:text-gray-300;
+	}
+
+	.icon-btn {
+		@apply size-7 flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition cursor-pointer;
+	}
+
+	.icon-mini {
+		@apply size-5 min-h-6 min-w-6 inline-flex items-center justify-center rounded-md text-gray-400 hover:text-red-500 dark:hover:text-red-400 cursor-pointer;
+	}
+
+	.msg-action {
+		@apply inline-flex items-center justify-center min-h-6 px-1 rounded-md text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer;
+	}
+
+	/* Conteúdo markdown renderizado (chat, channels) — tipografia do
+	   plugin oficial; o `text-sm` do markup controla o tamanho. */
+	.markdown-body {
+		@apply prose prose-sm dark:prose-invert max-w-none;
+	}
+
+	.font-primary {
+		@apply font-sans;
+	}
+
+	/* ----- Modal ----- */
+
+	.modal-backdrop {
+		@apply fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 dark:bg-gray-950/60 px-4 max-sm:px-0;
+	}
+
+	.modal {
+		@apply w-full max-w-5xl max-h-[92vh] flex flex-col rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-2xl max-sm:h-dvh max-sm:max-h-dvh max-sm:rounded-none max-sm:border-0;
+	}
+
+	.modal-header {
+		@apply flex items-center justify-between px-5 py-4 text-base font-medium text-gray-800 dark:text-gray-100;
+	}
+
+	/* Rail de abas: horizontal rolável no mobile, vertical à esquerda no
+	   desktop — mesmo padrão do modal de Settings do upstream. */
+	.modal-shell {
+		@apply flex flex-1 min-h-0 flex-col sm:flex-row;
+	}
+
+	.modal-tabs {
+		@apply flex gap-1 px-3 py-2 border-b border-gray-100 dark:border-gray-800 overflow-x-auto scrollbar-hidden snap-x scroll-smooth sm:w-60 sm:shrink-0 sm:flex-col sm:overflow-x-hidden sm:overflow-y-auto sm:border-b-0 sm:border-r sm:py-4 sm:items-stretch;
+	}
+
+	.modal-tab {
+		@apply rounded-xl px-3 py-2 text-sm text-left text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer whitespace-nowrap sm:whitespace-normal snap-start max-sm:min-h-11 max-sm:flex max-sm:items-center;
+	}
+
+	.modal-tab.active {
+		@apply bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100;
+	}
+
+	.modal-body {
+		@apply flex-1 overflow-y-auto px-5 py-4;
+	}
+
+	/* ----- Settings: seções nomeadas + barra de salvar fixa ----- */
+
+	.settings-section {
+		@apply mb-6;
+	}
+
+	.settings-section-title {
+		@apply text-sm font-medium text-gray-800 dark:text-gray-100;
+	}
+
+	.settings-section-desc {
+		@apply text-xs text-gray-500 dark:text-gray-400 mb-2;
+	}
+
+	.save-bar {
+		@apply sticky bottom-0 -mx-5 mt-2 flex items-center justify-between gap-3 border-t border-gray-100 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95 px-5 py-3 backdrop-blur;
+	}
+
+	.save-bar-msg {
+		@apply text-xs text-gray-400 dark:text-gray-500 min-w-0 flex-1;
+	}
+
+	.save-bar-actions {
+		@apply flex items-center gap-2 flex-none;
+	}
+
+	.save-bar-actions button {
+		@apply max-sm:min-h-11;
+	}
+
+	.modal-sep {
+		@apply border-gray-100 dark:border-gray-800 my-4;
+	}
+
+	.danger {
+		@apply text-red-500;
+	}
+
+	/* ----- Página de chat compartilhado ----- */
+
+	.shared-page {
+		@apply min-h-screen bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 flex flex-col items-center px-4 py-10;
+	}
+
+	.shared-card {
+		@apply w-full max-w-3xl;
+	}
+
+	.shared-title {
+		@apply text-2xl font-normal mb-1;
+	}
+
+	.shared-meta {
+		@apply text-xs text-gray-400 dark:text-gray-500 mb-6;
+	}
+
+	.shared-messages {
+		@apply flex flex-col gap-5;
+	}
+
+	.shared-back {
+		@apply mt-8 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 underline cursor-pointer;
+	}
+
+	.message {
+		@apply flex gap-3 w-full;
+	}
+
+	.message.user {
+		@apply justify-end;
+	}
+
+	.message-avatar {
+		@apply size-7 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[0.625rem] font-medium shrink-0 mt-0.5;
+	}
+
+	.message-body {
+		@apply flex flex-col min-w-0 flex-1;
+	}
+
+	.message-meta {
+		@apply text-[0.8125rem] font-medium text-gray-500 dark:text-gray-400 mb-0.5;
+	}
+
+	.message-content {
+		@apply prose prose-sm dark:prose-invert max-w-none;
+	}
+
+	.user-text {
+		@apply whitespace-pre-wrap;
+	}
+
+	.chat-empty {
+		@apply flex flex-col items-center justify-center text-center min-h-[60vh];
+	}
+
+	.chat-empty-logo {
+		@apply text-2xl font-normal text-gray-700 dark:text-gray-200;
+	}
+
+	.chat-empty-sub {
+		@apply mt-1 text-sm text-gray-500 dark:text-gray-400;
+	}
+
+	.chat-error {
+		@apply my-3 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/20 px-4 py-2 text-sm text-red-600 dark:text-red-400;
+	}
+
+	.sidebar-empty {
+		@apply px-3 text-[0.8125rem] text-gray-400 dark:text-gray-600;
+	}
+
+	/* IDE S7: chip atômico de menção @path no composer do chat. */
+	.mention-chip {
+		@apply flex items-center gap-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1 text-xs text-blue-700 dark:text-blue-300;
+	}
+
+	/* IDE S7: dropdown debounced de paths do workdir (top-20, dirs primeiro). */
+	.mention-list {
+		@apply mb-1 max-h-60 overflow-y-auto rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800/50;
+	}
+
+	/* IDE S7: badge ✓/✗ do resultado de testes — cor via bg-* inline. */
+	.test-badge {
+		@apply inline-flex size-4 items-center justify-center rounded-full text-[0.625rem] font-bold text-white;
+	}
+
+	/* IDE S7: tail do log do job de testes. */
+	.test-log {
+		@apply max-h-64 flex-1 overflow-auto rounded-lg bg-gray-50 dark:bg-gray-900 p-2 font-mono text-[0.6875rem] leading-relaxed text-gray-700 dark:text-gray-300;
+	}
+
+	/* IDE S7: chip do header /ide enquanto um test-run está ativo. */
+	.test-running-chip {
+		@apply inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-950/50 px-2 py-0.5 text-[0.625rem] text-blue-700 dark:text-blue-300;
+	}
+}
+
+@utility scrollbar-hidden {
+	-ms-overflow-style: none;
+	scrollbar-width: none;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+	display: none;
+}
+
+/* Scrollbar fina global, como no upstream */
+*::-webkit-scrollbar {
+	width: 5px;
+	height: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+	background: rgba(140, 140, 140, 0.4);
+	border-radius: 3px;
+}
+
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+/* UI de erro do Blazor */
+#blazor-error-ui {
+	background: lightyellow;
+	bottom: 0;
+	box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+	display: none;
+	left: 0;
+	padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+	position: fixed;
+	width: 100%;
+	z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+	cursor: pointer;
+	position: absolute;
+	right: 0.75rem;
+	top: 0.5rem;
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	color: inherit;
+}
+
+#blazor-error-ui .error-details-toggle {
+	cursor: pointer;
+	text-decoration: underline;
+	margin-left: 0.5rem;
+}
+
+#blazor-error-ui .error-details {
+	font-size: 0.75rem;
+	max-height: 40vh;
+	overflow: auto;
+	white-space: pre-wrap;
+	margin: 0.5rem 0 0;
+}
+
+[data-theme='dark'] #blazor-error-ui {
+	background: var(--color-gray-850);
+	color: var(--color-gray-100);
+}
+
+/* SPEC-20261011-ide-workbench (Fase A): chrome do workbench estilo VS Code —
+   activity bar, status bar, sashes e breadcrumbs. */
+.ide-activity {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.125rem;
+	width: 2.75rem;
+	flex-shrink: 0;
+	padding-block: 0.375rem;
+	border-right: 1px solid var(--color-gray-200);
+	background: var(--color-gray-50);
+}
+[data-theme='dark'] .ide-activity {
+	border-color: var(--color-gray-800);
+	background: var(--color-gray-925, #0b0f14);
+}
+.ide-activity-item {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.25rem;
+	height: 2.25rem;
+	border-radius: 0.375rem;
+	font-size: 1rem;
+	color: var(--color-gray-500);
+}
+.ide-activity-item:hover {
+	color: var(--color-gray-800);
+	background: var(--color-gray-200);
+}
+[data-theme='dark'] .ide-activity-item:hover {
+	color: var(--color-gray-100);
+	background: var(--color-gray-800);
+}
+.ide-activity-active {
+	color: var(--color-blue-600);
+	border-left: 2px solid var(--color-blue-600);
+	border-radius: 0 0.375rem 0.375rem 0;
+	margin-left: -2px;
+}
+[data-theme='dark'] .ide-activity-active {
+	color: var(--color-blue-400);
+	border-color: var(--color-blue-400);
+}
+.ide-activity-badge {
+	position: absolute;
+	bottom: 0.125rem;
+	right: 0.125rem;
+	min-width: 0.875rem;
+	padding: 0 0.1875rem;
+	border-radius: 9999px;
+	background: var(--color-blue-600);
+	color: white;
+	font-size: 0.5625rem;
+	line-height: 0.875rem;
+	text-align: center;
+}
+.ide-status {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	height: 1.375rem;
+	flex-shrink: 0;
+	padding-inline: 0.5rem;
+	border-top: 1px solid var(--color-gray-200);
+	background: var(--color-gray-50);
+	font-size: 0.6875rem;
+	color: var(--color-gray-600);
+}
+[data-theme='dark'] .ide-status {
+	border-color: var(--color-gray-800);
+	background: var(--color-gray-925, #0b0f14);
+	color: var(--color-gray-300);
+}
+.ide-status-side {
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+	min-width: 0;
+}
+.ide-status-item {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	padding: 0 0.375rem;
+	border-radius: 0.1875rem;
+	white-space: nowrap;
+}
+button.ide-status-item:hover {
+	background: var(--color-gray-200);
+}
+[data-theme='dark'] button.ide-status-item:hover {
+	background: var(--color-gray-800);
+}
+.ide-sash {
+	flex-shrink: 0;
+	background: transparent;
+	z-index: 10;
+}
+.ide-sash[data-ide-axis="x"] {
+	width: 4px;
+	margin-inline: -2px;
+	cursor: col-resize;
+}
+.ide-sash[data-ide-axis="y"] {
+	height: 4px;
+	margin-block: -2px;
+	cursor: row-resize;
+}
+.ide-sash:hover, .ide-sash:active {
+	background: var(--color-blue-500);
+}
+.ide-crumbs {
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+	padding: 0.1875rem 0.5rem;
+	font-size: 0.6875rem;
+	color: var(--color-gray-500);
+	border-bottom: 1px solid var(--color-gray-100);
+	overflow: hidden;
+	white-space: nowrap;
+}
+[data-theme='dark'] .ide-crumbs {
+	border-color: var(--color-gray-800);
+	color: var(--color-gray-400);
+}
+.ide-crumb-sep {
+	color: var(--color-gray-400);
+}
+.ide-crumb {
+	display: inline-block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* SPEC-20261011-ide-editor-core (Fase B): menu de contexto das abas. */
+.ide-menu-item {
+	display: flex;
+	width: 100%;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.375rem 0.75rem;
+	font-size: 0.75rem;
+	text-align: left;
+	color: var(--color-gray-700);
+}
+.ide-menu-item:hover {
+	background: var(--color-gray-100);
+}
+[data-theme='dark'] .ide-menu-item {
+	color: var(--color-gray-200);
+}
+[data-theme='dark'] .ide-menu-item:hover {
+	background: var(--color-gray-800);
+}

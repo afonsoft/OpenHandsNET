@@ -96,3 +96,26 @@ window.ohnComposer = {
     focus(el) { if (el) el.focus(); },
     caretAtStart(el) { return el ? el.selectionStart === 0 : false; }
 };
+
+// SPEC-116 (port OWUIC themes-custom): injeta <style id="user-theme"> com
+// as vars da paleta e marca <html> com theme-{id}. 'default' limpa tudo —
+// a paleta stock volta sem reload.
+window.ohnTheme.setCustom = function (themeId, css) {
+    var root = document.documentElement;
+    Array.from(root.classList).forEach(function (cls) {
+        if (cls.indexOf('theme-') === 0) root.classList.remove(cls);
+    });
+    var id = themeId && themeId !== 'default' ? themeId : null;
+    if (id) root.classList.add('theme-' + id);
+    var style = document.getElementById('user-theme');
+    if (!style) {
+        style = document.createElement('style');
+        style.id = 'user-theme';
+        document.head.appendChild(style);
+    }
+    style.textContent = id ? (css || '') : '';
+    try {
+        localStorage.setItem('ohn.theme.id', id || 'default');
+        localStorage.setItem('ohn.theme.css', id ? (css || '') : '');
+    } catch (e) { /* storage negado — aplica mesmo assim nesta sessão */ }
+};
