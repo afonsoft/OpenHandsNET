@@ -131,6 +131,7 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | 71 | SonarCloud bugs — 32 issues / 7 regras | PRs #159/#160 |
 | 72 | SonarCloud critical smells — S927=0 live + S4487 `_linkInput` | PRs #343/#344 |
 | 73 | SonarCloud major smells — não-deferidas csharpsquid/shell/python → 0 live | PR #345 |
+| 74 | SonarCloud minor smells — S8970 root cause (csproj Nullable p/ AutoScan) + minors reais → 0 live | PRs #347/#348 |
 
 ## Entregues em 2026-10-24 (gap-analysis 23/10 + filhos SPEC-89)
 
