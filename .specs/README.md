@@ -95,3 +95,21 @@ terminal permanecer aqui (SPEC-82).
 ### Leva 2026-10-24 (gap-analysis — Epic #265) — entregue
 
 SPECs 107–110 entregues via PRs #271–#274 e arquivadas em `docs/specs/`.
+
+### Leva 2026-11-04 (gap-analysis vs `~/repos/OpenWebUiCode`)
+
+Auditoria de paridade com o fork irmão — UI/design-system, tool-call
+UX, superfície de tools do agente (64 vs 21), infra de
+hooks/permissões/deferred-loading, MCP/ACP de exposição e assets PWA.
+
+| SPEC | Título | Status | Ticket |
+|---|---|---|---|
+| 116 | ui-design-system-parity (tokens oklch + classes componentes + themes) | Approved | #318 (Epic #317) |
+| 117 | pwa-assets-cleanup (manifest/SW/icons + remoção lib/bootstrap) | Approved | #319 (Epic #317) |
+| 118 | shell-sidebar-ux (rail OWUIC + menu por conversa + NotificationBell) | Approved | #320 (Epic #317) |
+| 119 | dialogs-settings-modal (DialogService/Host + SettingsModal rail) | Approved | #321 (Epic #317) |
+| 120 | chat-run-ux (ToolCallCard + prompt cards + GitDiffRender) | Approved | #322 (Epic #317) |
+| 121 | agent-tools-expansion (file ops+, apply_patch, jobs, context, memory, plan, worktree) | Approved | #323 (Epic #317) |
+| 122 | lsp-code-intelligence (6 tools lsp_* no sandbox) | Approved | #324 (Epic #317) |
+| 123 | tool-infra-hooks-permissions (hooks, ruleset+judge, tool_search, prompt/agent assets) | Approved | #325 (Epic #317) |
+| 124 | mcp-acp-exposure (`OpenHandsNET.Mcp` stdio + ACP + gen-context) | Approved | #326 (Epic #317) |

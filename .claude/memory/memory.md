@@ -1,5 +1,17 @@
 # memory.md — estado corrente (max 100 linhas)
 
+## Sessão 2026-11-04 — gap-analysis vs OpenWebUiCode → 9 SPECs Draft
+
+- **Leva gap-20261104**: 116 design-system (tokens oklch + classes
+  componentes OWUIC), 117 PWA/assets (+remover `lib/bootstrap` morto),
+  118 sidebar/rail/menu-por-conversa+bell, 119 DialogService/Host+
+  SettingsModal, 120 tool-call cards/prompt cards/GitDiffRender,
+  121 tools 21→~55 (file ops, apply_patch, jobs, context, memory,
+  plan, worktree), 122 LSP no sandbox, 123 hooks+ruleset+judge+
+  tool_search+agents/prompts embutidos, 124 `OpenHandsNET.Mcp`+ACP.
+- Números livres confirmados: 116–124 usados. OWUIC embute
+  `agents/*.agent.md`×4 — nosso catálogo (SPEC-95) embute 0.
+
 ## Sessão 2026-10-26 — SPEC-114/115 (tema claro + proxy sandbox)
 
 - **SPEC-114** (#300): default light theme, Inter self-hosted, tokens
