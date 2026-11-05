@@ -18,6 +18,8 @@ namespace OpenHandsNET.Infrastructure.Agent.Tools;
 /// </summary>
 public static class BuiltinLsp
 {
+    private const string Character = "character";
+
     private const string Workspace = "/workspace/repo";
     private const string BridgePath = "/tmp/ohn-lsp/bridge.py";
     private const string CallPath = "/tmp/ohn-lsp/call.py";
@@ -87,7 +89,7 @@ public static class BuiltinLsp
         Risky: false,
         Handler: (ctx, a, ct) => RunLspAsync(ctx, a, ct,
             "definition",
-            extraArgs: $" {Int(a, "line")} {Int(a, "character")}"));
+            extraArgs: $" {Int(a, "line")} {Int(a, Character)}"));
 
     /// <summary>Referências ao símbolo na posição.</summary>
     public static AgentTool LspReferences() => new(
@@ -103,7 +105,7 @@ public static class BuiltinLsp
         Risky: false,
         Handler: (ctx, a, ct) => RunLspAsync(ctx, a, ct,
             "references",
-            extraArgs: $" {Int(a, "line")} {Int(a, "character")}"));
+            extraArgs: $" {Int(a, "line")} {Int(a, Character)}"));
 
     /// <summary>Hover (docs/tipo) do símbolo na posição.</summary>
     public static AgentTool LspHover() => new(
@@ -119,7 +121,7 @@ public static class BuiltinLsp
         Risky: false,
         Handler: (ctx, a, ct) => RunLspAsync(ctx, a, ct,
             "hover",
-            extraArgs: $" {Int(a, "line")} {Int(a, "character")}"));
+            extraArgs: $" {Int(a, "line")} {Int(a, Character)}"));
 
     private static async Task<ToolResult> RunLspAsync(
         ToolCallContext ctx, JsonElement args, CancellationToken ct,
@@ -229,7 +231,7 @@ public static class BuiltinLsp
             && args.TryGetProperty("line", out var ln))
         {
             req["line"] = ln.GetInt32();
-            req["character"] = args.TryGetProperty("character", out var ch)
+            req[Character] = args.TryGetProperty(Character, out var ch)
                 ? ch.GetInt32() : 0;
         }
         return JsonSerializer.Serialize(req);

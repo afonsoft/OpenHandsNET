@@ -153,8 +153,17 @@ else if (Dialogs.Current is { } req)
         }
     }
 
-    private void Accept() =>
-        Dialogs.Resolve(Dialogs.Current?.Kind == DialogKind.Prompt ? _input : true);
+    private void Accept()
+    {
+        if (Dialogs.Current?.Kind == DialogKind.Prompt)
+        {
+            Dialogs.Resolve(_input);
+        }
+        else
+        {
+            Dialogs.Resolve(true);
+        }
+    }
 
     private void Cancel() =>
         Dialogs.Resolve(Dialogs.Current?.Kind is DialogKind.Prompt ? null : false);

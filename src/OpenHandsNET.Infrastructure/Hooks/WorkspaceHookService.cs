@@ -27,6 +27,7 @@ public sealed class WorkspaceHookService(
     ILogger<WorkspaceHookService> logger) : IWorkspaceHookService
 {
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
+    private const string HookTypeCommand = "command";
 
     private readonly ConcurrentDictionary<Guid, CacheEntry> _cache = new();
 
@@ -236,9 +237,9 @@ public sealed class WorkspaceHookService(
             return null;
         }
 
-        var type = Str(el, "type") ?? "command";
-        var command = Str(el, "command") ?? Str(el, "prompt");
-        if (type is not ("command" or "prompt")
+        var type = Str(el, "type") ?? HookTypeCommand;
+        var command = Str(el, HookTypeCommand) ?? Str(el, "prompt");
+        if (type is not (HookTypeCommand or "prompt")
             || string.IsNullOrWhiteSpace(command))
         {
             logger.LogWarning(
@@ -247,7 +248,7 @@ public sealed class WorkspaceHookService(
             return null;
         }
 
-        if (type == "command")
+        if (type == HookTypeCommand)
         {
             command = command.Trim();
         }
@@ -314,7 +315,7 @@ public sealed class WorkspaceHookService(
             RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(250));
     }
 
-    private async Task<(bool Success, int? Exit, string? Error)>
+    private static async Task<(bool Success, int? Exit, string? Error)>
         RunCommandAsync(
             HookContext context, WorkspaceHookDefinition hook,
             CancellationToken ct)

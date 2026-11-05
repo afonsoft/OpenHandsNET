@@ -32,7 +32,7 @@ public static class BuiltinNotebook
             var rel = RelPath(a);
             var r = await ctx.Executor.ExecAsync(ctx.Sandbox,
                 $"cd {Workspace} && python3 - <<'PYEOF'\n"
-                + PyRead() + $"\nPYEOF\n{Sh(rel)}",
+                + PyRead + $"\nPYEOF\n{Sh(rel)}",
                 ctx.DefaultTimeout, ct);
             return r.ExitCode == 0
                 ? ToolResult.Ok(new
@@ -69,7 +69,7 @@ public static class BuiltinNotebook
             var r = await ctx.Executor.ExecAsync(ctx.Sandbox,
                 $"cd {Workspace} && OHN_NB_OP={Sh(op)} OHN_NB_IDX={idx} "
                 + $"OHN_NB_TYPE={Sh(ctype)} python3 - <<'PYEOF'\n"
-                + PyEdit() + $"\nPYEOF\n{Sh(rel)}\n{Heredoc(source)}",
+                + PyEdit + $"\nPYEOF\n{Sh(rel)}\n{Heredoc(source)}",
                 ctx.DefaultTimeout, ct);
             return r.ExitCode == 0
                 ? ToolResult.Ok(new
@@ -91,7 +91,7 @@ public static class BuiltinNotebook
         "OHN_NB_SRC\n" + source + "\nOHN_NB_SRC";
 
     // Lê source do heredoc (2º arg posicional depois do script).
-    private static string PyEdit() => """
+    private const string PyEdit = """
         import json, os, sys
         path = sys.argv[1]
         nb = json.load(open(path, encoding='utf-8'))
@@ -121,7 +121,7 @@ public static class BuiltinNotebook
         print(idx)
         """;
 
-    private static string PyRead() => """
+    private const string PyRead = """
         import json, sys
         cells = json.load(open(sys.argv[1], encoding='utf-8'))['cells']
         out = []
