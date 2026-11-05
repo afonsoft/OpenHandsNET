@@ -6,8 +6,8 @@
 |---|---|
 | Feature | `tool-infra-hooks-permissions` |
 | Type | `Infra` |
-| Status | `In review` |
-| Ticket | #325 (Epic #317) — gap-analysis OpenWebUiCode 2026-11-04 |
+| Status | `Completed` |
+| Ticket | #325 (Epic #317) · PR #327 — gap-analysis OpenWebUiCode 2026-11-04 |
 | Scope | `src/OpenHandsNET.Infrastructure/Agent/` (+`ChatTools`-equivalente), `Application/Agent/`, `SystemPrompt/`, `agents/`, `prompts/` |
 
 ## 1. User Story

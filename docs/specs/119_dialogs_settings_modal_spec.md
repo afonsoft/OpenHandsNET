@@ -6,8 +6,8 @@
 |---|---|
 | Feature | `dialogs-settings-modal` |
 | Type | `Frontend` |
-| Status | `In review` |
-| Ticket | #321 (Epic #317) — gap-analysis OpenWebUiCode 2026-11-04 |
+| Status | `Completed` |
+| Ticket | #321 (Epic #317) · PR #327 — gap-analysis OpenWebUiCode 2026-11-04 |
 | Scope | `src/OpenHandsNET.Client/` (`Services/DialogService`, `Components/DialogHost`, `ShareDialog`, `MediaLightbox`, `SettingsModal`, `Settings/*`, páginas Settings/Admin) |
 
 ## 1. User Story
