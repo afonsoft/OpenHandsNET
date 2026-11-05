@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/OpenHandsNET.Api/OpenHandsNET.Api.csproj" />
+    <ProjectReference Include="../../src/OpenHandsNET.Mcp/OpenHandsNET.Mcp.csproj" />
     <ProjectReference Include="../../cli/OpenHandsNET.Cli/OpenHandsNET.Cli.csproj" />
   </ItemGroup>
   <ItemGroup>

@@ -47,6 +47,9 @@ app.Configure(config =>
     {
         b.AddCommand<McpListCommand>("list");
         b.AddCommand<McpTestCommand>("test");
+        b.AddCommand<McpServeCommand>("serve")
+            .WithDescription("SPEC-124: sobe o servidor MCP stdio "
+                + "(openhandsnet-mcp) p/ agentes externos");
     });
     config.AddBranch("conversations", b =>
     {
