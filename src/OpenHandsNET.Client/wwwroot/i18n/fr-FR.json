@@ -452,5 +452,9 @@
   "ide.vscode": "VS Code (sandbox)",
   "conv.tab_desktop": "Bureau",
   "desktop.title": "Bureau en direct (noVNC)",
-  "desktop.empty": "Pas de bureau en direct — activez la surface desktop du sandbox (SANDBOX_DESKTOP=1)."
+  "desktop.empty": "Pas de bureau en direct — activez la surface desktop du sandbox (SANDBOX_DESKTOP=1).",
+  "sidebar.conv_menu": "Menu de la conversation",
+  "sidebar.copy_link": "Copier le lien",
+  "sidebar.delete": "Supprimer",
+  "sidebar.delete_confirm": "Supprimer cette conversation ?"
 }

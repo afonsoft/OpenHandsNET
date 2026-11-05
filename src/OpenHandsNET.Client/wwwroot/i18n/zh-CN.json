@@ -452,5 +452,9 @@
   "ide.vscode": "VS Code（沙箱）",
   "conv.tab_desktop": "桌面",
   "desktop.title": "实时桌面 (noVNC)",
-  "desktop.empty": "无实时桌面 — 启用沙箱桌面 surface (SANDBOX_DESKTOP=1)。"
+  "desktop.empty": "无实时桌面 — 启用沙箱桌面 surface (SANDBOX_DESKTOP=1)。",
+  "sidebar.conv_menu": "",
+  "sidebar.copy_link": "",
+  "sidebar.delete": "",
+  "sidebar.delete_confirm": "？"
 }

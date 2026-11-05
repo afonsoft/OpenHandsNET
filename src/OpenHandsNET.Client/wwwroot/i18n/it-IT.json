@@ -452,5 +452,9 @@
   "ide.vscode": "VS Code (sandbox)",
   "conv.tab_desktop": "Desktop",
   "desktop.title": "Desktop live (noVNC)",
-  "desktop.empty": "Nessun desktop live — abilita la surface desktop del sandbox (SANDBOX_DESKTOP=1)."
+  "desktop.empty": "Nessun desktop live — abilita la surface desktop del sandbox (SANDBOX_DESKTOP=1).",
+  "sidebar.conv_menu": "Menu conversazione",
+  "sidebar.copy_link": "Copia link",
+  "sidebar.delete": "Elimina",
+  "sidebar.delete_confirm": "Eliminare questa conversazione?"
 }

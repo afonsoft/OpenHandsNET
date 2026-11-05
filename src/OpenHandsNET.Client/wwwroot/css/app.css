@@ -448,6 +448,22 @@ details.ev-details summary { cursor: pointer; color: var(--ohn-fg-dim); font-siz
 .sb-item .dot.error { background: var(--ohn-red); }
 .sb-item .dot.idle { background: var(--ohn-fg-dim); }
 
+/* SPEC-118: menu ⋯ por item de conversa (padrão OWUIC) */
+.sb-item-wrap { position: relative; display: flex; align-items: center; }
+.sb-item-wrap .sb-item { flex: 1; min-width: 0; }
+.sb-menu-btn {
+    position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+    width: 22px; height: 22px; opacity: 0; padding: 0;
+}
+.sb-item-wrap:hover .sb-menu-btn,
+.sb-menu-btn[aria-expanded="true"] { opacity: 1; }
+.sb-menu-scrim { position: fixed; inset: 0; z-index: 40; }
+.sb-menu {
+    position: absolute; right: 8px; top: 100%; z-index: 41;
+    min-width: 150px;
+}
+.sb-menu .menu-item.danger { color: var(--ohn-red); }
+
 /* SPEC-44 attention inbox */
 .sb-item .dot.attention { box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 25%, transparent); }
 .sb-item .dot.attention-confirmation { background: var(--ohn-purple); }

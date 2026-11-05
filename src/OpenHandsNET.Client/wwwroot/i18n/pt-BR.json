@@ -452,5 +452,9 @@
   "ide.vscode": "VS Code (sandbox)",
   "conv.tab_desktop": "Desktop",
   "desktop.title": "Desktop ao vivo (noVNC)",
-  "desktop.empty": "Sem desktop ao vivo — habilite a surface de desktop do sandbox (SANDBOX_DESKTOP=1)."
+  "desktop.empty": "Sem desktop ao vivo — habilite a surface de desktop do sandbox (SANDBOX_DESKTOP=1).",
+  "sidebar.conv_menu": "Menu da conversa",
+  "sidebar.copy_link": "Copiar link",
+  "sidebar.delete": "Excluir",
+  "sidebar.delete_confirm": "Excluir esta conversa?"
 }

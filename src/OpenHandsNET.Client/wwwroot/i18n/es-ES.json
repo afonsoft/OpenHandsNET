@@ -452,5 +452,9 @@
   "ide.vscode": "VS Code (sandbox)",
   "conv.tab_desktop": "Escritorio",
   "desktop.title": "Escritorio en vivo (noVNC)",
-  "desktop.empty": "Sin escritorio en vivo — habilita la surface de escritorio del sandbox (SANDBOX_DESKTOP=1)."
+  "desktop.empty": "Sin escritorio en vivo — habilita la surface de escritorio del sandbox (SANDBOX_DESKTOP=1).",
+  "sidebar.conv_menu": "Menú de conversación",
+  "sidebar.copy_link": "Copiar enlace",
+  "sidebar.delete": "Eliminar",
+  "sidebar.delete_confirm": "¿Eliminar esta conversación?"
 }

@@ -452,5 +452,9 @@
   "ide.vscode": "VS Code（サンドボックス）",
   "conv.tab_desktop": "デスクトップ",
   "desktop.title": "ライブデスクトップ (noVNC)",
-  "desktop.empty": "ライブデスクトップなし — サンドボックスのデスクトップsurfaceを有効化 (SANDBOX_DESKTOP=1)。"
+  "desktop.empty": "ライブデスクトップなし — サンドボックスのデスクトップsurfaceを有効化 (SANDBOX_DESKTOP=1)。",
+  "sidebar.conv_menu": "メニュー",
+  "sidebar.copy_link": "リンクをコピー",
+  "sidebar.delete": "",
+  "sidebar.delete_confirm": "このをしますか？"
 }

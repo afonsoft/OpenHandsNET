@@ -51,15 +51,43 @@
             </a>
             @foreach (var c in FilteredConvs())
             {
-                <a class="sb-item @(IsActive($"/conversations/{c.Id}") ? "active" : "")"
-                   href="/conversations/@c.Id" title="@(c.Title ?? c.Id)">
-                    <span class="dot @DotFor(c)"></span>
-                    @if (_collapsed)
+                @* SPEC-118: item com menu ⋯ (copy link / delete) no hover —
+                   padrão OWUIC. Fecha ao clicar fora (_menuFor scrim). *@
+                <div class="sb-item-wrap">
+                    <a class="sb-item @(IsActive($"/conversations/{c.Id}") ? "active" : "")"
+                       href="/conversations/@c.Id" title="@(c.Title ?? c.Id)">
+                        <span class="dot @DotFor(c)"></span>
+                        @if (_collapsed)
+                        {
+                            <Icon Name="chat" Size="16" />
+                        }
+                        <span class="txt">@(c.Title ?? c.SelectedRepository ?? c.Id[..8])</span>
+                    </a>
+                    @if (!_collapsed)
                     {
-                        <Icon Name="chat" Size="16" />
+                        <button class="icon-btn sb-menu-btn"
+                                @onclick="() => ToggleConvMenu(c.Id)"
+                                @onclick:stopPropagation="true"
+                                aria-label="@L["sidebar.conv_menu"]"
+                                aria-expanded="@(_menuFor == c.Id)">
+                            <Icon Name="dots" Size="14" />
+                        </button>
+                        @if (_menuFor == c.Id)
+                        {
+                            <div class="sb-menu-scrim" @onclick="() => _menuFor = null"></div>
+                            <div class="menu sb-menu" role="menu">
+                                <button class="menu-item" role="menuitem"
+                                        @onclick="() => CopyConvLinkAsync(c.Id)">
+                                    <Icon Name="copy" Size="13" /> @L["sidebar.copy_link"]
+                                </button>
+                                <button class="menu-item danger" role="menuitem"
+                                        @onclick="() => DeleteConvAsync(c.Id)">
+                                    <Icon Name="trash" Size="13" /> @L["sidebar.delete"]
+                                </button>
+                            </div>
+                        }
                     }
-                    <span class="txt">@(c.Title ?? c.SelectedRepository ?? c.Id[..8])</span>
-                </a>
+                </div>
             }
             <div class="sb-label">@L["sidebar.general"]</div>
             <a class="sb-item @(IsActive("/automations") ? "active" : "")"
@@ -121,6 +149,7 @@
     private bool _collapsed;
     private bool _mobileMenu;
     private bool _attentionOnly;
+    private string? _menuFor;
     private string _filter = "";
     private IReadOnlyList<ConversationItem> _convs = [];
 
@@ -146,7 +175,41 @@
     private void OnNav(object? s, LocationChangedEventArgs e)
     {
         _mobileMenu = false;
+        _menuFor = null;
         InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>SPEC-118: menu de contexto por conversa (padrão OWUIC).</summary>
+    private void ToggleConvMenu(string id) =>
+        _menuFor = _menuFor == id ? null : id;
+
+    private async Task CopyConvLinkAsync(string id)
+    {
+        _menuFor = null;
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText",
+                $"{Nav.BaseUri.TrimEnd('/')}/conversations/{id}");
+        }
+        catch (Exception) { /* clipboard indisponível */ }
+    }
+
+    private async Task DeleteConvAsync(string id)
+    {
+        _menuFor = null;
+        try
+        {
+            var ok = await JS.InvokeAsync<bool>(
+                "confirm", L["sidebar.delete_confirm"]);
+            if (!ok)
+            {
+                return;
+            }
+
+            await Api.DeleteConversationAsync(id);
+            _convs = _convs.Where(c => c.Id != id).ToList();
+        }
+        catch (Exception) { /* offline / erro de API — item permanece */ }
     }
 
     private void OpenMobile() => _mobileMenu = true;
