@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `lsp-persistent-sessions` |
 | Type | `Feature` |
-| Status | `Approved` |
+| Status | `In implementation` |
 | Ticket | #331 (umbrella #329, Epic #317) — débito da SPEC-122 |
 | Scope | `src/OpenHandsNET.Infrastructure/Agent/Tools/BuiltinLsp.cs`, `ISandboxExecutor.OpenBashSessionAsync`, bridge Python |
 
