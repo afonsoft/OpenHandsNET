@@ -119,3 +119,36 @@ window.ohnTheme.setCustom = function (themeId, css) {
         localStorage.setItem('ohn.theme.css', id ? (css || '') : '');
     } catch (e) { /* storage negado — aplica mesmo assim nesta sessão */ }
 };
+
+// SPEC-119 (port OWUIC trapFocus/releaseFocus): focus trap para diálogos.
+window.ohn = window.ohn || {};
+window.ohn.trapFocus = function (element) {
+    if (!element) return;
+    var selector = 'button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])';
+    var focusables = function () {
+        return Array.prototype.filter.call(
+            element.querySelectorAll(selector),
+            function (el) { return !el.disabled && el.offsetParent !== null; });
+    };
+    element._ohnTrap = function (e) {
+        if (e.key !== 'Tab') return;
+        var f = focusables();
+        if (!f.length) return;
+        if (e.shiftKey && document.activeElement === f[0]) {
+            f[f.length - 1].focus();
+            e.preventDefault();
+        } else if (!e.shiftKey && document.activeElement === f[f.length - 1]) {
+            f[0].focus();
+            e.preventDefault();
+        }
+    };
+    element.addEventListener('keydown', element._ohnTrap);
+    var first = focusables()[0];
+    if (first) first.focus();
+};
+window.ohn.releaseFocus = function (element) {
+    if (element && element._ohnTrap) {
+        element.removeEventListener('keydown', element._ohnTrap);
+        element._ohnTrap = null;
+    }
+};

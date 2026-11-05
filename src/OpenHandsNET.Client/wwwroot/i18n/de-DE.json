@@ -456,5 +456,7 @@
   "sidebar.conv_menu": "Konversationsmenü",
   "sidebar.copy_link": "Link kopieren",
   "sidebar.delete": "Löschen",
-  "sidebar.delete_confirm": "Diese Konversation löschen?"
+  "sidebar.delete_confirm": "Diese Konversation löschen?",
+  "common.confirm": "Bestätigen",
+  "common.ok": "OK"
 }

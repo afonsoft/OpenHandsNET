@@ -6,6 +6,7 @@
 @inject ThemeService Theme
 @inject PaletteService Palette
 @inject AttentionInboxState Inbox
+@inject DialogService Dialogs
 @inject LocalizationService L
 @inject IJSRuntime JS
 @implements IDisposable
@@ -28,6 +29,8 @@
             </button>
             <span class="logo">OpenHandsNET</span>
             <span class="grow"></span>
+            @* SPEC-118: bell dropdown também no desktop (parity OWUIC) *@
+            <AttentionFeed />
             <AttentionBadge Active="_attentionOnly"
                             OnClick="ToggleAttentionFilter" />
         </div>
@@ -141,6 +144,8 @@
         @Body
     </main>
 </div>
+@* SPEC-119: host dos diálogos in-app (confirm/prompt acessíveis) *@
+<DialogHost />
 
 @code {
     [Inject] private NavigationManager Nav { get; set; } = default!;
@@ -197,15 +202,14 @@
     private async Task DeleteConvAsync(string id)
     {
         _menuFor = null;
+        // SPEC-119: dialog in-app acessível substitui window.confirm.
+        if (!await Dialogs.ConfirmAsync(L["sidebar.delete_confirm"], danger: true))
+        {
+            return;
+        }
+
         try
         {
-            var ok = await JS.InvokeAsync<bool>(
-                "confirm", L["sidebar.delete_confirm"]);
-            if (!ok)
-            {
-                return;
-            }
-
             await Api.DeleteConversationAsync(id);
             _convs = _convs.Where(c => c.Id != id).ToList();
         }

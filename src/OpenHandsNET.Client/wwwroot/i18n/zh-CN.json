@@ -456,5 +456,7 @@
   "sidebar.conv_menu": "",
   "sidebar.copy_link": "",
   "sidebar.delete": "",
-  "sidebar.delete_confirm": "？"
+  "sidebar.delete_confirm": "？",
+  "common.confirm": "",
+  "common.ok": ""
 }

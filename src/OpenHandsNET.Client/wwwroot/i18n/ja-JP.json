@@ -456,5 +456,7 @@
   "sidebar.conv_menu": "メニュー",
   "sidebar.copy_link": "リンクをコピー",
   "sidebar.delete": "",
-  "sidebar.delete_confirm": "このをしますか？"
+  "sidebar.delete_confirm": "このをしますか？",
+  "common.confirm": "",
+  "common.ok": "OK"
 }

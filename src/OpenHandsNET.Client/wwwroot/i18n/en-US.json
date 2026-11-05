@@ -456,5 +456,7 @@
   "sidebar.conv_menu": "Conversation menu",
   "sidebar.copy_link": "Copy link",
   "sidebar.delete": "Delete",
-  "sidebar.delete_confirm": "Delete this conversation?"
+  "sidebar.delete_confirm": "Delete this conversation?",
+  "common.confirm": "Confirm",
+  "common.ok": "OK"
 }
