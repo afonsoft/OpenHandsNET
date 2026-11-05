@@ -2,8 +2,8 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Approved |
-| Issue | #155 |
+| Status | Completed |
+| Issue | #155 (PR #345) |
 | Type | Refactor |
 | Sonar type | CODE_SMELL |
 | Issues | 243 issues · 29 regras · esforço Sonar ~0min |
