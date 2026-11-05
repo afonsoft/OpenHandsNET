@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `advisor-role` |
 | Type | `Feature` |
-| Status | `Approved` |
+| Status | `In review` |
 | Ticket | #330 (umbrella #329, Epic #317) — gap-analysis OpenWebUiCode 2026-11-04 |
 | Scope | `src/OpenHandsNET.Application/Agent/`, `src/OpenHandsNET.Infrastructure/Agent/` (runner, LLM client, prompts) |
 
