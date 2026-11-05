@@ -133,13 +133,14 @@ public static class BuiltinWorktree
             var statOnly = args.TryGetProperty("stat_only", out var s)
                 && s.ValueKind == JsonValueKind.True;
             var baseArg = Str(args, "base_ref");
+            var statFlag = statOnly ? "--stat " : "";
             var range = baseArg is not null
                 ? $"{Sh(baseArg)}...HEAD"
                 : "$(git merge-base HEAD $(cd " + path + " && git rev-parse HEAD 2>/dev/null || echo HEAD))...HEAD";
             var cmd = $"cd {path} && "
                 + (baseArg is null
-                    ? $"base=$(git merge-base HEAD $(cd {Repo} && git rev-parse HEAD)) && git diff {(statOnly ? "--stat " : "")}$base...HEAD"
-                    : $"git diff {(statOnly ? "--stat " : "")}{range}")
+                    ? $"base=$(git merge-base HEAD $(cd {Repo} && git rev-parse HEAD)) && git diff {statFlag}$base...HEAD"
+                    : $"git diff {statFlag}{range}")
                 + $" | head -c {CapBytes}";
             var r = await ctx.Executor.ExecAsync(
                 ctx.Sandbox, cmd, ctx.DefaultTimeout, ct);
