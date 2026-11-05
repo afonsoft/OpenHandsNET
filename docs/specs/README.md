@@ -171,3 +171,4 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | 129 | mcp-hardening — golden `tools/list` + E2E stdio↔mock | PR #336 · #334 |
 | 130 | ux-followups — `SettingsModal` + rail OWUIC 260↔56 | PR #336 · #335 |
 | 131 | sandbox-browser-playwright — Playwright + `chrome-devtools` MCP no runtime | PR #339 · #338 |
+| 72 | sonar-critical-code-smells — S927=0 live + S4487 via `ohn.selectAll` | PR #343 · #154 |
