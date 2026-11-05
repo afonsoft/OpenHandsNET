@@ -1,5 +1,35 @@
 # memory.md — estado corrente (max 100 linhas)
 
+## Sessão 2026-11-04 — implementação SPECs 116-124 (Epic #317)
+
+- **Branch**: `feature/spec-117-pwa-assets` (commits empilhados por fatia).
+- **Commits entregues**:
+  - `e5ee6f4` docs: SPECs 116-124 Approved (#318-#326)
+  - `c417d1a` SPEC-117 (#320): manifest.webmanifest, service-worker.js
+    (fw cache-first + shell network-first, /api+/hubs nunca cacheiam),
+    favicon.svg + assets/icons/{192,512} + splash-dark + logo (PIL),
+    metas PWA, SW registration, `lang` pt-BR+ohn.locale boot,
+    removidos `lib/bootstrap` (~1.5MB, 0 refs) e `sample-data/`
+  - `42758ad` SPEC-116 (#318): `Styles/app.tailwind.css` portado do
+    OWUIC — @theme oklch gray ramp (750/850/925), custom-variant
+    `dark:` → `[data-theme='dark']`, classes componentes completas
+    (page/card-*/menu/modal-*/input/toggle/codeblock-*/ide-*),
+    @tailwindcss/typography (npm devDep), js/codeblocks.js
+    (`window.ohn.codeBlocks.enhance` em EventCard MessageEvent),
+    themes/builtin.json 4 presets + ThemeCssBuilder (tokens→--ohn-*),
+    ohnTheme.setCustom + ThemeService.LoadPalettes/SetPaletteAsync,
+    re-apply pré-paint via ohn.theme.id/css. tailwind.css 22→111KB.
+  - `11f9498` SPEC-118 slice (#321): menu ⋯ por conversa no sidebar
+    (Copy link + Delete c/ confirm), icons dots/trash, 4 keys i18n.
+- **Verificações**: Client build Release 0 warn/err; check-css-classes,
+  check-form-a11y, i18n-parity (458 keys), i18n-placeholders — todos OK.
+- **Pendente**: resto 118 (bell/sidebar OWUIC full), 119 (DialogService),
+  120 (tool-call cards), 121, 123, 122, 124. Full `dotnet build` +
+  `dotnet test` pendentes; PR + archive SPECs ao final.
+- **Gotchas**: `MapStaticAssets` serve SW/manifest ok; icons gerados
+  via PIL (convert renderiza SVG em grayscale); `GetFromJsonAsync`
+  precisa `using System.Net.Http.Json`; `confirm()` JS usado p/ delete.
+
 ## Sessão 2026-11-04 — gap-analysis vs OpenWebUiCode → 9 SPECs Draft
 
 - **Leva gap-20261104**: 116 design-system (tokens oklch + classes
