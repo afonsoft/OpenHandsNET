@@ -1,0 +1,188 @@
+[
+  {
+    "description": "Attention inbox: conversations waiting on the user (approvals, finished/failed runs).",
+    "inputSchema": {
+      "properties": {},
+      "required": [],
+      "type": "object"
+    },
+    "name": "ohn_attention_list"
+  },
+  {
+    "description": "Create a conversation (async start-task): returns a task in WORKING state — poll ohn_get_task_status until READY.",
+    "inputSchema": {
+      "properties": {
+        "confirmation_mode": {
+          "description": "Require approval before the run starts.",
+          "type": "boolean"
+        },
+        "initial_prompt": {
+          "description": "User message to seed and run.",
+          "type": "string"
+        },
+        "llm_model": {
+          "description": "Model id override.",
+          "type": "string"
+        },
+        "selected_repository": {
+          "description": "org/repo to bind.",
+          "type": "string"
+        }
+      },
+      "required": [],
+      "type": "object"
+    },
+    "name": "ohn_create_conversation"
+  },
+  {
+    "description": "Get one conversation by id (status, model, repository).",
+    "inputSchema": {
+      "properties": {
+        "conversation_id": {
+          "description": "Conversation id (GUID).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "conversation_id"
+      ],
+      "type": "object"
+    },
+    "name": "ohn_get_conversation"
+  },
+  {
+    "description": "Poll a start-task (conversation create) until READY — returns task.status and conversation_id when done.",
+    "inputSchema": {
+      "properties": {
+        "task_id": {
+          "description": "Start-task id.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "type": "object"
+    },
+    "name": "ohn_get_task_status"
+  },
+  {
+    "description": "List app conversations (id, title, status, updated_at).",
+    "inputSchema": {
+      "properties": {
+        "limit": {
+          "description": "Max conversations (default 50).",
+          "type": "integer"
+        }
+      },
+      "required": [],
+      "type": "object"
+    },
+    "name": "ohn_list_conversations"
+  },
+  {
+    "description": "List durable events of a conversation (paged).",
+    "inputSchema": {
+      "properties": {
+        "conversation_id": {
+          "description": "Conversation id.",
+          "type": "string"
+        },
+        "limit": {
+          "description": "Max events (default 50).",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "conversation_id"
+      ],
+      "type": "object"
+    },
+    "name": "ohn_list_events"
+  },
+  {
+    "description": "List configured MCP servers (name, transport, status).",
+    "inputSchema": {
+      "properties": {},
+      "required": [],
+      "type": "object"
+    },
+    "name": "ohn_list_mcp_servers"
+  },
+  {
+    "description": "List LLM models advertised by the gateway.",
+    "inputSchema": {
+      "properties": {},
+      "required": [],
+      "type": "object"
+    },
+    "name": "ohn_list_models"
+  },
+  {
+    "description": "List skills available to agents (repo + user level).",
+    "inputSchema": {
+      "properties": {},
+      "required": [],
+      "type": "object"
+    },
+    "name": "ohn_list_skills"
+  },
+  {
+    "description": "Full-text search over a conversation's events.",
+    "inputSchema": {
+      "properties": {
+        "conversation_id": {
+          "description": "Conversation id.",
+          "type": "string"
+        },
+        "query": {
+          "description": "Search query.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "conversation_id",
+        "query"
+      ],
+      "type": "object"
+    },
+    "name": "ohn_search_events"
+  },
+  {
+    "description": "Send a user message to a conversation (starts a run).",
+    "inputSchema": {
+      "properties": {
+        "content": {
+          "description": "Message text.",
+          "type": "string"
+        },
+        "conversation_id": {
+          "description": "Conversation id.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "conversation_id",
+        "content"
+      ],
+      "type": "object"
+    },
+    "name": "ohn_send_message"
+  },
+  {
+    "description": "Request cancellation of the current run on a conversation.",
+    "inputSchema": {
+      "properties": {
+        "conversation_id": {
+          "description": "Conversation id.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "conversation_id"
+      ],
+      "type": "object"
+    },
+    "name": "ohn_stop_run"
+  }
+]
