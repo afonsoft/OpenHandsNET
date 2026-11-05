@@ -481,5 +481,7 @@
   "usage.completion_tokens": "Completion-Tokens",
   "usage.estimated_cost": "geschätzte Kosten",
   "usage.events": "Ereignisse",
-  "usage.prompt_tokens": "Prompt-Tokens"
+  "usage.prompt_tokens": "Prompt-Tokens",
+  "rail.expand": "Seitenleiste ausklappen",
+  "rail.collapse": "Seitenleiste einklappen"
 }

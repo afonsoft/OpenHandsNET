@@ -481,5 +481,7 @@
   "usage.completion_tokens": "completion tokens",
   "usage.estimated_cost": "costo estimado",
   "usage.events": "eventos",
-  "usage.prompt_tokens": "prompt tokens"
+  "usage.prompt_tokens": "prompt tokens",
+  "rail.expand": "Expandir barra lateral",
+  "rail.collapse": "Contraer barra lateral"
 }

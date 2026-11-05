@@ -481,5 +481,7 @@
   "usage.completion_tokens": "completion トークン",
   "usage.estimated_cost": "推定コスト",
   "usage.events": "イベント",
-  "usage.prompt_tokens": "prompt トークン"
+  "usage.prompt_tokens": "prompt トークン",
+  "rail.expand": "サイドバーを展開",
+  "rail.collapse": "サイドバーを折りたたむ"
 }

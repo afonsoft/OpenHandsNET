@@ -20,11 +20,27 @@
 else if (Dialogs.Current is { } req)
 {
     <div class="modal-backdrop" @onclick="Cancel">
-        <div class="modal max-w-md" role="dialog" aria-modal="true"
-             aria-label="@L["common.confirm"]" tabindex="-1"
+        <div class="modal @(req.Kind == DialogKind.Settings ? "settings-modal" : "max-w-md")"
+             role="dialog" aria-modal="true"
+             aria-label="@(req.Kind == DialogKind.Settings
+                 ? L["settings.title"] : L["common.confirm"])" tabindex="-1"
              @ref="_dialog" @onkeydown="OnKeyDown" @onclick:stopPropagation>
             <div class="modal-body">
-                @if (req.Kind == DialogKind.Link)
+                @if (req.Kind == DialogKind.Settings)
+                {
+                    @* SPEC-130 RF-001: SettingsModal — mesmo conteúdo da
+                       rota /settings; ESC/backdrop/botão fecham. *@
+                    <div class="settings-modal-head">
+                        <h2>@L["settings.title"]</h2>
+                        <button type="button" class="icon-btn"
+                                aria-label="@L["common.close"]"
+                                @onclick="Cancel">
+                            <Icon Name="x" Size="16" />
+                        </button>
+                    </div>
+                    <OpenHandsNET.Client.Components.Settings.SettingsContent />
+                }
+                else if (req.Kind == DialogKind.Link)
                 {
                     @* RF-005: ShareDialog — link readonly + copiar. *@
                     <input class="input w-full" readonly value="@req.DefaultValue"
