@@ -1,5 +1,59 @@
 # memory.md — estado corrente (max 100 linhas)
 
+## Sessão 2026-11-04 — implementação SPECs 116-124 (Epic #317)
+
+- **Branch**: `feature/spec-117-pwa-assets` (commits empilhados por fatia).
+- **Commits entregues**:
+  - `e5ee6f4` docs: SPECs 116-124 Approved (#318-#326)
+  - `c417d1a` SPEC-117 (#320): manifest.webmanifest, service-worker.js
+    (fw cache-first + shell network-first, /api+/hubs nunca cacheiam),
+    favicon.svg + assets/icons/{192,512} + splash-dark + logo (PIL),
+    metas PWA, SW registration, `lang` pt-BR+ohn.locale boot,
+    removidos `lib/bootstrap` (~1.5MB, 0 refs) e `sample-data/`
+  - `42758ad` SPEC-116 (#318): `Styles/app.tailwind.css` portado do
+    OWUIC — @theme oklch gray ramp (750/850/925), custom-variant
+    `dark:` → `[data-theme='dark']`, classes componentes completas
+    (page/card-*/menu/modal-*/input/toggle/codeblock-*/ide-*),
+    @tailwindcss/typography (npm devDep), js/codeblocks.js
+    (`window.ohn.codeBlocks.enhance` em EventCard MessageEvent),
+    themes/builtin.json 4 presets + ThemeCssBuilder (tokens→--ohn-*),
+    ohnTheme.setCustom + ThemeService.LoadPalettes/SetPaletteAsync,
+    re-apply pré-paint via ohn.theme.id/css. tailwind.css 22→111KB.
+  - `11f9498` SPEC-118 slice (#321): menu ⋯ por conversa no sidebar
+    (Copy link + Delete c/ confirm), icons dots/trash, 4 keys i18n.
+- **Verificações**: Client build Release 0 warn/err; check-css-classes,
+  check-form-a11y, i18n-parity (458 keys), i18n-placeholders — todos OK.
+- **Pass 2 (continue)**: commits `e691f32` 118+119 (AttentionFeed no
+  sb-head desktop; DialogService+DialogHost confirm/prompt acessível,
+  ohn.trapFocus, delete via ConfirmAsync — substitui window.confirm),
+  `4a00810` regen tailwind, `00f546d` 120 (ToolActivityMap+
+  ToolArgsPreview+GitDiffRender ports; label de atividade no ActionEvent;
+  DiffTab por arquivo; ChatNotificationsService+js opt-in; palette+
+  notify toggles em Settings), `73fa636` 121 slice (BuiltinFileOps:
+  file_list/grep/glob/apply_patch → 21→25 tools), `9ddd15f` i18n real
+  ja/zh/es/fr/de/it + fix ThemeService ctor nos testes.
+- **Verificado**: `dotnet build OpenHandsNET.slnx -c Release` 0/0;
+  Client.Tests 86/86, UnitTests 663/663, IntegrationTests 235/235;
+  guards css/a11y/i18n OK.
+- **Pendente**: resto 121 (jobs/context/notebook/plan/worktree), 123
+  (hooks/ruleset/judge/tool_search/agents embutidos), 122 (LSP), 124
+  (MCP/ACP). SettingsModal (119) pendente. PR + archive ao final.
+- **Gotchas**: `MapStaticAssets` serve SW/manifest ok; icons gerados
+  via PIL (convert renderiza SVG em grayscale); `GetFromJsonAsync`
+  precisa `using System.Net.Http.Json`; `confirm()` JS usado p/ delete.
+
+## Sessão 2026-11-04 — gap-analysis vs OpenWebUiCode → 9 SPECs Draft
+
+- **Leva gap-20261104**: 116 design-system (tokens oklch + classes
+  componentes OWUIC), 117 PWA/assets (+remover `lib/bootstrap` morto),
+  118 sidebar/rail/menu-por-conversa+bell, 119 DialogService/Host+
+  SettingsModal, 120 tool-call cards/prompt cards/GitDiffRender,
+  121 tools 21→~55 (file ops, apply_patch, jobs, context, memory,
+  plan, worktree), 122 LSP no sandbox, 123 hooks+ruleset+judge+
+  tool_search+agents/prompts embutidos, 124 `OpenHandsNET.Mcp`+ACP.
+- Números livres confirmados: 116–124 usados. OWUIC embute
+  `agents/*.agent.md`×4 — nosso catálogo (SPEC-95) embute 0.
+
 ## Sessão 2026-10-26 — SPEC-114/115 (tema claro + proxy sandbox)
 
 - **SPEC-114** (#300): default light theme, Inter self-hosted, tokens

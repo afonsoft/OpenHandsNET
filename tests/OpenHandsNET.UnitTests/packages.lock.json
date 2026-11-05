@@ -882,6 +882,9 @@
           "xunit.extensibility.core": "[2.9.3]"
         }
       },
+      "openhandsnet-mcp": {
+        "type": "Project"
+      },
       "openhandsnet.api": {
         "type": "Project",
         "dependencies": {

@@ -21,6 +21,8 @@ builder.Services.AddScoped<AttentionInboxState>();
 builder.Services.AddScoped<ThemeService>();
 builder.Services.AddScoped<ToastService>();
 builder.Services.AddScoped<PaletteService>();
+builder.Services.AddScoped<DialogService>();
+builder.Services.AddScoped<ChatNotificationsService>();
 builder.Services.AddScoped<MarkdownService>();
 // SPEC-46: dicionários JSON i18n/{lang}.json + fallback + Changed.
 builder.Services.AddScoped<LocalizationService>();

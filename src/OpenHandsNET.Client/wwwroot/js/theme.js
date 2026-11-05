@@ -96,3 +96,59 @@ window.ohnComposer = {
     focus(el) { if (el) el.focus(); },
     caretAtStart(el) { return el ? el.selectionStart === 0 : false; }
 };
+
+// SPEC-116 (port OWUIC themes-custom): injeta <style id="user-theme"> com
+// as vars da paleta e marca <html> com theme-{id}. 'default' limpa tudo —
+// a paleta stock volta sem reload.
+window.ohnTheme.setCustom = function (themeId, css) {
+    var root = document.documentElement;
+    Array.from(root.classList).forEach(function (cls) {
+        if (cls.indexOf('theme-') === 0) root.classList.remove(cls);
+    });
+    var id = themeId && themeId !== 'default' ? themeId : null;
+    if (id) root.classList.add('theme-' + id);
+    var style = document.getElementById('user-theme');
+    if (!style) {
+        style = document.createElement('style');
+        style.id = 'user-theme';
+        document.head.appendChild(style);
+    }
+    style.textContent = id ? (css || '') : '';
+    try {
+        localStorage.setItem('ohn.theme.id', id || 'default');
+        localStorage.setItem('ohn.theme.css', id ? (css || '') : '');
+    } catch (e) { /* storage negado — aplica mesmo assim nesta sessão */ }
+};
+
+// SPEC-119 (port OWUIC trapFocus/releaseFocus): focus trap para diálogos.
+window.ohn = window.ohn || {};
+window.ohn.trapFocus = function (element) {
+    if (!element) return;
+    var selector = 'button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])';
+    var focusables = function () {
+        return Array.prototype.filter.call(
+            element.querySelectorAll(selector),
+            function (el) { return !el.disabled && el.offsetParent !== null; });
+    };
+    element._ohnTrap = function (e) {
+        if (e.key !== 'Tab') return;
+        var f = focusables();
+        if (!f.length) return;
+        if (e.shiftKey && document.activeElement === f[0]) {
+            f[f.length - 1].focus();
+            e.preventDefault();
+        } else if (!e.shiftKey && document.activeElement === f[f.length - 1]) {
+            f[0].focus();
+            e.preventDefault();
+        }
+    };
+    element.addEventListener('keydown', element._ohnTrap);
+    var first = focusables()[0];
+    if (first) first.focus();
+};
+window.ohn.releaseFocus = function (element) {
+    if (element && element._ohnTrap) {
+        element.removeEventListener('keydown', element._ohnTrap);
+        element._ohnTrap = null;
+    }
+};

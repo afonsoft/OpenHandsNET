@@ -32,10 +32,12 @@
         }
         else if (_monacoFailed)
         {
+            @* SPEC-120: fallback mostra só a seção do arquivo selecionado
+               (GitDiffRender.SplitDiff). *@
             <pre style="margin:0;padding:8px 0">
-                @foreach (var line in (_diff ?? "").Split('\n'))
+                @foreach (var line in SelectedDiff().Split('\n'))
                 {
-                    <span class="diff-line @LineClass(line)">@line</span>
+                    <span class="diff-line @GitDiffRender.LineClass(line)">@line</span>
                 }
             </pre>
         }
@@ -50,6 +52,7 @@
     [Parameter, EditorRequired] public ConversationStateService State { get; set; } = default!;
 
     private string? _diff;
+    private Dictionary<string, string> _sections = [];
     private readonly List<string> _files = [];
     private string? _selected;
     private int _adds, _dels;
@@ -106,8 +109,8 @@
             }
 
             _diff = await Api.GetGitDiffAsync(State.Conversation.Id);
-            _adds = _diff.Split('\n').Count(l => l.StartsWith('+') && !l.StartsWith("+++"));
-            _dels = _diff.Split('\n').Count(l => l.StartsWith('-') && !l.StartsWith("---"));
+            _sections = GitDiffRender.SplitDiff(_diff);
+            (_adds, _dels) = GitDiffRender.Stats(_diff);
 
             _selected = _files.FirstOrDefault();
             _loading = false;
@@ -137,6 +140,12 @@
             State.Conversation.Id, $"{RepoRoot}/{rel}");
         _monacoDirty = true;
     }
+
+    /// <summary>SPEC-120: seção do diff do arquivo selecionado.</summary>
+    private string SelectedDiff() =>
+        _selected is not null && _sections.TryGetValue(_selected, out var sec)
+            ? sec
+            : _diff ?? "";
 
     private static string LineClass(string line) =>
         line switch

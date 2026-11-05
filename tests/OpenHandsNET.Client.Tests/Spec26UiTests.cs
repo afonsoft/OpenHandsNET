@@ -122,7 +122,7 @@ public class Spec26UiTests : BunitContext
         {
             BaseAddress = new Uri("http://localhost:8080"),
         });
-        var theme = new ThemeService(JSInterop.JSRuntime, api);
+        var theme = new ThemeService(JSInterop.JSRuntime, api, new HttpClient { BaseAddress = new Uri("http://localhost:8080") });
         await theme.InitAsync();
         // SPEC-114 RF-001: default sem preferência persistida = light.
         theme.Theme.ShouldBe(ThemeService.Light);
@@ -139,7 +139,7 @@ public class Spec26UiTests : BunitContext
         {
             BaseAddress = new Uri("http://localhost:8080"),
         });
-        var theme = new ThemeService(JSInterop.JSRuntime, api);
+        var theme = new ThemeService(JSInterop.JSRuntime, api, new HttpClient { BaseAddress = new Uri("http://localhost:8080") });
         await theme.SetAsync("rainbow");
         // SPEC-114 RF-001: fallback de valor inválido = light (novo default).
         theme.Theme.ShouldBe(ThemeService.Light);

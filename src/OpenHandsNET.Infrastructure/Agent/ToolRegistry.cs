@@ -16,6 +16,21 @@ public sealed class ToolRegistry : IToolRegistry
 {
     private readonly IReadOnlyList<AgentTool> _tools;
 
+    /// <summary>
+    /// SPEC-123: tools deferidas — fora do anúncio inicial até
+    /// <c>tool_search</c> promover. Pesadas/raras (LSP, worktree, jobs,
+    /// notebooks) economizam tokens de system prompt.
+    /// </summary>
+    public static readonly IReadOnlySet<string> DeferredNames =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "lsp_diagnostics", "lsp_symbols", "lsp_workspace_symbols",
+            "lsp_definition", "lsp_references", "lsp_hover",
+            "worktree_list", "worktree_add", "worktree_diff", "worktree_merge",
+            "job_run", "job_list", "job_output", "job_kill",
+            "notebook_read", "notebook_edit",
+        };
+
     /// <summary>Builds the built-in catalog.</summary>
     public ToolRegistry(ITaskTrackerService tracker, IOptions<AgentLlmOptions> options)
     {
@@ -26,6 +41,35 @@ public sealed class ToolRegistry : IToolRegistry
             BuiltinTools.FileRead(),
             BuiltinTools.FileWrite(),
             BuiltinTools.FileEdit(),
+            // SPEC-121: file ops expandidas (list/grep/glob/apply_patch).
+            BuiltinFileOps.FileList(),
+            BuiltinFileOps.FileGrep(),
+            BuiltinFileOps.FileGlob(),
+            BuiltinFileOps.ApplyPatch(),
+            // SPEC-121: jobs em background + git worktrees.
+            BuiltinJobs.JobRun(),
+            BuiltinJobs.JobList(),
+            BuiltinJobs.JobOutput(),
+            BuiltinJobs.JobKill(),
+            BuiltinWorktree.WorktreeList(),
+            BuiltinWorktree.WorktreeAdd(),
+            BuiltinWorktree.WorktreeDiff(),
+            BuiltinWorktree.WorktreeMerge(),
+            // SPEC-123: descoberta de tools por busca.
+            BuiltinToolSearch.ToolSearch(),
+            // SPEC-121: specs/plans/context-notes + notebooks.
+            BuiltinSpecs.Specs(),
+            BuiltinSpecs.WritePlan(),
+            BuiltinSpecs.ContextNotes(),
+            BuiltinNotebook.NotebookRead(),
+            BuiltinNotebook.NotebookEdit(),
+            // SPEC-122: code intelligence LSP no sandbox.
+            BuiltinLsp.LspDiagnostics(),
+            BuiltinLsp.LspSymbols(),
+            BuiltinLsp.LspWorkspaceSymbols(),
+            BuiltinLsp.LspDefinition(),
+            BuiltinLsp.LspReferences(),
+            BuiltinLsp.LspHover(),
             BuiltinTools.Think(),
             BuiltinTools.TaskTracker(tracker),
             BuiltinTools.GitCommit(bashTimeout),

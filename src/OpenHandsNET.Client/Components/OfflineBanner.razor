@@ -18,12 +18,37 @@ else if (_state is HubConnectionState.Disconnected && _everConnected)
     <div class="offline-banner" role="alert">
         <Icon Name="alert" Size="14" />
         <span>@L["offline.lost"]</span>
+        @* SPEC-119 RF-007: retry manual com backoff exponencial — a
+           reconexão automática continua; o botão acelera a tentativa. *@
+        <button type="button" class="offline-retry" @onclick="RetryAsync"
+                disabled="@_retrying">
+            @(_retrying ? L["offline.retrying"] : L["offline.retry"])
+        </button>
     </div>
 }
 
 @code {
     private HubConnectionState _state = HubConnectionState.Disconnected;
     private bool _everConnected;
+    private bool _retrying;
+    private int _attempt;
+
+    /// <summary>Retry manual com backoff exponencial (2^n s, cap 30s).</summary>
+    private async Task RetryAsync()
+    {
+        _retrying = true;
+        try
+        {
+            await Hub.StartAsync();
+            _attempt = 0;
+        }
+        catch (Exception)
+        {
+            var delay = Math.Min(30, 1 << Math.Min(_attempt++, 5));
+            await Task.Delay(TimeSpan.FromSeconds(delay));
+        }
+        finally { _retrying = false; }
+    }
 
     protected override void OnInitialized()
     {

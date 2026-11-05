@@ -467,6 +467,10 @@ public static class DependencyInjection
         services.AddSingleton<
             OpenHandsNET.Application.Agent.IToolRegistry,
             OpenHandsNET.Infrastructure.Agent.ToolRegistry>();
+        // SPEC-123: deferred tool loading — estado por conversa.
+        services.AddSingleton<
+            OpenHandsNET.Application.Agent.IDeferredToolState,
+            OpenHandsNET.Infrastructure.Agent.DeferredToolState>();
         // SPEC-23: catálogo OmniRoute + router por role (singletons —
         // cache compartilhado; seleção é stateless por chamada).
         services.AddMemoryCache();
@@ -533,17 +537,21 @@ public static class DependencyInjection
             var o = sp.GetRequiredService<Microsoft.Extensions.Options
                 .IOptions<OpenHandsNET.Application.Agent.AgentLlmOptions>>()
                 .Value;
-            return o.SecurityAnalyzer.Equals("llm",
-                StringComparison.OrdinalIgnoreCase)
-                ? new OpenHandsNET.Infrastructure.Agent.Security
-                    .LlmSecurityAnalyzer(
-                        sp.GetRequiredService<OpenHandsNET.Application.Agent
-                            .IAgentLlmProvider>(),
-                        sp.GetRequiredService<Microsoft.Extensions.Caching
-                            .Memory.IMemoryCache>())
-                    : (OpenHandsNET.Application.Agent.ISecurityAnalyzer)
-                        new OpenHandsNET.Infrastructure.Agent.Security
-                            .PatternSecurityAnalyzer();
+            var llmProvider = () => sp.GetRequiredService<
+                OpenHandsNET.Application.Agent.IAgentLlmProvider>();
+            var memCache = sp.GetRequiredService<
+                Microsoft.Extensions.Caching.Memory.IMemoryCache>();
+            return o.SecurityAnalyzer.ToLowerInvariant() switch
+            {
+                "llm" => new OpenHandsNET.Infrastructure.Agent.Security
+                    .LlmSecurityAnalyzer(llmProvider(), memCache),
+                // SPEC-123: juiz allow/deny/ask com prompt embutido.
+                "judge" => new OpenHandsNET.Infrastructure.Agent.Security
+                    .SmartPermissionJudge(llmProvider(), memCache),
+                _ => (OpenHandsNET.Application.Agent.ISecurityAnalyzer)
+                    new OpenHandsNET.Infrastructure.Agent.Security
+                        .PatternSecurityAnalyzer(),
+            };
         });
         // SPEC-48 RF-001: política de segurança por org — presets +
         // overrides, cache distribuído (TTL 60s) com invalidação no write.
