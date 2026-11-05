@@ -23,9 +23,21 @@
     (Copy link + Delete c/ confirm), icons dots/trash, 4 keys i18n.
 - **Verificações**: Client build Release 0 warn/err; check-css-classes,
   check-form-a11y, i18n-parity (458 keys), i18n-placeholders — todos OK.
-- **Pendente**: resto 118 (bell/sidebar OWUIC full), 119 (DialogService),
-  120 (tool-call cards), 121, 123, 122, 124. Full `dotnet build` +
-  `dotnet test` pendentes; PR + archive SPECs ao final.
+- **Pass 2 (continue)**: commits `e691f32` 118+119 (AttentionFeed no
+  sb-head desktop; DialogService+DialogHost confirm/prompt acessível,
+  ohn.trapFocus, delete via ConfirmAsync — substitui window.confirm),
+  `4a00810` regen tailwind, `00f546d` 120 (ToolActivityMap+
+  ToolArgsPreview+GitDiffRender ports; label de atividade no ActionEvent;
+  DiffTab por arquivo; ChatNotificationsService+js opt-in; palette+
+  notify toggles em Settings), `73fa636` 121 slice (BuiltinFileOps:
+  file_list/grep/glob/apply_patch → 21→25 tools), `9ddd15f` i18n real
+  ja/zh/es/fr/de/it + fix ThemeService ctor nos testes.
+- **Verificado**: `dotnet build OpenHandsNET.slnx -c Release` 0/0;
+  Client.Tests 86/86, UnitTests 663/663, IntegrationTests 235/235;
+  guards css/a11y/i18n OK.
+- **Pendente**: resto 121 (jobs/context/notebook/plan/worktree), 123
+  (hooks/ruleset/judge/tool_search/agents embutidos), 122 (LSP), 124
+  (MCP/ACP). SettingsModal (119) pendente. PR + archive ao final.
 - **Gotchas**: `MapStaticAssets` serve SW/manifest ok; icons gerados
   via PIL (convert renderiza SVG em grayscale); `GetFromJsonAsync`
   precisa `using System.Net.Http.Json`; `confirm()` JS usado p/ delete.
