@@ -22,6 +22,37 @@ public sealed class McpSettingsService(AppDbContext db) : IMcpSettingsService
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) },
     };
 
+    /// <summary>
+    /// SPEC-131 RF-003: servidores builtin — sempre disponíveis quando a
+    /// imagem de runtime os suporta. Um servidor configurado com o mesmo
+    /// nome vence (override/desligamento honrado).
+    /// </summary>
+    internal static readonly IReadOnlyList<McpServerConfig> BuiltinServers =
+    [
+        new McpServerConfig
+        {
+            Name = "chrome-devtools",
+            Transport = McpTransport.Stdio,
+            Command = "chrome-devtools-mcp",
+            Args =
+            [
+                "--headless", "--isolated",
+                "--chromeArg=--no-sandbox",
+                "--chromeArg=--disable-dev-shm-usage",
+            ],
+        },
+    ];
+
+    /// <summary>Merge builtin + configurados — nome configurado vence.</summary>
+    internal static IReadOnlyList<McpServerConfig> MergeBuiltin(
+        IReadOnlyList<McpServerConfig> configured)
+    {
+        var names = configured.Select(c => c.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return [.. BuiltinServers.Where(b => !names.Contains(b.Name)),
+            .. configured];
+    }
+
     /// <inheritdoc />
     public async Task<IReadOnlyList<McpServerConfig>> ListAsync(
         string ownerId, CancellationToken ct = default) =>
@@ -85,11 +116,11 @@ public sealed class McpSettingsService(AppDbContext db) : IMcpSettingsService
                 conversationOverrideJson, Json);
             if (parsed is not null)
             {
-                return parsed;
+                return MergeBuiltin(parsed);
             }
         }
 
-        return await ListAsync(ownerId, ct);
+        return MergeBuiltin(await ListAsync(ownerId, ct));
     }
 
     /// <summary>Serializa um mapa de configs (uso do override por conversa).</summary>

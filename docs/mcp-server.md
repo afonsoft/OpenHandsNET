@@ -72,6 +72,54 @@ app rodando (`dotnet run --project src/OpenHandsNET.Api`) + `OHN_API_KEY`
 válida; sem credencial o tool responde `isError` com a mensagem — nunca
 payload fabricado.
 
+## Servidores MCP dentro do sandbox (SPEC-131)
+
+O caminho inverso — o **agente consumindo** servidores MCP — executa
+`stdio` dentro do container da conversa via `docker exec -i` (SPEC-07).
+Variáveis `env` da config são encaminhadas como `-e K=V` para o processo
+dentro do container.
+
+### Runtime com browser
+
+A imagem `runtime/Dockerfile` instala `playwright@1.64.1` +
+`chrome-devtools-mcp@1.12.0` (pinned) e `playwright install --with-deps
+chromium` em `PLAYWRIGHT_BROWSERS_PATH=/opt/ohn/ms-playwright`, com o
+binário linkado em `/usr/local/bin/chromium`. ENV expostos:
+
+| Variável | Valor |
+|---|---|
+| `CHROME_PATH` | `/usr/local/bin/chromium` |
+| `PUPPETEER_EXECUTABLE_PATH` | `/usr/local/bin/chromium` |
+
+Scripts do agente que usam Playwright (node/python) e qualquer MCP que
+lance um browser funcionam sem setup adicional.
+
+### Servidor builtin `chrome-devtools`
+
+Servidor MCP pré-configurado (`McpSettingsService.BuiltinServers`),
+presente em toda conversa salvo override:
+
+```json
+{ "name": "chrome-devtools", "transport": "stdio",
+  "command": "chrome-devtools-mcp",
+  "args": ["--headless", "--isolated",
+           "--chromeArg=--no-sandbox",
+           "--chromeArg=--disable-dev-shm-usage"] }
+```
+
+- **Desligar**: configurar servidor de mesmo nome com `enabled: false`.
+- **Customizar**: mesmo nome + campos próprios — a config vence o builtin
+  por inteiro (não há merge de args).
+- Browser lançado **headless** e **isolado** (perfil descartável) no
+  container — nada persiste entre runs.
+
+### `browser` tool × `chrome-devtools` MCP
+
+São implementações distintas por design: o `browser` builtin (SPEC-18)
+roda **worker-side** via `PlaywrightBrowserService` no processo da API;
+`chrome-devtools` roda **sandbox-side** como MCP — DevTools protocol,
+network/perf tracing, acessível também a MCPs externos do agente.
+
 ## Drift guard
 
 `python3 tools/check-mcp-tools-golden.py` compara o catálogo

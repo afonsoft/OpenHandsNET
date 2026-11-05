@@ -102,3 +102,9 @@ SPECs 116–124 entregues via PR #327 (Epic #317) e arquivadas em
 `docs/specs/` — auditoria de paridade com o fork irmão: UI/design-system,
 tool-call UX, tools do agente (21 → 45 builtins), hooks/permissões/
 deferred-loading, exposição MCP/ACP e assets PWA.
+
+### Leva 2026-11-05 (sandbox browser)
+
+| SPEC | Título | Status | Ticket |
+|---|---|---|---|
+| 131 | sandbox-browser-playwright (Playwright + chrome-devtools MCP no runtime) | Approved | #338 |
