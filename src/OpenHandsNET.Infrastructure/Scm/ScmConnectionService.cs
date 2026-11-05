@@ -26,8 +26,8 @@ public sealed class ScmConnectionService(
     ILogger<ScmConnectionService> logger) : IScmConnectionService
 {
     private const string Write = "write";
-    private const string GitHubManifestConversionUrl = // NOSONAR S1075 — endpoint público fixo do GitHub
-        "https://api.github.com/app-manifests/{0}/conversions";
+    private const string GitHubManifestConversionUrl =
+        "https://api.github.com/app-manifests/{0}/conversions"; // NOSONAR S1075 — endpoint público fixo do GitHub
 
     /// <inheritdoc />
     public object BuildGitHubAppManifest(string redirectUri, string appName) => new
