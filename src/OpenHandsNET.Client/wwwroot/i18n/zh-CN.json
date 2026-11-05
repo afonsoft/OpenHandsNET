@@ -481,5 +481,7 @@
   "usage.completion_tokens": "completion tokens",
   "usage.estimated_cost": "预估费用",
   "usage.events": "事件",
-  "usage.prompt_tokens": "prompt tokens"
+  "usage.prompt_tokens": "prompt tokens",
+  "rail.expand": "展开侧边栏",
+  "rail.collapse": "收起侧边栏"
 }

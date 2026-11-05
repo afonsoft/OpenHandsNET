@@ -152,3 +152,26 @@ public sealed record AgentDiagnosticEvent : EventBase
     /// <summary>Human-readable detail (redacted).</summary>
     public string Message { get; init; } = "";
 }
+
+/// <summary>
+/// Advisor opinion (kind <c>advisor</c>, SPEC-125 RF-005): segunda
+/// análise de um modelo consultor sobre ação risky ou pergunta do
+/// agente — observacional, nunca bloqueia a decisão de permissão.
+/// </summary>
+public sealed record AdvisorEvent : EventBase
+{
+    /// <summary>Creates an environment-sourced advisor opinion.</summary>
+    public AdvisorEvent() => Source = EventSource.Environment;
+
+    /// <summary>Pergunta/contexto enviado ao advisor.</summary>
+    public string Question { get; init; } = "";
+
+    /// <summary>Parecer devolvido (redacted).</summary>
+    public string Answer { get; init; } = "";
+
+    /// <summary>Model id usado na consulta.</summary>
+    public string Model { get; init; } = "";
+
+    /// <summary>Latência da consulta (ms).</summary>
+    public long ElapsedMs { get; init; }
+}

@@ -1,0 +1,274 @@
+@using OpenHandsNET.Client.Services
+@using System.Text.Json
+@inject OpenHandsNetApiClient Api
+@inject ThemeService Theme
+@inject ChatNotificationsService ChatNotify
+@inject ToastService Toasts
+@inject LocalizationService L
+
+@* SPEC-130 RF-002: conteúdo de settings compartilhado entre a página
+   /settings (deep-link) e o SettingsModal (DialogService). *@
+<div class="settings-layout">
+        <nav class="settings-rail" role="tablist" aria-label="@L["settings.title"]">
+            <button type="button" role="tab"
+                    aria-selected="@(_tab == "general")"
+                    class="settings-tab @(_tab == "general" ? "active" : "")"
+                    @onclick='() => _tab = "general"'>
+                @L["settings.appearance"]
+            </button>
+            <button type="button" role="tab"
+                    aria-selected="@(_tab == "agent")"
+                    class="settings-tab @(_tab == "agent" ? "active" : "")"
+                    @onclick='() => _tab = "agent"'>
+                @L["settings.agent_llm"]
+            </button>
+            <button type="button" role="tab"
+                    aria-selected="@(_tab == "secrets")"
+                    class="settings-tab @(_tab == "secrets" ? "active" : "")"
+                    @onclick='() => _tab = "secrets"'>
+                @L["settings.secrets"]
+            </button>
+            <a class="settings-tab settings-tab-link" href="/settings/skills">
+                @L["skills.title"] →
+            </a>
+        </nav>
+
+        <div class="settings-panel" role="tabpanel">
+            @if (_tab == "general")
+            {
+                @* SPEC-26 RF-001: aparência — tema persiste local +
+                   /users/me/preferences. *@
+                <h3>@L["settings.appearance"]</h3>
+                <div class="field">
+                    <label>@L["settings.theme"]</label>
+                    <select value="@Theme.Theme" @onchange="OnThemeChange"
+                            aria-label="@L["settings.theme"]">
+                        <option value="dark">@L["settings.theme_dark"]</option>
+                        <option value="light">@L["settings.theme_light"]</option>
+                        <option value="system">@L["settings.theme_system"]</option>
+                    </select>
+                </div>
+                @* SPEC-46 RF-004: idioma — aplica imediato + localStorage +
+                   merge em /users/me/preferences {locale}. *@
+                <div class="field">
+                    <label>@L["settings.language"]</label>
+                    <select value="@L.Language" @onchange="OnLanguageChange"
+                            aria-label="@(L["settings.language"])">
+                        @foreach (var (lang, name) in L.Languages)
+                        {
+                            <option value="@lang">@(string.IsNullOrEmpty(name) ? lang : name)</option>
+                        }
+                    </select>
+                </div>
+                @* SPEC-116: paleta custom (themes/builtin.json). *@
+                @if (Theme.Palettes.Count > 1)
+                {
+                    <div class="field">
+                        <label>@L["settings.palette"]</label>
+                        <select value="@Theme.PaletteId" @onchange="OnPaletteChange"
+                                aria-label="@L["settings.palette"]">
+                            @foreach (var p in Theme.Palettes)
+                            {
+                                <option value="@p.Id">@p.Name</option>
+                            }
+                        </select>
+                    </div>
+                }
+                @* SPEC-120 RF-006: notificação desktop opt-in (permissão
+                   pedida só no gesto do toggle). *@
+                <h3>@L["settings.notifications"]</h3>
+                <label class="check">
+                    <input type="checkbox" checked="@_notifyBrowser"
+                           @onchange="OnNotifyBrowserChange"
+                           aria-label="@L["settings.notify_browser"]" />
+                    @L["settings.notify_browser"]
+                </label>
+            }
+            else if (_tab == "agent")
+            {
+                <h3>@L["settings.agent_llm"]</h3>
+                <div class="field">
+                    <label>@L["settings.llm_model"]</label>
+                    <input aria-label="@L["settings.llm_model"]" @bind="_model" @bind:event="oninput" @bind:after="MarkDirty" />
+                </div>
+                <div class="field">
+                    <label>@L["settings.llm_secret"]</label>
+                    <input aria-label="@L["settings.llm_secret"]" @bind="_apiKeySecret" @bind:event="oninput" @bind:after="MarkDirty" />
+                </div>
+                <div class="field">
+                    <label>@L["settings.agent_type"]</label>
+                    <select aria-label="@L["settings.agent_type"]" value="@_agentType" @onchange="OnAgentTypeChange">
+                        <option value="default">default</option>
+                        <option value="plan">plan</option>
+                        <option value="readonly">readonly</option>
+                    </select>
+                </div>
+                @* RF-004: SettingsSaveBar — sticky, só com dirty-state. *@
+                @if (_dirty)
+                {
+                    <div class="settings-savebar">
+                        <span class="savebar-msg">@L["settings.unsaved"]</span>
+                        <button type="button" class="settings-savebar-discard"
+                                @onclick="DiscardSettings">
+                            @L["common.discard"]
+                        </button>
+                        <button type="button" class="primary"
+                                @onclick="SaveSettingsAsync" disabled="@_saving">
+                            @(_saving ? L["settings.saving"] : L["settings.save"])
+                        </button>
+                    </div>
+                }
+            }
+            else
+            {
+                <h3>@L["settings.secrets"]</h3>
+                <p class="sub" style="color:var(--ohn-fg-dim)">
+                    @L["settings.secrets_hint"]
+                </p>
+                <div class="row" style="display:flex;gap:8px;margin-bottom:12px">
+                    <input aria-label="@L["settings.secret_name"]" placeholder="@L["settings.secret_name"]" @bind="_secretName"
+                           style="flex:1" />
+                    <input aria-label="@L["settings.secret_value"]" placeholder="@L["settings.secret_value"]" type="password" @bind="_secretValue"
+                           style="flex:2" />
+                    <button @onclick="AddSecretAsync"
+                            disabled="@(string.IsNullOrWhiteSpace(_secretName) || string.IsNullOrWhiteSpace(_secretValue))">
+                        @L["common.add"]
+                    </button>
+                </div>
+                @foreach (var name in _secrets)
+                {
+                    <div class="secret-row">
+                        <span class="name">@name</span>
+                        <button class="danger" @onclick="() => DeleteSecretAsync(name)">@L["common.delete"]</button>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+@code {
+    private string _tab = "general";
+    private string _model = "";
+    private string _apiKeySecret = "";
+    private string _agentType = "default";
+    private bool _saving, _dirty;
+    private string _savedModel = "";
+    private string _savedSecret = "";
+    private string _savedAgentType = "default";
+    private string _secretName = "";
+    private string _secretValue = "";
+    private bool _notifyBrowser;
+    private List<string> _secrets = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Theme.LoadPalettesAsync();
+        _notifyBrowser = await ChatNotify.GetPrefAsync();
+        try
+        {
+            var s = await Api.GetSettingsAsync();
+            if (s.ValueKind == JsonValueKind.Object)
+            {
+                _model = _savedModel = GetStr(s, "llm_model") ?? "";
+                _apiKeySecret = _savedSecret =
+                    GetStr(s, "llm_api_key_secret") ?? "";
+                _agentType = _savedAgentType =
+                    GetStr(s, "agent_type") ?? "default";
+            }
+        }
+        catch { /* best-effort — falha tolerada */ }
+        try { _secrets = (await Api.ListSecretsAsync()).ToList(); }
+        catch { /* best-effort — falha tolerada */ }
+    }
+
+    private static string? GetStr(JsonElement el, string name) =>
+        el.TryGetProperty(name, out var v) ? v.GetString() : null;
+
+    private void MarkDirty() => _dirty = true;
+
+    private void OnAgentTypeChange(ChangeEventArgs e)
+    {
+        _agentType = e.Value?.ToString() ?? "default";
+        MarkDirty();
+    }
+
+    /// <summary>RF-004: descarta — volta aos valores do último save.</summary>
+    private void DiscardSettings()
+    {
+        _model = _savedModel;
+        _apiKeySecret = _savedSecret;
+        _agentType = _savedAgentType;
+        _dirty = false;
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        _saving = true;
+        try
+        {
+            var doc = JsonSerializer.SerializeToElement(new
+            {
+                llm_model = _model,
+                llm_api_key_secret = _apiKeySecret,
+                agent_type = _agentType,
+            });
+            await Api.SaveSettingsAsync(doc);
+            _savedModel = _model;
+            _savedSecret = _apiKeySecret;
+            _savedAgentType = _agentType;
+            _dirty = false;
+            Toasts.Success(L["settings.saved"]);
+        }
+        finally { _saving = false; }
+    }
+
+    private async Task AddSecretAsync()
+    {
+        await Api.PutSecretAsync(_secretName.Trim(), _secretValue);
+        _secrets.Add(_secretName.Trim());
+        _secretName = "";
+        _secretValue = "";
+    }
+
+    private async Task DeleteSecretAsync(string name)
+    {
+        await Api.DeleteSecretAsync(name);
+        _secrets.Remove(name);
+    }
+
+    /// <summary>SPEC-26: troca de tema — persiste local + remoto, toast.</summary>
+    private async Task OnThemeChange(ChangeEventArgs e)
+    {
+        await Theme.SetAsync(e.Value?.ToString() ?? ThemeService.Light);
+        Toasts.Success(L.T("settings.theme_toast", ("theme", Theme.Theme)));
+    }
+
+    private async Task OnPaletteChange(ChangeEventArgs e) =>
+        await Theme.SetPaletteAsync(e.Value?.ToString() ?? "default");
+
+    /// <summary>SPEC-120 RF-006: opt-in — permissão pedida só neste
+    /// gesto; se o navegador negar, o toggle volta desligado.</summary>
+    private async Task OnNotifyBrowserChange(ChangeEventArgs e)
+    {
+        var wanted = e.Value is true;
+        _notifyBrowser = wanted && await ChatNotify.SetPrefAsync(true);
+        if (wanted && !_notifyBrowser)
+        {
+            Toasts.Error(L["settings.notify_denied"]);
+        }
+    }
+
+    /// <summary>SPEC-46 RF-004: idioma — L.SetLanguageAsync aplica sem
+    /// reload (Changed → MainLayout re-renderiza); persistência remota
+    /// best-effort no dict de preferences.</summary>
+    private async Task OnLanguageChange(ChangeEventArgs e)
+    {
+        var code = e.Value?.ToString() ?? LocalizationService.DefaultLanguage;
+        await L.SetLanguageAsync(code);
+        try
+        {
+            await Api.PutPreferencesAsync(
+                new Dictionary<string, string> { ["locale"] = code });
+        }
+        catch { /* remoto best-effort — localStorage já persistiu */ }
+    }
+}

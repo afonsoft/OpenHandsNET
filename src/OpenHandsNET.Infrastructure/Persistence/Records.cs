@@ -433,3 +433,29 @@ public sealed class InsightReportRecord : IOrgScoped
     public string? SummaryJson { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }
+/// <summary>
+/// SPEC-128 RF-001: per-conversation context note — working memory
+/// DB-backed que sobrevive a troca de sandbox (o arquivo
+/// <c>.openhands/context-notes.md</c> morre com o container).
+/// </summary>
+public sealed class ConversationContextNoteRecord
+{
+    public required Guid Id { get; set; }
+    public required Guid ConversationId { get; set; }
+    public required string Title { get; set; }
+    public required string Body { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+/// <summary>
+/// SPEC-128 RF-001: key/value working memory por conversa —
+/// <c>memory_get/set/search</c> granular (complementa o
+/// <see cref="MemoryRecord"/> org-scoped).
+/// </summary>
+public sealed class ConversationMemoryRecord
+{
+    public required Guid ConversationId { get; set; }
+    public required string Key { get; set; }
+    public required string Value { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+}

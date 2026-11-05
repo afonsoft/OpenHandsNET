@@ -41,6 +41,7 @@ public static class EventTree
 [JsonDerivedType(typeof(ServerErrorEvent), "ServerErrorEvent")]
 [JsonDerivedType(typeof(AcpToolCallEvent), "ACPToolCallEvent")]
 [JsonDerivedType(typeof(HookExecutionEvent), "HookExecutionEvent")]
+[JsonDerivedType(typeof(HookFiredEvent), "hook_fired")]
 [JsonDerivedType(typeof(LlmCompletionLogEvent), "LLMCompletionLogEvent")]
 [JsonDerivedType(typeof(DecisionAutoEvent), "decision_auto")]
 [JsonDerivedType(typeof(CommandOutputEvent), "command_output")]
@@ -50,6 +51,7 @@ public static class EventTree
 [JsonDerivedType(typeof(WorkSummaryEvent), "work_summary")]
 [JsonDerivedType(typeof(AgentDiagnosticEvent), "agent_diagnostic")]
 [JsonDerivedType(typeof(PullRequestCreatedEvent), "pull_request_created")]
+[JsonDerivedType(typeof(AdvisorEvent), "advisor")]
 public abstract record EventBase
 {
     /// <summary>Unique event id — ULID/UUID7 string (lexicographic == temporal order).</summary>

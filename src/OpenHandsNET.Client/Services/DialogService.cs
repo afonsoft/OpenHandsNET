@@ -37,6 +37,11 @@ public sealed class DialogService
     public Task<object?> ShowImageAsync(string url, string? alt = null) =>
         ShowAsync(new DialogRequest(DialogKind.Lightbox, url, false, alt));
 
+    /// <summary>SPEC-130 RF-001: SettingsModal — mesmo SettingsContent
+    /// da rota /settings dentro de um dialog wide.</summary>
+    public Task<object?> ShowSettingsAsync() =>
+        ShowAsync(new DialogRequest(DialogKind.Settings, "", false, null));
+
     /// <summary>Fecha o diálogo atual resolvendo o pendente com o resultado.</summary>
     public void Resolve(object? result)
     {
@@ -70,6 +75,9 @@ public enum DialogKind
 
     /// <summary>Overlay de imagem (lightbox) — ESC/backdrop fecham.</summary>
     Lightbox,
+
+    /// <summary>Settings wide — renderiza SettingsContent.</summary>
+    Settings,
 }
 
 /// <summary>Pedido de diálogo pendente — dados para render e o TCS de resposta.</summary>

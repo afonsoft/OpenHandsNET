@@ -29,6 +29,12 @@ public sealed class ToolRegistry : IToolRegistry
             "worktree_list", "worktree_add", "worktree_diff", "worktree_merge",
             "job_run", "job_list", "job_output", "job_kill",
             "notebook_read", "notebook_edit",
+            // SPEC-128: context/memória DB-backed — sob demanda via tool_search.
+            "context_save", "context_get", "context_list",
+            "context_delete", "context_summary",
+            "memory_get", "memory_set", "memory_search",
+            // SPEC-125: segunda opinião sob demanda.
+            "advisor",
         };
 
     /// <summary>Builds the built-in catalog.</summary>
@@ -63,6 +69,17 @@ public sealed class ToolRegistry : IToolRegistry
             BuiltinSpecs.ContextNotes(),
             BuiltinNotebook.NotebookRead(),
             BuiltinNotebook.NotebookEdit(),
+            // SPEC-128: context-notes + memória granular DB-backed.
+            BuiltinContextDb.ContextSave(),
+            BuiltinContextDb.ContextGet(),
+            BuiltinContextDb.ContextList(),
+            BuiltinContextDb.ContextDelete(),
+            BuiltinContextDb.ContextSummary(),
+            BuiltinContextDb.MemorySet(),
+            BuiltinContextDb.MemoryGet(),
+            BuiltinContextDb.MemorySearch(),
+            // SPEC-125: segunda opinião do advisor (opt-in AdvisorModel).
+            BuiltinAdvisor.Advisor(),
             // SPEC-122: code intelligence LSP no sandbox.
             BuiltinLsp.LspDiagnostics(),
             BuiltinLsp.LspSymbols(),

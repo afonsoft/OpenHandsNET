@@ -53,3 +53,28 @@ Start-task é **assíncrono**: `ohn_create_conversation` retorna uma task
 capabilities do produto para um agente externo se orientar — endpoints,
 modelo de runtime (eventos duráveis, sandbox, `*.agent.md`) e o bloco
 `.mcp.json` acima.
+
+## Verificação com cliente MCP (SPEC-129 RF-004)
+
+Smoke manual do stdio (sem cliente externo):
+
+```bash
+dotnet build src/OpenHandsNET.Mcp -c Release
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize"}' \
+  | dotnet src/OpenHandsNET.Mcp/bin/Release/net10.0/openhandsnet-mcp.dll
+# → {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05",...}}
+```
+
+Com cliente real (Claude Code): adicionar o bloco `.mcp.json` acima e
+rodar `claude mcp list` — `openhandsnet` deve aparecer `connected` e os
+12 `ohn_*` listáveis em `/mcp`. Um `ohn_list_conversations` real exige o
+app rodando (`dotnet run --project src/OpenHandsNET.Api`) + `OHN_API_KEY`
+válida; sem credencial o tool responde `isError` com a mensagem — nunca
+payload fabricado.
+
+## Drift guard
+
+`python3 tools/check-mcp-tools-golden.py` compara o catálogo
+`tools/list` com `tools/drift-baseline/mcp-tools.json` — mudança
+intencional no catálogo → regenerar com `--write-baseline` e incluir no
+PR (SPEC-129 RF-001).

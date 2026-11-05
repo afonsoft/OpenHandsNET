@@ -24,7 +24,8 @@
            @onkeydown="OnSidebarKeyDown">
         <div class="sb-head">
             <button class="icon-btn" @onclick="ToggleSidebar"
-                    aria-label="@L["sidebar.toggle"]" title="@L["sidebar.toggle"]"
+                    aria-label="@L[_collapsed ? "rail.expand" : "rail.collapse"]"
+                    title="@L[_collapsed ? "rail.expand" : "rail.collapse"]"
                     aria-expanded="@(!_collapsed)">
                 <Icon Name="menu" Size="16" />
             </button>
@@ -99,11 +100,15 @@
                 <Icon Name="clock" Size="16" />
                 <span class="txt">@L["sidebar.automations"]</span>
             </a>
-            <a class="sb-item @(IsActive("/settings") ? "active" : "")"
-               href="/settings" title="@L["sidebar.settings"]">
+            @* SPEC-130 RF-001: engrenagem abre o SettingsModal sobre a
+               conversa; /settings segue como deep-link direto. *@
+            <button type="button" class="sb-item"
+                    title="@L["sidebar.settings"]"
+                    aria-label="@L["sidebar.settings"]"
+                    @onclick="OpenSettingsAsync">
                 <Icon Name="settings" Size="16" />
                 <span class="txt">@L["sidebar.settings"]</span>
-            </a>
+            </button>
             @if (_isAdmin)
             {
                 <div class="sb-label">@L["sidebar.admin"]</div>
@@ -120,7 +125,8 @@
             @if (_collapsed)
             {
                 <button class="icon-btn" @onclick="ToggleSidebar"
-                        aria-label="@L["sidebar.toggle"]" title="@L["sidebar.toggle"]">
+                        aria-label="@L["rail.expand"]"
+                        title="@L["rail.expand"]">
                     <Icon Name="chevron-right" Size="16" />
                 </button>
             }
@@ -168,8 +174,12 @@
         await ChatNotify.EnsureStartedAsync();
         try
         {
-            _collapsed = await JS.InvokeAsync<string?>(
-                "localStorage.getItem", "ohn.sidebar") == "1";
+            // SPEC-130 RF-004: chave ohn.sidebar.collapsed; ohn.sidebar
+            // (SPEC-118) lida como fallback na migração.
+            _collapsed = (await JS.InvokeAsync<string?>(
+                    "localStorage.getItem", "ohn.sidebar.collapsed")
+                ?? await JS.InvokeAsync<string?>(
+                    "localStorage.getItem", "ohn.sidebar")) == "1";
             _convs = (await Api.ListConversationsAsync())
                 .OrderByDescending(c => c.UpdatedAt).Take(20).ToList();
         }
@@ -217,6 +227,11 @@
         }
         catch (Exception) { /* offline / erro de API — item permanece */ }
     }
+
+    /// <summary>SPEC-130 RF-001: SettingsModal via DialogService —
+    /// fluxo não navega para fora do chat.</summary>
+    private async Task OpenSettingsAsync() =>
+        await Dialogs.ShowSettingsAsync();
 
     private void OpenMobile() => _mobileMenu = true;
 
@@ -289,7 +304,7 @@
         try
         {
             await JS.InvokeVoidAsync("localStorage.setItem",
-                "ohn.sidebar", _collapsed ? "1" : "0");
+                "ohn.sidebar.collapsed", _collapsed ? "1" : "0");
         }
         catch (JSException) { /* best-effort — falha tolerada */ }
     }

@@ -15,7 +15,7 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.13");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.14");
 
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
                 {
@@ -1062,6 +1062,70 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_code_units_repo_index_id_path");
 
                     b.ToTable("code_units", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.ConversationContextNoteRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("body");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id")
+                        .HasName("pk_context_notes");
+
+                    b.HasIndex("ConversationId", "CreatedAt")
+                        .HasDatabaseName("ix_context_notes_conversation_id_created_at");
+
+                    b.ToTable("context_notes", (string)null);
+                });
+
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.ConversationMemoryRecord", b =>
+                {
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<string>("Key")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("key");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("value");
+
+                    b.HasKey("ConversationId", "Key")
+                        .HasName("pk_conversation_memories");
+
+                    b.HasIndex("UpdatedAt")
+                        .HasDatabaseName("ix_conversation_memories_updated_at");
+
+                    b.ToTable("conversation_memories", (string)null);
                 });
 
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.ConversationSkillRecord", b =>

@@ -86,6 +86,7 @@ python3 tools/check-css-classes.py        # classes .razor vs tailwind.css/app.c
 python3 tools/check-form-a11y.py          # controles de form sem nome acessível
 python3 tools/check-i18n-parity.py        # chaves i18n vs baseline en-US
 python3 tools/check-i18n-placeholders.py  # placeholders {{x}} + args de L.T
+python3 tools/check-mcp-tools-golden.py   # catálogo MCP tools/list vs baseline
 # Ratchet: tools/drift-baseline/*.txt congela o drift conhecido —
 # violações novas falham; aposentar resolvidas com --write-baseline.
 ```
