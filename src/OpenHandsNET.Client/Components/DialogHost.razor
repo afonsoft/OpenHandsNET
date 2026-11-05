@@ -9,13 +9,41 @@
    um dialog acessível: role=dialog, focus trap, Escape cancela,
    backdrop clica fora cancela. *@
 
-@if (Dialogs.Current is { } req)
+@if (Dialogs.Current is { Kind: DialogKind.Lightbox } lb)
+{
+    @* RF-006: lightbox — imagem em overlay, ESC/backdrop fecham. *@
+    <div class="modal-backdrop lightbox" @onclick="Cancel">
+        <img src="@lb.Message" alt="@lb.DefaultValue" class="lightbox-img"
+             @onclick:stopPropagation />
+    </div>
+}
+else if (Dialogs.Current is { } req)
 {
     <div class="modal-backdrop" @onclick="Cancel">
         <div class="modal max-w-md" role="dialog" aria-modal="true"
              aria-label="@L["common.confirm"]" tabindex="-1"
              @ref="_dialog" @onkeydown="OnKeyDown" @onclick:stopPropagation>
             <div class="modal-body">
+                @if (req.Kind == DialogKind.Link)
+                {
+                    @* RF-005: ShareDialog — link readonly + copiar. *@
+                    <input class="input w-full" readonly value="@req.DefaultValue"
+                           aria-label="@L["conv.share"]" @ref="_linkInput" />
+                    <div class="mt-5 flex justify-end gap-2">
+                        <button type="button"
+                                class="rounded-full px-4 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer"
+                                @onclick="Cancel">
+                            @L["common.close"]
+                        </button>
+                        <button type="button"
+                                class="rounded-full px-4 py-1.5 text-sm font-medium bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200 transition cursor-pointer"
+                                @onclick="CopyLinkAsync">
+                            @(_copied ? L["conv.share_copied"] : L["common.copy"])
+                        </button>
+                    </div>
+                }
+                else
+                {
                 <p class="text-sm whitespace-pre-wrap text-gray-700 dark:text-gray-300">@req.Message</p>
                 @if (req.Kind == DialogKind.Prompt)
                 {
@@ -36,6 +64,7 @@
                         @(req.Danger ? L["common.delete"] : L["common.ok"])
                     </button>
                 </div>
+                }
             </div>
         </div>
     </div>
@@ -43,7 +72,9 @@
 
 @code {
     private ElementReference _dialog;
+    private ElementReference _linkInput;
     private string _input = "";
+    private bool _copied;
     private DialogRequest? _rendered;
 
     protected override void OnInitialized()
@@ -55,7 +86,22 @@
     {
         // Reinicia o campo de texto a cada novo pedido de prompt.
         _input = Dialogs.Current?.DefaultValue ?? "";
+        _copied = false;
         _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CopyLinkAsync()
+    {
+        if (Dialogs.Current?.DefaultValue is { } url)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync(
+                    "navigator.clipboard.writeText", url);
+                _copied = true;
+            }
+            catch (JSException) { /* clipboard indisponível */ }
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -91,7 +137,7 @@
         Dialogs.Resolve(Dialogs.Current?.Kind == DialogKind.Prompt ? _input : true);
 
     private void Cancel() =>
-        Dialogs.Resolve(Dialogs.Current?.Kind == DialogKind.Prompt ? null : false);
+        Dialogs.Resolve(Dialogs.Current?.Kind is DialogKind.Prompt ? null : false);
 
     public void Dispose() => Dialogs.Changed -= OnDialogsChanged;
 }

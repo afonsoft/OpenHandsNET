@@ -27,6 +27,16 @@ public sealed class DialogService
         return result as string;
     }
 
+    /// <summary>SPEC-119 RF-005: mostra um link copiável (share) — input
+    /// readonly + botão copiar; resolve ao fechar.</summary>
+    public Task<object?> ShowLinkAsync(string url) =>
+        ShowAsync(new DialogRequest(DialogKind.Link, url, false, url));
+
+    /// <summary>SPEC-119 RF-006: lightbox de imagem — overlay com zoom,
+    /// ESC/backdrop fecham.</summary>
+    public Task<object?> ShowImageAsync(string url, string? alt = null) =>
+        ShowAsync(new DialogRequest(DialogKind.Lightbox, url, false, alt));
+
     /// <summary>Fecha o diálogo atual resolvendo o pendente com o resultado.</summary>
     public void Resolve(object? result)
     {
@@ -54,6 +64,12 @@ public enum DialogKind
 
     /// <summary>Entrada de texto livre.</summary>
     Prompt,
+
+    /// <summary>Link copiável (share) — input readonly + copiar.</summary>
+    Link,
+
+    /// <summary>Overlay de imagem (lightbox) — ESC/backdrop fecham.</summary>
+    Lightbox,
 }
 
 /// <summary>Pedido de diálogo pendente — dados para render e o TCS de resposta.</summary>

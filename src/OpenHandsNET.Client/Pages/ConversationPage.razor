@@ -6,6 +6,7 @@
 @inject NavigationManager Nav
 @inject OpenHandsNetApiClient Api
 @inject ToastService Toasts
+@inject DialogService Dialogs
 @inject LocalizationService L
 @implements IAsyncDisposable
 
@@ -248,8 +249,8 @@
             var url = link.Token is { Length: > 0 }
                 ? $"{Nav.BaseUri.TrimEnd('/')}/share/{link.Token}"
                 : link.Url;
-            await JS.InvokeVoidAsync("navigator.clipboard.writeText", url);
-            Toasts.Success(L.T("conv.share_copied"));
+            // SPEC-119 RF-005: ShareDialog — link copiável em diálogo.
+            await Dialogs.ShowLinkAsync(url);
         }
         catch (Exception ex)
         {

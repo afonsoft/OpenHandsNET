@@ -873,3 +873,19 @@ button.ide-status-item:hover {
 [data-theme='dark'] .ide-menu-item:hover {
 	background: var(--color-gray-800);
 }
+
+/* SPEC-119 RF-004/006/007 — settings rail, lightbox, offline retry. */
+@layer components {
+  .settings-layout { @apply flex gap-6 max-sm:flex-col; }
+  .settings-rail { @apply flex flex-col gap-1 min-w-[180px] max-sm:flex-row max-sm:overflow-x-auto; }
+  .settings-tab { @apply text-left px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer; }
+  .settings-tab.active { @apply bg-gray-100 dark:bg-gray-800 font-medium text-gray-900 dark:text-gray-100; }
+  .settings-tab-link { @apply no-underline; }
+  .settings-panel { @apply flex-1 min-w-0; }
+  .settings-savebar { @apply sticky bottom-0 mt-4 flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/90 dark:bg-gray-900/90 backdrop-blur px-4 py-2.5; }
+  .savebar-msg { @apply flex-1 text-xs text-gray-500; }
+  .settings-savebar-discard { @apply rounded-full px-4 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer; }
+  .lightbox-img { @apply max-w-[92vw] max-h-[88vh] rounded-xl shadow-2xl object-contain; }
+  .modal-backdrop.lightbox { @apply flex items-center justify-center bg-black/80; }
+  .offline-retry { @apply ml-3 rounded-full border border-current px-3 py-0.5 text-xs cursor-pointer hover:opacity-80 disabled:opacity-50; }
+}
