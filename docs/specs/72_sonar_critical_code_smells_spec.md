@@ -2,8 +2,8 @@
 
 | Campo | Valor |
 |---|---|
-| Status | Approved |
-| Issue | #154 |
+| Status | `Completed` |
+| Issue | #154 · rescan live 2026-11-05: S927=0, S4487=0 (PR #343), singletons=0; S3776=26 → SPECs 101-103/105 |
 | Type | Refactor |
 | Sonar type | CODE_SMELL |
 | Issues | 121 issues · 7 regras · esforço Sonar ~0min |
