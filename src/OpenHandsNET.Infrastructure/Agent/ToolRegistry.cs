@@ -42,6 +42,19 @@ public sealed class ToolRegistry : IToolRegistry
             BuiltinWorktree.WorktreeMerge(),
             // SPEC-123: descoberta de tools por busca.
             BuiltinToolSearch.ToolSearch(),
+            // SPEC-121: specs/plans/context-notes + notebooks.
+            BuiltinSpecs.Specs(),
+            BuiltinSpecs.WritePlan(),
+            BuiltinSpecs.ContextNotes(),
+            BuiltinNotebook.NotebookRead(),
+            BuiltinNotebook.NotebookEdit(),
+            // SPEC-122: code intelligence LSP no sandbox.
+            BuiltinLsp.LspDiagnostics(),
+            BuiltinLsp.LspSymbols(),
+            BuiltinLsp.LspWorkspaceSymbols(),
+            BuiltinLsp.LspDefinition(),
+            BuiltinLsp.LspReferences(),
+            BuiltinLsp.LspHover(),
             BuiltinTools.Think(),
             BuiltinTools.TaskTracker(tracker),
             BuiltinTools.GitCommit(bashTimeout),
