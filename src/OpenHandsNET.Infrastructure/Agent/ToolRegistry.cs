@@ -26,6 +26,11 @@ public sealed class ToolRegistry : IToolRegistry
             BuiltinTools.FileRead(),
             BuiltinTools.FileWrite(),
             BuiltinTools.FileEdit(),
+            // SPEC-121: file ops expandidas (list/grep/glob/apply_patch).
+            BuiltinFileOps.FileList(),
+            BuiltinFileOps.FileGrep(),
+            BuiltinFileOps.FileGlob(),
+            BuiltinFileOps.ApplyPatch(),
             BuiltinTools.Think(),
             BuiltinTools.TaskTracker(tracker),
             BuiltinTools.GitCommit(bashTimeout),
