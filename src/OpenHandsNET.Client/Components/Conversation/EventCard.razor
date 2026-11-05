@@ -32,6 +32,11 @@
             <div class="ev-head tc-head">
                 <Icon Name="@ToolIcon()" Size="14" />
                 <span class="tool">@Event.ToolName()</span>
+                @* SPEC-120 RF-001: linha de atividade humanizada
+                   (ToolActivityMap + ToolArgsPreview). *@
+                <span class="tc-activity" title="@Event.ToolName()">
+                    @ActivityLabel()
+                </span>
                 @if (LinkedObservation() is { } linked)
                 {
                     <span class="chip done">@L["event.done"]</span>
@@ -339,6 +344,23 @@
             StateHasChanged();
         }
         catch (Exception) { /* clipboard indisponível (bUnit/sem permissão) */ }
+    }
+
+    /// <summary>SPEC-120: "Editing file · src/Foo.cs" — chave i18n +
+    /// alvo curto derivado dos args.</summary>
+    private string ActivityLabel()
+    {
+        var tool = Event.Get("tool");
+        string? argsJson = null;
+        if (tool.ValueKind == JsonValueKind.Object
+            && tool.TryGetProperty("arguments", out var args))
+        {
+            argsJson = args.ValueKind == JsonValueKind.String
+                ? args.GetString() : args.GetRawText();
+        }
+
+        var (key, target) = ToolActivityMap.Map(Event.ToolName() ?? "", argsJson);
+        return target is null ? L[key] : $"{L[key]} · {target}";
     }
 
     private string ToolIcon() => Event.ToolName() switch

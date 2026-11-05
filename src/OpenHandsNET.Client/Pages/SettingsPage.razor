@@ -3,6 +3,7 @@
 @using System.Text.Json
 @inject OpenHandsNetApiClient Api
 @inject ThemeService Theme
+@inject ChatNotificationsService ChatNotify
 @inject ToastService Toasts
 @inject LocalizationService L
 
@@ -34,6 +35,29 @@
             }
         </select>
     </div>
+    @* SPEC-116: paleta custom (themes/builtin.json). *@
+    @if (Theme.Palettes.Count > 1)
+    {
+        <div class="field">
+            <label>@L["settings.palette"]</label>
+            <select value="@Theme.PaletteId" @onchange="OnPaletteChange"
+                    aria-label="@L["settings.palette"]">
+                @foreach (var p in Theme.Palettes)
+                {
+                    <option value="@p.Id">@p.Name</option>
+                }
+            </select>
+        </div>
+    }
+    @* SPEC-120 RF-006: notificação desktop opt-in (permissão pedida
+       só no gesto do toggle). *@
+    <h3>@L["settings.notifications"]</h3>
+    <label class="check">
+        <input type="checkbox" checked="@_notifyBrowser"
+               @onchange="OnNotifyBrowserChange"
+               aria-label="@L["settings.notify_browser"]" />
+        @L["settings.notify_browser"]
+    </label>
 
     <h3>@L["settings.agent_llm"]</h3>
     <div class="field">
@@ -94,10 +118,13 @@
     private bool _saving, _saved;
     private string _secretName = "";
     private string _secretValue = "";
+    private bool _notifyBrowser;
     private List<string> _secrets = [];
 
     protected override async Task OnInitializedAsync()
     {
+        await Theme.LoadPalettesAsync();
+        _notifyBrowser = await ChatNotify.GetPrefAsync();
         try
         {
             var s = await Api.GetSettingsAsync();
@@ -153,6 +180,21 @@
     {
         await Theme.SetAsync(e.Value?.ToString() ?? ThemeService.Light);
         Toasts.Success(L.T("settings.theme_toast", ("theme", Theme.Theme)));
+    }
+
+    private async Task OnPaletteChange(ChangeEventArgs e) =>
+        await Theme.SetPaletteAsync(e.Value?.ToString() ?? "default");
+
+    /// <summary>SPEC-120 RF-006: opt-in — permissão pedida só neste
+    /// gesto; se o navegador negar, o toggle volta desligado.</summary>
+    private async Task OnNotifyBrowserChange(ChangeEventArgs e)
+    {
+        var wanted = e.Value is true;
+        _notifyBrowser = wanted && await ChatNotify.SetPrefAsync(true);
+        if (wanted && !_notifyBrowser)
+        {
+            Toasts.Error(L["settings.notify_denied"]);
+        }
     }
 
     /// <summary>SPEC-46 RF-004: idioma — L.SetLanguageAsync aplica sem

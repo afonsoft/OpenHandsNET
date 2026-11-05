@@ -7,6 +7,7 @@
 @inject PaletteService Palette
 @inject AttentionInboxState Inbox
 @inject DialogService Dialogs
+@inject ChatNotificationsService ChatNotify
 @inject LocalizationService L
 @inject IJSRuntime JS
 @implements IDisposable
@@ -164,6 +165,7 @@
         Inbox.Changed += OnAttentionChanged;
         L.Changed += OnLocaleChanged;
         await Inbox.EnsureStartedAsync();
+        await ChatNotify.EnsureStartedAsync();
         try
         {
             _collapsed = await JS.InvokeAsync<string?>(
