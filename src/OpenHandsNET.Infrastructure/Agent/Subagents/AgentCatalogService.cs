@@ -59,6 +59,10 @@ public sealed class AgentCatalogService(ILogger<AgentCatalogService> logger)
         {
             map[builtin.Name] = builtin;
         }
+        foreach (var embedded in ScanEmbeddedLayer())
+        {
+            map[embedded.Name] = embedded;
+        }
         foreach (var user in ScanUserLayer())
         {
             map[user.Name] = user;
@@ -87,6 +91,47 @@ public sealed class AgentCatalogService(ILogger<AgentCatalogService> logger)
     /// <summary>Invalida o cache de workspace do sandbox.</summary>
     public void InvalidateWorkspace(Guid sandboxId) =>
         _workspaceCache.TryRemove(sandboxId, out _);
+
+    /// <summary>
+    /// SPEC-123: agentes builtin via <c>agents/*.agent.md</c> embutidos —
+    /// parseados pelo mesmo pipeline YAML-lite dos arquivos do usuário.
+    /// Embedded vence sobre o preset hardcoded de mesmo nome (carrega
+    /// <see cref="AgentDefinition.Body"/> com instruções completas).
+    /// </summary>
+    private IEnumerable<AgentDefinition> ScanEmbeddedLayer()
+    {
+        var asm = typeof(AgentCatalogService).Assembly;
+        const string prefix = "OpenHandsNET.Infrastructure.agents.";
+        foreach (var res in asm.GetManifestResourceNames()
+            .Where(n => n.StartsWith(prefix, StringComparison.Ordinal)
+                && n.EndsWith(".agent.md", StringComparison.Ordinal))
+            .OrderBy(n => n, StringComparer.Ordinal))
+        {
+            AgentDefinition? def;
+            try
+            {
+                using var stream = asm.GetManifestResourceStream(res);
+                if (stream is null)
+                {
+                    continue;
+                }
+                using var reader = new StreamReader(stream);
+                def = Parse(reader.ReadToEnd(),
+                    BuiltinSource, $"embedded:{res[prefix.Length..]}");
+            }
+            catch (Exception ex)
+            {
+                logger.LogDebug(ex,
+                    "agent file embutido {Path} ilegível — skip", res);
+                continue;
+            }
+
+            if (def is not null)
+            {
+                yield return def;
+            }
+        }
+    }
 
     /// <summary>Built-in presets como definições do catálogo.</summary>
     internal static IReadOnlyList<AgentDefinition> Builtins() =>

@@ -31,6 +31,17 @@ public sealed class ToolRegistry : IToolRegistry
             BuiltinFileOps.FileGrep(),
             BuiltinFileOps.FileGlob(),
             BuiltinFileOps.ApplyPatch(),
+            // SPEC-121: jobs em background + git worktrees.
+            BuiltinJobs.JobRun(),
+            BuiltinJobs.JobList(),
+            BuiltinJobs.JobOutput(),
+            BuiltinJobs.JobKill(),
+            BuiltinWorktree.WorktreeList(),
+            BuiltinWorktree.WorktreeAdd(),
+            BuiltinWorktree.WorktreeDiff(),
+            BuiltinWorktree.WorktreeMerge(),
+            // SPEC-123: descoberta de tools por busca.
+            BuiltinToolSearch.ToolSearch(),
             BuiltinTools.Think(),
             BuiltinTools.TaskTracker(tracker),
             BuiltinTools.GitCommit(bashTimeout),
