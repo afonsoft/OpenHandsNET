@@ -304,10 +304,15 @@ internal static class ProgramParts
 
         // #218: bodies nulos/malformados geram 400 vazio por dois caminhos:
         // (a) JSON malformado → BadHttpRequestException → convertido abaixo;
-        // (b) JSON `null` em param de body inferido → o RequestDelegateFactory
-        // faz short-circuit com 400 SEM corpo e SEM exceção → coberto pelo
-        // OnStarting, que reescreve qualquer 400 vazio-sem-content-type em
-        // problem+json quando o endpoint declara ProducesProblem(400).
+        // (b) JSON `null`/tipo errado em param de body inferido → o
+        // RequestDelegateFactory faz short-circuit com 400 SEM corpo e SEM
+        // exceção → coberto pelo OnStarting, que reescreve qualquer 400
+        // vazio-sem-content-type em problem+json quando o endpoint declara
+        // ProducesProblem(400).
+        // #314: ampliado para QUALQUER endpoint /api/**/oauth/** — bare-400s
+        // em rotas sem metadata vazavam na wire (388 ocorrências num run
+        // do schemathesis) e podiam ser lidas como resposta de outra
+        // request em conexão keep-alive reutilizada.
         app.Use(async (ctx, next) =>
         {
             ctx.Response.OnStarting(static state =>
@@ -321,14 +326,20 @@ internal static class ProgramParts
                     return Task.CompletedTask;
                 }
 
-                var declaresProblem = http.GetEndpoint()?.Metadata
-                    .OfType<Microsoft.AspNetCore.Http.Metadata
-                        .IProducesResponseTypeMetadata>()
-                    .Any(m => m.StatusCode == StatusCodes.Status400BadRequest
-                        && (m.ContentTypes?.Any(mt => string.Equals(mt,
-                            "application/problem+json",
-                            StringComparison.OrdinalIgnoreCase)) ?? false));
-                if (declaresProblem != true)
+                var apiPath = http.Request.Path
+                    .StartsWithSegments("/api")
+                    || http.Request.Path.StartsWithSegments("/oauth");
+                var declaresProblem = apiPath
+                    || (http.GetEndpoint()?.Metadata
+                        .OfType<Microsoft.AspNetCore.Http.Metadata
+                            .IProducesResponseTypeMetadata>()
+                        .Any(m => m.StatusCode
+                                == StatusCodes.Status400BadRequest
+                            && (m.ContentTypes?.Any(mt => string.Equals(mt,
+                                "application/problem+json",
+                                StringComparison.OrdinalIgnoreCase))
+                                ?? false)) ?? false);
+                if (!declaresProblem)
                 {
                     return Task.CompletedTask;
                 }

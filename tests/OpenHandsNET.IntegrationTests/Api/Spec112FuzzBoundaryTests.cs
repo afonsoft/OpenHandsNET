@@ -102,6 +102,28 @@ public sealed class Spec112FuzzBoundaryTests : IDisposable
     }
 
     [Fact]
+    public async Task WrongType_Body_Rewrites_Bare_400_As_ProblemJson()
+    {
+        // #314: endpoints sem ProducesProblem(400) na metadata vazavam
+        // 400 vazio-sem-CT no short-circuit do binder — o rewrite deve
+        // cobrir qualquer /api/**.
+        using var http = await TestAuth.LoginAsync(_factory);
+        foreach (var path in new[]
+        {
+            "/api/v1/pending-messages",
+            "/api/v1/mcp/tool-call",
+        })
+        {
+            var res = await http.PostAsync(path, Json("[[null], {}]"));
+            res.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+            res.Content.Headers.ContentType?.MediaType.ShouldBe(
+                "application/problem+json");
+            (await res.Content.ReadAsStringAsync())
+                .ShouldNotBeNullOrWhiteSpace();
+        }
+    }
+
+    [Fact]
     public async Task WebhookEvent_Invalid_Payload_Is_400()
     {
         using var http = await TestAuth.LoginAsync(_factory);
