@@ -152,3 +152,9 @@ window.ohn.releaseFocus = function (element) {
         element._ohnTrap = null;
     }
 };
+window.ohn.selectAll = function (element) {
+    if (element && typeof element.select === 'function') {
+        element.focus();
+        element.select();
+    }
+};

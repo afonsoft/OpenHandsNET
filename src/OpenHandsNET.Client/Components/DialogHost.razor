@@ -126,6 +126,10 @@ else if (Dialogs.Current is { } req)
         {
             _rendered = req;
             await JS.InvokeVoidAsync("ohn.trapFocus", _dialog);
+            if (req.Kind == DialogKind.Link)
+            {
+                await JS.InvokeVoidAsync("ohn.selectAll", _linkInput);
+            }
         }
         else if (Dialogs.Current is null && _rendered is not null)
         {
