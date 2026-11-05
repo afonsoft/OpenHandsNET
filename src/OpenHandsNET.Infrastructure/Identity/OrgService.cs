@@ -38,7 +38,7 @@ public sealed class OrgService(AppDbContext db, IAuditService audit) : IOrgServi
         }
 
         var resolvedSlug = string.IsNullOrWhiteSpace(slug)
-            ? Slugify(name) : slug!;
+            ? Slugify(name) : slug;
         if (resolvedSlug.Length == 0)
         {
             throw new ArgumentException(
