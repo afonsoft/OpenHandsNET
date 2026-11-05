@@ -367,8 +367,8 @@ public sealed class McpClientService(
                 if (sandbox?.ContainerId is { } container)
                 {
                     return ("docker",
-                        (IList<string>)["exec", "-i", container, cfg.Command,
-                            .. cfg.Args ?? []]);
+                        (IList<string>)DockerExecArgs(
+                            container, cfg));
                 }
             }
         }
@@ -381,6 +381,31 @@ public sealed class McpClientService(
         }
 
         return (cfg.Command, (IList<string>)(cfg.Args?.ToList() ?? []));
+    }
+
+    /// <summary>
+    /// SPEC-131 RF-002: <c>docker exec -i -e K=V</c> — <c>cfg.Env</c> chega
+    /// DENTRO do container (sem isso env nunca chega ao processo MCP).
+    /// </summary>
+    internal static List<string> DockerExecArgs(
+        string container, McpServerConfig cfg)
+    {
+        var args = new List<string> { "exec", "-i" };
+        foreach (var (key, value) in cfg.Env ?? new Dictionary<string, string>())
+        {
+            args.Add("-e");
+            args.Add($"{key}={value}");
+        }
+        args.Add(container);
+        if (cfg.Command is not null)
+        {
+            args.Add(cfg.Command);
+        }
+        if (cfg.Args is not null)
+        {
+            args.AddRange(cfg.Args);
+        }
+        return args;
     }
 
     // ------------------------------------------------------------ persistence

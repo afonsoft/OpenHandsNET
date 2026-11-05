@@ -58,6 +58,23 @@ RUN curl -fsSL --proto '=https' --tlsv1.2 https://deb.nodesource.com/setup_22.x 
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
+# SPEC-131 RF-001: Playwright + chrome-devtools-mcp — browsers
+# pré-instalados num path compartilhado para npx, MCPs e scripts do
+# agente; --with-deps resolve as libs de sistema do Chromium.
+ARG PLAYWRIGHT_NPM_VERSION=1.64.1
+ARG CHROME_DEVTOOLS_MCP_VERSION=1.12.0
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ohn/ms-playwright \
+    PUPPETEER_SKIP_DOWNLOAD=1
+RUN npm install -g "playwright@${PLAYWRIGHT_NPM_VERSION}" \
+        "chrome-devtools-mcp@${CHROME_DEVTOOLS_MCP_VERSION}" \
+    && playwright install --with-deps chromium \
+    && chrome_bin="$(find "$PLAYWRIGHT_BROWSERS_PATH" -name chrome -type f | sort | head -1)" \
+    && [ -n "$chrome_bin" ] && ln -sf "$chrome_bin" /usr/local/bin/chromium \
+    && chmod -R a+rX "$PLAYWRIGHT_BROWSERS_PATH" \
+    && rm -rf /var/lib/apt/lists/*
+ENV CHROME_PATH=/usr/local/bin/chromium \
+    PUPPETEER_EXECUTABLE_PATH=/usr/local/bin/chromium
+
 # SPEC-40 RF-002: ttyd (pinned) — terminal web opt-in via
 # SANDBOX_TERMINAL=1; o sandbox-agent supervisiona o processo e expõe
 # /surfaces. Binário estático multi-arch do release oficial.
