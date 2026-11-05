@@ -77,7 +77,7 @@ public static class CacheRegistration
             // degradam p/ local com warning quando o multiplexer cai.
             services.AddSingleton<IConnectionMultiplexer>(_ =>
             {
-                var co = ConfigurationOptions.Parse(conn!);
+                var co = ConfigurationOptions.Parse(conn);
                 co.AbortOnConnectFail = false;
                 return ConnectionMultiplexer.Connect(co);
             });
