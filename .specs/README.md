@@ -102,17 +102,3 @@ SPECs 116–124 entregues via PR #327 (Epic #317) e arquivadas em
 `docs/specs/` — auditoria de paridade com o fork irmão: UI/design-system,
 tool-call UX, tools do agente (21 → 45 builtins), hooks/permissões/
 deferred-loading, exposição MCP/ACP e assets PWA.
-
-### Leva 2026-11-05 (follow-ups Epic #317 → #329)
-
-Débito de paridade deferido das SPECs 116–124 — cada item da issue #329
-virou SPEC draft aguardando gate de aprovação.
-
-| SPEC | Título | Status | Ticket |
-|---|---|---|---|
-| 125 | advisor-role (segundo modelo opinando em ações risky) | Draft | #329 |
-| 126 | lsp-persistent-sessions (bridge residente via OpenBashSessionAsync) | Draft | #329 |
-| 127 | hooks-command-prompt (shell + injeção de contexto pré/pós tool-call) | Draft | #329 |
-| 128 | context-memory-db (context_*/memory_* DB-backed + migration) | Draft | #329 |
-| 129 | mcp-hardening (golden tools/list + E2E stdio subprocesso) | Draft | #329 |
-| 130 | ux-followups (SettingsModal + rail OWUIC colapsável) | Draft | #329 |

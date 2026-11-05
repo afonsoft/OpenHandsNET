@@ -6,8 +6,8 @@
 |---|---|
 | Feature | `ux-followups` |
 | Type | `Frontend` |
-| Status | `In review` |
-| Ticket | #335 (umbrella #329, Epic #317) — débito SPECs 118/119 |
+| Status | `Completed` |
+| Ticket | #335 · PR #336 |
 | Scope | `src/OpenHandsNET.Client/` (SettingsPage, DialogHost, MainLayout, sidebar) |
 
 ## 1. User Story

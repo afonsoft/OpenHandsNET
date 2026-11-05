@@ -6,8 +6,8 @@
 |---|---|
 | Feature | `hooks-command-prompt` |
 | Type | `Feature` |
-| Status | `In review` |
-| Ticket | #332 (umbrella #329, Epic #317) — gap SPEC-123 |
+| Status | `Completed` |
+| Ticket | #332 · PR #336 |
 | Scope | `src/OpenHandsNET.Infrastructure/Agent/` (hooks engine, runner), `src/OpenHandsNET.Domain` (eventos) |
 
 ## 1. User Story
