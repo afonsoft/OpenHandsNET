@@ -33,6 +33,6 @@ S3776 ×~14; extrair lambdas de endpoint p/ handlers. Filho da SPEC-89 (deferred
 ## Entrega (2026-11-06)
 
 - Escopo real: 17 sites `Map*Endpoints` em 17 arquivos + `ProgramParts`.
-- ~95 lambdas inline extraídas p/ handlers nomeados em 4 PRs: #357 (Ticket/Knowledge/ChatOps + ProgramParts/SandboxService/BuiltinSpecs), #358 (Sandbox/Auth/Git/Share/BrowserProfile/Acp), #359 (Admin/Keys/Scm/Automation/Health), #360 (Org CC105 / Scim CC102 / AppConversation CC75+24).
+- ~95 lambdas inline extraídas p/ handlers nomeados em 4 PRs: #357 (Ticket/Knowledge/ChatOps + ProgramParts/SandboxService/BuiltinSpecs), #358 (Sandbox/Auth/Git/Share/BrowserProfile/Acp), #359 (Admin/Keys/Scm/Automation/Health), #360 (Org CC105 / Scim CC102 / AppConversation CC75+24), #362 (batch5 rescan follow-up — lambdas pequenos restantes em Admin/Automation/Scm + transformers AddOpenApiDoc; rescan live: S3776=0 no escopo).
 - Tags OpenAPI preservadas via `.WithTags("OpenHandsNET.Api")` onde o grupo não define tag — golden contract byte-idêntico.
 - Heurística local (decision points + nesting): 0 métodos ≥15 em `Endpoints/*.cs`.
