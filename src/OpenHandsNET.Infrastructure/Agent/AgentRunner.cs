@@ -517,7 +517,8 @@ public sealed class AgentRunner(
             st.SinceLedger = 0;
             await Context.CompactionService.EmitLedgerAsync(
                 st.Events, conversationId, st.LastEstimate,
-                effectiveWindow, st.Model, ct, st.CompactionCount);
+                new Context.CompactionService.LedgerExtras(
+                    effectiveWindow, st.Model, st.CompactionCount), ct);
         }
     }
 
@@ -1671,9 +1672,11 @@ public sealed class AgentRunner(
             payload = policy is null
                 ? result.Observation
                 : await policy.ApplyAsync(action.ToolName ?? "", action.Id,
-                    result.Observation, sandbox, executor, conversationId,
-                    services.GetService<
-                        Application.Artifacts.IArtifactStore>(), ct);
+                    result.Observation,
+                    new Tools.OutputPolicy.OutputContext(
+                        sandbox, executor, conversationId,
+                        services.GetService<
+                            Application.Artifacts.IArtifactStore>()), ct);
         }
 
         var obs = new ObservationEvent

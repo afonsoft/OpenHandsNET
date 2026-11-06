@@ -280,7 +280,8 @@ public sealed class Spec34DeltasArtifactsTests
         var obs = JsonSerializer.SerializeToElement(new { output = big });
 
         var result = await policy.ApplyAsync("bash", "act-1", obs,
-            sandbox: null, executor: null, conv, store,
+            new OutputPolicy.OutputContext(
+                Sandbox: null, Executor: null, conv, store),
             CancellationToken.None);
 
         result.GetProperty("truncated").GetBoolean().ShouldBeTrue();

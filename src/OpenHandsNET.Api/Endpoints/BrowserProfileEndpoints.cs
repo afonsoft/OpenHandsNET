@@ -88,58 +88,49 @@ public static class BrowserProfileEndpoints
         // RF-002 — captura o storage state da sessão, filtrado ao
         // eTLD+1 informado (a UI/agente pede confirmação antes).
         group.MapPost("/app-conversations/{id:guid}/browser/capture",
-            async (Guid id, CaptureRequest req, HttpContext http,
-                ICurrentUserAccessor current, AppDbContext db,
-                IBrowserService browser, IBrowserProfileService profiles,
-                IAuditService audit, IOptions<BrowserOptions> browserOpt,
-                CancellationToken ct) =>
+            async ([AsParameters] BrowserCaptureParams p) =>
         {
-            if (!browserOpt.Value.ProfilesEnabled)
+            if (!p.BrowserOpt.Value.ProfilesEnabled)
             {
-                return FeatureOff(http);
+                return FeatureOff(p.Http);
             }
-            var user = current.RequireUserId();
-            var conv = await db.Conversations.FindAsync([id], ct);
+            var user = p.Current.RequireUserId();
+            var conv = await p.Db.Conversations.FindAsync([p.Id], p.Ct);
             if (conv is null)
             {
                 return Results.NotFound();
             }
-            var raw = await browser.CaptureStorageStateAsync(id, ct);
+            var raw = await p.Browser.CaptureStorageStateAsync(p.Id, p.Ct);
             if (raw is null)
             {
                 return OpenHandsNetProblemFactory.Create(
-                    http, 409, "no browser context for this conversation");
+                    p.Http, 409, "no browser context for this conversation");
             }
-            var domain = IBrowserProfileService.NormalizeDomain(req.Domain);
+            var domain = IBrowserProfileService.NormalizeDomain(p.Req.Domain);
             var filtered = FilterStateToDomain(raw, domain);
-            var profile = await profiles.SaveAsync(
+            var profile = await p.Profiles.SaveAsync(
                 user.ToString(), domain,
-                req.Name ?? domain, filtered, req.ExpiresAt, ct);
-            await audit.RecordAsync("browser.profile_saved",
+                p.Req.Name ?? domain, filtered, p.Req.ExpiresAt, p.Ct);
+            await p.Audit.RecordAsync("browser.profile_saved",
                 actorUserId: user.ToString(), orgId: conv.OrgId,
                 targetType: "browser_profile",
                 targetId: profile.Id.ToString(),
-                metadata: new { domain }, cancellationToken: ct);
+                metadata: new { domain }, cancellationToken: p.Ct);
             return Results.Ok(profile);
         });
 
         // RF-003 — attach: storage state + site_cookie secrets do
         // domínio entram no contexto da conversa.
         group.MapPost("/app-conversations/{id:guid}/browser/attach",
-            async (Guid id, AttachRequest req, HttpContext http,
-                ICurrentUserAccessor current, AppDbContext db,
-                IBrowserService browser, IBrowserProfileService profiles,
-                ISecretStore secrets, IAuditService audit,
-                IOptions<BrowserOptions> browserOpt,
-                CancellationToken ct) =>
+            async ([AsParameters] BrowserAttachParams p) =>
         {
-            if (!browserOpt.Value.ProfilesEnabled)
+            if (!p.BrowserOpt.Value.ProfilesEnabled)
             {
-                return FeatureOff(http);
+                return FeatureOff(p.Http);
             }
-            var user = current.RequireUserId();
-            var admin = current.User?.IsSuperAdmin == true;
-            var conv = await db.Conversations.FindAsync([id], ct);
+            var user = p.Current.RequireUserId();
+            var admin = p.Current.User?.IsSuperAdmin == true;
+            var conv = await p.Db.Conversations.FindAsync([p.Id], p.Ct);
             if (conv is null)
             {
                 return Results.NotFound();
@@ -147,8 +138,8 @@ public static class BrowserProfileEndpoints
             string state;
             try
             {
-                state = await profiles.ResolveStateAsync(
-                    req.ProfileId, user.ToString(), admin, ct);
+                state = await p.Profiles.ResolveStateAsync(
+                    p.Req.ProfileId, user.ToString(), admin, p.Ct);
             }
             catch (KeyNotFoundException)
             {
@@ -157,21 +148,21 @@ public static class BrowserProfileEndpoints
             catch (BrowserProfileExpiredException)
             {
                 return OpenHandsNetProblemFactory.Create(
-                    http, 410, "browser_profile_expired");
+                    p.Http, 410, "browser_profile_expired");
             }
-            var meta = await profiles.GetAsync(
-                req.ProfileId, user.ToString(), admin, ct);
+            var meta = await p.Profiles.GetAsync(
+                p.Req.ProfileId, user.ToString(), admin, p.Ct);
             if (meta is not null)
             {
                 state = await MergeSiteCookiesAsync(
-                    secrets, user.ToString(), meta.Domain, state, ct);
+                    p.Secrets, user.ToString(), meta.Domain, state, p.Ct);
             }
-            await browser.SetStorageStateAsync(id, state, ct);
-            await audit.RecordAsync("browser.profile_attached",
+            await p.Browser.SetStorageStateAsync(p.Id, state, p.Ct);
+            await p.Audit.RecordAsync("browser.profile_attached",
                 actorUserId: user.ToString(), orgId: conv.OrgId,
                 targetType: "browser_profile",
-                targetId: req.ProfileId.ToString(),
-                metadata: new { meta?.Domain }, cancellationToken: ct);
+                targetId: p.Req.ProfileId.ToString(),
+                metadata: new { meta?.Domain }, cancellationToken: p.Ct);
             return Results.Ok(new { attached = true });
         });
 
@@ -284,5 +275,36 @@ public static class BrowserProfileEndpoints
             origins = origins.Select(
                 x => JsonSerializer.Deserialize<JsonElement>(x)),
         });
+    }
+
+    /// <summary>Binding do browser capture (SPEC-104 — AsParameters).</summary>
+    private sealed class BrowserCaptureParams
+    {
+        [FromRoute] public Guid Id { get; init; }
+        [FromBody] public CaptureRequest Req { get; init; } = null!;
+        public HttpContext Http { get; init; } = null!;
+        [FromServices] public ICurrentUserAccessor Current { get; init; } = null!;
+        [FromServices] public AppDbContext Db { get; init; } = null!;
+        [FromServices] public IBrowserService Browser { get; init; } = null!;
+        [FromServices] public IBrowserProfileService Profiles { get; init; } = null!;
+        [FromServices] public IAuditService Audit { get; init; } = null!;
+        [FromServices] public IOptions<BrowserOptions> BrowserOpt { get; init; } = null!;
+        public CancellationToken Ct { get; init; }
+    }
+
+    /// <summary>Binding do browser attach (SPEC-104 — AsParameters).</summary>
+    private sealed class BrowserAttachParams
+    {
+        [FromRoute] public Guid Id { get; init; }
+        [FromBody] public AttachRequest Req { get; init; } = null!;
+        public HttpContext Http { get; init; } = null!;
+        [FromServices] public ICurrentUserAccessor Current { get; init; } = null!;
+        [FromServices] public AppDbContext Db { get; init; } = null!;
+        [FromServices] public IBrowserService Browser { get; init; } = null!;
+        [FromServices] public IBrowserProfileService Profiles { get; init; } = null!;
+        [FromServices] public ISecretStore Secrets { get; init; } = null!;
+        [FromServices] public IAuditService Audit { get; init; } = null!;
+        [FromServices] public IOptions<BrowserOptions> BrowserOpt { get; init; } = null!;
+        public CancellationToken Ct { get; init; }
     }
 }

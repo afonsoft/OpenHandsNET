@@ -140,19 +140,16 @@ public static class ShareEndpoints
         });
 
         shared.MapGet("/{token}/events", async (
-            string token, HttpContext http,
-            [FromQuery(Name = "page_id")] string? pageId,
-            [FromQuery] int limit,
-            IShareService shares, IDistributedCounter counter,
-            IConfiguration config, CancellationToken ct) =>
+            [AsParameters] SharedEventsParams p) =>
         {
-            if (await IsRateLimitedAsync(http, counter, config, ct))
+            if (await IsRateLimitedAsync(
+                p.Http, p.Counter, p.Config, p.Ct))
             {
                 return Results.StatusCode(429);
             }
 
-            var page = await shares.GetSharedEventsAsync(
-                token, pageId, limit <= 0 ? 100 : limit, ct);
+            var page = await p.Shares.GetSharedEventsAsync(
+                p.Token, p.PageId, p.Limit <= 0 ? 100 : p.Limit, p.Ct);
             return page is null
                 ? Results.NotFound()
                 : Results.Ok(new
@@ -186,5 +183,18 @@ public static class ShareEndpoints
         var count = await counter.IncrementAsync(
             $"share:{ip}:{window}", TimeSpan.FromSeconds(70), ct);
         return count > limit;
+    }
+
+    /// <summary>Binding do feed público de eventos (SPEC-104 — AsParameters).</summary>
+    private sealed class SharedEventsParams
+    {
+        [FromRoute] public string Token { get; init; } = null!;
+        public HttpContext Http { get; init; } = null!;
+        [FromQuery(Name = "page_id")] public string? PageId { get; init; }
+        [FromQuery(Name = "limit")] public int Limit { get; init; }
+        [FromServices] public IShareService Shares { get; init; } = null!;
+        [FromServices] public IDistributedCounter Counter { get; init; } = null!;
+        [FromServices] public IConfiguration Config { get; init; } = null!;
+        public CancellationToken Ct { get; init; }
     }
 }

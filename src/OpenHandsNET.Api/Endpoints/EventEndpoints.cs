@@ -1,5 +1,7 @@
 using System.Text.Json;
 
+using Microsoft.AspNetCore.Mvc;
+
 using OpenHandsNET.Api.ProblemDetails;
 using OpenHandsNET.Application.Events;
 using OpenHandsNET.Domain.Events;
@@ -18,21 +20,18 @@ public static class EventEndpoints
         var group = app.MapGroup("/api/v1/conversation").WithTags("Events");
 
         group.MapGet("/{id:guid}/events/search", async (
-            Guid id, string? kind__eq, DateTimeOffset? timestamp__gte,
-            DateTimeOffset? timestamp__lt, string? sort_order,
-            string? page_id, int? limit,
-            IEventService events, CancellationToken ct) =>
+            [AsParameters] EventSearchParams p) =>
         {
-            var sort = sort_order?.Equals("TIMESTAMP_DESC",
+            var sort = p.SortOrder?.Equals("TIMESTAMP_DESC",
                 StringComparison.OrdinalIgnoreCase) == true
                 ? EventSortOrder.TimestampDesc : EventSortOrder.Timestamp;
-            var page = await events.SearchAsync(id, new EventQuery(
-                KindEq: kind__eq,
-                TimestampGte: timestamp__gte,
-                TimestampLt: timestamp__lt,
+            var page = await p.Events.SearchAsync(p.Id, new EventQuery(
+                KindEq: p.KindEq,
+                TimestampGte: p.TimestampGte,
+                TimestampLt: p.TimestampLt,
                 Sort: sort,
-                PageId: page_id,
-                Limit: limit ?? 100), ct);
+                PageId: p.PageId,
+                Limit: p.Limit ?? 100), p.Ct);
             return Results.Ok(new
             {
                 items = page.Items.Select(e =>
@@ -60,5 +59,19 @@ public static class EventEndpoints
         });
 
         return app;
+    }
+
+    /// <summary>Parâmetros de binding do search (SPEC-104 — AsParameters).</summary>
+    private sealed class EventSearchParams
+    {
+        [FromRoute] public Guid Id { get; init; }
+        [FromQuery(Name = "kind__eq")] public string? KindEq { get; init; }
+        [FromQuery(Name = "timestamp__gte")] public DateTimeOffset? TimestampGte { get; init; }
+        [FromQuery(Name = "timestamp__lt")] public DateTimeOffset? TimestampLt { get; init; }
+        [FromQuery(Name = "sort_order")] public string? SortOrder { get; init; }
+        [FromQuery(Name = "page_id")] public string? PageId { get; init; }
+        [FromQuery(Name = "limit")] public int? Limit { get; init; }
+        [FromServices] public IEventService Events { get; init; } = null!;
+        public CancellationToken Ct { get; init; }
     }
 }

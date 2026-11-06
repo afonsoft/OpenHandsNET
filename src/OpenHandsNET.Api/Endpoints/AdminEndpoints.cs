@@ -122,13 +122,11 @@ public static class AdminEndpoints
 
         // Audit trail query (RF-011) + CSV/JSON export.
         g.MapGet("/audit", async (
-            string? user, string? action, DateTimeOffset? from, DateTimeOffset? to,
-            int? page, string? format,
-            IAuditService audit, CancellationToken ct) =>
+            [AsParameters] AuditQueryParams p) =>
         {
-            var (items, total) = await audit.QueryAsync(
-                user, action, from, to, page ?? 1, 100, ct);
-            if (string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase))
+            var (items, total) = await p.Audit.QueryAsync(
+                p.User, p.Action, p.From, p.To, p.Page ?? 1, 100, p.Ct);
+            if (string.Equals(p.Format, "csv", StringComparison.OrdinalIgnoreCase))
             {
                 var csv = "id,actor_user_id,org_id,action,target_type,target_id,timestamp\n"
                     + string.Join("\n", items.Select(e =>
@@ -243,4 +241,17 @@ public static class AdminEndpoints
 
     /// <summary>Org plan assignment body.</summary>
     public sealed record AssignPlanRequest(Guid PlanId);
+
+    /// <summary>Binding do audit query (SPEC-104 — AsParameters).</summary>
+    private sealed class AuditQueryParams
+    {
+        [FromQuery(Name = "user")] public string? User { get; init; }
+        [FromQuery(Name = "action")] public string? Action { get; init; }
+        [FromQuery(Name = "from")] public DateTimeOffset? From { get; init; }
+        [FromQuery(Name = "to")] public DateTimeOffset? To { get; init; }
+        [FromQuery(Name = "page")] public int? Page { get; init; }
+        [FromQuery(Name = "format")] public string? Format { get; init; }
+        [FromServices] public IAuditService Audit { get; init; } = null!;
+        public CancellationToken Ct { get; init; }
+    }
 }

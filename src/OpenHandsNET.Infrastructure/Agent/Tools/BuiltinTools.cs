@@ -1183,8 +1183,8 @@ public static class BuiltinTools
         var runner = new Subagents.SubagentRunner(llm,
             Microsoft.Extensions.Options.Options.Create(opt));
         Task<string> ExecuteAsync(CancellationToken runCt) =>
-            RunSubagentAsync(ctx, host, runner, taskId, type,
-                description, prompt, agentDef, runCt);
+            RunSubagentAsync(ctx, host, runner, taskId,
+                new(type, description, prompt, agentDef), runCt);
 
         if (background)
         {
@@ -1252,11 +1252,15 @@ public static class BuiltinTools
             + $"— válidos: {valid}"));
     }
 
+    /// <summary>Pacote de delegação do subagente (SPEC-104).</summary>
+    private sealed record SubagentInvocation(
+        string Type, string Description,
+        string Prompt, AgentDefinition? AgentDef);
+
     private static async Task<string> RunSubagentAsync(
         ToolCallContext ctx, ISubagentHost host,
-        Subagents.SubagentRunner runner, string taskId, string type,
-        string description, string prompt, AgentDefinition? agentDef,
-        CancellationToken runCt)
+        Subagents.SubagentRunner runner, string taskId,
+        SubagentInvocation inv, CancellationToken runCt)
     {
         try
         {
@@ -1264,8 +1268,8 @@ public static class BuiltinTools
                 ctx.ConversationId, ctx.Sandbox, ctx.Executor,
                 ctx.Events, ctx.Services,
                 ctx.ActionId ?? ctx.ToolCallId ?? taskId,
-                type, description, prompt, taskId, runCt,
-                agent: agentDef);
+                inv.Type, inv.Description, inv.Prompt, taskId, runCt,
+                agent: inv.AgentDef);
             host.Finish(ctx.ConversationId, taskId,
                 SubagentStatus.Completed, result);
             return result;
