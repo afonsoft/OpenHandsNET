@@ -1,5 +1,16 @@
 # memory.md — estado corrente (max 100 linhas)
 
+## Sessão 2026-11-06 — Epic #152 Sonar debt (tail)
+
+- **SPEC-103 closed**: PRs #357/#358/#359/#360 merged (~95 handlers
+  extraídos; Org CC105→~1, Scim CC102, AppConv CC75+24). Archive PR #361.
+- **SPEC-104/105/106 closed**: PRs #352/#353/#354+#355+#356.
+- Restante epic #152: S3776 fora de Endpoints (PermissionPolicy,
+  Program.cs, Client×5, Eval×2, Infra ~30 incl. AgentRunner CC210),
+  githubactions:S7679 (protegido), js:S1874 won't-fix, css S9423 excluído.
+- Flakes conhecidos CI: SkillsHooksE2E, Spec43, Spec42, Spec36,
+  AgentEngineE2E, SandboxAgent SSE — rerun resolve.
+
 ## Sessão 2026-11-04 — implementação SPECs 116-124 (Epic #317)
 
 - **Branch**: `feature/spec-117-pwa-assets` (commits empilhados por fatia).
