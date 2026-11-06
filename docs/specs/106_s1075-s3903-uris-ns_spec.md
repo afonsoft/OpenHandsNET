@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `s1075-s3903-uris-ns` |
 | Type | `Refactor` |
-| Status | `Approved` |
+| Status | `Completed` |
 | Ticket | SPEC-99 child of SPEC-89 |
 | Scope | `src/ + cli/` |
 
@@ -26,6 +26,11 @@ S1075 ×10 → config; S3903 → moves coordenados. Filho da SPEC-89 (deferred r
 - RF-003: won't-fix justificado documentado onde o design for intencional.
 - RF-004: `dotnet format` + build 0 warnings + suite verde.
 
+> **Fechamento 2026-11-06**: `csharpsquid:S3903` = 0 no rescan live;
+> `S1075` caiu 10→1 — a última (`OhnApiClient` `"/"` delimiter) corrigida
+> via char literal em PR #354 (build/teste verdes). Sem código adicional
+> para os 9 sites anteriores — eliminados por refactors prévios.
+
 ## 4. Acceptance
 
-- [ ] Sonar deixa de reportar a regra no escopo (ou won't-fix documentado).
+- [x] Sonar deixa de reportar a regra no escopo (ou won't-fix documentado).
