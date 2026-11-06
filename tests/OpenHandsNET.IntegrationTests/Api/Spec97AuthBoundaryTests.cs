@@ -278,4 +278,14 @@ public sealed class Spec97AuthBoundaryTests : IDisposable
             $"/api/v1/admin/plans/{Guid.NewGuid()}");
         res.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task Scim_Users_Without_Token_Is_401()
+    {
+        var anon = _factory.CreateClient();
+        var res = await anon.GetAsync("/scim/v2/Users");
+        res.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        res = await anon.GetAsync($"/scim/v2/Users/{Guid.NewGuid()}");
+        res.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
 }
