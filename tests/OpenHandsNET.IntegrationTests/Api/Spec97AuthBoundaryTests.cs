@@ -269,4 +269,13 @@ public sealed class Spec97AuthBoundaryTests : IDisposable
             "/api/v1/admin/plans", new { });
         res.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     }
+
+    [Fact]
+    public async Task Admin_Plans_Delete_Unknown_Is_404()
+    {
+        using var http = await TestAuth.LoginAsync(_factory);
+        var res = await http.DeleteAsync(
+            $"/api/v1/admin/plans/{Guid.NewGuid()}");
+        res.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
 }

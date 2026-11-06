@@ -58,42 +58,8 @@ public static class ScmEndpoints
 
         // Pull request a partir do workspace da conversa.
         app.MapPost("/api/v1/app-conversations/{id:guid}/pull-request",
-            async (Guid id, [FromBody] ScmPrRequest req,
-                ICurrentUserAccessor current, IScmPullRequestService svc,
-                HttpContext http, CancellationToken ct) =>
-            {
-                var user = current.User;
-                if (user is null)
-                    return Results.Unauthorized();
-                var result = await svc.CreateAsync(id,
-                    new ScmPrCreateRequest(
-                        req.Title, req.Body, req.Base,
-                        req.Head ?? "", req.Draft ?? false, req.Reviewers),
-                    user.UserId.ToString(), ct);
-                return (result.Error, result.PullRequest) switch
-                {
-                    (ScmPrError.NotFound, _) =>
-                        OpenHandsNetProblemFactory.Create(
-                            http, 404, "conversation not found"),
-                    (ScmPrError.NoConnection, _) =>
-                        OpenHandsNetProblemFactory.Create(
-                            http, 404, "no scm connection for repository"),
-                    (ScmPrError.AlreadyExists, _) =>
-                        OpenHandsNetProblemFactory.Create(
-                            http, 409, "pull request already exists"),
-                    (ScmPrError.ProviderError, _) =>
-                        OpenHandsNetProblemFactory.Create(
-                            http, 502, "scm provider error"),
-                    (_, { } pr) => Results.Ok(new
-                    {
-                        url = pr.Url,
-                        number = pr.Number,
-                        state = pr.State,
-                    }),
-                    _ => OpenHandsNetProblemFactory.Create(
-                        http, 500, "unexpected state"),
-                };
-            }).RequireAuthorization();
+            CreatePullRequestAsync).WithTags("OpenHandsNET.Api")
+            .RequireAuthorization();
 
         // Admin: connections CRUD.
         var conns = app.MapGroup("/api/v1/orgs/{org_id:guid}/scm-connections")
@@ -154,91 +120,133 @@ public static class ScmEndpoints
         }).RequireAuthorization(PermManageIntegrations);
 
         // Webhook público (HMAC + idempotência; sem auth de usuário).
-        app.MapPost("/api/v1/webhooks/scm/{kind}", async (
-            string kind, HttpRequest req, IScmWebhookService svc,
-            CancellationToken ct) =>
-        {
-            var parsed = ScmKindExtensions.Parse(kind);
-            if (parsed is null)
-                return Results.NotFound(new { error = "unknown_kind" });
-            if ((req.ContentLength ?? 0) > MaxWebhookPayload)
-                return Results.StatusCode(413);
-            using var ms = new MemoryStream();
-            await req.Body.CopyToAsync(ms, ct);
-            var payload = ms.ToArray();
-
-            string? token, eventType, delivery;
-            switch (parsed.Value)
-            {
-                case ScmKind.GitLab:
-                    token = req.Headers["X-Gitlab-Token"].FirstOrDefault();
-                    eventType = req.Headers["X-Gitlab-Event"]
-                        .FirstOrDefault();
-                    delivery = req.Headers["X-Gitlab-Webhook-UUID"]
-                        .FirstOrDefault();
-                    break;
-                case ScmKind.Bitbucket:
-                    token = req.Headers["X-Hub-Signature"].FirstOrDefault();
-                    eventType = req.Headers["X-Event-Key"].FirstOrDefault();
-                    delivery = req.Headers["X-Request-UUID"]
-                        .FirstOrDefault();
-                    break;
-                case ScmKind.AzureDevOps:
-                    token = req.Headers["X-OpenHandsNet-Secret"]
-                        .FirstOrDefault()
-                        ?? req.Query["secret"].FirstOrDefault();
-                    try
-                    {
-                        using var peek = JsonDocument.Parse(payload);
-                        eventType = peek.RootElement
-                            .TryGetProperty("eventType", out var et)
-                                ? et.GetString() : null;
-                        delivery = null;
-                        if (peek.RootElement
-                            .TryGetProperty("notificationId", out var nd)
-                            && nd.ValueKind == JsonValueKind.Number)
-                        {
-                            delivery = nd.GetInt32().ToString();
-                        }
-                        else if (peek.RootElement.TryGetProperty(
-                            "id", out var pid))
-                        {
-                            delivery = pid.ToString();
-                        }
-                    }
-                    catch (JsonException)
-                    {
-                        return Results.Unauthorized();
-                    }
-                    break;
-                default: // github
-                    token = req.Headers["X-Hub-Signature-256"]
-                        .FirstOrDefault();
-                    eventType = req.Headers["X-GitHub-Event"]
-                        .FirstOrDefault();
-                    delivery = req.Headers["X-GitHub-Delivery"]
-                        .FirstOrDefault();
-                    break;
-            }
-
-            var result = await svc.HandleAsync(
-                parsed.Value, token, eventType, delivery, payload, ct);
-            return result switch
-            {
-                ScmWebhookResult.InvalidSignature =>
-                    Results.Unauthorized(),
-                ScmWebhookResult.NoConnection =>
-                    Results.NotFound(new { error = "no_connection" }),
-                ScmWebhookResult.Duplicate =>
-                    Results.Ok(new { status = "duplicate" }),
-                ScmWebhookResult.Ignored =>
-                    Results.Ok(new { status = "ignored" }),
-                _ => Results.Ok(new { status = "processed" }),
-            };
-        });
+        app.MapPost("/api/v1/webhooks/scm/{kind}",
+            HandleScmWebhookAsync).WithTags("OpenHandsNET.Api");
 
         return app;
     }
+
+    private static async Task<IResult> CreatePullRequestAsync(
+        Guid id, [FromBody] ScmPrRequest req,
+        ICurrentUserAccessor current, IScmPullRequestService svc,
+        HttpContext http, CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+            return Results.Unauthorized();
+        var result = await svc.CreateAsync(id,
+            new ScmPrCreateRequest(
+                req.Title, req.Body, req.Base,
+                req.Head ?? "", req.Draft ?? false, req.Reviewers),
+            user.UserId.ToString(), ct);
+        return (result.Error, result.PullRequest) switch
+        {
+            (ScmPrError.NotFound, _) =>
+                OpenHandsNetProblemFactory.Create(
+                    http, 404, "conversation not found"),
+            (ScmPrError.NoConnection, _) =>
+                OpenHandsNetProblemFactory.Create(
+                    http, 404, "no scm connection for repository"),
+            (ScmPrError.AlreadyExists, _) =>
+                OpenHandsNetProblemFactory.Create(
+                    http, 409, "pull request already exists"),
+            (ScmPrError.ProviderError, _) =>
+                OpenHandsNetProblemFactory.Create(
+                    http, 502, "scm provider error"),
+            (_, { } pr) => Results.Ok(new
+            {
+                url = pr.Url,
+                number = pr.Number,
+                state = pr.State,
+            }),
+            _ => OpenHandsNetProblemFactory.Create(
+                http, 500, "unexpected state"),
+        };
+    }
+
+    private static async Task<IResult> HandleScmWebhookAsync(
+        string kind, HttpRequest req, IScmWebhookService svc,
+        CancellationToken ct)
+    {
+        var parsed = ScmKindExtensions.Parse(kind);
+        if (parsed is null)
+            return Results.NotFound(new { error = "unknown_kind" });
+        if ((req.ContentLength ?? 0) > MaxWebhookPayload)
+            return Results.StatusCode(413);
+        using var ms = new MemoryStream();
+        await req.Body.CopyToAsync(ms, ct);
+        var payload = ms.ToArray();
+
+        string? token, eventType, delivery;
+        switch (parsed.Value)
+        {
+            case ScmKind.GitLab:
+                token = req.Headers["X-Gitlab-Token"].FirstOrDefault();
+                eventType = req.Headers["X-Gitlab-Event"]
+                    .FirstOrDefault();
+                delivery = req.Headers["X-Gitlab-Webhook-UUID"]
+                    .FirstOrDefault();
+                break;
+            case ScmKind.Bitbucket:
+                token = req.Headers["X-Hub-Signature"].FirstOrDefault();
+                eventType = req.Headers["X-Event-Key"].FirstOrDefault();
+                delivery = req.Headers["X-Request-UUID"]
+                    .FirstOrDefault();
+                break;
+            case ScmKind.AzureDevOps:
+                token = req.Headers["X-OpenHandsNet-Secret"]
+                    .FirstOrDefault()
+                    ?? req.Query["secret"].FirstOrDefault();
+                try
+                {
+                    using var peek = JsonDocument.Parse(payload);
+                    eventType = peek.RootElement
+                        .TryGetProperty("eventType", out var et)
+                            ? et.GetString() : null;
+                    delivery = null;
+                    if (peek.RootElement
+                        .TryGetProperty("notificationId", out var nd)
+                        && nd.ValueKind == JsonValueKind.Number)
+                    {
+                        delivery = nd.GetInt32().ToString();
+                    }
+                    else if (peek.RootElement.TryGetProperty(
+                        "id", out var pid))
+                    {
+                        delivery = pid.ToString();
+                    }
+                }
+                catch (JsonException)
+                {
+                    return Results.Unauthorized();
+                }
+                break;
+            default: // github
+                token = req.Headers["X-Hub-Signature-256"]
+                    .FirstOrDefault();
+                eventType = req.Headers["X-GitHub-Event"]
+                    .FirstOrDefault();
+                delivery = req.Headers["X-GitHub-Delivery"]
+                    .FirstOrDefault();
+                break;
+        }
+
+        var result = await svc.HandleAsync(
+            parsed.Value, token, eventType, delivery, payload, ct);
+        return result switch
+        {
+            ScmWebhookResult.InvalidSignature =>
+                Results.Unauthorized(),
+            ScmWebhookResult.NoConnection =>
+                Results.NotFound(new { error = "no_connection" }),
+            ScmWebhookResult.Duplicate =>
+                Results.Ok(new { status = "duplicate" }),
+            ScmWebhookResult.Ignored =>
+                Results.Ok(new { status = "ignored" }),
+            _ => Results.Ok(new { status = "processed" }),
+        };
+    }
+
 }
 
 /// <summary>Manifest-flow request.</summary>

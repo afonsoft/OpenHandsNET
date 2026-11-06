@@ -33,21 +33,8 @@ public static class AutomationEndpoints
             .RequireAuthorization()
             .RequireScope(AutomationsRead);
 
-        g.MapPost("", async (
-            AutomationUpsertRequest body, HttpContext ctx,
-            ICurrentUserAccessor current, IEffectiveOrgResolver resolver,
-            IAutomationService svc, CancellationToken ct) =>
-        {
-            if (current.User is not { } u) { return Results.Unauthorized(); }
-            var org = await resolver.ResolveAsync(u,
-                ctx.Request.Headers["X-Org-Id"].ToString(), ct);
-            var (info, error) = await svc.CreateAsync(
-                ToUpsert(body), u.UserId, org?.OrgId, ct);
-            return error is not null
-                ? OpenHandsNetProblemFactory.Create(ctx, 400, error)
-                : Results.Created(
-                    $"/api/v1/automations/{info!.Id}", ToDto(info));
-        }).RequireAuthorization()
+        g.MapPost("",
+            CreateAutomationAsync).RequireAuthorization()
             .RequireScope(AutomationsWrite);
 
         g.MapGet("/{id:guid}", async (
@@ -67,22 +54,8 @@ public static class AutomationEndpoints
             .RequireAuthorization()
             .RequireScope(AutomationsRead);
 
-        g.MapPatch("/{id:guid}", async (
-            Guid id, AutomationUpsertRequest body, HttpContext ctx,
-            ICurrentUserAccessor current, IAutomationService svc,
-            CancellationToken ct) =>
-        {
-            if (current.User is not { } u) { return Results.Unauthorized(); }
-            var (info, error) = await svc.UpdateAsync(
-                id, ToUpsert(body), u.UserId, ct);
-            return error switch
-            {
-                "not found" => OpenHandsNetProblemFactory.Create(
-                    ctx, 404, AutomationNotFound),
-                not null => OpenHandsNetProblemFactory.Create(ctx, 400, error),
-                _ => Results.Ok(ToDto(info!)),
-            };
-        }).RequireAuthorization()
+        g.MapPatch("/{id:guid}",
+            UpdateAutomationAsync).RequireAuthorization()
             .RequireScope(AutomationsWrite);
 
         g.MapDelete("/{id:guid}", async (
@@ -101,27 +74,8 @@ public static class AutomationEndpoints
             .RequireAuthorization()
             .RequireScope(AutomationsWrite);
 
-        g.MapPost("/{id:guid}/run-now", async (
-            Guid id, HttpContext ctx, ICurrentUserAccessor current,
-            IAutomationService svc, CancellationToken ct) =>
-        {
-            if (current.User is not { } u) { return Results.Unauthorized(); }
-            var (run, fired) = await svc.RunNowAsync(id, u.UserId, ct);
-            return run switch
-            {
-                null => OpenHandsNetProblemFactory.Create(
-                    ctx, 404, AutomationNotFound),
-                { Status: "skipped" } when !fired =>
-                    OpenHandsNetProblemFactory.Create(
-                        ctx, 409, "automation run already in progress"),
-                _ => Results.Accepted(null, new
-                {
-                    run_id = run.Id,
-                    conversation_id = run.ConversationId,
-                    status = run.Status,
-                }),
-            };
-        }).RequireAuthorization()
+        g.MapPost("/{id:guid}/run-now",
+            RunNowAsync).RequireAuthorization()
             .RequireScope(AutomationsWrite);
 
         g.MapGet("/{id:guid}/runs", async (
@@ -186,31 +140,90 @@ public static class AutomationEndpoints
 
         // Trigger anônimo — rate-limit duplo (token 10/min + IP 60/min);
         // token inválido → 404 (não vaza existência). SPEC-47 RF-003/NFR.
-        app.MapPost("/api/v1/hooks/{token}", async (
-            string token, HttpContext ctx, IAutomationService svc,
-            CancellationToken ct) =>
-        {
-            var ip = ctx.Connection.RemoteIpAddress?.ToString();
-            if (!HookRateLimiter.Allow(token)
-                || !HookRateLimiter.AllowIp(ip))
-            {
-                return OpenHandsNetProblemFactory.Create(
-                    ctx, 429, "rate limit exceeded");
-            }
-
-            var run = await svc.FireByTokenAsync(token, ip, ct);
-            return run is null
-                ? OpenHandsNetProblemFactory.Create(ctx, 404, "not found")
-                : Results.Accepted(null, new
-                {
-                    run_id = run.Id,
-                    conversation_id = run.ConversationId,
-                    status = run.Status,
-                });
-        }).AllowAnonymous().WithTags("Automations");
+        app.MapPost("/api/v1/hooks/{token}",
+            FireHookAsync).AllowAnonymous().WithTags("Automations");
 
         return app;
     }
+
+    private static async Task<IResult> CreateAutomationAsync(
+        AutomationUpsertRequest body, HttpContext ctx,
+        ICurrentUserAccessor current, IEffectiveOrgResolver resolver,
+        IAutomationService svc, CancellationToken ct)
+    {
+        if (current.User is not { } u) { return Results.Unauthorized(); }
+        var org = await resolver.ResolveAsync(u,
+            ctx.Request.Headers["X-Org-Id"].ToString(), ct);
+        var (info, error) = await svc.CreateAsync(
+            ToUpsert(body), u.UserId, org?.OrgId, ct);
+        return error is not null
+            ? OpenHandsNetProblemFactory.Create(ctx, 400, error)
+            : Results.Created(
+                $"/api/v1/automations/{info!.Id}", ToDto(info));
+    }
+
+    private static async Task<IResult> UpdateAutomationAsync(
+        Guid id, AutomationUpsertRequest body, HttpContext ctx,
+        ICurrentUserAccessor current, IAutomationService svc,
+        CancellationToken ct)
+    {
+        if (current.User is not { } u) { return Results.Unauthorized(); }
+        var (info, error) = await svc.UpdateAsync(
+            id, ToUpsert(body), u.UserId, ct);
+        return error switch
+        {
+            "not found" => OpenHandsNetProblemFactory.Create(
+                ctx, 404, AutomationNotFound),
+            not null => OpenHandsNetProblemFactory.Create(ctx, 400, error),
+            _ => Results.Ok(ToDto(info!)),
+        };
+    }
+
+    private static async Task<IResult> RunNowAsync(
+        Guid id, HttpContext ctx, ICurrentUserAccessor current,
+        IAutomationService svc, CancellationToken ct)
+    {
+        if (current.User is not { } u) { return Results.Unauthorized(); }
+        var (run, fired) = await svc.RunNowAsync(id, u.UserId, ct);
+        return run switch
+        {
+            null => OpenHandsNetProblemFactory.Create(
+                ctx, 404, AutomationNotFound),
+            { Status: "skipped" } when !fired =>
+                OpenHandsNetProblemFactory.Create(
+                    ctx, 409, "automation run already in progress"),
+            _ => Results.Accepted(null, new
+            {
+                run_id = run.Id,
+                conversation_id = run.ConversationId,
+                status = run.Status,
+            }),
+        };
+    }
+
+    private static async Task<IResult> FireHookAsync(
+        string token, HttpContext ctx, IAutomationService svc,
+        CancellationToken ct)
+    {
+        var ip = ctx.Connection.RemoteIpAddress?.ToString();
+        if (!HookRateLimiter.Allow(token)
+            || !HookRateLimiter.AllowIp(ip))
+        {
+            return OpenHandsNetProblemFactory.Create(
+                ctx, 429, "rate limit exceeded");
+        }
+
+        var run = await svc.FireByTokenAsync(token, ip, ct);
+        return run is null
+            ? OpenHandsNetProblemFactory.Create(ctx, 404, "not found")
+            : Results.Accepted(null, new
+            {
+                run_id = run.Id,
+                conversation_id = run.ConversationId,
+                status = run.Status,
+            });
+    }
+
 
     /// <summary>
     /// Token bucket in-memory — janela fixa por chave (SPEC-47 NFR:
