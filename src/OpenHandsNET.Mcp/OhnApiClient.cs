@@ -18,7 +18,7 @@ public sealed class OhnApiClient
     public OhnApiClient(HttpClient http, string baseUrl, string? apiKey)
     {
         _http = http;
-        _http.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");
+        _http.BaseAddress = new Uri(baseUrl.TrimEnd('/') + '/');
         if (!string.IsNullOrWhiteSpace(apiKey))
         {
             _http.DefaultRequestHeaders.Authorization =

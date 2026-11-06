@@ -124,6 +124,24 @@ public sealed class McpEndToEndTests : IDisposable
     }
 
     [Fact]
+    public void Ctor_BaseAddress_Normalizes_Trailing_Slash()
+    {
+        // SPEC-106: BaseAddress sempre termina em "/" exatamente uma
+        // vez, com ou sem slash de entrada (path delimiter via char).
+        var a = new OhnApiClient(new HttpClient(), "http://h:1", null);
+        var b = new OhnApiClient(new HttpClient(), "http://h:1/", null);
+        a.HasCredentials.ShouldBeFalse();
+        b.HasCredentials.ShouldBeFalse();
+        var field = typeof(OhnApiClient).GetField(
+            "_http", System.Reflection.BindingFlags.NonPublic
+                | System.Reflection.BindingFlags.Instance)!;
+        var httpA = (HttpClient)field.GetValue(a)!;
+        var httpB = (HttpClient)field.GetValue(b)!;
+        httpA.BaseAddress!.ToString().ShouldBe("http://h:1/");
+        httpB.BaseAddress!.ToString().ShouldBe("http://h:1/");
+    }
+
+    [Fact]
     public async Task ToolsCall_ApiDown_ReturnsIsError()
     {
         var deadApi = new OhnApiClient(
