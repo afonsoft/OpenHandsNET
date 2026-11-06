@@ -86,7 +86,7 @@ terminal permanecer aqui (SPEC-82).
 |---|---|---|---|
 | 101 | s3776-cli-cognitive | Completed → docs/specs | PR #263 |
 | 102 | s3776-infra-agent | Completed → docs/specs | PR #264 |
-| 103 | s3776-endpoints | Approved | Epic #152 |
+| 103 | s3776-endpoints | Completed → docs/specs | Epic #152 · PR #357–#360 |
 | 104 | s107-many-params | Completed → docs/specs | Epic #152 · PR #352 |
 | 105 | s3218-s127-shadow-loop | Completed → docs/specs | Epic #152 · PR pending |
 | 106 | s1075-s3903-uris-ns | Completed → docs/specs | Epic #152 · PR #354 |
