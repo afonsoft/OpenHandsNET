@@ -62,30 +62,9 @@ public static class AuthEndpoints
             });
         }).AllowAnonymous();
 
-        oauth.MapPost("/device/token", async (
-            [FromForm] string? device_code,
-            [FromForm] string? grant_type,
-            IDeviceFlowService devices, CancellationToken ct) =>
-        {
-            if (string.IsNullOrWhiteSpace(device_code))
-                return Results.BadRequest(new { error = "invalid_device_code" });
-            var result = await devices.PollAsync(device_code, ct);
-            return result.Status switch
-            {
-                DeviceTokenStatus.Approved => Results.Ok(new
-                {
-                    access_token = result.AccessToken,
-                    token_type = "bearer",
-                }),
-                DeviceTokenStatus.Pending => Results.BadRequest(
-                    new { error = "authorization_pending" }),
-                DeviceTokenStatus.Denied => Results.BadRequest(
-                    new { error = "access_denied" }),
-                DeviceTokenStatus.Expired => Results.BadRequest(
-                    new { error = "expired_token" }),
-                _ => Results.BadRequest(new { error = "invalid_device_code" }),
-            };
-        }).AllowAnonymous().DisableAntiforgery();
+        oauth.MapPost("/device/token",
+            DeviceTokenAsync).WithTags("OpenHandsNET.Api")
+            .AllowAnonymous().DisableAntiforgery();
 
         oauth.MapGet("/device/verify", (string? user_code) =>
             Results.Content(
@@ -174,51 +153,81 @@ public static class AuthEndpoints
         }).RequireAuthorization();
 
         // Paridade /api/authenticate: user + orgs + idp_type.
-        app.MapPost("/api/v1/authenticate", async (
-            HttpContext ctx, ICurrentUserAccessor current, IOrgService orgs,
-            IIdpSyncService idpSync, IAuditService audit,
-            CancellationToken ct) =>
-        {
-            var user = current.User;
-            if (user is null)
-                return Results.Unauthorized();
-            // SPEC-58 RF-002: aplica grupos do IdP (claims "groups"/"role")
-            // às memberships — idempotente; revoga memberships idp-sourced
-            // cujo mapping deixou de casar.
-            var groupClaims = ctx.User.FindAll("groups")
-                .Concat(ctx.User.FindAll("group"))
-                .Concat(ctx.User.FindAll(
-                    "http://schemas.microsoft.com/ws/2008/06/identity/claims/groups"))
-                .Select(c => c.Value)
-                .Where(v => !string.IsNullOrWhiteSpace(v))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-            try
-            {
-                await idpSync.ApplyOnLoginAsync(user.UserId, groupClaims, ct);
-            }
-            catch (Exception)
-            {
-                // sync é best-effort no login — não bloqueia autenticação.
-            }
-            var mine = await orgs.ListMineAsync(user, ct);
-            return Results.Ok(new
-            {
-                user = new
-                {
-                    id = user.UserId,
-                    email = user.Email,
-                    display_name = user.DisplayName,
-                    current_org_id = user.CurrentOrgId,
-                    is_super_admin = user.IsSuperAdmin,
-                },
-                orgs = mine.Select(o => new { o.Id, o.Name, o.Slug, o.Role }),
-                idp_type = user.IdpType,
-                auth_type = user.AuthType.ToString().ToLowerInvariant(),
-            });
-        }).RequireAuthorization();
+        app.MapPost("/api/v1/authenticate",
+            AuthenticateAsync).WithTags("OpenHandsNET.Api")
+            .RequireAuthorization();
 
         return app;
+    }
+
+
+    private static async Task<IResult> DeviceTokenAsync(
+        [FromForm] string? device_code,
+        [FromForm] string? grant_type,
+        IDeviceFlowService devices, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(device_code))
+            return Results.BadRequest(new { error = "invalid_device_code" });
+        var result = await devices.PollAsync(device_code, ct);
+        return result.Status switch
+        {
+            DeviceTokenStatus.Approved => Results.Ok(new
+            {
+                access_token = result.AccessToken,
+                token_type = "bearer",
+            }),
+            DeviceTokenStatus.Pending => Results.BadRequest(
+                new { error = "authorization_pending" }),
+            DeviceTokenStatus.Denied => Results.BadRequest(
+                new { error = "access_denied" }),
+            DeviceTokenStatus.Expired => Results.BadRequest(
+                new { error = "expired_token" }),
+            _ => Results.BadRequest(new { error = "invalid_device_code" }),
+        };
+    }
+
+    private static async Task<IResult> AuthenticateAsync(
+        HttpContext ctx, ICurrentUserAccessor current, IOrgService orgs,
+        IIdpSyncService idpSync, IAuditService audit,
+        CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+            return Results.Unauthorized();
+        // SPEC-58 RF-002: aplica grupos do IdP (claims "groups"/"role")
+        // às memberships — idempotente; revoga memberships idp-sourced
+        // cujo mapping deixou de casar.
+        var groupClaims = ctx.User.FindAll("groups")
+            .Concat(ctx.User.FindAll("group"))
+            .Concat(ctx.User.FindAll(
+                "http://schemas.microsoft.com/ws/2008/06/identity/claims/groups"))
+            .Select(c => c.Value)
+            .Where(v => !string.IsNullOrWhiteSpace(v))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        try
+        {
+            await idpSync.ApplyOnLoginAsync(user.UserId, groupClaims, ct);
+        }
+        catch (Exception)
+        {
+            // sync é best-effort no login — não bloqueia autenticação.
+        }
+        var mine = await orgs.ListMineAsync(user, ct);
+        return Results.Ok(new
+        {
+            user = new
+            {
+                id = user.UserId,
+                email = user.Email,
+                display_name = user.DisplayName,
+                current_org_id = user.CurrentOrgId,
+                is_super_admin = user.IsSuperAdmin,
+            },
+            orgs = mine.Select(o => new { o.Id, o.Name, o.Slug, o.Role }),
+            idp_type = user.IdpType,
+            auth_type = user.AuthType.ToString().ToLowerInvariant(),
+        });
     }
 
     /// <summary>Issue the chunked cookie session for a resolved user.</summary>

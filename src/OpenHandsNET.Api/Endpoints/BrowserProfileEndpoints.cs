@@ -63,27 +63,8 @@ public static class BrowserProfileEndpoints
             return info is null ? Results.NotFound() : Results.Ok(info);
         });
 
-        group.MapDelete("/browser-profiles/{id:guid}", async (
-            Guid id, HttpContext http, ICurrentUserAccessor current,
-            IBrowserProfileService profiles, IAuditService audit,
-            IOptions<BrowserOptions> browserOpt, CancellationToken ct) =>
-        {
-            if (!browserOpt.Value.ProfilesEnabled)
-            {
-                return FeatureOff(http);
-            }
-            var user = current.RequireUserId();
-            var admin = current.User?.IsSuperAdmin == true;
-            if (!await profiles.DeleteAsync(id, user.ToString(), admin, ct))
-            {
-                return Results.NotFound();
-            }
-            await audit.RecordAsync("browser.profile_deleted",
-                actorUserId: user.ToString(),
-                targetType: "browser_profile", targetId: id.ToString(),
-                cancellationToken: ct);
-            return Results.NoContent();
-        });
+        group.MapDelete("/browser-profiles/{id:guid}",
+            DeleteProfileAsync);
 
         // RF-002 — captura o storage state da sessão, filtrado ao
         // eTLD+1 informado (a UI/agente pede confirmação antes).
@@ -122,51 +103,77 @@ public static class BrowserProfileEndpoints
         // RF-003 — attach: storage state + site_cookie secrets do
         // domínio entram no contexto da conversa.
         group.MapPost("/app-conversations/{id:guid}/browser/attach",
-            async ([AsParameters] BrowserAttachParams p) =>
-        {
-            if (!p.BrowserOpt.Value.ProfilesEnabled)
-            {
-                return FeatureOff(p.Http);
-            }
-            var user = p.Current.RequireUserId();
-            var admin = p.Current.User?.IsSuperAdmin == true;
-            var conv = await p.Db.Conversations.FindAsync([p.Id], p.Ct);
-            if (conv is null)
-            {
-                return Results.NotFound();
-            }
-            string state;
-            try
-            {
-                state = await p.Profiles.ResolveStateAsync(
-                    p.Req.ProfileId, user.ToString(), admin, p.Ct);
-            }
-            catch (KeyNotFoundException)
-            {
-                return Results.NotFound();
-            }
-            catch (BrowserProfileExpiredException)
-            {
-                return OpenHandsNetProblemFactory.Create(
-                    p.Http, 410, "browser_profile_expired");
-            }
-            var meta = await p.Profiles.GetAsync(
-                p.Req.ProfileId, user.ToString(), admin, p.Ct);
-            if (meta is not null)
-            {
-                state = await MergeSiteCookiesAsync(
-                    p.Secrets, user.ToString(), meta.Domain, state, p.Ct);
-            }
-            await p.Browser.SetStorageStateAsync(p.Id, state, p.Ct);
-            await p.Audit.RecordAsync("browser.profile_attached",
-                actorUserId: user.ToString(), orgId: conv.OrgId,
-                targetType: "browser_profile",
-                targetId: p.Req.ProfileId.ToString(),
-                metadata: new { meta?.Domain }, cancellationToken: p.Ct);
-            return Results.Ok(new { attached = true });
-        });
+            AttachProfileAsync);
 
         return app;
+    }
+
+
+    private static async Task<IResult> DeleteProfileAsync(
+        Guid id, HttpContext http, ICurrentUserAccessor current,
+        IBrowserProfileService profiles, IAuditService audit,
+        IOptions<BrowserOptions> browserOpt, CancellationToken ct)
+    {
+        if (!browserOpt.Value.ProfilesEnabled)
+        {
+            return FeatureOff(http);
+        }
+        var user = current.RequireUserId();
+        var admin = current.User?.IsSuperAdmin == true;
+        if (!await profiles.DeleteAsync(id, user.ToString(), admin, ct))
+        {
+            return Results.NotFound();
+        }
+        await audit.RecordAsync("browser.profile_deleted",
+            actorUserId: user.ToString(),
+            targetType: "browser_profile", targetId: id.ToString(),
+            cancellationToken: ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> AttachProfileAsync(
+        [AsParameters] BrowserAttachParams p)
+    {
+        if (!p.BrowserOpt.Value.ProfilesEnabled)
+        {
+            return FeatureOff(p.Http);
+        }
+        var user = p.Current.RequireUserId();
+        var admin = p.Current.User?.IsSuperAdmin == true;
+        var conv = await p.Db.Conversations.FindAsync([p.Id], p.Ct);
+        if (conv is null)
+        {
+            return Results.NotFound();
+        }
+        string state;
+        try
+        {
+            state = await p.Profiles.ResolveStateAsync(
+                p.Req.ProfileId, user.ToString(), admin, p.Ct);
+        }
+        catch (KeyNotFoundException)
+        {
+            return Results.NotFound();
+        }
+        catch (BrowserProfileExpiredException)
+        {
+            return OpenHandsNetProblemFactory.Create(
+                p.Http, 410, "browser_profile_expired");
+        }
+        var meta = await p.Profiles.GetAsync(
+            p.Req.ProfileId, user.ToString(), admin, p.Ct);
+        if (meta is not null)
+        {
+            state = await MergeSiteCookiesAsync(
+                p.Secrets, user.ToString(), meta.Domain, state, p.Ct);
+        }
+        await p.Browser.SetStorageStateAsync(p.Id, state, p.Ct);
+        await p.Audit.RecordAsync("browser.profile_attached",
+            actorUserId: user.ToString(), orgId: conv.OrgId,
+            targetType: "browser_profile",
+            targetId: p.Req.ProfileId.ToString(),
+            metadata: new { meta?.Domain }, cancellationToken: p.Ct);
+        return Results.Ok(new { attached = true });
     }
 
     private static IResult FeatureOff(HttpContext http) =>

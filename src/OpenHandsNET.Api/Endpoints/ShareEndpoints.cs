@@ -23,90 +23,18 @@ public static class ShareEndpoints
         var conv = app.MapGroup("/api/v1/app-conversations")
             .WithTags("Sharing");
 
-        conv.MapPost("/{id:guid}/share", async (
-            Guid id, IShareService shares,
-            ICurrentUserAccessor current, CancellationToken ct) =>
-        {
-            try
-            {
-                var result = await shares.CreateOrGetAsync(
-                    id, current.RequireUserId(), ct);
-                return Results.Ok(new
-                {
-                    url = result.Url,
-                    token = result.Token is { Length: > 0 } t ? t : null,
-                    expires_at = result.ExpiresAt,
-                });
-            }
-            catch (ShareForbiddenException ex)
-            {
-                return Results.Json(new { error = ex.Message },
-                    statusCode: 403);
-            }
-        }).RequireAuthorization();
+        conv.MapPost("/{id:guid}/share",
+            CreateShareAsync).RequireAuthorization();
 
-        conv.MapGet("/{id:guid}/share", async (
-            Guid id, IShareService shares,
-            ICurrentUserAccessor current, CancellationToken ct) =>
-        {
-            try
-            {
-                var s = await shares.GetStatusAsync(
-                    id, current.RequireUserId(), ct);
-                return Results.Ok(new
-                {
-                    shared = s.Shared,
-                    url = s.Url,
-                    expires_at = s.ExpiresAt,
-                });
-            }
-            catch (ShareForbiddenException ex)
-            {
-                return Results.Json(new { error = ex.Message },
-                    statusCode: 403);
-            }
-        }).RequireAuthorization();
+        conv.MapGet("/{id:guid}/share",
+            GetShareAsync).RequireAuthorization();
 
-        conv.MapDelete("/{id:guid}/share", async (
-            Guid id, IShareService shares,
-            ICurrentUserAccessor current, CancellationToken ct) =>
-        {
-            try
-            {
-                return await shares.RevokeAsync(
-                    id, current.RequireUserId(), ct)
-                        ? Results.NoContent() : Results.NotFound();
-            }
-            catch (ShareForbiddenException ex)
-            {
-                return Results.Json(new { error = ex.Message },
-                    statusCode: 403);
-            }
-        }).RequireAuthorization();
+        conv.MapDelete("/{id:guid}/share",
+            RevokeShareAsync).RequireAuthorization();
 
         // Trajectory download — streamed zip (SPEC-56 RF-004).
-        conv.MapGet("/{id:guid}/download", async (
-            Guid id, HttpContext http,
-            ITrajectoryExporter exporter,
-            ICurrentUserAccessor current, CancellationToken ct) =>
-        {
-            var slug = $"openhandsnet-{id:N}".ToLowerInvariant();
-            http.Response.ContentType = "application/zip";
-            http.Response.Headers.ContentDisposition =
-                $"attachment; filename=\"{slug}.zip\"";
-            try
-            {
-                await exporter.WriteZipAsync(
-                    id, current.RequireUserId(), http.Response.Body, ct);
-            }
-            catch (ShareForbiddenException)
-            {
-                if (!http.Response.HasStarted)
-                {
-                    http.Response.StatusCode = 403;
-                }
-            }
-        }).RequireAuthorization();
+        conv.MapGet("/{id:guid}/download",
+            DownloadTrajectoryAsync).RequireAuthorization();
 
         // Public side — token IS the credential (SPEC-56 RF-001).
         // SPEC-80: AllowAnonymous é metadata-only aqui (a rota já era
@@ -160,6 +88,93 @@ public static class ShareEndpoints
         });
 
         return app;
+    }
+
+
+    private static async Task<IResult> CreateShareAsync(
+        Guid id, IShareService shares,
+        ICurrentUserAccessor current, CancellationToken ct)
+    {
+        try
+        {
+            var result = await shares.CreateOrGetAsync(
+                id, current.RequireUserId(), ct);
+            return Results.Ok(new
+            {
+                url = result.Url,
+                token = result.Token is { Length: > 0 } t ? t : null,
+                expires_at = result.ExpiresAt,
+            });
+        }
+        catch (ShareForbiddenException ex)
+        {
+            return Results.Json(new { error = ex.Message },
+                statusCode: 403);
+        }
+    }
+
+    private static async Task<IResult> GetShareAsync(
+        Guid id, IShareService shares,
+        ICurrentUserAccessor current, CancellationToken ct)
+    {
+        try
+        {
+            var s = await shares.GetStatusAsync(
+                id, current.RequireUserId(), ct);
+            return Results.Ok(new
+            {
+                shared = s.Shared,
+                url = s.Url,
+                expires_at = s.ExpiresAt,
+            });
+        }
+        catch (ShareForbiddenException ex)
+        {
+            return Results.Json(new { error = ex.Message },
+                statusCode: 403);
+        }
+    }
+
+    private static async Task<IResult> RevokeShareAsync(
+        Guid id, IShareService shares,
+        ICurrentUserAccessor current, CancellationToken ct)
+    {
+        try
+        {
+            return await shares.RevokeAsync(
+                id, current.RequireUserId(), ct)
+                    ? Results.NoContent() : Results.NotFound();
+        }
+        catch (ShareForbiddenException ex)
+        {
+            return Results.Json(new { error = ex.Message },
+                statusCode: 403);
+        }
+    }
+
+    private static async Task<IResult> DownloadTrajectoryAsync(
+        Guid id, HttpContext http,
+        ITrajectoryExporter exporter,
+        ICurrentUserAccessor current, CancellationToken ct)
+    {
+        var slug = $"openhandsnet-{id:N}".ToLowerInvariant();
+        http.Response.ContentType = "application/zip";
+        http.Response.Headers.ContentDisposition =
+            $"attachment; filename=\"{slug}.zip\"";
+        try
+        {
+            await exporter.WriteZipAsync(
+                id, current.RequireUserId(), http.Response.Body, ct);
+        }
+        catch (ShareForbiddenException)
+        {
+            if (!http.Response.HasStarted)
+            {
+                http.Response.StatusCode = 403;
+            }
+        }
+
+        return Results.Empty;
     }
 
     /// <summary>
