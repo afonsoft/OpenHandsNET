@@ -176,3 +176,4 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | 131 | sandbox-browser-playwright — Playwright + `chrome-devtools` MCP no runtime | PR #339 · #338 |
 | 72 | sonar-critical-code-smells — S927=0 live + S4487 via `ohn.selectAll` | PR #343 · #154 |
 | 105 | s3218-s127-shadow-loop — S3218/S127 = 0 live (refactors anteriores) | PR pending · Epic #152 |
+| 106 | s1075-s3903-uris-ns — S3903=0 live; último S1075 via char literal | PR #354 · Epic #152 |
