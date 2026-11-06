@@ -17,7 +17,7 @@ window.ohnNotify = {
         }
         try {
             const n = new Notification(title, options || {});
-            if (options && options.url) {
+            if (options?.url) {
                 n.onclick = function () {
                     window.focus();
                     window.location.href = options.url;
