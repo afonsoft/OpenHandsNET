@@ -105,75 +105,7 @@ public sealed class SandboxService(
                 return record.ToDomain();
             }
 
-            var env = new List<string>(
-                spec.Env?.Select(kv => $"{kv.Key}={kv.Value}") ?? []);
-            env.AddRange(await ResolveCredentialEnvAsync(conversationId, ct));
-
-            // SPEC-17: imagem-agente não leva Cmd (entrypoint é o agente);
-            // session key vai por env e fica protegida no record.
-            var isAgentImage = options.Value.IsAgentImage(spec.Image);
-            if (isAgentImage)
-            {
-                var sessionKey = NewSessionKey(record);
-                if (sessionKey is not null)
-                {
-                    env.Add($"OHN_SESSION_KEY={sessionKey}");
-                    env.Add("OHN_DEFERRED_INIT=false");
-                    env.Add("OHN_WORKSPACE=/workspace");
-
-                    // SPEC-77 RF-001: VS Code web (code-server) sobe com o
-                    // container por default — instalador lazy sob demanda.
-                    // Blueprint pode desligar via env SANDBOX_VSCODE=0.
-                    if (!env.Any(e => e.StartsWith("SANDBOX_VSCODE=",
-                            StringComparison.Ordinal)))
-                    {
-                        env.Add("SANDBOX_VSCODE=1");
-                    }
-
-                    // SPEC-113 RF-002: desktop ao vivo (noVNC :6080) por
-                    // default — instalador lazy sob demanda. Blueprint
-                    // pode desligar via env SANDBOX_DESKTOP=0.
-                    if (!env.Any(e => e.StartsWith("SANDBOX_DESKTOP=",
-                            StringComparison.Ordinal)))
-                    {
-                        env.Add("SANDBOX_DESKTOP=1");
-                    }
-                }
-            }
-
-            var labels = new Dictionary<string, string>
-            {
-                [EngineLabels.SandboxId] = record.Id.ToString(),
-            };
-            if (conversationId is not null)
-            {
-                labels[EngineLabels.ConversationId] =
-                    conversationId.Value.ToString();
-            }
-
-            var info = await engine.CreateAndStartAsync(new EngineCreateRequest(
-                Name: name,
-                Image: spec.Image,
-                Env: env,
-                Binds: [],
-                Labels: labels,
-                MemoryBytes: spec.MemoryMb * 1024L * 1024L,
-                NanoCpus: (long)(spec.CpuLimit * 1_000_000_000L),
-                PidsLimit: spec.PidsLimit,
-                Cmd: isAgentImage ? null : ["sleep", "infinity"],
-                WorkingDir: Domain.Sandbox.SandboxSpec.WorkspacePath,
-                IsAgentImage: isAgentImage,
-                WorkspaceConversationId: spec.MountWorkspace
-                    ? conversationId : null), ct);
-
-            record.ContainerId = info.ContainerId;
-            record.AgentUrl = info.AgentUrl?.ToString();
-            record.Status = SandboxStatus.Running.ToString();
-            await db.SaveChangesAsync(ct);
-            logger.LogInformation(
-                "Sandbox {SandboxId} running (container {ContainerId}, image {Image}, profile {Profile})",
-                record.Id, info.ContainerId[..12], spec.Image,
-                spec.Profile ?? "custom");
+            await ColdStartAsync(record, spec, conversationId, name, ct);
         }
         catch (Exception ex)
         {
@@ -184,6 +116,83 @@ public sealed class SandboxService(
         }
 
         return record.ToDomain();
+    }
+
+
+
+    private async Task ColdStartAsync(
+        SandboxRecord record, Domain.Sandbox.SandboxSpec spec,
+        Guid? conversationId, string name, CancellationToken ct)
+    {
+        var env = new List<string>(
+                spec.Env?.Select(kv => $"{kv.Key}={kv.Value}") ?? []);
+        env.AddRange(await ResolveCredentialEnvAsync(conversationId, ct));
+
+        // SPEC-17: imagem-agente não leva Cmd (entrypoint é o agente);
+        // session key vai por env e fica protegida no record.
+        var isAgentImage = options.Value.IsAgentImage(spec.Image);
+        if (isAgentImage)
+        {
+            var sessionKey = NewSessionKey(record);
+            if (sessionKey is not null)
+            {
+                env.Add($"OHN_SESSION_KEY={sessionKey}");
+                env.Add("OHN_DEFERRED_INIT=false");
+                env.Add("OHN_WORKSPACE=/workspace");
+
+                // SPEC-77 RF-001: VS Code web (code-server) sobe com o
+                // container por default — instalador lazy sob demanda.
+                // Blueprint pode desligar via env SANDBOX_VSCODE=0.
+                if (!env.Any(e => e.StartsWith("SANDBOX_VSCODE=",
+                        StringComparison.Ordinal)))
+                {
+                    env.Add("SANDBOX_VSCODE=1");
+                }
+
+                // SPEC-113 RF-002: desktop ao vivo (noVNC :6080) por
+                // default — instalador lazy sob demanda. Blueprint
+                // pode desligar via env SANDBOX_DESKTOP=0.
+                if (!env.Any(e => e.StartsWith("SANDBOX_DESKTOP=",
+                        StringComparison.Ordinal)))
+                {
+                    env.Add("SANDBOX_DESKTOP=1");
+                }
+            }
+        }
+
+        var labels = new Dictionary<string, string>
+        {
+            [EngineLabels.SandboxId] = record.Id.ToString(),
+        };
+        if (conversationId is not null)
+        {
+            labels[EngineLabels.ConversationId] =
+                conversationId.Value.ToString();
+        }
+
+        var info = await engine.CreateAndStartAsync(new EngineCreateRequest(
+            Name: name,
+            Image: spec.Image,
+            Env: env,
+            Binds: [],
+            Labels: labels,
+            MemoryBytes: spec.MemoryMb * 1024L * 1024L,
+            NanoCpus: (long)(spec.CpuLimit * 1_000_000_000L),
+            PidsLimit: spec.PidsLimit,
+            Cmd: isAgentImage ? null : ["sleep", "infinity"],
+            WorkingDir: Domain.Sandbox.SandboxSpec.WorkspacePath,
+            IsAgentImage: isAgentImage,
+            WorkspaceConversationId: spec.MountWorkspace
+                ? conversationId : null), ct);
+
+        record.ContainerId = info.ContainerId;
+        record.AgentUrl = info.AgentUrl?.ToString();
+        record.Status = SandboxStatus.Running.ToString();
+        await db.SaveChangesAsync(ct);
+        logger.LogInformation(
+            "Sandbox {SandboxId} running (container {ContainerId}, image {Image}, profile {Profile})",
+            record.Id, info.ContainerId[..12], spec.Image,
+            spec.Profile ?? "custom");
     }
 
     /// <inheritdoc />

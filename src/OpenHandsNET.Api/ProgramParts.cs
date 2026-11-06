@@ -315,7 +315,8 @@ internal static class ProgramParts
         // request em conexão keep-alive reutilizada.
         app.Use(async (ctx, next) =>
         {
-            ctx.Response.OnStarting(static state =>
+            ctx.Response.OnStarting(RewriteEmptyBadRequest, ctx);
+            static Task RewriteEmptyBadRequest(object state)
             {
                 var http = (HttpContext)state;
                 var res = http.Response;
@@ -349,7 +350,7 @@ internal static class ProgramParts
                     .Create(http, StatusCodes.Status400BadRequest,
                         "Request body is missing, empty, or could not be deserialized.")
                     .ExecuteAsync(http);
-            }, ctx);
+            }
 
             try
             {

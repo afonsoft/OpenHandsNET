@@ -120,29 +120,32 @@ public static class TicketEndpoints
             }).RequireAuthorization(PermManageIntegrations);
 
         app.MapPost("/api/v1/tickets/{kind}/{issue_key}/comment",
-            async (
-                string kind, string issue_key, TicketCommentRequest body,
-                ITicketConnectionService svc,
-                IReadOnlyDictionary<TicketKind, ITicketProvider> providers,
-                CancellationToken ct) =>
-            {
-                var k = TicketKindExtensions.Parse(kind);
-                if (k is null
-                    || !providers.TryGetValue(k.Value, out var p))
-                {
-                    return Results.NotFound(
-                        new { detail = "unknown ticket kind" });
-                }
-                var c = await svc.FindForWebhookAsync(
-                    k.Value, body.WorkspaceId, ct);
-                if (c is null)
-                {
-                    return Results.NotFound(
-                        new { detail = "no connection" });
-                }
-                await p.AddCommentAsync(c, issue_key, body.Body, ct);
-                return Results.Ok(new { ok = true });
-            }).RequireAuthorization(PermManageIntegrations);
+            AddCommentAsync).WithTags("OpenHandsNET.Api")
+            .RequireAuthorization(PermManageIntegrations);
+    }
+
+    private static async Task<IResult> AddCommentAsync(
+        string kind, string issue_key, TicketCommentRequest body,
+        ITicketConnectionService svc,
+        IReadOnlyDictionary<TicketKind, ITicketProvider> providers,
+        CancellationToken ct)
+    {
+        var k = TicketKindExtensions.Parse(kind);
+        if (k is null
+            || !providers.TryGetValue(k.Value, out var p))
+        {
+            return Results.NotFound(
+                new { detail = "unknown ticket kind" });
+        }
+        var c = await svc.FindForWebhookAsync(
+            k.Value, body.WorkspaceId, ct);
+        if (c is null)
+        {
+            return Results.NotFound(
+                new { detail = "no connection" });
+        }
+        await p.AddCommentAsync(c, issue_key, body.Body, ct);
+        return Results.Ok(new { ok = true });
     }
 
     private static async Task<byte[]> ReadBody(HttpRequest req)
