@@ -288,4 +288,16 @@ public sealed class Spec97AuthBoundaryTests : IDisposable
         res = await anon.GetAsync($"/scim/v2/Users/{Guid.NewGuid()}");
         res.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
+
+    [Fact]
+    public async Task Admin_Users_Without_Token_Is_401_And_With_Token_Is_200()
+    {
+        var anon = _factory.CreateClient();
+        (await anon.GetAsync("/api/v1/admin/users"))
+            .StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+
+        using var http = await TestAuth.LoginAsync(_factory);
+        var res = await http.GetAsync("/api/v1/admin/users");
+        res.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
 }

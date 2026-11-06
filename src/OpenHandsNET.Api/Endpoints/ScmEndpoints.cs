@@ -25,36 +25,11 @@ public static class ScmEndpoints
         var scm = app.MapGroup("/api/v1/scm").WithTags("SCM");
 
         // Manifest flow — devolve o manifest JSON p/ criar o GitHub App.
-        scm.MapPost("/github/manifest", (
-            [FromBody] ScmManifestRequest req,
-            IScmConnectionService svc, HttpContext http) =>
-            !Uri.TryCreate(req.RedirectUri, UriKind.Absolute, out _)
-                ? OpenHandsNetProblemFactory.Create(
-                    http, 400, "redirect_uri must be an absolute URI")
-                : Results.Ok(svc.BuildGitHubAppManifest(
-                    req.RedirectUri, req.AppName ?? "openhandsnet")))
-            .RequireAuthorization();
+        scm.MapPost("/github/manifest",
+            PostGithubManifestAsync).RequireAuthorization();
 
         // Callback do manifest flow — troca code → credenciais do app.
-        scm.MapGet("/github/callback", async (
-            [FromQuery] string code, [FromQuery] Guid org_id,
-            ICurrentUserAccessor current, IScmConnectionService svc,
-            CancellationToken ct) =>
-        {
-            var user = current.User;
-            if (user is null)
-                return Results.Unauthorized();
-            var conn = await svc.CompleteGitHubManifestFlowAsync(
-                org_id, code, user.UserId.ToString(), ct);
-            return conn is null
-                ? Results.BadRequest(new { error = "manifest_exchange_failed" })
-                : Results.Ok(new
-                {
-                    id = conn.Id,
-                    kind = conn.Kind.ToWire(),
-                    app_slug = conn.AppSlug,
-                });
-        }).RequireAuthorization(PermManageIntegrations);
+        scm.MapGet("/github/callback", GetGithubCallbackAsync).RequireAuthorization(PermManageIntegrations);
 
         // Pull request a partir do workspace da conversa.
         app.MapPost("/api/v1/app-conversations/{id:guid}/pull-request",
@@ -64,60 +39,16 @@ public static class ScmEndpoints
         // Admin: connections CRUD.
         var conns = app.MapGroup("/api/v1/orgs/{org_id:guid}/scm-connections")
             .WithTags("SCM");
-        conns.MapGet("", async (
-            Guid org_id, ICurrentUserAccessor current,
-            IScmConnectionService svc, CancellationToken ct) =>
-        {
-            var user = current.User;
-            return user is null
-                ? Results.Unauthorized()
-                : Results.Ok(await svc.ListAsync(org_id, ct));
-        }).RequireAuthorization(PermManageIntegrations);
+        conns.MapGet("", ListConnectionsAsync)
+            .RequireAuthorization(PermManageIntegrations);
 
-        conns.MapPost("", async (
-            Guid org_id, [FromBody] ScmConnectionRequest req,
-            ICurrentUserAccessor current, IScmConnectionService svc,
-            HttpContext http, CancellationToken ct) =>
-        {
-            var user = current.User;
-            if (user is null)
-                return Results.Unauthorized();
-            var kind = ScmKindExtensions.Parse(req.Kind);
-            if (kind is null)
-            {
-                return OpenHandsNetProblemFactory.Create(
-                    http, 400, "unknown scm kind");
-            }
-            var conn = await svc.CreateAsync(
-                org_id, kind.Value, req.InstallationId, req.PemSecretRef,
-                req.WebhookSecretRef, req.Repos, req.AppId, req.AppSlug,
-                user.UserId.ToString(), ct,
-                req.ApiUrl, req.AuthKind, req.MetaJson);
-            return Results.Ok(conn);
-        }).RequireAuthorization(PermManageIntegrations);
+        conns.MapPost("", CreateConnectionAsync)
+            .RequireAuthorization(PermManageIntegrations);
 
         // SPEC-53 RF-004: diagnóstico da connection (token + escopo).
-        scm.MapPost("/connections/{id:guid}/test", async (
-            Guid id, ICurrentUserAccessor current,
-            IScmConnectionService svc, CancellationToken ct) =>
-        {
-            var user = current.User;
-            if (user is null)
-                return Results.Unauthorized();
-            var diag = await svc.TestAsync(id, ct);
-            return Results.Ok(diag);
-        }).RequireAuthorization(PermManageIntegrations);
+        scm.MapPost("/connections/{id:guid}/test", PostConnectionsIdGuidTestAsync).RequireAuthorization(PermManageIntegrations);
 
-        conns.MapDelete("/{id:guid}", async (
-            Guid org_id, Guid id, ICurrentUserAccessor current,
-            IScmConnectionService svc, CancellationToken ct) =>
-        {
-            var user = current.User;
-            if (user is null)
-                return Results.Unauthorized();
-            return await svc.DeleteAsync(id, ct)
-                ? Results.NoContent() : Results.NotFound();
-        }).RequireAuthorization(PermManageIntegrations);
+        conns.MapDelete("/{id:guid}", DeleteIdGuidAsync).RequireAuthorization(PermManageIntegrations);
 
         // Webhook público (HMAC + idempotência; sem auth de usuário).
         app.MapPost("/api/v1/webhooks/scm/{kind}",
@@ -245,6 +176,87 @@ public static class ScmEndpoints
                 Results.Ok(new { status = "ignored" }),
             _ => Results.Ok(new { status = "processed" }),
         };
+    }
+
+
+    private static async Task<IResult> GetGithubCallbackAsync([FromQuery] string code, [FromQuery] Guid org_id, ICurrentUserAccessor current, IScmConnectionService svc, CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+            return Results.Unauthorized();
+        var conn = await svc.CompleteGitHubManifestFlowAsync(
+            org_id, code, user.UserId.ToString(), ct);
+        return conn is null
+            ? Results.BadRequest(new { error = "manifest_exchange_failed" })
+            : Results.Ok(new
+            {
+                id = conn.Id,
+                kind = conn.Kind.ToWire(),
+                app_slug = conn.AppSlug,
+            });
+
+    }
+
+    private static async Task<IResult> PostConnectionsIdGuidTestAsync(Guid id, ICurrentUserAccessor current, IScmConnectionService svc, CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+            return Results.Unauthorized();
+        var diag = await svc.TestAsync(id, ct);
+        return Results.Ok(diag);
+
+    }
+
+
+    private static async Task<IResult> DeleteIdGuidAsync(Guid org_id, Guid id, ICurrentUserAccessor current, IScmConnectionService svc, CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+            return Results.Unauthorized();
+        return await svc.DeleteAsync(id, ct)
+            ? Results.NoContent() : Results.NotFound();
+
+    }
+
+    private static IResult PostGithubManifestAsync(
+        [FromBody] ScmManifestRequest req,
+        IScmConnectionService svc, HttpContext http) =>
+        !Uri.TryCreate(req.RedirectUri, UriKind.Absolute, out _)
+            ? OpenHandsNetProblemFactory.Create(
+                http, 400, "redirect_uri must be an absolute URI")
+            : Results.Ok(svc.BuildGitHubAppManifest(
+                req.RedirectUri, req.AppName ?? "openhandsnet"));
+
+    private static async Task<IResult> ListConnectionsAsync(
+        Guid org_id, ICurrentUserAccessor current,
+        IScmConnectionService svc, CancellationToken ct)
+    {
+        var user = current.User;
+        return user is null
+            ? Results.Unauthorized()
+            : Results.Ok(await svc.ListAsync(org_id, ct));
+    }
+
+    private static async Task<IResult> CreateConnectionAsync(
+        Guid org_id, [FromBody] ScmConnectionRequest req,
+        ICurrentUserAccessor current, IScmConnectionService svc,
+        HttpContext http, CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+            return Results.Unauthorized();
+        var kind = ScmKindExtensions.Parse(req.Kind);
+        if (kind is null)
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 400, "unknown scm kind");
+        }
+        var conn = await svc.CreateAsync(
+            org_id, kind.Value, req.InstallationId, req.PemSecretRef,
+            req.WebhookSecretRef, req.Repos, req.AppId, req.AppSlug,
+            user.UserId.ToString(), ct,
+            req.ApiUrl, req.AuthKind, req.MetaJson);
+        return Results.Ok(conn);
     }
 
 }

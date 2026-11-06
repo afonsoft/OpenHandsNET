@@ -23,13 +23,7 @@ public static class AutomationEndpoints
     {
         var g = app.MapGroup("/api/v1/automations").WithTags("Automations");
 
-        g.MapGet("", async (
-            ICurrentUserAccessor current, IAutomationService svc,
-            CancellationToken ct) =>
-            current.User is not { } u
-                ? Results.Unauthorized()
-                : Results.Ok((await svc.ListAsync(u.UserId, ct))
-                    .Select(ToDto).ToList()))
+        g.MapGet("", ListAutomationsAsync)
             .RequireAuthorization()
             .RequireScope(AutomationsRead);
 
@@ -37,20 +31,7 @@ public static class AutomationEndpoints
             CreateAutomationAsync).RequireAuthorization()
             .RequireScope(AutomationsWrite);
 
-        g.MapGet("/{id:guid}", async (
-            Guid id, HttpContext ctx, ICurrentUserAccessor current,
-            IAutomationService svc, CancellationToken ct) =>
-        {
-            if (current.User is not { } u)
-            {
-                return Results.Unauthorized();
-            }
-
-            return await svc.GetAsync(id, u.UserId, ct) is { } a
-                ? Results.Ok(ToDto(a))
-                : OpenHandsNetProblemFactory.Create(
-                    ctx, 404, AutomationNotFound);
-        })
+        g.MapGet("/{id:guid}", GetIdGuidAsync)
             .RequireAuthorization()
             .RequireScope(AutomationsRead);
 
@@ -58,19 +39,7 @@ public static class AutomationEndpoints
             UpdateAutomationAsync).RequireAuthorization()
             .RequireScope(AutomationsWrite);
 
-        g.MapDelete("/{id:guid}", async (
-            Guid id, ICurrentUserAccessor current, IAutomationService svc,
-            CancellationToken ct) =>
-        {
-            if (current.User is not { } u)
-            {
-                return Results.Unauthorized();
-            }
-
-            return await svc.DeleteAsync(id, u.UserId, ct)
-                ? Results.NoContent()
-                : Results.NotFound();
-        })
+        g.MapDelete("/{id:guid}", DeleteIdGuidAsync)
             .RequireAuthorization()
             .RequireScope(AutomationsWrite);
 
@@ -78,63 +47,19 @@ public static class AutomationEndpoints
             RunNowAsync).RequireAuthorization()
             .RequireScope(AutomationsWrite);
 
-        g.MapGet("/{id:guid}/runs", async (
-            Guid id, int? take, ICurrentUserAccessor current,
-            IAutomationService svc, CancellationToken ct) =>
-            current.User is not { } u
-                ? Results.Unauthorized()
-                : Results.Ok((await svc.ListRunsAsync(
-                        id, u.UserId, take ?? 50, ct))
-                    .Select(ToRunDto).ToList()))
+        g.MapGet("/{id:guid}/runs", GetIdGuidRunsAsync)
             .RequireAuthorization()
             .RequireScope(AutomationsRead);
 
         // histórico global do owner — antes de /{id} para não colidir.
-        g.MapGet("/runs", async (
-            DateTimeOffset? from, DateTimeOffset? to, int? take,
-            ICurrentUserAccessor current, IAutomationService svc,
-            CancellationToken ct) =>
-            current.User is not { } u
-                ? Results.Unauthorized()
-                : Results.Ok((await svc.ListAllRunsAsync(
-                        u.UserId, from, to, take ?? 50, ct))
-                    .Select(ToRunDto).ToList()))
+        g.MapGet("/runs", GetRunsAsync)
             .RequireAuthorization()
             .RequireScope(AutomationsRead);
 
-        g.MapPost("/{id:guid}/hooks", async (
-            Guid id, HttpContext ctx, ICurrentUserAccessor current,
-            IAutomationService svc, CancellationToken ct) =>
-        {
-            if (current.User is not { } u) { return Results.Unauthorized(); }
-            var (hook, token) = await svc.CreateHookAsync(id, u.UserId, ct);
-            return hook is null
-                ? OpenHandsNetProblemFactory.Create(
-                    ctx, 404, AutomationNotFound)
-                : Results.Created(
-                    $"/api/v1/automations/hooks/{hook.Id}", new
-                    {
-                        id = hook.Id,
-                        automation_id = hook.AutomationId,
-                        token, // exibido uma única vez — só hash no banco
-                        created_at = hook.CreatedAt,
-                    });
-        }).RequireAuthorization()
+        g.MapPost("/{id:guid}/hooks", PostIdGuidHooksAsync).RequireAuthorization()
             .RequireScope(AutomationsWrite);
 
-        g.MapDelete("/hooks/{hookId:guid}", async (
-            Guid hookId, ICurrentUserAccessor current,
-            IAutomationService svc, CancellationToken ct) =>
-        {
-            if (current.User is not { } u)
-            {
-                return Results.Unauthorized();
-            }
-
-            return await svc.DeleteHookAsync(hookId, u.UserId, ct)
-                ? Results.NoContent()
-                : Results.NotFound();
-        })
+        g.MapDelete("/hooks/{hookId:guid}", DeleteHooksHookIdGuidAsync)
             .RequireAuthorization()
             .RequireScope(AutomationsWrite);
 
@@ -304,6 +229,94 @@ public static class AutomationEndpoints
         conversation_id = r.ConversationId,
         error = r.Error,
     };
+
+
+    private static async Task<IResult> GetIdGuidAsync(Guid id, HttpContext ctx, ICurrentUserAccessor current, IAutomationService svc, CancellationToken ct)
+    {
+        if (current.User is not { } u)
+        {
+            return Results.Unauthorized();
+        }
+
+        return await svc.GetAsync(id, u.UserId, ct) is { } a
+            ? Results.Ok(ToDto(a))
+            : OpenHandsNetProblemFactory.Create(
+                ctx, 404, AutomationNotFound);
+
+    }
+
+    private static async Task<IResult> DeleteIdGuidAsync(Guid id, ICurrentUserAccessor current, IAutomationService svc, CancellationToken ct)
+    {
+        if (current.User is not { } u)
+        {
+            return Results.Unauthorized();
+        }
+
+        return await svc.DeleteAsync(id, u.UserId, ct)
+            ? Results.NoContent()
+            : Results.NotFound();
+
+    }
+
+    private static async Task<IResult> GetIdGuidRunsAsync(Guid id, int? take, ICurrentUserAccessor current, IAutomationService svc, CancellationToken ct)
+    {
+        return current.User is not { } u
+            ? Results.Unauthorized()
+            : Results.Ok((await svc.ListRunsAsync(
+                    id, u.UserId, take ?? 50, ct))
+                .Select(ToRunDto).ToList());
+
+    }
+
+    private static async Task<IResult> GetRunsAsync(DateTimeOffset? from, DateTimeOffset? to, int? take, ICurrentUserAccessor current, IAutomationService svc, CancellationToken ct)
+    {
+        return current.User is not { } u
+            ? Results.Unauthorized()
+            : Results.Ok((await svc.ListAllRunsAsync(
+                    u.UserId, from, to, take ?? 50, ct))
+                .Select(ToRunDto).ToList());
+
+    }
+
+    private static async Task<IResult> PostIdGuidHooksAsync(Guid id, HttpContext ctx, ICurrentUserAccessor current, IAutomationService svc, CancellationToken ct)
+    {
+        if (current.User is not { } u) { return Results.Unauthorized(); }
+        var (hook, token) = await svc.CreateHookAsync(id, u.UserId, ct);
+        return hook is null
+            ? OpenHandsNetProblemFactory.Create(
+                ctx, 404, AutomationNotFound)
+            : Results.Created(
+                $"/api/v1/automations/hooks/{hook.Id}", new
+                {
+                    id = hook.Id,
+                    automation_id = hook.AutomationId,
+                    token, // exibido uma única vez — só hash no banco
+                    created_at = hook.CreatedAt,
+                });
+
+    }
+
+    private static async Task<IResult> DeleteHooksHookIdGuidAsync(Guid hookId, ICurrentUserAccessor current, IAutomationService svc, CancellationToken ct)
+    {
+        if (current.User is not { } u)
+        {
+            return Results.Unauthorized();
+        }
+
+        return await svc.DeleteHookAsync(hookId, u.UserId, ct)
+            ? Results.NoContent()
+            : Results.NotFound();
+
+    }
+
+    private static async Task<IResult> ListAutomationsAsync(
+        ICurrentUserAccessor current, IAutomationService svc,
+        CancellationToken ct) =>
+        current.User is not { } u
+            ? Results.Unauthorized()
+            : Results.Ok((await svc.ListAsync(u.UserId, ct))
+                .Select(ToDto).ToList());
+
 }
 
 /// <summary>Body JSON do CRUD de automations (snake_case).</summary>
