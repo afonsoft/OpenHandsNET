@@ -24,50 +24,11 @@ public static class ChatOpsEndpoints
     {
         // ---------- Inbound público ----------
 
-        app.MapPost("/api/v1/webhooks/chat/slack/events", async (
-            HttpRequest req, IChatOpsService svc, CancellationToken ct) =>
-        {
-            if ((req.ContentLength ?? 0) > MaxWebhookPayload)
-                return Results.StatusCode(413);
-            var payload = await ReadBody(req, ct);
-            var (result, challenge) = await svc.HandleEventAsync(
-                req.Headers["X-Slack-Signature"].FirstOrDefault(),
-                req.Headers["X-Slack-Request-Timestamp"].FirstOrDefault(),
-                payload, ct);
-            if (result == ChatOpsResult.Challenge)
-            {
-                return Results.Text(
-                    JsonSerializer.Serialize(new { challenge }),
-                    "application/json");
-            }
-            return MapResult(result);
-        });
+        app.MapPost("/api/v1/webhooks/chat/slack/events",
+            SlackEventsAsync).WithTags("OpenHandsNET.Api");
 
-        app.MapPost("/api/v1/webhooks/chat/slack/commands", async (
-            HttpRequest req, IChatOpsService svc, CancellationToken ct) =>
-        {
-            if ((req.ContentLength ?? 0) > MaxWebhookPayload)
-                return Results.StatusCode(413);
-            var payload = await ReadBody(req, ct);
-            var form = ParseForm(payload);
-            var (result, reply) = await svc.HandleCommandAsync(
-                req.Headers["X-Slack-Signature"].FirstOrDefault(),
-                req.Headers["X-Slack-Request-Timestamp"].FirstOrDefault(),
-                payload, form, ct);
-            if (result == ChatOpsResult.InvalidSignature)
-            {
-                return Results.Unauthorized();
-            }
-            if (result == ChatOpsResult.NoConnection)
-            {
-                return Results.NotFound(new { error = "no_connection" });
-            }
-            return Results.Ok(new
-            {
-                response_type = "ephemeral",
-                text = reply ?? "ok",
-            });
-        });
+        app.MapPost("/api/v1/webhooks/chat/slack/commands",
+            SlackCommandsAsync).WithTags("OpenHandsNET.Api");
 
         app.MapPost("/api/v1/webhooks/chat/slack/interactions", async (
             HttpRequest req, IChatOpsService svc, CancellationToken ct) =>
@@ -84,6 +45,7 @@ public static class ChatOpsEndpoints
                 payload, inner, ct);
             return MapResult(result);
         });
+
 
         // ---------- Admin (autenticado) ----------
 
@@ -147,6 +109,51 @@ public static class ChatOpsEndpoints
         }).RequireAuthorization("perm:manage_integrations");
 
         return app;
+    }
+
+    private static async Task<IResult> SlackEventsAsync(
+        HttpRequest req, IChatOpsService svc, CancellationToken ct)
+    {
+        if ((req.ContentLength ?? 0) > MaxWebhookPayload)
+            return Results.StatusCode(413);
+        var payload = await ReadBody(req, ct);
+        var (result, challenge) = await svc.HandleEventAsync(
+            req.Headers["X-Slack-Signature"].FirstOrDefault(),
+            req.Headers["X-Slack-Request-Timestamp"].FirstOrDefault(),
+            payload, ct);
+        if (result == ChatOpsResult.Challenge)
+        {
+            return Results.Text(
+                JsonSerializer.Serialize(new { challenge }),
+                "application/json");
+        }
+        return MapResult(result);
+    }
+
+    private static async Task<IResult> SlackCommandsAsync(
+        HttpRequest req, IChatOpsService svc, CancellationToken ct)
+    {
+        if ((req.ContentLength ?? 0) > MaxWebhookPayload)
+            return Results.StatusCode(413);
+        var payload = await ReadBody(req, ct);
+        var form = ParseForm(payload);
+        var (result, reply) = await svc.HandleCommandAsync(
+            req.Headers["X-Slack-Signature"].FirstOrDefault(),
+            req.Headers["X-Slack-Request-Timestamp"].FirstOrDefault(),
+            payload, form, ct);
+        if (result == ChatOpsResult.InvalidSignature)
+        {
+            return Results.Unauthorized();
+        }
+        if (result == ChatOpsResult.NoConnection)
+        {
+            return Results.NotFound(new { error = "no_connection" });
+        }
+        return Results.Ok(new
+        {
+            response_type = "ephemeral",
+            text = reply ?? "ok",
+        });
     }
 
     private static async Task<byte[]> ReadBody(

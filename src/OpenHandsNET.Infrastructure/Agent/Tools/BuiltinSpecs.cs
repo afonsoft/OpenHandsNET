@@ -127,50 +127,61 @@ public static class BuiltinSpecs
                     return ToolResult.Ok(new { files });
                 }
             case "read":
-                {
-                    var name = Str(a, "name");
-                    if (name is null || !SafeName(name.Replace(".md", "")))
-                    {
-                        return ToolResult.Error("name inválido");
-                    }
-
-                    var file = name.EndsWith(".md", StringComparison.Ordinal)
-                        ? name : name + ".md";
-                    var r = await ctx.Executor.ExecAsync(ctx.Sandbox,
-                        $"cd /workspace/repo && cat {dir}/{file} 2>/dev/null "
-                        + $"| head -c {CapBytes}",
-                        ctx.DefaultTimeout, ct);
-                    return r.StdOut.Length > 0
-                        ? ToolResult.Ok(new { name = file, content = r.StdOut })
-                        : ToolResult.Error($"spec '{file}' não encontrada");
-                }
+                return await ReadSpecAsync(ctx, a, ct, dir);
             case "write":
-                {
-                    var name = Str(a, "name");
-                    var content = Str(a, "content");
-                    if (name is null || !SafeName(name.Replace(".md", "")))
-                    {
-                        return ToolResult.Error("name inválido");
-                    }
-                    if (content is null)
-                    {
-                        return ToolResult.Error("content é obrigatório");
-                    }
-
-                    var file = name.EndsWith(".md", StringComparison.Ordinal)
-                        ? name : name + ".md";
-                    var r = await ctx.Executor.ExecAsync(ctx.Sandbox,
-                        $"cd /workspace/repo && mkdir -p {dir} && "
-                        + $"cat > {dir}/{file} <<'OHN_EOF'\n{content}\nOHN_EOF\n"
-                        + "&& echo wrote",
-                        ctx.DefaultTimeout, ct);
-                    return r.ExitCode == 0
-                        ? ToolResult.Ok(new { path = $"{dir}/{file}" })
-                        : ToolResult.Error($"specs write falhou: {r.StdErr.Trim()}");
-                }
+                return await WriteSpecAsync(ctx, a, ct, dir);
             default:
                 return ToolResult.Error("op deve ser list|read|write");
         }
+    }
+
+
+    private static async Task<ToolResult> ReadSpecAsync(
+        ToolCallContext ctx, JsonElement a, CancellationToken ct,
+        string dir)
+    {
+        var name = Str(a, "name");
+        if (name is null || !SafeName(name.Replace(".md", "")))
+        {
+            return ToolResult.Error("name inválido");
+        }
+
+        var file = name.EndsWith(".md", StringComparison.Ordinal)
+            ? name : name + ".md";
+        var r = await ctx.Executor.ExecAsync(ctx.Sandbox,
+            $"cd /workspace/repo && cat {dir}/{file} 2>/dev/null "
+            + $"| head -c {CapBytes}",
+            ctx.DefaultTimeout, ct);
+        return r.StdOut.Length > 0
+            ? ToolResult.Ok(new { name = file, content = r.StdOut })
+            : ToolResult.Error($"spec '{file}' não encontrada");
+    }
+
+    private static async Task<ToolResult> WriteSpecAsync(
+        ToolCallContext ctx, JsonElement a, CancellationToken ct,
+        string dir)
+    {
+        var name = Str(a, "name");
+        var content = Str(a, "content");
+        if (name is null || !SafeName(name.Replace(".md", "")))
+        {
+            return ToolResult.Error("name inválido");
+        }
+        if (content is null)
+        {
+            return ToolResult.Error("content é obrigatório");
+        }
+
+        var file = name.EndsWith(".md", StringComparison.Ordinal)
+            ? name : name + ".md";
+        var r = await ctx.Executor.ExecAsync(ctx.Sandbox,
+            $"cd /workspace/repo && mkdir -p {dir} && "
+            + $"cat > {dir}/{file} <<'OHN_EOF'\n{content}\nOHN_EOF\n"
+            + "&& echo wrote",
+            ctx.DefaultTimeout, ct);
+        return r.ExitCode == 0
+            ? ToolResult.Ok(new { path = $"{dir}/{file}" })
+            : ToolResult.Error($"specs write falhou: {r.StdErr.Trim()}");
     }
 
     private static bool SafeName(string v) =>

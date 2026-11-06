@@ -175,6 +175,20 @@ public sealed class Spec97AuthBoundaryTests : IDisposable
     }
 
     [Fact]
+    public async Task Knowledge_Suggestions_Valid_Status_Is_200()
+    {
+        using var http = await TestAuth.LoginAsync(_factory);
+        var res = await http.GetAsync(
+            "/api/v1/knowledge/suggestions?status=pending");
+        res.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res = await http.GetAsync(
+            "/api/v1/knowledge/suggestions?status=APPROVED");
+        res.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res = await http.GetAsync("/api/v1/knowledge/suggestions");
+        res.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task Org_Create_Empty_Name_Is_4xx_Not_500()
     {
         using var http = await TestAuth.LoginAsync(_factory);

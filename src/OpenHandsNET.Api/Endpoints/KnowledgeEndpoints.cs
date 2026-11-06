@@ -14,23 +14,8 @@ public static class KnowledgeEndpoints
     {
         var g = app.MapGroup("/api/v1/knowledge").RequireAuthorization();
 
-        g.MapGet("/suggestions", async (string? status, string? scope,
-            IKnowledgeService svc, HttpContext http, CancellationToken ct) =>
-        {
-            SuggestionStatus? parsed = null;
-            if (status is not null)
-            {
-                if (!Enum.TryParse(status, true, out SuggestionStatus s))
-                {
-                    return OpenHandsNetProblemFactory.Create(
-                        http, 400, $"invalid status '{status}'");
-                }
-                parsed = s;
-            }
-
-            return Results.Ok(await svc.ListSuggestionsAsync(
-                parsed, scope, ct));
-        });
+        g.MapGet("/suggestions", ListSuggestionsAsync)
+            .WithTags("OpenHandsNET.Api");
         g.MapPost("/suggestions", async (SuggestRequest body,
             IKnowledgeService svc, CancellationToken ct) =>
         {
@@ -93,6 +78,25 @@ public static class KnowledgeEndpoints
                     org.OrgId, query, ct))
                 : Results.Ok(Array.Empty<object>()));
         return app;
+    }
+
+    private static async Task<IResult> ListSuggestionsAsync(
+        string? status, string? scope,
+        IKnowledgeService svc, HttpContext http, CancellationToken ct)
+    {
+        SuggestionStatus? parsed = null;
+        if (status is not null)
+        {
+            if (!Enum.TryParse(status, true, out SuggestionStatus s))
+            {
+                return OpenHandsNetProblemFactory.Create(
+                    http, 400, $"invalid status '{status}'");
+            }
+            parsed = s;
+        }
+
+        return Results.Ok(await svc.ListSuggestionsAsync(
+            parsed, scope, ct));
     }
 
     public sealed record SuggestRequest(
