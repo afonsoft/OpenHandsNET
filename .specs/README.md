@@ -88,7 +88,7 @@ terminal permanecer aqui (SPEC-82).
 | 102 | s3776-infra-agent | Completed → docs/specs | PR #264 |
 | 103 | s3776-endpoints | Approved | Epic #152 |
 | 104 | s107-many-params | Approved | Epic #152 |
-| 105 | s3218-s127-shadow-loop | Approved | Epic #152 |
+| 105 | s3218-s127-shadow-loop | Completed → docs/specs | Epic #152 · PR pending |
 | 106 | s1075-s3903-uris-ns | Approved | Epic #152 |
 | 113 | desktop-surface | Approved | roadmap Devin-parity |
 
