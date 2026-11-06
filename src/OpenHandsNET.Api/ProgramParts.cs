@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
@@ -90,99 +91,8 @@ internal static class ProgramParts
     {
         services.AddOpenApi("v1", o =>
         {
-            o.AddDocumentTransformer((doc, _, _) =>
-            {
-                doc.Info.Title = "OpenHandsNET API";
-                doc.Info.Version = "v1";
-                doc.Info.Description =
-                    "Public REST surface (/api/v1, /api/acp, /v1 " +
-                    "OpenAI-compat gateway). Auth: cookie session or " +
-                    "`Authorization: Bearer sk-*`.";
-                // SPEC-80 RF-002: esquemas de auth + security global.
-                doc.Components ??= new OpenApiComponents();
-                doc.Components.SecuritySchemes ??=
-                    new Dictionary<string, IOpenApiSecurityScheme>();
-                doc.Components.SecuritySchemes["bearer"] =
-                    new OpenApiSecurityScheme
-                    {
-                        Type = SecuritySchemeType.Http,
-                        Scheme = "bearer",
-                        Description =
-                            "API key `sk-*` (header `Authorization: Bearer`).",
-                    };
-                doc.Components.SecuritySchemes["cookie"] =
-                    new OpenApiSecurityScheme
-                    {
-                        Type = SecuritySchemeType.ApiKey,
-                        In = ParameterLocation.Cookie,
-                        Name = "openhandsnet_auth",
-                        Description = "Sessão de browser.",
-                    };
-                doc.Security =
-                [
-                    new OpenApiSecurityRequirement
-                    {
-                        [new OpenApiSecuritySchemeReference("bearer", doc)]
-                            = [],
-                    },
-                    new OpenApiSecurityRequirement
-                    {
-                        [new OpenApiSecuritySchemeReference("cookie", doc)]
-                            = [],
-                    },
-                ];
-                // #218: route constraints `{x:int}` geram `pattern` regex em
-                // schema `type: integer` — regex inválido para inteiros
-                // (ex.: `^-?(?:0|[1-9]\d*)$` com negative lookahead
-                // dispara bug 'many' do hypothesis no schemathesis
-                // nightly, mascarando falhas reais). Inteiro não pode
-                // levar pattern: removemos em cada path-param.
-                if (doc.Paths is not null)
-                {
-                    foreach (var op in doc.Paths.Values
-                        .SelectMany(item => item.Operations?.Values
-                            ?? Enumerable.Empty<OpenApiOperation>()))
-                    {
-                        foreach (var p in op.Parameters ?? [])
-                        {
-                            if (p?.Schema is OpenApiSchema s
-                                && s.Type == JsonSchemaType.Integer
-                                && s.Pattern is not null)
-                            {
-                                s.Pattern = null;
-                            }
-                        }
-                    }
-                }
-                return Task.CompletedTask;
-            });
-            o.AddOperationTransformer((op, ctx, _) =>
-            {
-                op.Summary ??= $"{ctx.Description.HttpMethod} " +
-                    $"/{ctx.Description.RelativePath}";
-                var meta = ctx.Description.ActionDescriptor?.EndpointMetadata;
-                var anonymous =
-                    meta?.OfType<IAllowAnonymous>().Any() == true;
-                if (anonymous)
-                {
-                    // operações anônimas não herdam o security global.
-                    op.Security = [];
-                }
-                else
-                {
-                    // SPEC-80 RF-002: default-deny — endpoints sem
-                    // AllowAnonymous exigem usuário autenticado
-                    // (ICurrentUserAccessor lança 401 ou
-                    // RequireAuthorization/perm:* aplica policy), então o
-                    // contrato documenta 401/403 em toda operação não-anônima.
-                    op.Responses ??= new OpenApiResponses();
-                    op.Responses.TryAdd("401",
-                        new OpenApiResponse { Description = "Unauthorized" });
-                    op.Responses.TryAdd("403",
-                        new OpenApiResponse { Description = "Forbidden" });
-                }
-                return Task.CompletedTask;
-            });
+            o.AddDocumentTransformer(TransformDocumentAsync);
+            o.AddOperationTransformer(TransformOperationAsync);
         });
     }
 
@@ -500,4 +410,105 @@ internal static class ProgramParts
         // Anônimo — a tela de login precisa carregar sem sessão (SPEC-97).
         app.MapFallbackToFile("index.html").AllowAnonymous();
     }
+    private static Task TransformDocumentAsync(
+        OpenApiDocument doc, OpenApiDocumentTransformerContext context,
+        CancellationToken ct)
+    {
+        doc.Info.Title = "OpenHandsNET API";
+        doc.Info.Version = "v1";
+        doc.Info.Description =
+            "Public REST surface (/api/v1, /api/acp, /v1 " +
+            "OpenAI-compat gateway). Auth: cookie session or " +
+            "`Authorization: Bearer sk-*`.";
+        // SPEC-80 RF-002: esquemas de auth + security global.
+        doc.Components ??= new OpenApiComponents();
+        doc.Components.SecuritySchemes ??=
+            new Dictionary<string, IOpenApiSecurityScheme>();
+        doc.Components.SecuritySchemes["bearer"] =
+            new OpenApiSecurityScheme
+            {
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer",
+                Description =
+                    "API key `sk-*` (header `Authorization: Bearer`).",
+            };
+        doc.Components.SecuritySchemes["cookie"] =
+            new OpenApiSecurityScheme
+            {
+                Type = SecuritySchemeType.ApiKey,
+                In = ParameterLocation.Cookie,
+                Name = "openhandsnet_auth",
+                Description = "Sessão de browser.",
+            };
+        doc.Security =
+        [
+            new OpenApiSecurityRequirement
+                    {
+                        [new OpenApiSecuritySchemeReference("bearer", doc)]
+                            = [],
+                    },
+                    new OpenApiSecurityRequirement
+                    {
+                        [new OpenApiSecuritySchemeReference("cookie", doc)]
+                            = [],
+                    },
+                ];
+        // #218: route constraints `{x:int}` geram `pattern` regex em
+        // schema `type: integer` — regex inválido para inteiros
+        // (ex.: `^-?(?:0|[1-9]\d*)$` com negative lookahead
+        // dispara bug 'many' do hypothesis no schemathesis
+        // nightly, mascarando falhas reais). Inteiro não pode
+        // levar pattern: removemos em cada path-param.
+        if (doc.Paths is not null)
+        {
+            foreach (var op in doc.Paths.Values
+                .SelectMany(item => item.Operations?.Values
+                    ?? Enumerable.Empty<OpenApiOperation>()))
+            {
+                foreach (var p in op.Parameters ?? [])
+                {
+                    if (p?.Schema is OpenApiSchema s
+                        && s.Type == JsonSchemaType.Integer
+                        && s.Pattern is not null)
+                    {
+                        s.Pattern = null;
+                    }
+                }
+            }
+        }
+        return Task.CompletedTask;
+
+    }
+
+    private static Task TransformOperationAsync(
+        OpenApiOperation op, OpenApiOperationTransformerContext ctx,
+        CancellationToken ct)
+    {
+        op.Summary ??= $"{ctx.Description.HttpMethod} " +
+            $"/{ctx.Description.RelativePath}";
+        var meta = ctx.Description.ActionDescriptor?.EndpointMetadata;
+        var anonymous =
+            meta?.OfType<IAllowAnonymous>().Any() == true;
+        if (anonymous)
+        {
+            // operações anônimas não herdam o security global.
+            op.Security = [];
+        }
+        else
+        {
+            // SPEC-80 RF-002: default-deny — endpoints sem
+            // AllowAnonymous exigem usuário autenticado
+            // (ICurrentUserAccessor lança 401 ou
+            // RequireAuthorization/perm:* aplica policy), então o
+            // contrato documenta 401/403 em toda operação não-anônima.
+            op.Responses ??= new OpenApiResponses();
+            op.Responses.TryAdd("401",
+                new OpenApiResponse { Description = "Unauthorized" });
+            op.Responses.TryAdd("403",
+                new OpenApiResponse { Description = "Forbidden" });
+        }
+        return Task.CompletedTask;
+
+    }
+
 }
