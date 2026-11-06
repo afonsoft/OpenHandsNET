@@ -319,7 +319,7 @@ public static class ScimEndpoints
         await db.SaveChangesAsync(ct);
         await audit.RecordAsync(
             "scim.user_deprovisioned", "scim", orgId, "user",
-            id.ToString());
+            id.ToString(), cancellationToken: ct);
         return Results.NoContent();
     }
 
