@@ -27,40 +27,8 @@ public static class AcpEndpoints
 
         // session/new — cria conversa com prompt inicial e espera READY
         // (o run dispara via InitialMessage.Run, paridade do gateway).
-        acp.MapPost("/conversations", async (
-            JsonElement body, IAppConversationService convs,
-            IStartTaskService tasks, HttpContext http,
-            CancellationToken ct) =>
-        {
-            var prompt = ExtractPrompt(body);
-            if (prompt is null or "")
-            {
-                return OpenHandsNetProblemFactory.Create(
-                    http, 400, "initial_prompt is required");
-            }
-
-            var task = await convs.CreateAsync(
-                new CreateConversationRequest(
-                    new InitialMessage("user",
-                        [new { type = "text", text = prompt }]),
-                    SelectedRepository: Prop(body, "selected_repository"),
-                    AgentType: null,
-                    LlmModel: Prop(body, "model"),
-                    SandboxSpecId: null,
-                    ConfirmationMode: false,
-                    SandboxProfile: null,
-                    Permissions: null,
-                    Mode: null,
-                    Secrets: null),
-                ct);
-
-            var convId = await WaitReadyAsync(tasks, task.Id, ct);
-            return convId is null
-                ? OpenHandsNetProblemFactory.Create(
-                    http, 502, "start task failed")
-                : Results.Created($"/api/acp/conversations/{convId}",
-                    new { conversation_id = convId, state = "running" });
-        });
+        acp.MapPost("/conversations",
+            CreateConversationAsync);
 
         // session state — paridade GET de conversa, shape ACP.
         acp.MapGet("/conversations/{id:guid}", async (
@@ -77,46 +45,8 @@ public static class AcpEndpoints
                     http, 404, $"Conversation {id} not found"));
 
         // session/prompt — mensagem do usuário + acorda o runner.
-        acp.MapPost("/conversations/{id:guid}/prompt", async (
-            Guid id, JsonElement body, IAppConversationService convs,
-            IEventService events, IAgentRunnerHost runnerHost,
-            HttpContext http, CancellationToken ct) =>
-        {
-            var prompt = ExtractPrompt(body);
-            if (prompt is null or "")
-            {
-                return OpenHandsNetProblemFactory.Create(
-                    http, 400, "prompt is required");
-            }
-
-            if (await convs.ValidateSendMessageAsync(id, ct) is { } err)
-            {
-                return OpenHandsNetProblemFactory.Create(http,
-                err switch
-                {
-                    SendMessageError.NotFound => 404,
-                    SendMessageError.Gone => 410,
-                    SendMessageError.ServiceUnavailable => 503,
-                    _ => 409,
-                },
-                $"conversation {id}: {err}");
-            }
-
-            await events.AppendAsync(id, new MessageEvent
-            {
-                Source = EventSource.User,
-                LlmMessage = JsonSerializer.SerializeToElement(new
-                {
-                    role = "user",
-                    content = new[]
-                    {
-                        new { type = "text", text = prompt },
-                    },
-                }, EventJson.Options),
-            }, ct);
-            await runnerHost.NotifyMessageAsync(id, ct);
-            return Results.Accepted();
-        });
+        acp.MapPost("/conversations/{id:guid}/prompt",
+            SendPromptAsync);
 
         // session/cancel — interrompe o run corrente.
         acp.MapPost("/conversations/{id:guid}/cancel", async (
@@ -136,48 +66,128 @@ public static class AcpEndpoints
 
         // session/update — SSE com updates do turno (agent chunks +
         // turn_complete no estado terminal).
-        acp.MapGet("/conversations/{id:guid}/events", async (
-            Guid id, IAppConversationService convs,
-            IEventService events, HttpContext http,
-            CancellationToken ct) =>
-        {
-            if (await convs.GetAsync(id, ct) is null)
-            {
-                return OpenHandsNetProblemFactory.Create(
-                    http, 404, $"Conversation {id} not found");
-            }
-
-            http.Response.ContentType = "text/event-stream";
-            http.Response.Headers.CacheControl = "no-cache";
-            try
-            {
-                await foreach (var e in events.SubscribeAsync(id, ct))
-                {
-                    var update = ToSessionUpdate(e);
-                    if (update is null)
-                    {
-                        continue;
-                    }
-
-                    await http.Response.WriteAsync(
-                        $"data: {JsonSerializer.Serialize(update)}\n\n", ct);
-                    await http.Response.Body.FlushAsync(ct);
-                    if (update.SessionUpdate == "turn_complete")
-                    {
-                        break;
-                    }
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                // client desconectou — normal em SSE.
-            }
-
-            return Results.Empty;
-        });
+        acp.MapGet("/conversations/{id:guid}/events",
+            StreamEventsAsync);
 
         return app;
     }
+
+    private static async Task<IResult> CreateConversationAsync(
+        JsonElement body, IAppConversationService convs,
+        IStartTaskService tasks, HttpContext http,
+        CancellationToken ct)
+    {
+        var prompt = ExtractPrompt(body);
+        if (prompt is null or "")
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 400, "initial_prompt is required");
+        }
+
+        var task = await convs.CreateAsync(
+            new CreateConversationRequest(
+                new InitialMessage("user",
+                    [new { type = "text", text = prompt }]),
+                SelectedRepository: Prop(body, "selected_repository"),
+                AgentType: null,
+                LlmModel: Prop(body, "model"),
+                SandboxSpecId: null,
+                ConfirmationMode: false,
+                SandboxProfile: null,
+                Permissions: null,
+                Mode: null,
+                Secrets: null),
+            ct);
+
+        var convId = await WaitReadyAsync(tasks, task.Id, ct);
+        return convId is null
+            ? OpenHandsNetProblemFactory.Create(
+                http, 502, "start task failed")
+            : Results.Created($"/api/acp/conversations/{convId}",
+                new { conversation_id = convId, state = "running" });
+    }
+
+    private static async Task<IResult> SendPromptAsync(
+        Guid id, JsonElement body, IAppConversationService convs,
+        IEventService events, IAgentRunnerHost runnerHost,
+        HttpContext http, CancellationToken ct)
+    {
+        var prompt = ExtractPrompt(body);
+        if (prompt is null or "")
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 400, "prompt is required");
+        }
+
+        if (await convs.ValidateSendMessageAsync(id, ct) is { } err)
+        {
+            return OpenHandsNetProblemFactory.Create(http,
+            err switch
+            {
+                SendMessageError.NotFound => 404,
+                SendMessageError.Gone => 410,
+                SendMessageError.ServiceUnavailable => 503,
+                _ => 409,
+            },
+            $"conversation {id}: {err}");
+        }
+
+        await events.AppendAsync(id, new MessageEvent
+        {
+            Source = EventSource.User,
+            LlmMessage = JsonSerializer.SerializeToElement(new
+            {
+                role = "user",
+                content = new[]
+                {
+                    new { type = "text", text = prompt },
+                },
+            }, EventJson.Options),
+        }, ct);
+        await runnerHost.NotifyMessageAsync(id, ct);
+        return Results.Accepted();
+    }
+
+    private static async Task<IResult> StreamEventsAsync(
+        Guid id, IAppConversationService convs,
+        IEventService events, HttpContext http,
+        CancellationToken ct)
+    {
+        if (await convs.GetAsync(id, ct) is null)
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 404, $"Conversation {id} not found");
+        }
+
+        http.Response.ContentType = "text/event-stream";
+        http.Response.Headers.CacheControl = "no-cache";
+        try
+        {
+            await foreach (var e in events.SubscribeAsync(id, ct))
+            {
+                var update = ToSessionUpdate(e);
+                if (update is null)
+                {
+                    continue;
+                }
+
+                await http.Response.WriteAsync(
+                    $"data: {JsonSerializer.Serialize(update)}\n\n", ct);
+                await http.Response.Body.FlushAsync(ct);
+                if (update.SessionUpdate == "turn_complete")
+                {
+                    break;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // client desconectou — normal em SSE.
+        }
+
+        return Results.Empty;
+    }
+
 
     /// <summary>Mapeia um evento durable p/ notificação session/update.</summary>
     private static AcpSessionUpdate? ToSessionUpdate(EventBase e) => e switch

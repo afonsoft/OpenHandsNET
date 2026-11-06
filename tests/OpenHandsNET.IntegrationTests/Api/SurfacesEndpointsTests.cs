@@ -89,4 +89,22 @@ public sealed class SurfacesEndpointsTests : IDisposable
             $"/api/v1/sandboxes/{Guid.NewGuid()}/surfaces/6080/vnc.html");
         res.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task Sandbox_Search_Both_Paths_Return_Ok()
+    {
+        var http = _factory.CreateClient(
+            new WebApplicationFactoryClientOptions { HandleCookies = true });
+        (await http.PostAsJsonAsync("/api/v1/auth/dev-login",
+            new { email = "s3@example.com", displayName = "s3" }))
+            .StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        (await http.GetAsync("/api/v1/sandboxes?status=running"))
+            .StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await http.GetAsync(
+            "/api/v1/sandboxes/search?status=bogus"))
+            .StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await http.GetAsync("/api/v1/sandboxes"))
+            .StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
 }

@@ -443,6 +443,13 @@ public static class GitEndpoints
                     ? e : "search failed");
         }
 
+        var matches = ParseGrepMatches(r.StdOut, q, glob);
+        return Results.Ok(new { matches, timed_out = r.TimedOut });
+    }
+
+    private static List<object> ParseGrepMatches(
+        string stdOut, string q, string? glob)
+    {
         var globRe = glob is { Length: > 0 }
             ? new System.Text.RegularExpressions.Regex(
                 "^" + System.Text.RegularExpressions.Regex.Escape(glob)
@@ -452,7 +459,7 @@ public static class GitEndpoints
             : null;
 
         var matches = new List<object>();
-        foreach (var line in r.StdOut.Split('\n',
+        foreach (var line in stdOut.Split('\n',
             StringSplitOptions.RemoveEmptyEntries))
         {
             // ./rel/path:NN:text — primeiro ':' separa path, segundo a linha.
@@ -483,7 +490,7 @@ public static class GitEndpoints
             });
         }
 
-        return Results.Ok(new { matches, timed_out = r.TimedOut });
+        return matches;
     }
 
     /// <summary>SPEC-42 RF-005: commit via GitService (author agent).</summary>

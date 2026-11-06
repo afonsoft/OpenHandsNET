@@ -19,25 +19,8 @@ public static class SandboxEndpoints
     {
         var sandboxes = app.MapGroup("/api/v1/sandboxes").WithTags("Sandboxes");
 
-        sandboxes.MapGet("/", async (
-            string? status, Guid? conversation_id,
-            ISandboxService svc, CancellationToken ct) =>
-        {
-            var st = Enum.TryParse<SandboxStatus>(status, ignoreCase: true, out var v)
-                ? v : (SandboxStatus?)null;
-            return Results.Ok((await svc.SearchAsync(st, conversation_id, ct))
-                .Select(ToDto));
-        });
-
-        sandboxes.MapGet("/search", async (
-            string? status, Guid? conversation_id,
-            ISandboxService svc, CancellationToken ct) =>
-        {
-            var st = Enum.TryParse<SandboxStatus>(status, ignoreCase: true, out var v)
-                ? v : (SandboxStatus?)null;
-            return Results.Ok((await svc.SearchAsync(st, conversation_id, ct))
-                .Select(ToDto));
-        });
+        sandboxes.MapGet("/", SearchSandboxesAsync);
+        sandboxes.MapGet("/search", SearchSandboxesAsync);
 
         sandboxes.MapGet(IdGuid, async (
             Guid id, ISandboxService svc, HttpContext http, CancellationToken ct) =>
@@ -70,59 +53,15 @@ public static class SandboxEndpoints
 
         // SPEC-40 RF-004: preview token p/ surfaces públicas (iframe/WS
         // de ttyd/code-server — cookie de sessão não cobre terceiros).
-        sandboxes.MapPost("/{id:guid}/preview-token", async (
-            Guid id, JsonElement body,
-            ISandboxService svc,
-            Routing.PreviewTokenService tokens,
-            HttpContext http, CancellationToken ct) =>
-        {
-            if (await svc.GetAsync(id, ct) is null)
-            {
-                return OpenHandsNetProblemFactory.Create(
-                    http, 404, $"Sandbox {id} not found");
-            }
-
-            var port = body.ValueKind == JsonValueKind.Object
-                && body.TryGetProperty("port", out var p)
-                && p.TryGetInt32(out var pv) ? pv : 8000;
-            var (token, exp) = tokens.Mint(id, port);
-            return Results.Ok(new { token, expires_at = exp, port });
-        }).RequireAuthorization();
+        sandboxes.MapPost("/{id:guid}/preview-token",
+            MintPreviewTokenAsync).RequireAuthorization();
 
         // SPEC-113 RF-003: proxy same-origin para surfaces do sandbox —
         // funciona em qualquer RoutingMode (no "internal" o middleware
         // SandboxHostRouter é no-op). Auth: sessão (FallbackPolicy) ou
         // ?token= preview token (SPEC-40 RF-004) para links compartilhados.
-        sandboxes.MapGet("/{id:guid}/surfaces/{port:int}/{**rest}", async (
-            Guid id, int port, string? rest,
-            HttpContext http, CancellationToken ct) =>
-        {
-            var tokens = http.RequestServices
-                .GetRequiredService<Routing.PreviewTokenService>();
-            if (http.User.Identity?.IsAuthenticated != true
-                && !tokens.Validate(http.Request.Query["token"], id, port))
-            {
-                return Results.Unauthorized();
-            }
-
-            var svc = http.RequestServices
-                .GetRequiredService<ISandboxService>();
-            var proxy = http.RequestServices
-                .GetRequiredService<Routing.SandboxSurfaceProxy>();
-
-            var sandbox = await svc.GetAsync(id, ct);
-            if (sandbox?.ContainerId is null)
-            {
-                return OpenHandsNetProblemFactory.Create(
-                    http, 404, $"Sandbox {id} not found");
-            }
-
-            await proxy.ProxyAsync(http,
-                Routing.SandboxSurfaceProxy.UpstreamFor(
-                    sandbox.ContainerId, port),
-                string.Concat("/", rest));
-            return Results.Empty;
-        }).AllowAnonymous(); // auth dentro do handler: sessão OU ?token= preview
+        sandboxes.MapGet("/{id:guid}/surfaces/{port:int}/{**rest}",
+    ProxySurfaceAsync).AllowAnonymous(); // auth dentro do handler: sessão OU ?token= preview // auth dentro do handler: sessão OU ?token= preview
 
         // SPEC-24 RF-007: probe /alive v2 do agent in-container
         // (agent_version nulo = v1/sem agent → sem streaming).
@@ -191,6 +130,66 @@ public static class SandboxEndpoints
             Results.NoContent());
 
         return app;
+    }
+
+    private static async Task<IResult> SearchSandboxesAsync(
+        string? status, Guid? conversation_id,
+        ISandboxService svc, CancellationToken ct)
+    {
+        var st = Enum.TryParse<SandboxStatus>(status, ignoreCase: true, out var v)
+            ? v : (SandboxStatus?)null;
+        return Results.Ok((await svc.SearchAsync(st, conversation_id, ct))
+            .Select(ToDto));
+    }
+
+    private static async Task<IResult> MintPreviewTokenAsync(
+        Guid id, JsonElement body,
+        ISandboxService svc,
+        Routing.PreviewTokenService tokens,
+        HttpContext http, CancellationToken ct)
+    {
+        if (await svc.GetAsync(id, ct) is null)
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 404, $"Sandbox {id} not found");
+        }
+
+        var port = body.ValueKind == JsonValueKind.Object
+            && body.TryGetProperty("port", out var p)
+            && p.TryGetInt32(out var pv) ? pv : 8000;
+        var (token, exp) = tokens.Mint(id, port);
+        return Results.Ok(new { token, expires_at = exp, port });
+    }
+
+    private static async Task<IResult> ProxySurfaceAsync(
+        Guid id, int port, string? rest,
+        HttpContext http, CancellationToken ct)
+    {
+        var tokens = http.RequestServices
+            .GetRequiredService<Routing.PreviewTokenService>();
+        if (http.User.Identity?.IsAuthenticated != true
+            && !tokens.Validate(http.Request.Query["token"], id, port))
+        {
+            return Results.Unauthorized();
+        }
+
+        var svc = http.RequestServices
+            .GetRequiredService<ISandboxService>();
+        var proxy = http.RequestServices
+            .GetRequiredService<Routing.SandboxSurfaceProxy>();
+
+        var sandbox = await svc.GetAsync(id, ct);
+        if (sandbox?.ContainerId is null)
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 404, $"Sandbox {id} not found");
+        }
+
+        await proxy.ProxyAsync(http,
+            Routing.SandboxSurfaceProxy.UpstreamFor(
+                sandbox.ContainerId, port),
+            string.Concat("/", rest));
+        return Results.Empty;
     }
 
     private static async Task<IResult> Safe(
