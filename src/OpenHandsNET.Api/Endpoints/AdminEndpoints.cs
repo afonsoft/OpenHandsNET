@@ -19,20 +19,9 @@ public static class AdminEndpoints
 
         // Super admins — list open to any authenticated user when
         // USER_PROVISIONING_ENABLED (upstream OHE-3196 parity); writes are perm-gated.
-        g.MapGet("/super-admins", async (
-            ISuperAdminService admins, IConfiguration config,
-            ICurrentUserAccessor current, HttpContext ctx,
-            IAuthorizationService authz, CancellationToken ct) =>
-        {
-            if (current.User is null)
-                return Results.Unauthorized();
-            if (config.GetValue("Auth:UserProvisioningEnabled", false))
-                return Results.Ok(await admins.ListAsync(ct));
-            return (await authz.AuthorizeAsync(
-                ctx.User, null, PermManageSuperAdmins)).Succeeded
-                ? Results.Ok(await admins.ListAsync(ct))
-                : Results.Forbid();
-        }).RequireAuthorization();
+        g.MapGet("/super-admins",
+            ListSuperAdminsAsync).WithTags("OpenHandsNET.Api")
+            .RequireAuthorization();
 
         g.MapGet("/super-admins/me", async (
             ICurrentUserAccessor current, ISuperAdminService admins,
@@ -121,20 +110,9 @@ public static class AdminEndpoints
         }).RequireAuthorization(PermManageSuperAdmins);
 
         // Audit trail query (RF-011) + CSV/JSON export.
-        g.MapGet("/audit", async (
-            [AsParameters] AuditQueryParams p) =>
-        {
-            var (items, total) = await p.Audit.QueryAsync(
-                p.User, p.Action, p.From, p.To, p.Page ?? 1, 100, p.Ct);
-            if (string.Equals(p.Format, "csv", StringComparison.OrdinalIgnoreCase))
-            {
-                var csv = "id,actor_user_id,org_id,action,target_type,target_id,timestamp\n"
-                    + string.Join("\n", items.Select(e =>
-                        $"{e.Id},{e.ActorUserId},{e.OrgId},{e.Action},{e.TargetType},{e.TargetId},{e.Timestamp:O}"));
-                return Results.Text(csv, "text/csv");
-            }
-            return Results.Ok(new { items, total });
-        }).RequireAuthorization(PermManageSuperAdmins);
+        g.MapGet("/audit",
+            QueryAuditAsync).WithTags("OpenHandsNET.Api")
+            .RequireAuthorization(PermManageSuperAdmins);
 
         // Feature flags
         g.MapGet("/feature-flags", async (
@@ -163,22 +141,8 @@ public static class AdminEndpoints
             Results.Ok(await plans.ListAsync(ct)))
             .RequireAuthorization(PermManageSuperAdmins);
 
-        g.MapPost("/plans", async (
-            [FromBody] PlanCreateRequest req, IPlanAdminService plans,
-            HttpContext http, CancellationToken ct) =>
-        {
-            // #218: `{}` deixa Name nulo — validar antes do service (NRE→500).
-            if (string.IsNullOrWhiteSpace(req.Name))
-            {
-                return OpenHandsNetProblemFactory.Create(
-                    http, 400, "name é obrigatório");
-            }
-            return await plans.CreateAsync(
-                req.Name, req.Limits ?? new(), req.MonthlyPriceUsd, ct)
-                is { } p ? Results.Created($"/api/v1/admin/plans/{p.Id}", p)
-                : OpenHandsNetProblemFactory.Create(
-                    http, 409, "plan name already exists");
-        })
+        g.MapPost("/plans",
+            CreatePlanAsync).WithTags("OpenHandsNET.Api")
             .RequireAuthorization(PermManageSuperAdmins)
             .Produces<PlanInfo>(201)
             .ProducesProblem(400)
@@ -192,15 +156,9 @@ public static class AdminEndpoints
                 is { } p ? Results.Ok(p) : Results.NotFound())
             .RequireAuthorization(PermManageSuperAdmins);
 
-        g.MapDelete("/plans/{id:guid}", async (
-            Guid id, IPlanAdminService plans, CancellationToken ct) =>
-            await plans.DeleteAsync(id, ct) switch
-            {
-                null => Results.NoContent(),
-                PlanDeleteError.NotFound => Results.NotFound(),
-                _ => Results.Conflict(
-                    new { detail = "plan has active references" }),
-            }).RequireAuthorization(PermManageSuperAdmins);
+        g.MapDelete("/plans/{id:guid}",
+            DeletePlanAsync).WithTags("OpenHandsNET.Api")
+            .RequireAuthorization(PermManageSuperAdmins);
 
         // Atribuição de plano à org: encerra a subscrição ativa e abre outra.
         g.MapPut("/organizations/{org_id:guid}/plan", async (
@@ -224,6 +182,64 @@ public static class AdminEndpoints
 
         return app;
     }
+
+
+    private static async Task<IResult> ListSuperAdminsAsync(
+        ISuperAdminService admins, IConfiguration config,
+        ICurrentUserAccessor current, HttpContext ctx,
+        IAuthorizationService authz, CancellationToken ct)
+    {
+        if (current.User is null)
+            return Results.Unauthorized();
+        if (config.GetValue("Auth:UserProvisioningEnabled", false))
+            return Results.Ok(await admins.ListAsync(ct));
+        return (await authz.AuthorizeAsync(
+            ctx.User, null, PermManageSuperAdmins)).Succeeded
+            ? Results.Ok(await admins.ListAsync(ct))
+            : Results.Forbid();
+    }
+
+    private static async Task<IResult> QueryAuditAsync(
+        [AsParameters] AuditQueryParams p)
+    {
+        var (items, total) = await p.Audit.QueryAsync(
+            p.User, p.Action, p.From, p.To, p.Page ?? 1, 100, p.Ct);
+        if (string.Equals(p.Format, "csv", StringComparison.OrdinalIgnoreCase))
+        {
+            var csv = "id,actor_user_id,org_id,action,target_type,target_id,timestamp\n"
+                + string.Join("\n", items.Select(e =>
+                    $"{e.Id},{e.ActorUserId},{e.OrgId},{e.Action},{e.TargetType},{e.TargetId},{e.Timestamp:O}"));
+            return Results.Text(csv, "text/csv");
+        }
+        return Results.Ok(new { items, total });
+    }
+
+    private static async Task<IResult> CreatePlanAsync(
+        [FromBody] PlanCreateRequest req, IPlanAdminService plans,
+        HttpContext http, CancellationToken ct)
+    {
+        // #218: `{}` deixa Name nulo — validar antes do service (NRE→500).
+        if (string.IsNullOrWhiteSpace(req.Name))
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 400, "name é obrigatório");
+        }
+        return await plans.CreateAsync(
+            req.Name, req.Limits ?? new(), req.MonthlyPriceUsd, ct)
+            is { } p ? Results.Created($"/api/v1/admin/plans/{p.Id}", p)
+            : OpenHandsNetProblemFactory.Create(
+                http, 409, "plan name already exists");
+    }
+
+    private static async Task<IResult> DeletePlanAsync(
+        Guid id, IPlanAdminService plans, CancellationToken ct) =>
+        await plans.DeleteAsync(id, ct) switch
+        {
+            null => Results.NoContent(),
+            PlanDeleteError.NotFound => Results.NotFound(),
+            _ => Results.Conflict(
+                new { detail = "plan has active references" }),
+        };
 
     /// <summary>Super-admin grant body.</summary>
     public sealed record GrantRequest(Guid? UserId, string? Email);
