@@ -254,7 +254,7 @@ public static class ScimEndpoints
         await db.SaveChangesAsync(ct);
         await audit.RecordAsync(
             "scim.user_provisioned", "scim", orgId, "user",
-            user.Id.ToString());
+            user.Id.ToString(), cancellationToken: ct);
         var member = await db.OrgMembers.AsNoTracking().FirstAsync(
             m => m.OrgId == orgId && m.UserId == user.Id, ct);
         return Results.Json(
@@ -288,7 +288,7 @@ public static class ScimEndpoints
             user.DisabledAt ??= DateTimeOffset.UtcNow;
             await audit.RecordAsync(
                 "scim.user_deprovisioned", "scim", orgId, "user",
-                id.ToString());
+                id.ToString(), cancellationToken: ct);
         }
         else
         {
