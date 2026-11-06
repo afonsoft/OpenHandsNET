@@ -125,7 +125,7 @@ window.ohn.codeBlocks = (function () {
 			codeEl.dataset.formatted = minified ? '0' : '1';
 			btn.textContent = minified ? labels.format : labels.minify;
 			btn.setAttribute('aria-label', btn.textContent);
-		} catch (e) {
+		} catch {
 			// JSON inválido → feedback no botão, sem alterar o bloco.
 			const prev = btn.textContent;
 			btn.textContent = labels.invalidJson;
@@ -149,7 +149,7 @@ window.ohn.codeBlocks = (function () {
 				const ok = document.execCommand('copy');
 				ta.remove();
 				done(ok);
-			} catch (e) {
+			} catch {
 				done(false); // execCommand falhou → cópia indisponível
 			}
 		};
@@ -163,7 +163,7 @@ window.ohn.codeBlocks = (function () {
 			} else {
 				fallback();
 			}
-		} catch (e) {
+		} catch {
 			fallback(); // clipboard API lançou → execCommand
 		}
 	}
