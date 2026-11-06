@@ -245,12 +245,12 @@ public static class AdminEndpoints
     /// <summary>Binding do audit query (SPEC-104 — AsParameters).</summary>
     private sealed class AuditQueryParams
     {
-        [FromQuery] public string? User { get; init; }
-        [FromQuery] public string? Action { get; init; }
-        [FromQuery] public DateTimeOffset? From { get; init; }
-        [FromQuery] public DateTimeOffset? To { get; init; }
-        [FromQuery] public int? Page { get; init; }
-        [FromQuery] public string? Format { get; init; }
+        [FromQuery(Name = "user")] public string? User { get; init; }
+        [FromQuery(Name = "action")] public string? Action { get; init; }
+        [FromQuery(Name = "from")] public DateTimeOffset? From { get; init; }
+        [FromQuery(Name = "to")] public DateTimeOffset? To { get; init; }
+        [FromQuery(Name = "page")] public int? Page { get; init; }
+        [FromQuery(Name = "format")] public string? Format { get; init; }
         [FromServices] public IAuditService Audit { get; init; } = null!;
         public CancellationToken Ct { get; init; }
     }

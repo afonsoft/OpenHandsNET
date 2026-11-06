@@ -191,7 +191,7 @@ public static class ShareEndpoints
         [FromRoute] public string Token { get; init; } = null!;
         public HttpContext Http { get; init; } = null!;
         [FromQuery(Name = "page_id")] public string? PageId { get; init; }
-        [FromQuery] public int Limit { get; init; }
+        [FromQuery(Name = "limit")] public int Limit { get; init; }
         [FromServices] public IShareService Shares { get; init; } = null!;
         [FromServices] public IDistributedCounter Counter { get; init; } = null!;
         [FromServices] public IConfiguration Config { get; init; } = null!;

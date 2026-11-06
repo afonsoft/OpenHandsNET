@@ -70,7 +70,7 @@ public static class EventEndpoints
         [FromQuery(Name = "timestamp__lt")] public DateTimeOffset? TimestampLt { get; init; }
         [FromQuery(Name = "sort_order")] public string? SortOrder { get; init; }
         [FromQuery(Name = "page_id")] public string? PageId { get; init; }
-        [FromQuery] public int? Limit { get; init; }
+        [FromQuery(Name = "limit")] public int? Limit { get; init; }
         [FromServices] public IEventService Events { get; init; } = null!;
         public CancellationToken Ct { get; init; }
     }
