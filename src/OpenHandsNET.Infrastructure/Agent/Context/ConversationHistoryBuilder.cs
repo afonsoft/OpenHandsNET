@@ -49,7 +49,7 @@ public sealed class ConversationHistoryBuilder(IServiceProvider services)
         if (!hasSystem)
         {
             lastId = await AppendSystemPromptAsync(events, conversationId,
-                conv, tools, all, lastId, history, ids, ct);
+                conv, tools, new(all, lastId, history, ids), ct);
         }
 
         if (lastSummary is { Summary: { } summary })
@@ -138,16 +138,19 @@ public sealed class ConversationHistoryBuilder(IServiceProvider services)
         return (hasSystem, lastId);
     }
 
+    /// <summary>Fatia mutável do histórico em construção (SPEC-104).</summary>
+    private sealed record HistorySlice(
+        List<EventBase> All, string? LastId,
+        List<LlmMessage> History, List<string?> Ids);
+
     private async Task<string?> AppendSystemPromptAsync(
         IEventService events, Guid conversationId,
         ConversationRecord conv, IToolRegistry tools,
-        List<EventBase> all, string? lastId,
-        List<LlmMessage> history, List<string?> ids,
-        CancellationToken ct)
+        HistorySlice h, CancellationToken ct)
     {
         // SPEC-11 RF-002: resolve skills por trigger (always/keyword/task)
         // usando a última mensagem do usuário e as tags da conversa.
-        var lastUserText = all.OfType<MessageEvent>()
+        var lastUserText = h.All.OfType<MessageEvent>()
             .Where(m => m.Source == EventSource.User)
             .Select(m => ToLlmMessage(m).Content)
             .LastOrDefault();
@@ -163,7 +166,7 @@ public sealed class ConversationHistoryBuilder(IServiceProvider services)
         if (services.GetService<Discovery.RepoContextLoader>()
             is { } repoLoader)
         {
-            var loaded = await repoLoader.LoadAsync(conv, all, ct);
+            var loaded = await repoLoader.LoadAsync(conv, h.All, ct);
             repoContext = loaded.RenderedMarkdown;
             skills = MergeRepoSkills(
                 skills, loaded.RepoSkills, lastUserText);
@@ -189,7 +192,7 @@ public sealed class ConversationHistoryBuilder(IServiceProvider services)
             });
         var sp = new SystemPromptEvent
         {
-            ParentId = lastId,
+            ParentId = h.LastId,
             SystemPrompt = JsonSerializer.SerializeToElement(
                 new[] { new { type = "text", text = prompt } },
                 EventJson.Options),
@@ -202,8 +205,8 @@ public sealed class ConversationHistoryBuilder(IServiceProvider services)
                 }), EventJson.Options),
         };
         var newId = (await events.AppendAsync(conversationId, sp, ct)).Id;
-        history.Insert(0, new LlmMessage("system", prompt));
-        ids.Insert(0, sp.Id);
+        h.History.Insert(0, new LlmMessage("system", prompt));
+        h.Ids.Insert(0, sp.Id);
         return newId;
     }
 

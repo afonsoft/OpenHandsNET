@@ -113,15 +113,13 @@ public static class OrgEndpoints
         }).RequireAuthorization();
 
         g.MapPatch("/{org_id:guid}/members/{uid:guid}", async (
-            Guid org_id, Guid uid, [FromBody] MemberRoleRequest req,
-            ICurrentUserAccessor current, IOrgService orgs,
-            IAuthorizationService authz, HttpContext ctx, CancellationToken ct) =>
+            [AsParameters] MemberRoleParams p) =>
         {
-            var user = current.User;
+            var user = p.Current.User;
             if (user is null)
                 return Results.Unauthorized();
             // Permissão exigida depende da role ALVO (paridade upstream).
-            var required = req.Role switch
+            var required = p.Req.Role switch
             {
                 RoleName.Owner => "perm:change_user_role:owner",
                 RoleName.Admin => "perm:change_user_role:admin",
@@ -129,11 +127,11 @@ public static class OrgEndpoints
                 _ => null,
             };
             if (required is null)
-                return Results.BadRequest(new { detail = $"invalid role '{req.Role}'" });
-            var check = await authz.AuthorizeAsync(ctx.User, null, required);
+                return Results.BadRequest(new { detail = $"invalid role '{p.Req.Role}'" });
+            var check = await p.Authz.AuthorizeAsync(p.Ctx.User, null, required);
             if (!check.Succeeded)
                 return Results.Forbid();
-            return await orgs.ChangeMemberRoleAsync(user, org_id, uid, req.Role, ct)
+            return await p.Orgs.ChangeMemberRoleAsync(user, p.OrgId, p.Uid, p.Req.Role, p.Ct)
                 ? Results.NoContent() : Results.NotFound();
         }).RequireAuthorization();
 
@@ -444,6 +442,19 @@ public static class OrgEndpoints
 
     /// <summary>Member role change body.</summary>
     public sealed record MemberRoleRequest(string Role);
+
+    /// <summary>Binding do PATCH member role (SPEC-104 — AsParameters).</summary>
+    private sealed class MemberRoleParams
+    {
+        [FromRoute(Name = "org_id")] public Guid OrgId { get; init; }
+        [FromRoute] public Guid Uid { get; init; }
+        [FromBody] public MemberRoleRequest Req { get; init; } = null!;
+        [FromServices] public ICurrentUserAccessor Current { get; init; } = null!;
+        [FromServices] public IOrgService Orgs { get; init; } = null!;
+        [FromServices] public IAuthorizationService Authz { get; init; } = null!;
+        public HttpContext Ctx { get; init; } = null!;
+        public CancellationToken Ct { get; init; }
+    }
 
     /// <summary>Quota set body.</summary>
     public sealed record QuotaRequest(int? DailyMax, int? ConcurrentMax);

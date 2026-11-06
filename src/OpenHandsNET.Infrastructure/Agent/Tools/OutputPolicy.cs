@@ -63,10 +63,7 @@ public sealed class OutputPolicy(IOptions<AgentLlmOptions> options)
     /// </summary>
     public async Task<JsonElement> ApplyAsync(
         string toolName, string actionId, JsonElement observation,
-        Domain.Sandbox.Sandbox? sandbox, ISandboxExecutor? executor,
-        Guid conversationId,
-        Application.Artifacts.IArtifactStore? artifacts,
-        CancellationToken ct)
+        OutputContext ctx, CancellationToken ct)
     {
         if (observation.ValueKind != JsonValueKind.Object)
         {
@@ -102,11 +99,11 @@ public sealed class OutputPolicy(IOptions<AgentLlmOptions> options)
         var bytes = System.Text.Encoding.UTF8.GetBytes(full);
 
         // artifact_ref — ref opaco via store (endpoint o resolve).
-        if (artifacts is not null)
+        if (ctx.Artifacts is not null)
         {
             try
             {
-                var artifactRef = await artifacts.PutAsync(conversationId,
+                var artifactRef = await ctx.Artifacts.PutAsync(ctx.ConversationId,
                     $"{actionId}.txt", bytes, ct);
                 mutated["artifact_ref"] =
                     JsonSerializer.SerializeToElement(artifactRef);
@@ -117,25 +114,31 @@ public sealed class OutputPolicy(IOptions<AgentLlmOptions> options)
             }
         }
 
-        // artifact_path — payload completo no workspace do sandbox
+        // artifact_path — payload completo no workspace do ctx.Sandbox
         // (agente recupera via file_read; best-effort).
-        if (sandbox is not null && executor is not null)
+        if (ctx.Sandbox is not null && ctx.Executor is not null)
         {
             try
             {
-                var artifact = $"/var/lib/ohn-artifacts/{actionId}.txt";
-                await executor.WriteFileAsync(
-                    sandbox, artifact, full, ct);
+                var artifact = $"/var/lib/ohn-ctx.Artifacts/{actionId}.txt";
+                await ctx.Executor.WriteFileAsync(
+                    ctx.Sandbox, artifact, full, ct);
                 mutated["artifact_path"] =
                     JsonSerializer.SerializeToElement(artifact);
             }
             catch (Exception)
             {
-                // sem executor/fs — segue só com o truncamento.
+                // sem ctx.Executor/fs — segue só com o truncamento.
             }
         }
 
         mutated["truncated"] = JsonSerializer.SerializeToElement(true);
         return JsonSerializer.SerializeToElement(mutated);
     }
+
+    /// <summary>Contexto de persistência da saída truncada (SPEC-104).</summary>
+    public sealed record OutputContext(
+        Domain.Sandbox.Sandbox? Sandbox, ISandboxExecutor? Executor,
+        Guid ConversationId,
+        Application.Artifacts.IArtifactStore? Artifacts);
 }

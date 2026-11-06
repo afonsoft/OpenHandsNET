@@ -1,5 +1,7 @@
 using System.Text.RegularExpressions;
 
+using Microsoft.AspNetCore.Mvc;
+
 using Microsoft.Extensions.DependencyInjection;
 
 using OpenHandsNET.Api.ProblemDetails;
@@ -75,21 +77,19 @@ public static partial class CheckpointEndpoints
     }
 
     private static async Task<IResult> RevertAsync(
-        Guid id, string hash, RevertRequest? body,
-        IAppConversationService svc, ICheckpointService ckpts,
-        IEventService events, HttpContext http, CancellationToken ct)
+        [AsParameters] RevertParams p)
     {
-        if (!HashRe().IsMatch(hash))
+        if (!HashRe().IsMatch(p.Hash))
         {
             return OpenHandsNetProblemFactory.Create(
-                http, 400, "invalid hash");
+                p.Http, 400, "invalid p.Hash");
         }
 
-        var conv = await svc.GetAsync(id, ct);
+        var conv = await p.Svc.GetAsync(p.Id, p.Ct);
         if (conv is null)
         {
             return OpenHandsNetProblemFactory.Create(
-                http, 404, "conversation not found");
+                p.Http, 404, "conversation not found");
         }
 
         // Guarda 1: run ativa — nunca reverte enquanto o agente escreve.
@@ -97,16 +97,16 @@ public static partial class CheckpointEndpoints
             == Domain.Conversations.ConversationExecutionStatus.Running)
         {
             return OpenHandsNetProblemFactory.Create(
-                http, 409, "run_active");
+                p.Http, 409, "run_active");
         }
 
-        var sb = await SandboxOrProblem(id, svc, ckpts, http, ct);
+        var sb = await SandboxOrProblem(p.Id, p.Svc, p.Ckpts, p.Http, p.Ct);
         if (sb.Error is not null) { return sb.Error; }
 
         // Guarda 2: drift — tracked modificados após o checkpoint.
         var (conflicts, untracked) =
-            await ckpts.DriftAsync(sb.Sandbox!, hash, ct);
-        if (conflicts.Count > 0 && body?.Force is not true)
+            await p.Ckpts.DriftAsync(sb.Sandbox!, p.Hash, p.Ct);
+        if (conflicts.Count > 0 && p.Body?.Force is not true)
         {
             return Results.Conflict(new
             {
@@ -117,12 +117,12 @@ public static partial class CheckpointEndpoints
         }
 
         // Snapshot pre-revert torna o revert reversível.
-        var pre = await ckpts.SnapshotAsync(
-            id, sb.Sandbox!, $"pre-revert {hash[..7]}", ct);
-        await ckpts.RevertAsync(id, sb.Sandbox!, hash, ct);
+        var pre = await p.Ckpts.SnapshotAsync(
+            p.Id, sb.Sandbox!, $"pre-revert {p.Hash[..7]}", p.Ct);
+        await p.Ckpts.RevertAsync(p.Id, sb.Sandbox!, p.Hash, p.Ct);
 
         // Avisa UI/IDE que o workdir mudou.
-        await events.AppendAsync(id, new FilesChangedEvent
+        await p.Events.AppendAsync(p.Id, new FilesChangedEvent
         {
             SourceTool = "checkpoint_revert",
             Paths = conflicts.Select(p =>
@@ -185,4 +185,17 @@ public static partial class CheckpointEndpoints
 
     [GeneratedRegex("^[0-9a-f]{7,64}$", RegexOptions.IgnoreCase)]
     private static partial Regex HashRe();
+
+    /// <summary>Binding do revert de checkpoint (SPEC-104 — AsParameters).</summary>
+    private sealed class RevertParams
+    {
+        [FromRoute] public Guid Id { get; init; }
+        [FromRoute] public string Hash { get; init; } = null!;
+        [FromBody] public RevertRequest? Body { get; init; }
+        [FromServices] public IAppConversationService Svc { get; init; } = null!;
+        [FromServices] public ICheckpointService Ckpts { get; init; } = null!;
+        [FromServices] public IEventService Events { get; init; } = null!;
+        public HttpContext Http { get; init; } = null!;
+        public CancellationToken Ct { get; init; }
+    }
 }

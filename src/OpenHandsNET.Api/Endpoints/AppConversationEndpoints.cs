@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 using OpenHandsNET.Api.DTOs;
@@ -107,30 +108,26 @@ public static class AppConversationEndpoints
         // para URL pública (SPEC-38) + preview token (RF-004). SPEC-113
         // RF-003: RoutingMode internal → proxy same-origin /api/v1/….
         group.MapGet("/{id:guid}/surfaces", async (
-            Guid id, IAppConversationService convs,
-            ISandboxService sandboxes, ISandboxExecutor executor,
-            Microsoft.Extensions.Options.IOptions<OpenHandsNET.Sandboxing.SandboxOptions> options,
-            Routing.PreviewTokenService tokens,
-            HttpContext http, CancellationToken ct) =>
+            [AsParameters] SurfacesParams p) =>
         {
-            var conv = await convs.GetAsync(id, ct);
+            var conv = await p.Convs.GetAsync(p.Id, p.Ct);
             if (conv is null)
             {
                 return OpenHandsNetProblemFactory.Create(
-                    http, 404, $"Conversation {id} not found");
+                    p.Http, 404, $"Conversation {p.Id} not found");
             }
 
             if (conv.SandboxId is not { } sid
-                || await sandboxes.GetAsync(sid, ct) is not { } sandbox)
+                || await p.Sandboxes.GetAsync(sid, p.Ct) is not { } sandbox)
             {
                 return Results.Ok(Array.Empty<object>());
             }
 
-            var surfaces = await executor.SurfacesAsync(sandbox, ct);
+            var surfaces = await p.Executor.SurfacesAsync(sandbox, p.Ct);
             return Results.Ok(surfaces.Select(s =>
             {
                 var (url, expires) = ResolveSurfaceUrl(
-                    options.Value, tokens, sandbox, s);
+                    p.Options.Value, p.Tokens, sandbox, s);
 
                 return (object)new
                 {
@@ -356,31 +353,25 @@ public static class AppConversationEndpoints
         // SPEC-25 RF-006: rescan on-demand — repete a descoberta do worker,
         // atualiza o evento repo_context e invalida o cache de skills.
         group.MapPost("/{id:guid}/context/rescan", async (
-            Guid id, IAppConversationService svc,
-            ISandboxService sandboxes,
-            ISandboxExecutor executor,
-            Application.Discovery.IRepoDiscoveryService discovery,
-            IEventService events,
-            IServiceProvider sp,
-            HttpContext http, CancellationToken ct) =>
+            [AsParameters] RescanParams p) =>
         {
-            if (await svc.GetAsync(id, ct) is null)
+            if (await p.Svc.GetAsync(p.Id, p.Ct) is null)
             {
                 return OpenHandsNetProblemFactory.Create(
-                    http, 404, $"Conversation {id} not found");
+                    p.Http, 404, $"Conversation {p.Id} not found");
             }
 
-            var sandbox = (await sandboxes.SearchAsync(
-                    null, id, ct))
+            var sandbox = (await p.Sandboxes.SearchAsync(
+                    null, p.Id, p.Ct))
                 .FirstOrDefault(s => s.Status == SandboxStatus.Running);
             if (sandbox is null)
             {
                 return OpenHandsNetProblemFactory.Create(
-                    http, 409, "Sandbox is not running");
+                    p.Http, 409, "Sandbox is not running");
             }
 
-            var manifest = await discovery.DiscoverAsync(executor, sandbox, ct);
-            await events.AppendAsync(id, new ConversationStateUpdateEvent
+            var manifest = await p.Discovery.DiscoverAsync(p.Executor, sandbox, p.Ct);
+            await p.Events.AppendAsync(p.Id, new ConversationStateUpdateEvent
             {
                 Key = "repo_context",
                 Value = JsonSerializer.SerializeToElement(new
@@ -395,8 +386,8 @@ public static class AppConversationEndpoints
                     config = manifest.HasRepoConfig,
                     readme = manifest.ReadmePath,
                 }, EventJson.Options),
-            }, ct);
-            sp.GetService<Infrastructure.Skills.RepoSkillProvider>()
+            }, p.Ct);
+            p.Sp.GetService<Infrastructure.Skills.RepoSkillProvider>()
                 ?.Invalidate(sandbox.Id);
             return Results.Ok(manifest);
         });
@@ -405,32 +396,28 @@ public static class AppConversationEndpoints
         // Runner ativo → o request evento entra na fila dele; idle →
         // compactação inline sobre o histórico persistido.
         group.MapPost("/{id:guid}/context/compact", async (
-            Guid id, CompactContextRequest? body,
-            IAppConversationService svc,
-            Application.Agent.ICompactionService compactor,
-            Application.Agent.IAgentRunnerHost host,
-            IEventService events, HttpContext http, CancellationToken ct) =>
+            [AsParameters] CompactParams p) =>
         {
-            if (await svc.GetAsync(id, ct) is null)
+            if (await p.Svc.GetAsync(p.Id, p.Ct) is null)
             {
                 return OpenHandsNetProblemFactory.Create(
-                    http, 404, $"Conversation {id} not found");
+                    p.Http, 404, $"Conversation {p.Id} not found");
             }
 
-            if (host.IsRunning(id))
+            if (p.Host.IsRunning(p.Id))
             {
-                await events.AppendAsync(id, new CondensationRequest
+                await p.Events.AppendAsync(p.Id, new CondensationRequest
                 {
                     Source = EventSource.User,
                     Trigger = "manual",
-                    Instructions = body?.Instructions,
-                }, ct);
+                    Instructions = p.Body?.Instructions,
+                }, p.Ct);
                 return Results.Accepted(value: new { queued = true });
             }
 
-            var compacted = await compactor.CompactStoredAsync(
-                id, Application.Agent.CompactionTrigger.Manual,
-                body?.Instructions, ct);
+            var compacted = await p.Compactor.CompactStoredAsync(
+                p.Id, Application.Agent.CompactionTrigger.Manual,
+                p.Body?.Instructions, p.Ct);
             return Results.Accepted(value: new { queued = false, compacted });
         });
 
@@ -546,43 +533,36 @@ public static class AppConversationEndpoints
     }
 
     private static async Task<IResult> CreateAsync(
-        CreateAppConversationRequest body,
-        IAppConversationService svc,
-        ICurrentUserAccessor current,
-        IEffectiveOrgResolver orgResolver,
-        IAuditService audit,
-        OpenHandsNET.Application.Security.IInputGuard inputGuard,
-        Infrastructure.Persistence.AppDbContext db,
-        HttpContext http, CancellationToken ct)
+        [AsParameters] CreateConversationParams p)
     {
-        var user = current.User;
+        var user = p.Current.User;
 
         // SPEC-59 RF-002: screening do initial_message.
-        if (body.InitialMessage is { } im)
+        if (p.Body.InitialMessage is { } im)
         {
             var text = string.Join(' ',
                 im.Content.Select(c => c.ToString() ?? ""));
             var org2 = user is { } u3
-                ? await orgResolver.ResolveAsync(u3, null, ct) : null;
-            var verdict = await inputGuard.ScoreAsync(
-                text, "ui", org2?.OrgId, ct);
+                ? await p.OrgResolver.ResolveAsync(u3, null, p.Ct) : null;
+            var verdict = await p.InputGuard.ScoreAsync(
+                text, "ui", org2?.OrgId, p.Ct);
             if (verdict.Verdict
                 == Application.Security.InputGuardVerdict.Block)
             {
-                await audit.RecordAsync(
+                await p.Audit.RecordAsync(
                     "guard.input_blocked",
                     user?.UserId.ToString(), org2?.OrgId,
                     "app_conversation", null,
                     metadata: new { categories = verdict.Categories },
-                    cancellationToken: http.RequestAborted);
+                    cancellationToken: p.Http.RequestAborted);
                 return OpenHandsNetProblemFactory.Create(
-                    http, 403, "input_blocked");
+                    p.Http, 403, "input_blocked");
             }
         }
 
         // SPEC-57 RF-003: impersonation — scope sessions:impersonate +
         // alvo membro da mesma org; usage/quota atribuída ao alvo.
-        if (body.CreateAsUserId is { } targetId)
+        if (p.Body.CreateAsUserId is { } targetId)
         {
             if (user is null
                 || !Policies.ScopeExtensions.HasScope(
@@ -592,39 +572,39 @@ public static class AppConversationEndpoints
                     new { error = "insufficient_scope" },
                     statusCode: StatusCodes.Status403Forbidden);
             }
-            var org = await orgResolver.ResolveAsync(user, null, ct);
+            var org = await p.OrgResolver.ResolveAsync(user, null, p.Ct);
             var isMember = org is not null
-                && await db.OrgMembers.IgnoreQueryFilters()
+                && await p.Db.OrgMembers.IgnoreQueryFilters()
                     .AnyAsync(m => m.OrgId == org.OrgId
-                        && m.UserId == targetId, ct);
+                        && m.UserId == targetId, p.Ct);
             if (org is null)
                 isMember = false;
             if (!isMember)
             {
                 return OpenHandsNetProblemFactory.Create(
-                    http, 403, "impersonation target is not an org member");
+                    p.Http, 403, "impersonation target is not an org member");
             }
             try
             {
-                var task = await svc.CreateForUserAsync(
-                    targetId, org?.OrgId, Map(body), ct);
+                var task = await p.Svc.CreateForUserAsync(
+                    targetId, org?.OrgId, Map(p.Body), p.Ct);
                 if (task.AppConversationId is { } convId
-                    && await db.Conversations.IgnoreQueryFilters()
-                        .FirstOrDefaultAsync(c => c.Id == convId, ct)
+                    && await p.Db.Conversations.IgnoreQueryFilters()
+                        .FirstOrDefaultAsync(c => c.Id == convId, p.Ct)
                         is { } conv)
                 {
                     conv.CreatedVia = user.ActorKind
                         == ActorKind.ServiceUser
                         ? $"service_user:{user.UserId}"
                         : $"user:{user.UserId}";
-                    await db.SaveChangesAsync(ct);
+                    await p.Db.SaveChangesAsync(p.Ct);
                 }
-                await audit.RecordAsync(
+                await p.Audit.RecordAsync(
                     "session.impersonated", user.UserId.ToString(),
                     org?.OrgId, "app_conversation",
                     task.AppConversationId?.ToString(),
                     metadata: new { target = targetId.ToString() },
-                    cancellationToken: ct);
+                    cancellationToken: p.Ct);
                 return Results.Created(
                     $"/api/v1/app-conversations/start-tasks/{task.Id}",
                     ToDto(task));
@@ -639,7 +619,7 @@ public static class AppConversationEndpoints
         AppConversationStartTask createdTask;
         try
         {
-            createdTask = await svc.CreateAsync(Map(body), ct);
+            createdTask = await p.Svc.CreateAsync(Map(p.Body), p.Ct);
         }
         catch (OpenHandsNET.Application.Identity.PlanLimitExceededException ex)
         {
@@ -695,66 +675,60 @@ public static class AppConversationEndpoints
     }
 
     private static async Task<IResult> SendMessageAsync(
-        Guid id, SendMessageRequest body,
-        IAppConversationService svc, IEventService events,
-        OpenHandsNET.Application.Agent.IAgentRunnerHost runnerHost,
-        OpenHandsNET.Application.Security.IInputGuard inputGuard,
-        ICurrentUserAccessor current, IEffectiveOrgResolver orgs,
-        IAuditService audit,
-        HttpContext http, CancellationToken ct)
+        [AsParameters] SendMessageParams p)
     {
         // SPEC-59 RF-002: screening do texto antes de entrar no stream.
-        var text = string.Join(' ', body.Content
+        var text = string.Join(' ', p.Body.Content
             .Select(c => c.ToString() ?? "")
             .Where(t => t.Length > 0));
-        var org = current.User is { } u2
-            ? await orgs.ResolveAsync(u2, null, ct) : null;
-        var verdict = await inputGuard.ScoreAsync(
-            text, "ui", org?.OrgId, ct);
+        var org = p.Current.User is { } u2
+            ? await p.Orgs.ResolveAsync(u2, null, p.Ct) : null;
+        var verdict = await p.InputGuard.ScoreAsync(
+            text, "ui", org?.OrgId, p.Ct);
         if (verdict.Verdict
             == Application.Security.InputGuardVerdict.Block)
         {
-            await audit.RecordAsync(
+            await p.Audit.RecordAsync(
                 "guard.input_blocked",
-                current.User?.UserId.ToString(), org?.OrgId,
-                "app_conversation", id.ToString(),
+                p.Current.User?.UserId.ToString(), org?.OrgId,
+                "app_conversation", p.Id.ToString(),
                 metadata: new { categories = verdict.Categories },
-                cancellationToken: http.RequestAborted);
+                cancellationToken: p.Http.RequestAborted);
             return OpenHandsNetProblemFactory.Create(
-                http, 403, "input_blocked");
+                p.Http, 403, "input_blocked");
         }
 
-        var error = await svc.ValidateSendMessageAsync(id, ct);
+        var error = await p.Svc.ValidateSendMessageAsync(p.Id, p.Ct);
         if (error is not null)
         {
             return error switch
             {
                 SendMessageError.NotFound => OpenHandsNetProblemFactory.Create(
-                    http, 404, $"Conversation {id} not found"),
+                    p.Http, 404, $"Conversation {p.Id} not found"),
                 SendMessageError.Gone => OpenHandsNetProblemFactory.Create(
-                    http, 410, OpenHandsNetProblemFactory.ConversationGone),
+                    p.Http, 410, OpenHandsNetProblemFactory.ConversationGone),
                 SendMessageError.ServiceUnavailable => OpenHandsNetProblemFactory.Create(
-                    http, 503, OpenHandsNetProblemFactory.SandboxError),
+                    p.Http, 503, OpenHandsNetProblemFactory.SandboxError),
                 _ => OpenHandsNetProblemFactory.Create(
-                    http, 409, OpenHandsNetProblemFactory.SandboxNotRunning),
+                    p.Http, 409, OpenHandsNetProblemFactory.SandboxNotRunning),
             };
         }
 
         // Mensagem do usuário entra no stream como MessageEvent (V1).
-        var content = body.Content.Select(el => (object)el).ToList();
+        var content = p.Body.Content.Select(el => (object)el).ToList();
         var message = new MessageEvent
         {
             Source = EventSource.User,
             LlmMessage = JsonSerializer.SerializeToElement(new
             {
-                role = body.Role,
+                role = p.Body.Role,
                 content,
             }, EventJson.Options),
         };
-        await events.AppendAsync(id, message, ct);
-        if (body.Run)
+        await p.Events.AppendAsync(p.Id, message, p.Ct);
+        if (p.Body.Run)
         {
-            await runnerHost.NotifyMessageAsync(id, ct);
+            await p.RunnerHost.NotifyMessageAsync(p.Id, p.Ct);
         }
 
         return Results.NoContent();
@@ -867,4 +841,73 @@ public static class AppConversationEndpoints
         return ($"{base_}?token={Uri.EscapeDataString(token)}", exp);
     }
 
+    /// <summary>Binding do GET surfaces (SPEC-104 — AsParameters).</summary>
+    private sealed class SurfacesParams
+    {
+        [FromRoute] public Guid Id { get; init; }
+        [FromServices] public IAppConversationService Convs { get; init; } = null!;
+        [FromServices] public ISandboxService Sandboxes { get; init; } = null!;
+        [FromServices] public ISandboxExecutor Executor { get; init; } = null!;
+        [FromServices] public Microsoft.Extensions.Options.IOptions<OpenHandsNET.Sandboxing.SandboxOptions> Options { get; init; } = null!;
+        [FromServices] public Routing.PreviewTokenService Tokens { get; init; } = null!;
+        public HttpContext Http { get; init; } = null!;
+        public CancellationToken Ct { get; init; }
+    }
+
+    /// <summary>Binding do POST context/rescan (SPEC-104 — AsParameters).</summary>
+    private sealed class RescanParams
+    {
+        [FromRoute] public Guid Id { get; init; }
+        [FromServices] public IAppConversationService Svc { get; init; } = null!;
+        [FromServices] public ISandboxService Sandboxes { get; init; } = null!;
+        [FromServices] public ISandboxExecutor Executor { get; init; } = null!;
+        [FromServices] public Application.Discovery.IRepoDiscoveryService Discovery { get; init; } = null!;
+        [FromServices] public IEventService Events { get; init; } = null!;
+        [FromServices] public IServiceProvider Sp { get; init; } = null!;
+        public HttpContext Http { get; init; } = null!;
+        public CancellationToken Ct { get; init; }
+    }
+
+    /// <summary>Binding do POST context/compact (SPEC-104 — AsParameters).</summary>
+    private sealed class CompactParams
+    {
+        [FromRoute] public Guid Id { get; init; }
+        [FromBody] public CompactContextRequest? Body { get; init; }
+        [FromServices] public IAppConversationService Svc { get; init; } = null!;
+        [FromServices] public Application.Agent.ICompactionService Compactor { get; init; } = null!;
+        [FromServices] public Application.Agent.IAgentRunnerHost Host { get; init; } = null!;
+        [FromServices] public IEventService Events { get; init; } = null!;
+        public HttpContext Http { get; init; } = null!;
+        public CancellationToken Ct { get; init; }
+    }
+
+    /// <summary>Binding do POST /app-conversations (SPEC-104 — AsParameters).</summary>
+    private sealed class CreateConversationParams
+    {
+        [FromBody] public CreateAppConversationRequest Body { get; init; } = null!;
+        [FromServices] public IAppConversationService Svc { get; init; } = null!;
+        [FromServices] public ICurrentUserAccessor Current { get; init; } = null!;
+        [FromServices] public IEffectiveOrgResolver OrgResolver { get; init; } = null!;
+        [FromServices] public IAuditService Audit { get; init; } = null!;
+        [FromServices] public OpenHandsNET.Application.Security.IInputGuard InputGuard { get; init; } = null!;
+        [FromServices] public Infrastructure.Persistence.AppDbContext Db { get; init; } = null!;
+        public HttpContext Http { get; init; } = null!;
+        public CancellationToken Ct { get; init; }
+    }
+
+    /// <summary>Binding do POST send-message (SPEC-104 — AsParameters).</summary>
+    private sealed class SendMessageParams
+    {
+        [FromRoute] public Guid Id { get; init; }
+        [FromBody] public SendMessageRequest Body { get; init; } = null!;
+        [FromServices] public IAppConversationService Svc { get; init; } = null!;
+        [FromServices] public IEventService Events { get; init; } = null!;
+        [FromServices] public OpenHandsNET.Application.Agent.IAgentRunnerHost RunnerHost { get; init; } = null!;
+        [FromServices] public OpenHandsNET.Application.Security.IInputGuard InputGuard { get; init; } = null!;
+        [FromServices] public ICurrentUserAccessor Current { get; init; } = null!;
+        [FromServices] public IEffectiveOrgResolver Orgs { get; init; } = null!;
+        [FromServices] public IAuditService Audit { get; init; } = null!;
+        public HttpContext Http { get; init; } = null!;
+        public CancellationToken Ct { get; init; }
+    }
 }

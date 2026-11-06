@@ -51,8 +51,9 @@ public sealed class CompactionService(
 
         await EmitCondensationAsync(events, conversationId, result, ct);
         await EmitLedgerAsync(events, conversationId, result.TokensAfter,
-            meter.ContextWindow(conv.LlmModel ?? options.Value.Model),
-            conv.LlmModel ?? options.Value.Model, ct);
+            new LedgerExtras(
+                meter.ContextWindow(conv.LlmModel ?? options.Value.Model),
+                conv.LlmModel ?? options.Value.Model), ct);
         return true;
     }
 
@@ -97,21 +98,25 @@ public sealed class CompactionService(
     /// <summary>Emits the <c>context_state</c> ledger state update.</summary>
     public static Task EmitLedgerAsync(
         IEventService events, Guid conversationId, int tokensEstimate,
-        int? window, string? model, CancellationToken ct,
-        int compactions = 0, string? boundaryEventId = null) =>
+        LedgerExtras extras, CancellationToken ct) =>
         events.AppendAsync(conversationId, new ConversationStateUpdateEvent
         {
             Key = "context_state",
             Value = JsonSerializer.SerializeToElement(new
             {
                 tokens_estimate = tokensEstimate,
-                window,
-                compactions,
-                boundary_event_id = boundaryEventId,
-                model,
+                extras.Window,
+                extras.Compactions,
+                boundary_event_id = extras.BoundaryEventId,
+                extras.Model,
                 updated_at = DateTimeOffset.UtcNow,
             }, EventJson.Options),
         }, ct).AsTask();
+
+    /// <summary>Campos variáveis do ledger de contexto (SPEC-104).</summary>
+    public sealed record LedgerExtras(
+        int? Window, string? Model,
+        int Compactions = 0, string? BoundaryEventId = null);
 
     /// <summary>Snake_case trigger name for the event payload.</summary>
     public static string TriggerName(CompactionTrigger t) => t switch

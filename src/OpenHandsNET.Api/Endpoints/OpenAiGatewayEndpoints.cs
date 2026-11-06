@@ -107,9 +107,17 @@ public static class OpenAiGatewayEndpoints
         {
             if (req.Stream)
             {
-                await StreamCompletionAsync(http, convId, req.Model,
-                    events, activity, conversations, dispatchedAt,
-                    deadline.Token);
+                await StreamCompletionAsync(new StreamCompletionArgs
+                {
+                    Http = http,
+                    ConvId = convId,
+                    Model = req.Model,
+                    Events = events,
+                    Activity = activity,
+                    Conversations = conversations,
+                    NotBefore = dispatchedAt,
+                    Ct = deadline.Token,
+                });
             }
             else
             {
@@ -355,24 +363,21 @@ public static class OpenAiGatewayEndpoints
 
     /// <summary>stream=true: SSE chunks alimentados pelo DeltaBatcher.</summary>
     private static async Task StreamCompletionAsync(
-        HttpContext http, Guid convId, string model,
-        IEventService events, IAgentActivityBus activity,
-        IAppConversationService conversations,
-        DateTimeOffset notBefore, CancellationToken ct)
+        StreamCompletionArgs a)
     {
-        http.Response.ContentType = "text/event-stream";
-        http.Response.Headers.CacheControl = "no-cache";
+        a.Http.Response.ContentType = "text/event-stream";
+        a.Http.Response.Headers.CacheControl = "no-cache";
 
-        var id = $"chatcmpl-{convId:N}";
+        var id = $"chatcmpl-{a.ConvId:N}";
         var created = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var sentText = new HashSet<string>(
             StringComparer.Ordinal);
 
         async Task WriteChunkAsync(object payload)
         {
-            await http.Response.WriteAsync(
-                $"data: {JsonSerializer.Serialize(payload)}\n\n", ct);
-            await http.Response.Body.FlushAsync(ct);
+            await a.Http.Response.WriteAsync(
+                $"data: {JsonSerializer.Serialize(payload)}\n\n", a.Ct);
+            await a.Http.Response.Body.FlushAsync(a.Ct);
         }
 
         // Primeiro chunk: role (convenção OpenAI streaming).
@@ -381,7 +386,7 @@ public static class OpenAiGatewayEndpoints
             id,
             @object = ChatCompletionChunk,
             created,
-            model,
+            a.Model,
             choices = new[]
             {
                 new
@@ -394,11 +399,11 @@ public static class OpenAiGatewayEndpoints
         });
 
         var terminal = WaitTerminalAsync(
-            conversations, convId, notBefore, ct);
+            a.Conversations, a.ConvId, a.NotBefore, a.Ct);
         // O bus de deltas nunca completa sozinho — cancela a enumeração
         // assim que o run chega a estado terminal (senão o SSE travava
         // até o deadline quando o tail não emite frames).
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(a.Ct);
         _ = terminal.ContinueWith(
             _ => linked.Cancel(), CancellationToken.None,
             TaskContinuationOptions.ExecuteSynchronously,
@@ -407,8 +412,8 @@ public static class OpenAiGatewayEndpoints
         {
             // S3267: o loop tem side-effect (WriteChunkAsync) — Select
             // exigiria IAsyncEnumerable LINQ.
-            await foreach (var frame in activity // NOSONAR
-                .SubscribeAsync(convId, linked.Token))
+            await foreach (var frame in a.Activity // NOSONAR
+                .SubscribeAsync(a.ConvId, linked.Token))
             {
                 sentText.Add(frame.Text);
                 await WriteChunkAsync(new
@@ -416,7 +421,7 @@ public static class OpenAiGatewayEndpoints
                     id,
                     @object = ChatCompletionChunk,
                     created,
-                    model,
+                    a.Model,
                     choices = new[]
                     {
                         new
@@ -430,13 +435,13 @@ public static class OpenAiGatewayEndpoints
             }
         }
         catch (OperationCanceledException)
-            when (!ct.IsCancellationRequested)
+            when (!a.Ct.IsCancellationRequested)
         {
             // Terminal atingido (linked cancelado) — emite o agregado.
         }
 
         var status = await terminal;
-        var (text, usage) = await AggregateAsync(events, convId, ct);
+        var (text, usage) = await AggregateAsync(a.Events, a.ConvId, a.Ct);
         if (sentText.Count == 0 && text.Length > 0)
         {
             // Sem deltas (modelo não-streaming): manda o texto inteiro.
@@ -445,7 +450,7 @@ public static class OpenAiGatewayEndpoints
                 id,
                 @object = ChatCompletionChunk,
                 created,
-                model,
+                a.Model,
                 choices = new[]
                 {
                     new
@@ -463,7 +468,7 @@ public static class OpenAiGatewayEndpoints
             id,
             @object = ChatCompletionChunk,
             created,
-            model,
+            a.Model,
             choices = new[]
             {
                 new
@@ -481,7 +486,7 @@ public static class OpenAiGatewayEndpoints
                 total_tokens = usage.Prompt + usage.Completion,
             },
         });
-        await http.Response.WriteAsync("data: [DONE]\n\n", ct);
+        await a.Http.Response.WriteAsync("data: [DONE]\n\n", a.Ct);
     }
 
     /// <summary>
@@ -618,5 +623,18 @@ public static class OpenAiGatewayEndpoints
         public int Status { get; } = Status;
         public string Type { get; } = Type;
         public string? Code { get; } = Code;
+    }
+
+    /// <summary>Args do SSE stream (SPEC-104 — parameter object).</summary>
+    private sealed class StreamCompletionArgs
+    {
+        public HttpContext Http { get; init; } = null!;
+        public Guid ConvId { get; init; }
+        public string Model { get; init; } = "";
+        public IEventService Events { get; init; } = null!;
+        public IAgentActivityBus Activity { get; init; } = null!;
+        public IAppConversationService Conversations { get; init; } = null!;
+        public DateTimeOffset NotBefore { get; init; }
+        public CancellationToken Ct { get; init; }
     }
 }
