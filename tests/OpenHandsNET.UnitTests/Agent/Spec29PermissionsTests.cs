@@ -171,6 +171,23 @@ public sealed class Spec29PermissionsTests
     }
 
     [Fact]
+    public async Task Unknown_Tool_Call_Emits_Error_Observation()
+    {
+        const string script = """
+            [{"tool":{"name":"no_such_tool","arguments":{}}},
+             {"tool":{"name":"finish","arguments":{"final_message":"ok"}}}]
+            """;
+        await using var fx = new AgentRunnerFixture(script);
+        await fx.Runner.RunAsync(CancellationToken.None);
+
+        var obs = fx.Events.Events.OfType<ObservationEvent>()
+            .First(e => e.ToolName == "no_such_tool");
+        obs.Observation.GetProperty("error").GetString()!
+            .ShouldContain("unknown tool");
+        (await fx.RecordStatusAsync()).ShouldBe("Finished");
+    }
+
+    [Fact]
     public async Task Explicit_Allow_Skips_Confirmation_Mode()
     {
         const string script = """

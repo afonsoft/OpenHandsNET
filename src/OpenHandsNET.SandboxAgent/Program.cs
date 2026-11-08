@@ -9,7 +9,6 @@ using OpenHandsNET.SandboxAgent;
 // como PID 1 do sandbox (sob tini). Estados: dormant → initializing → ready.
 // Auth: X-Session-Key (pronto) / X-Init-API-Key (bootstrap do init).
 
-const string StatusUnauthorized = "unauthorized";
 var builder = WebApplication.CreateSlimBuilder(args);
 builder.WebHost.UseUrls(
     builder.Configuration["OHN_AGENT_URL"] ?? "http://0.0.0.0:8000"); // NOSONAR S5332 — internal container/pod network (no TLS trust boundary) (container bind)
@@ -42,7 +41,7 @@ surfaces.Register("desktop", "SANDBOX_DESKTOP", 6080, "http",
     installer: null);
 surfaces.StartEnabled(builder.Configuration);
 
-AgentState LoadState(IConfiguration cfg)
+static AgentState LoadState(IConfiguration cfg)
 {
     var deferred = string.Equals(
         cfg["OHN_DEFERRED_INIT"], "true", StringComparison.OrdinalIgnoreCase);
@@ -62,30 +61,16 @@ AgentState LoadState(IConfiguration cfg)
 }
 
 // SPEC-24 RF-006: heartbeat v2 — agent_version sinaliza /exec/stream etc.
-app.MapGet("/alive", () => Results.Ok(new
-{
-    status = "ok",
-    state = runtime.Status,
-    agent_version = AgentState.AgentVersion,
-    uptime_s = (long)(DateTimeOffset.UtcNow - runtime.StartedAt)
-        .TotalSeconds,
-    workspace = runtime.WorkspaceRoot,
-    sessions = runtime.Sessions.Count,
-}));
+var handlers = new AgentHandlers(runtime, surfaces);
+
+app.MapGet("/alive", handlers.HandleAlive);
 
 // ---- deferred-init (paridade upstream /api/init) ----
-app.MapGet("/api/init", () => Results.Ok(new
-{
-    state = runtime.Status,
-    workspace = runtime.WorkspaceRoot,
-}));
-
-var handlers = new AgentHandlers(runtime, surfaces);
+app.MapGet("/api/init", handlers.HandleInitStatus);
 
 app.MapPost("/api/init", handlers.HandleInit);
 
 // ---- guarded endpoints (ready + X-Session-Key) ----
-bool Authorized(HttpContext http) => handlers.Authorized(http);
 
 app.MapPost("/exec", handlers.HandleExec);
 
@@ -94,121 +79,17 @@ app.MapPost("/exec", handlers.HandleExec);
 app.MapPost("/exec/stream", handlers.HandleExecStream);
 
 // SPEC-24 RF-001: sessões bash vivas + processos + ring de atividade.
-app.MapGet("/exec/sessions", (HttpContext http) =>
-{
-    if (!Authorized(http))
-    {
-        return Results.Json(new { error = StatusUnauthorized }, statusCode: 401);
-    }
+app.MapGet("/exec/sessions", handlers.HandleSessions);
 
-    return Results.Ok(runtime.Sessions.Select(kv => new
-    {
-        id = kv.Key,
-        started_at = kv.Value.StartedAt,
-        last_command = kv.Value.LastCommand,
-    }));
-});
+app.MapGet("/proc", handlers.HandleProc);
 
-app.MapGet("/proc", (HttpContext http) =>
-{
-    if (!Authorized(http))
-    {
-        return Results.Json(new { error = StatusUnauthorized }, statusCode: 401);
-    }
+app.MapGet("/activity", handlers.HandleActivity);
 
-    return Results.Ok(ProbeProc());
-});
-
-app.MapGet("/activity", (HttpContext http) =>
-{
-    if (!Authorized(http))
-    {
-        return Results.Json(new { error = StatusUnauthorized }, statusCode: 401);
-    }
-
-    // Last-Event-ID → replay só do que o cliente ainda não viu.
-    var after = long.TryParse(http.Request.Headers["Last-Event-ID"],
-        out var seq) ? seq : 0;
-    return Results.Ok(runtime.Activity
-        .Where(a => a.Seq > after).ToList());
-});
-
-static List<object> ProbeProc()
-{
-    var list = new List<object>();
-    foreach (var dir in Directory.EnumerateDirectories("/proc"))
-    {
-        var name = Path.GetFileName(dir);
-        if (!int.TryParse(name, out var pid))
-        {
-            continue;
-        }
-
-        try
-        {
-            var cmd = File.ReadAllText(Path.Combine(dir, "cmdline"))
-                .Replace('\0', ' ').Trim();
-            if (cmd.Length == 0)
-            {
-                continue; // kernel thread
-            }
-
-            list.Add(new { pid, cmd = Trunc(cmd, 200), rss_kb = RssKb(dir) });
-        }
-        catch
-        {
-            // Processo sumiu entre o enumerate e o read — best-effort.
-        }
-    }
-
-    return list;
-}
-
-static long RssKb(string dir)
-{
-    var rss = File.ReadLines(Path.Combine(dir, "status"))
-        .Where(l => l.StartsWith("VmRSS:", StringComparison.Ordinal))
-        .Select(l => l.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-        .Where(parts => parts.Length >= 2)
-        .Select(parts => long.TryParse(parts[1], out var kb) ? kb : 0)
-        .FirstOrDefault();
-    return rss;
-}
-
-static string Trunc(string s, int max = 200) =>
-    s.Length <= max ? s : s[..max] + "…";
-
-app.MapDelete("/exec/sessions/{id}", (string id, HttpContext http) =>
-{
-    if (!Authorized(http))
-    {
-        return Results.Json(new { error = StatusUnauthorized }, statusCode: 401);
-    }
-
-    if (runtime.Sessions.TryRemove(id, out var s))
-    {
-        s.Dispose();
-    }
-
-    return Results.NoContent();
-});
+app.MapDelete("/exec/sessions/{id}", handlers.HandleDeleteSession);
 
 // SPEC-40 RF-002/003: surfaces ativas — a Api publica cada porta via
 // SandboxUrlBuilder (SPEC-38) + preview token (RF-004).
-app.MapGet("/surfaces", (HttpContext http) =>
-{
-    if (!Authorized(http))
-    {
-        return Results.Json(new { error = StatusUnauthorized }, statusCode: 401);
-    }
-
-    return Results.Ok(surfaces.Active().Select(s => new
-    {
-        name = s.Name,
-        port = s.Port,
-        protocol = s.Protocol,
-    }).ToList());
-});
+app.MapGet("/surfaces", handlers.HandleSurfaces);
 
 // ---- files (confinados ao workspace) ----
 app.MapGet("/files/{**path}", handlers.HandleFilesGet);

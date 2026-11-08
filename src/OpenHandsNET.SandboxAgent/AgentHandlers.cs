@@ -247,6 +247,132 @@ public sealed class AgentHandlers(AgentState runtime, SurfaceRegistry surfaces)
         return Results.NoContent();
     }
 
+    /// <summary>GET /alive — heartbeat v2 (SPEC-24 RF-006).</summary>
+    public IResult HandleAlive() => Results.Ok(new
+    {
+        status = "ok",
+        state = runtime.Status,
+        agent_version = AgentState.AgentVersion,
+        uptime_s = (long)(DateTimeOffset.UtcNow - runtime.StartedAt)
+            .TotalSeconds,
+        workspace = runtime.WorkspaceRoot,
+        sessions = runtime.Sessions.Count,
+    });
+
+    /// <summary>GET /api/init — estado do init (deferred-init parity).</summary>
+    public IResult HandleInitStatus() => Results.Ok(new
+    {
+        state = runtime.Status,
+        workspace = runtime.WorkspaceRoot,
+    });
+
+    /// <summary>GET /exec/sessions — sessões bash vivas (SPEC-24 RF-001).</summary>
+    public IResult HandleSessions(HttpContext http)
+    {
+        if (!Authorized(http))
+        {
+            return UnauthorizedResult();
+        }
+
+        return Results.Ok(runtime.Sessions.Select(kv => new
+        {
+            id = kv.Key,
+            started_at = kv.Value.StartedAt,
+            last_command = kv.Value.LastCommand,
+        }));
+    }
+
+    /// <summary>GET /proc — processos do sandbox via /proc.</summary>
+    public IResult HandleProc(HttpContext http) =>
+        Authorized(http)
+            ? Results.Ok(ProbeProc())
+            : UnauthorizedResult();
+
+    /// <summary>GET /activity — ring de atividade; Last-Event-ID → replay.</summary>
+    public IResult HandleActivity(HttpContext http)
+    {
+        if (!Authorized(http))
+        {
+            return UnauthorizedResult();
+        }
+
+        var after = long.TryParse(http.Request.Headers["Last-Event-ID"],
+            out var seq) ? seq : 0;
+        return Results.Ok(runtime.Activity
+            .Where(a => a.Seq > after).ToList());
+    }
+
+    /// <summary>DELETE /exec/sessions/{id} — encerra sessão bash.</summary>
+    public IResult HandleDeleteSession(string id, HttpContext http)
+    {
+        if (!Authorized(http))
+        {
+            return UnauthorizedResult();
+        }
+
+        if (runtime.Sessions.TryRemove(id, out var s))
+        {
+            s.Dispose();
+        }
+
+        return Results.NoContent();
+    }
+
+    /// <summary>GET /surfaces — surfaces web ativas (SPEC-40 RF-002/003).</summary>
+    public IResult HandleSurfaces(HttpContext http)
+    {
+        if (!Authorized(http))
+        {
+            return UnauthorizedResult();
+        }
+
+        return Results.Ok(surfaces.Active().Select(s => new
+        {
+            name = s.Name,
+            port = s.Port,
+            protocol = s.Protocol,
+        }).ToList());
+    }
+
+    private static List<object> ProbeProc()
+    {
+        var list = new List<object>();
+        foreach (var dir in Directory.EnumerateDirectories("/proc"))
+        {
+            var name = Path.GetFileName(dir);
+            if (!int.TryParse(name, out var pid))
+            {
+                continue;
+            }
+
+            try
+            {
+                var cmd = File.ReadAllText(Path.Combine(dir, "cmdline"))
+                    .Replace('\0', ' ').Trim();
+                if (cmd.Length == 0)
+                {
+                    continue; // kernel thread
+                }
+
+                list.Add(new { pid, cmd = ProgramTrunc(cmd, 200), rss_kb = RssKb(dir) });
+            }
+            catch
+            {
+                // Processo sumiu entre o enumerate e o read — best-effort.
+            }
+        }
+
+        return list;
+    }
+
+    private static long RssKb(string dir) =>
+        File.ReadLines(Path.Combine(dir, "status"))
+            .Where(l => l.StartsWith("VmRSS:", StringComparison.Ordinal))
+            .Select(l => l.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            .Where(parts => parts.Length >= 2)
+            .Select(parts => long.TryParse(parts[1], out var kb) ? kb : 0)
+            .FirstOrDefault();
+
     public static string ProgramTrunc(string s, int max = 200) =>
         s.Length <= max ? s : s[..max] + "…";
 }
