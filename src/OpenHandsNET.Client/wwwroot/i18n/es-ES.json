@@ -486,5 +486,18 @@
   "usage.completion_tokens": "completion tokens",
   "usage.estimated_cost": "costo estimado",
   "usage.events": "eventos",
-  "usage.prompt_tokens": "prompt tokens"
+  "usage.prompt_tokens": "prompt tokens",
+  "auth.title": "Iniciar sesión",
+  "auth.subtitle": "Inicia sesión para continuar a tu espacio de trabajo.",
+  "auth.sso_button": "Continuar con SSO",
+  "auth.email_label": "Correo electrónico",
+  "auth.email_placeholder": "tu@ejemplo.com",
+  "auth.error": "Error al iniciar sesión. Revisa el correo e inténtalo de nuevo.",
+  "auth.sign_in": "Iniciar sesión",
+  "auth.local_mode": "Este despliegue funciona en modo local de un solo usuario.",
+  "auth.enter_app": "Entrar al workspace",
+  "user_menu.aria": "Menú de usuario",
+  "user_menu.local_user": "Usuario local",
+  "user_menu.local_mode": "Modo local",
+  "user_menu.sign_out": "Cerrar sesión"
 }

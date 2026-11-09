@@ -50,6 +50,8 @@ public class Spec130UxFollowupsTests : BunitContext
         Services.AddSingleton(new PaletteService());
         _dialogs = new DialogService();
         Services.AddSingleton(_dialogs);
+        // SPEC-132: MainLayout injeta AuthStateService (guard de auth).
+        AuthStub.Register(this);
     }
 
     private IRenderedComponent<MainLayout> RenderShell() =>

@@ -486,5 +486,18 @@
   "usage.completion_tokens": "completion tokens",
   "usage.estimated_cost": "coût estimé",
   "usage.events": "événements",
-  "usage.prompt_tokens": "prompt tokens"
+  "usage.prompt_tokens": "prompt tokens",
+  "auth.title": "Se connecter",
+  "auth.subtitle": "Connectez-vous pour accéder à votre espace de travail.",
+  "auth.sso_button": "Continuer avec le SSO",
+  "auth.email_label": "E-mail",
+  "auth.email_placeholder": "vous@exemple.fr",
+  "auth.error": "Échec de la connexion. Vérifiez l'e-mail et réessayez.",
+  "auth.sign_in": "Se connecter",
+  "auth.local_mode": "Ce déploiement fonctionne en mode local mono-utilisateur.",
+  "auth.enter_app": "Ouvrir le workspace",
+  "user_menu.aria": "Menu utilisateur",
+  "user_menu.local_user": "Utilisateur local",
+  "user_menu.local_mode": "Mode local",
+  "user_menu.sign_out": "Se déconnecter"
 }

@@ -486,5 +486,18 @@
   "usage.completion_tokens": "tokens de conclusão",
   "usage.estimated_cost": "custo estimado",
   "usage.events": "eventos",
-  "usage.prompt_tokens": "tokens de prompt"
+  "usage.prompt_tokens": "tokens de prompt",
+  "auth.title": "Entrar",
+  "auth.subtitle": "Entre para continuar no seu workspace.",
+  "auth.sso_button": "Continuar com SSO",
+  "auth.email_label": "E-mail",
+  "auth.email_placeholder": "voce@exemplo.com",
+  "auth.error": "Falha no login. Confira o e-mail e tente novamente.",
+  "auth.sign_in": "Entrar",
+  "auth.local_mode": "Este deployment roda em modo local de usuário único.",
+  "auth.enter_app": "Entrar no workspace",
+  "user_menu.aria": "Menu do usuário",
+  "user_menu.local_user": "Usuário local",
+  "user_menu.local_mode": "Modo local",
+  "user_menu.sign_out": "Sair"
 }

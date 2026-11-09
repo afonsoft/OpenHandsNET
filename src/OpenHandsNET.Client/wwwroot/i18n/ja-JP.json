@@ -486,5 +486,18 @@
   "usage.completion_tokens": "completion トークン",
   "usage.estimated_cost": "推定コスト",
   "usage.events": "イベント",
-  "usage.prompt_tokens": "prompt トークン"
+  "usage.prompt_tokens": "prompt トークン",
+  "auth.title": "サインイン",
+  "auth.subtitle": "ワークスペースに進むにはサインインしてください。",
+  "auth.sso_button": "SSOで続行",
+  "auth.email_label": "メールアドレス",
+  "auth.email_placeholder": "you@example.com",
+  "auth.error": "サインインに失敗しました。メールアドレスを確認して再試行してください。",
+  "auth.sign_in": "サインイン",
+  "auth.local_mode": "このデプロイはローカルのシングルユーザーモードで動作しています。",
+  "auth.enter_app": "ワークスペースに入る",
+  "user_menu.aria": "ユーザーメニュー",
+  "user_menu.local_user": "ローカルユーザー",
+  "user_menu.local_mode": "ローカルモード",
+  "user_menu.sign_out": "サインアウト"
 }

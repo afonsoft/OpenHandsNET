@@ -486,5 +486,18 @@
   "usage.completion_tokens": "completion tokens",
   "usage.estimated_cost": "预估费用",
   "usage.events": "事件",
-  "usage.prompt_tokens": "prompt tokens"
+  "usage.prompt_tokens": "prompt tokens",
+  "auth.title": "登录",
+  "auth.subtitle": "登录以继续进入您的工作区。",
+  "auth.sso_button": "使用 SSO 继续",
+  "auth.email_label": "邮箱",
+  "auth.email_placeholder": "you@example.com",
+  "auth.error": "登录失败。请检查邮箱后重试。",
+  "auth.sign_in": "登录",
+  "auth.local_mode": "此部署以本地单用户模式运行。",
+  "auth.enter_app": "进入工作区",
+  "user_menu.aria": "用户菜单",
+  "user_menu.local_user": "本地用户",
+  "user_menu.local_mode": "本地模式",
+  "user_menu.sign_out": "退出登录"
 }
