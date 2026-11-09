@@ -421,6 +421,8 @@
   "palette.placeholder": "Befehl oder Konversation suchen…",
   "palette.theme": "Design: {{theme}} (wechseln)",
   "plan.title": "Plan",
+  "rail.collapse": "Seitenleiste einklappen",
+  "rail.expand": "Seitenleiste ausklappen",
   "settings.agent_llm": "Agent / LLM",
   "settings.agent_type": "Agent-Typ",
   "settings.appearance": "Erscheinungsbild",
@@ -459,10 +461,13 @@
   "sidebar.filter": "Filtern…",
   "sidebar.filter_aria": "Konversationen filtern",
   "sidebar.general": "Allgemein",
+  "sidebar.knowledge": "Wissen",
   "sidebar.new_chat": "Neue Konversation",
   "sidebar.repository": "Repository",
   "sidebar.settings": "Einstellungen",
+  "sidebar.skills_mcp": "Skills & MCP",
   "sidebar.toggle": "Seitenleiste umschalten",
+  "sidebar.workspace": "Arbeitsbereich",
   "skills.content_placeholder": "Markdown-Inhalt",
   "skills.desc_placeholder": "Beschreibung",
   "skills.description": "Beschreibung",
@@ -481,7 +486,5 @@
   "usage.completion_tokens": "Completion-Tokens",
   "usage.estimated_cost": "geschätzte Kosten",
   "usage.events": "Ereignisse",
-  "usage.prompt_tokens": "Prompt-Tokens",
-  "rail.expand": "Seitenleiste ausklappen",
-  "rail.collapse": "Seitenleiste einklappen"
+  "usage.prompt_tokens": "Prompt-Tokens"
 }

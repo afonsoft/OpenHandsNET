@@ -59,6 +59,21 @@ public static class Icons
             ["eye"] = "<path d='M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z'/><circle cx='12' cy='12' r='3'/>",
             ["logout"] = "<path d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9'/>",
             ["spin"] = "<path d='M21 12a9 9 0 1 1-9-9'/>",
+            // SPEC-136 RF-003: lote p/ menu/ações do roadmap (stroke 2 —
+            // consistência do set próprio).
+            ["pin"] = "<path d='M9 4h6l-1 7 4 3v2H6v-2l4-3-1-7ZM12 16v5'/>",
+            ["archive"] = "<rect x='3' y='4' width='18' height='5' rx='1'/><path d='M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4'/>",
+            ["pencil"] = "<path d='M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3ZM13.5 7.5l3 3'/>",
+            ["share-nodes"] = "<circle cx='6' cy='12' r='2.5'/><circle cx='18' cy='6' r='2.5'/><circle cx='18' cy='18' r='2.5'/><path d='m8.2 10.8 7.6-3.6M8.2 13.2l7.6 3.6'/>",
+            ["branch"] = "<circle cx='6' cy='6' r='2.5'/><circle cx='6' cy='18' r='2.5'/><circle cx='18' cy='8' r='2.5'/><path d='M6 8.5v7M18 10.5a5 5 0 0 1-5 5H9'/>",
+            ["thumbs-up"] = "<path d='M7 11v9H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3Zm0 0 4.5-8a2.4 2.4 0 0 1 2.4 2.4V9h5.4a2 2 0 0 1 2 2.4l-1.2 7a2 2 0 0 1-2 1.6H7Z'/>",
+            ["thumbs-down"] = "<path d='M7 13V4H4a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h3Zm0 0 4.5 8a2.4 2.4 0 0 0 2.4-2.4V15h5.4a2 2 0 0 0 2-2.4l-1.2-7a2 2 0 0 0-2-1.6H7Z'/>",
+            ["sparkles"] = "<path d='m12 3 1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8L12 3ZM18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z'/>",
+            ["globe"] = "<circle cx='12' cy='12' r='9'/><path d='M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18'/>",
+            ["tag"] = "<path d='M4 4h6l10 10-6 6L4 10V4Z'/><circle cx='8' cy='8' r='1.5'/>",
+            ["mic"] = "<rect x='9' y='3' width='6' height='11' rx='3'/><path d='M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6'/>",
+            ["sliders"] = "<path d='M6 4v10M6 18v2M12 4v2M12 10v10M18 4v4M18 12v8'/><circle cx='6' cy='16' r='2'/><circle cx='12' cy='8' r='2'/><circle cx='18' cy='10' r='2'/>",
+            ["link-external"] = "<path d='M14 4h6v6M20 4 11 13M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6'/>",
         };
 
     /// <summary>Inner markup do ícone ou fallback <c>info</c>.</summary>

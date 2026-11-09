@@ -94,11 +94,24 @@
                     }
                 </div>
             }
+            @* SPEC-136 RF-001: rotas órfãs ganham entrada na shell —
+               Knowledge (/knowledge) e Skills & MCP (/settings/skills). *@
+            <div class="sb-label">@L["sidebar.workspace"]</div>
+            <a class="sb-item @(IsActive("/knowledge") ? "active" : "")"
+               href="/knowledge" title="@L["sidebar.knowledge"]">
+                <Icon Name="book" Size="16" />
+                <span class="txt">@L["sidebar.knowledge"]</span>
+            </a>
             <div class="sb-label">@L["sidebar.general"]</div>
             <a class="sb-item @(IsActive("/automations") ? "active" : "")"
                href="/automations" title="@L["sidebar.automations"]">
                 <Icon Name="clock" Size="16" />
                 <span class="txt">@L["sidebar.automations"]</span>
+            </a>
+            <a class="sb-item @(IsActive("/settings/skills") || IsActive("/settings/mcp") ? "active" : "")"
+               href="/settings/skills" title="@L["sidebar.skills_mcp"]">
+                <Icon Name="sparkles" Size="16" />
+                <span class="txt">@L["sidebar.skills_mcp"]</span>
             </a>
             @* SPEC-130 RF-001: engrenagem abre o SettingsModal sobre a
                conversa; /settings segue como deep-link direto. *@

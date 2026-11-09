@@ -421,6 +421,8 @@
   "palette.placeholder": "buscar comando ou conversa…",
   "palette.theme": "Tema: {{theme}} (alternar)",
   "plan.title": "Plano",
+  "rail.collapse": "Recolher barra lateral",
+  "rail.expand": "Expandir barra lateral",
   "settings.agent_llm": "Agente / LLM",
   "settings.agent_type": "tipo de agente",
   "settings.appearance": "Aparência",
@@ -459,10 +461,13 @@
   "sidebar.filter": "Filtrar…",
   "sidebar.filter_aria": "Filtrar conversas",
   "sidebar.general": "Geral",
+  "sidebar.knowledge": "Conhecimento",
   "sidebar.new_chat": "Nova conversa",
   "sidebar.repository": "Repositório",
   "sidebar.settings": "Configurações",
+  "sidebar.skills_mcp": "Skills e MCP",
   "sidebar.toggle": "Alternar barra lateral",
+  "sidebar.workspace": "Espaço de trabalho",
   "skills.content_placeholder": "conteúdo markdown",
   "skills.desc_placeholder": "descrição",
   "skills.description": "Descrição",
@@ -481,7 +486,5 @@
   "usage.completion_tokens": "tokens de conclusão",
   "usage.estimated_cost": "custo estimado",
   "usage.events": "eventos",
-  "usage.prompt_tokens": "tokens de prompt",
-  "rail.expand": "Expandir barra lateral",
-  "rail.collapse": "Recolher barra lateral"
+  "usage.prompt_tokens": "tokens de prompt"
 }
