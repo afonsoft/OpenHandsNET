@@ -22,6 +22,12 @@ services:
     environment:
       - OPENHANDSNET_Database__ConnectionString=Data Source=/app/data/openhandsnet.db
       - OPENHANDSNET_Sandbox__DockerSocketMount=true
+      # SPEC-36: rate limit ligado por default no beta (single-user local
+      # pode ser exposto — IP rules do SPEC-59 já são always-on). Ajuste
+      # ou zere via .env se quiser desligar.
+      - OPENHANDSNET_RateLimit__RequestsPerMinute=120
+      - OPENHANDSNET_RateLimit__ReadPerMinute=600
+      - OPENHANDSNET_RateLimit__WritePerMinute=120
     ports:
       - "${OPENHANDSNET_PORT:-3032}:8080"
     volumes:

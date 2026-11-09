@@ -87,6 +87,11 @@ Português: [../../installation/environment-variables.md](../../installation/env
 
 ## Auth
 
+> ⚠️ `OPENHANDSNET_Auth__Provider=none` is **single-user local** — any
+> client that can reach the port becomes the user. Do NOT expose it to
+> the internet without `oidc`; if you do, keep rate limiting and the
+> IP rules (SPEC-59) enabled — both are on in `docker-compose.beta.yaml`.
+
 | Variable | Default | Description |
 |---|---|---|
 | `OPENHANDSNET_Auth__Provider` | `none` | `none` (single-user OSS) \| `oidc` |

@@ -1,5 +1,6 @@
 # OpenHandsNET
 
+[![version](https://img.shields.io/badge/version-0.1.0--beta.1-orange)](https://github.com/afonsoft/OpenHandsNET/releases)
 [![ci](https://github.com/afonsoft/OpenHandsNET/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/afonsoft/OpenHandsNET/actions/workflows/ci.yml)
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=afonsoft_OpenHandsNET&metric=alert_status)](https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main)
 [![Maintainability](https://sonarcloud.io/api/project_badges/measure?project=afonsoft_OpenHandsNET&metric=sqale_rating)](https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main)

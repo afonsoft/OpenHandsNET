@@ -5,8 +5,33 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+## [v0.1.0-beta.1] — 2026-11-08
+
+Primeira tag beta pública (Epic #365 · SPECs 132–137). Highlights do
+audit: ~130 SPECs entregues e arquivadas em `docs/specs/`, design-system
+inspirado no Devin Web sobre a base `afonsoft/open-webui`, 45+ builtin
+tools + MCP/ACP, e enterprise ops completo (orgs/SCIM/OIDC/quotas/audit).
+
 ### Added
 
+- **Auth UX (SPEC-132, #366)**: página `/auth` (3 providers), avatar e
+  user-menu na sidebar, sign-out via `POST /auth/logout`, guard de 401,
+  `GET /api/v1/auth/session` (provider + user para a shell).
+- **Web search tool (SPEC-133, #367)**: builtin `web_search`
+  (duckduckgo/tavily/brave) com provider configurável.
+- **BYOK (SPEC-134, #368)**: chaves LLM por usuário (openai/anthropic/
+  gemini/openai_compat) com storage criptografado (DataProtection+nonce),
+  CRUD `/api/v1/keys/llm*` mascarado, test ping rate-limited e
+  precedência user → BYOR → global no AgentRunner (`key_source` no ledger).
+- **Conversation UX (SPEC-135, #369)**: `POST /app-conversations/{id}/fork`
+  (clona eventos até `at_event_id`, `parent_conversation_id`), turn undo
+  `POST .../undo` (soft-delete `truncated_at` + revert ao checkpoint do
+  início do turno) e `POST .../files/revert-hunks` (reverse-apply por
+  hunk, `applied[]`/`conflicts[]`); UI: sidebar + topbar overflow,
+  `/undo` no composer, badge de proveniência, DiffTab por hunk.
+- **Nav visual polish (SPEC-136, #370)**: nav órfã, fontes, ícones.
+- **Release housekeeping (SPEC-137, #371)**: este checklist +
+  `docs/release-beta.md`, dead code, docs de instalação.
 - **Quality gates (SPEC-66, #148)**: `.editorconfig` baseline, step
   `dotnet format --verify-no-changes` no CI, job `sonarcloud` (SonarCloud
   `afonsoft_OpenHandsNET`, gated por `vars.SONAR_ENABLED` + `SONAR_TOKEN`),
@@ -52,3 +77,21 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   proxy WS de surfaces (vscode/terminal/desktop) não funcionava.
 - **Sonar smells (#287)**: lambda de 8 parâmetros (S107) e delimiter
   hardcoded (S1075) no endpoint de surfaces.
+
+
+### Breaking changes
+
+- **`GET /api/v1/pending-messages` removido** (SPEC-137): pending
+  messages são in-memory por réplica e o endpoint foi dropado —
+  consumidores devem usar o stream de eventos da conversa.
+
+### Known limitations
+
+- Pending messages são in-memory por réplica (fila durável = roadmap).
+- `Auth:Provider=none` é single-user local — **não exponha à internet
+  sem `oidc`** (callouts em `.env.exemplo` + docs de instalação;
+  `docker-compose.beta.yaml` liga rate limit 120/min e IP rules).
+- Multi-repo workspace não existe; resume exige sandbox `RUNNING`
+  (sem wake-in-fresh-sandbox); billing = metering apenas (sem PSP);
+  k8s multi-host parcial (SPEC-49).
+
