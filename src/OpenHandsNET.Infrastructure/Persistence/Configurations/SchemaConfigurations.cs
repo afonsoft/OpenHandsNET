@@ -311,3 +311,13 @@ public sealed class ConversationMemoryConfiguration
         b.HasIndex(e => e.UpdatedAt);
     }
 }
+/// <inheritdoc />
+public sealed class UserLlmKeyConfiguration : IEntityTypeConfiguration<UserLlmKeyRecord>
+{
+    /// <inheritdoc />
+    public void Configure(EntityTypeBuilder<UserLlmKeyRecord> b)
+    {
+        b.ToTable("user_llm_keys");
+        b.HasKey(e => new { e.UserId, e.Provider });
+    }
+}

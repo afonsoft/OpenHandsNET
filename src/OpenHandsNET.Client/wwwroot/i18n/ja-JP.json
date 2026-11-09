@@ -499,5 +499,18 @@
   "user_menu.aria": "ユーザーメニュー",
   "user_menu.local_user": "ローカルユーザー",
   "user_menu.local_mode": "ローカルモード",
-  "user_menu.sign_out": "サインアウト"
+  "user_menu.sign_out": "サインアウト",
+  "settings.llmkeys.title": "LLMキー (BYOK)",
+  "settings.llmkeys.hint": "プロバイダーキーを追加すると、サーバーのデフォルトより先に使用されます。",
+  "settings.llmkeys.provider": "プロバイダー",
+  "settings.llmkeys.key": "APIキー",
+  "settings.llmkeys.saved": "キーを保存しました。",
+  "settings.llmkeys.err": "操作に失敗しました — 入力値を確認して再試行してください。",
+  "settings.llmkeys.test": "{{provider}} キーをテスト",
+  "settings.llmkeys.test_short": "テスト",
+  "settings.llmkeys.test_ok": "{{provider}}: 接続OK",
+  "settings.llmkeys.test_fail": "{{provider}}: {{detail}}",
+  "settings.llmkeys.remove": "{{provider}} キーを削除",
+  "settings.llmkeys.base_url": "ベースURL",
+  "settings.llmkeys.key_ph": "sk-…"
 }

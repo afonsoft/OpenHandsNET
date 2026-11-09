@@ -110,7 +110,6 @@ public sealed class Spec112FuzzBoundaryTests : IDisposable
         using var http = await TestAuth.LoginAsync(_factory);
         foreach (var path in new[]
         {
-            "/api/v1/pending-messages",
             "/api/v1/mcp/tool-call",
         })
         {

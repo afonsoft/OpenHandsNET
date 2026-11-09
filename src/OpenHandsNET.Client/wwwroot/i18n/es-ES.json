@@ -499,5 +499,18 @@
   "user_menu.aria": "Menú de usuario",
   "user_menu.local_user": "Usuario local",
   "user_menu.local_mode": "Modo local",
-  "user_menu.sign_out": "Cerrar sesión"
+  "user_menu.sign_out": "Cerrar sesión",
+  "settings.llmkeys.title": "Claves de LLM (BYOK)",
+  "settings.llmkeys.hint": "Trae tu clave de provider — los runs la usan antes del default del servidor.",
+  "settings.llmkeys.provider": "Proveedor",
+  "settings.llmkeys.key": "API key",
+  "settings.llmkeys.saved": "Clave salva.",
+  "settings.llmkeys.err": "Falló la operación — revisa los valores e inténtalo de nuevo.",
+  "settings.llmkeys.test": "Probar clave de {{{provider}}}",
+  "settings.llmkeys.test_short": "Probar",
+  "settings.llmkeys.test_ok": "{{{provider}}}: conexión OK",
+  "settings.llmkeys.test_fail": "{{{provider}}}: {{{detail}}}",
+  "settings.llmkeys.remove": "Eliminar clave de {{{provider}}}",
+  "settings.llmkeys.base_url": "URL base",
+  "settings.llmkeys.key_ph": "sk-…"
 }

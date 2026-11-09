@@ -499,5 +499,18 @@
   "user_menu.aria": "Menu utente",
   "user_menu.local_user": "Utente locale",
   "user_menu.local_mode": "Modalità locale",
-  "user_menu.sign_out": "Esci"
+  "user_menu.sign_out": "Esci",
+  "settings.llmkeys.title": "Chiavi LLM (BYOK)",
+  "settings.llmkeys.hint": "Porta la tua chiave provider — i run la usano prima del default del server.",
+  "settings.llmkeys.provider": "Provider",
+  "settings.llmkeys.key": "Chiave API",
+  "settings.llmkeys.saved": "Chiave salvata.",
+  "settings.llmkeys.err": "Operazione non riuscita — controlla i valori e riprova.",
+  "settings.llmkeys.test": "Testa chiave {{{provider}}}",
+  "settings.llmkeys.test_short": "Testa",
+  "settings.llmkeys.test_ok": "{{{provider}}}: connessione OK",
+  "settings.llmkeys.test_fail": "{{{provider}}}: {{{detail}}}",
+  "settings.llmkeys.remove": "Rimuovi chiave {{{provider}}}",
+  "settings.llmkeys.base_url": "URL base",
+  "settings.llmkeys.key_ph": "sk-…"
 }

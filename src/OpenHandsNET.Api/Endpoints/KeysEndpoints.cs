@@ -68,6 +68,87 @@ public static class KeysEndpoints
             RevokeByorAsync).WithTags("OpenHandsNET.Api")
             .RequireAuthorization().ProducesProblem(404).ProducesProblem(503);
 
+        // SPEC-134 RF-003/RF-004: BYOK por usuário — CRUD owner-scoped,
+        // saída sempre mascarada (a key crua nunca sai), audit em
+        // upsert/delete, test rate-limited no service.
+        g.MapGet("/llm", async (
+            ICurrentUserAccessor current, IUserLlmKeyService keys,
+            CancellationToken ct) =>
+        {
+            var user = current.User;
+            return user is null
+                ? Results.Unauthorized()
+                : Results.Ok(await keys.ListAsync(
+                    user.UserId.ToString(), ct));
+        }).WithTags("OpenHandsNET.Api").RequireAuthorization();
+
+        g.MapGet("/llm/providers", (
+            IUserLlmKeyService keys) => Results.Ok(keys.Providers))
+            .WithTags("OpenHandsNET.Api").RequireAuthorization();
+
+        g.MapPut("/llm/{provider}", async (
+            string provider, [FromBody] UserLlmKeyUpsertRequest req,
+            ICurrentUserAccessor current, IUserLlmKeyService keys,
+            IAuditService audit, CancellationToken ct) =>
+        {
+            var user = current.User;
+            if (user is null)
+                return Results.Unauthorized();
+            try
+            {
+                var info = await keys.UpsertAsync(
+                    user.UserId.ToString(), provider, req.Key,
+                    req.BaseUrl, ct);
+                await audit.RecordAsync(
+                    "keys.llm.upsert", user.UserId.ToString(), null,
+                    "user_llm_key", provider, cancellationToken: ct);
+                return Results.Ok(info);
+            }
+            catch (LlmKeyValidationException e)
+            {
+                return Results.BadRequest(new { detail = e.Code });
+            }
+        }).WithTags("OpenHandsNET.Api").RequireAuthorization();
+
+        g.MapDelete("/llm/{provider}", async (
+            string provider,
+            ICurrentUserAccessor current, IUserLlmKeyService keys,
+            IAuditService audit, CancellationToken ct) =>
+        {
+            var user = current.User;
+            if (user is null)
+                return Results.Unauthorized();
+            if (!await keys.DeleteAsync(
+                    user.UserId.ToString(), provider, ct))
+                return Results.NotFound();
+            await audit.RecordAsync(
+                "keys.llm.delete", user.UserId.ToString(), null,
+                "user_llm_key", provider, cancellationToken: ct);
+            return Results.NoContent();
+        }).WithTags("OpenHandsNET.Api").RequireAuthorization();
+
+        g.MapPost("/llm/{provider}/test", async (
+            string provider,
+            ICurrentUserAccessor current, IUserLlmKeyService keys,
+            CancellationToken ct) =>
+        {
+            var user = current.User;
+            if (user is null)
+                return Results.Unauthorized();
+            try
+            {
+                var (ok, detail) = await keys.TestAsync(
+                    user.UserId.ToString(), provider, ct);
+                return detail == "rate_limited"
+                    ? Results.Problem(statusCode: 429, title: "rate_limited")
+                    : Results.Ok(new { ok, detail });
+            }
+            catch (LlmKeyValidationException e)
+            {
+                return Results.BadRequest(new { detail = e.Code });
+            }
+        }).WithTags("OpenHandsNET.Api").RequireAuthorization();
+
         return app;
     }
 
@@ -263,4 +344,8 @@ public static class KeysEndpoints
 
     /// <summary>BYOR refresh body (SPEC-50) — budget override opcional.</summary>
     public sealed record ByorRefreshRequest(decimal? Budget);
+
+    /// <summary>BYOK upsert body (SPEC-134) — key + base_url opcional.</summary>
+    public sealed record UserLlmKeyUpsertRequest(
+        string Key, string? BaseUrl);
 }

@@ -66,7 +66,8 @@ public sealed record LlmOptions(
     string? Model = null,
     double? Temperature = null,
     int? MaxTokens = null,
-    ByorCallContext? Byor = null);
+    ByorCallContext? Byor = null,
+    UserLlmKeyCallContext? UserKey = null);
 
 /// <summary>Tool schema advertised to the model (JSON Schema input).</summary>
 public sealed record ToolSchema(

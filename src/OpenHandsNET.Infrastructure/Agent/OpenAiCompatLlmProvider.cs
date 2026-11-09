@@ -170,10 +170,12 @@ public sealed class OpenAiCompatLlmProvider(
             payload["max_tokens"] = llmOptions.MaxTokens;
         }
 
+        // SPEC-134: precedência user-key (BYOK) → BYOR → config global.
         // SPEC-50: BYOR override — a chamada vai ao proxy LiteLLM com a
         // virtual key do owner; X-LiteLLM-Key carrega o key_id (tracking).
+        var userKey = llmOptions.UserKey;
         var byor = llmOptions.Byor;
-        var baseUrl = (byor?.BaseUrl ?? cfg.BaseUrl
+        var baseUrl = (userKey?.BaseUrl ?? byor?.BaseUrl ?? cfg.BaseUrl
             ?? DefaultLiteLlmBaseUrl).TrimEnd('/');
         var request = new HttpRequestMessage(
             HttpMethod.Post, $"{baseUrl}/chat/completions")
@@ -182,7 +184,12 @@ public sealed class OpenAiCompatLlmProvider(
                 JsonSerializer.Serialize(payload, Json),
                 Encoding.UTF8, "application/json"),
         };
-        if (byor is not null)
+        if (userKey is not null)
+        {
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", userKey.Key);
+        }
+        else if (byor is not null)
         {
             request.Headers.Authorization =
                 new AuthenticationHeaderValue("Bearer", byor.VirtualKey);

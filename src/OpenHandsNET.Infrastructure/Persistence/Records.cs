@@ -447,3 +447,25 @@ public sealed class ConversationMemoryRecord
     public required string Value { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 }
+/// <summary>
+/// SPEC-134 RF-001: BYOK por usuário — provider key colada no Settings.
+/// Plaintext persiste só como ciphertext DataProtection
+/// (<see cref="KeyCiphertext"/> + <see cref="Nonce"/>, mesmo padrão de
+/// <see cref="ByorKeyRecord"/>); serialização sempre mascarada.
+/// PK composta (UserId, Provider) — uma key por provider por usuário.
+/// </summary>
+public sealed class UserLlmKeyRecord
+{
+    /// <summary>Owner (dev-login user id / subject).</summary>
+    public required string UserId { get; set; }
+    /// <summary>Provider id do catálogo (openai|anthropic|gemini|openai_compat).</summary>
+    public required string Provider { get; set; }
+    /// <summary>DataProtection ciphertext da key.</summary>
+    public required string KeyCiphertext { get; set; }
+    /// <summary>Protector nonce (purpose separation).</summary>
+    public required string Nonce { get; set; }
+    /// <summary>Endpoint OpenAI-compat (obrigatório p/ openai_compat).</summary>
+    public string? BaseUrl { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+}

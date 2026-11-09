@@ -499,5 +499,18 @@
   "user_menu.aria": "User menu",
   "user_menu.local_user": "Local user",
   "user_menu.local_mode": "Local mode",
-  "user_menu.sign_out": "Sign out"
+  "user_menu.sign_out": "Sign out",
+  "settings.llmkeys.title": "LLM keys (BYOK)",
+  "settings.llmkeys.hint": "Bring your own provider key — runs use it before the server default.",
+  "settings.llmkeys.provider": "Provider",
+  "settings.llmkeys.key": "API key",
+  "settings.llmkeys.key_ph": "sk-…",
+  "settings.llmkeys.base_url": "Base URL",
+  "settings.llmkeys.saved": "Key saved.",
+  "settings.llmkeys.err": "Operation failed — check the values and try again.",
+  "settings.llmkeys.test": "Test {{{provider}}} key",
+  "settings.llmkeys.test_short": "Test",
+  "settings.llmkeys.test_ok": "{{{provider}}}: connection OK",
+  "settings.llmkeys.test_fail": "{{{provider}}}: {{{detail}}}",
+  "settings.llmkeys.remove": "Remove {{{provider}}} key"
 }

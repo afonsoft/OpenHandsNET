@@ -135,6 +135,9 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<ConversationContextNoteRecord> ContextNotes =>
         Set<ConversationContextNoteRecord>();
 
+    /// <summary>SPEC-134: BYOK — provider keys por usuário.</summary>
+    public DbSet<UserLlmKeyRecord> UserLlmKeys => Set<UserLlmKeyRecord>();
+
     /// <summary>SPEC-128: memória key/value granular por conversa.</summary>
     public DbSet<ConversationMemoryRecord> ConversationMemories =>
         Set<ConversationMemoryRecord>();
