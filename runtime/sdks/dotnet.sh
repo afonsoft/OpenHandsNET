@@ -29,7 +29,7 @@ fi
 
 # PATH global via profile.d + link (imediato para novos processos).
 $SUDO ln -sf "$INSTALL_DIR/dotnet" /usr/local/bin/dotnet
-$SUDO tee /etc/profile.d/ohn-dotnet.sh >/dev/null <<EOF
+$SUDO tee /etc/profile.d/sc-dotnet.sh >/dev/null <<EOF
 export DOTNET_ROOT="$INSTALL_DIR"
 export PATH="$INSTALL_DIR:\$PATH"
 export DOTNET_CLI_TELEMETRY_OPTOUT=1

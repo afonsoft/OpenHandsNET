@@ -21,7 +21,7 @@ no sidecar, no `privileged`. Same posture as the k8s provider
 (`runtimeClassName`) and upstream enterprise.
 
 ```bash
-OPENHANDSNET_Sandbox__DockerRuntime=sysbox-runc
+SANDCASTLE_Sandbox__DockerRuntime=sysbox-runc
 # keep EnableDinD OFF — not needed with sysbox
 ```
 
@@ -37,7 +37,7 @@ sharing the sandbox network namespace. The agent sees
 stay siblings of the sandbox (never siblings of the host daemon).
 
 ```bash
-OPENHANDSNET_Sandbox__EnableDinD=true
+SANDCASTLE_Sandbox__EnableDinD=true
 ```
 
 Costs: a second privileged container per sandbox, ~150 MB image, and the
@@ -47,7 +47,7 @@ root-equivalent inside its pod" (acceptable for dev; review for prod).
 ### Weaker alternative: socket mount
 
 ```bash
-OPENHANDSNET_Sandbox__DockerSocketMount=true   # ignored when DinD is on
+SANDCASTLE_Sandbox__DockerSocketMount=true   # ignored when DinD is on
 ```
 
 Bind-mounts the host `/var/run/docker.sock` — **weakest isolation**: the
@@ -66,10 +66,10 @@ set this together with untrusted repositories.
 See `egress-allowlist.md` for the allowlist proxy mechanics.
 
 ```bash
-OPENHANDSNET_Sandbox__EgressMode=deny
+SANDCASTLE_Sandbox__EgressMode=deny
 # or:
-OPENHANDSNET_Sandbox__EgressMode=allowlist
-OPENHANDSNET_Sandbox__EgressAllow=api.github.com;*.internal.corp
+SANDCASTLE_Sandbox__EgressMode=allowlist
+SANDCASTLE_Sandbox__EgressAllow=api.github.com;*.internal.corp
 ```
 
 Egress `deny` breaks `git clone` from public hosts and LLM calls routed
@@ -79,10 +79,10 @@ mirror.
 ## Warm pool (`Sandbox__WarmPoolSize`)
 
 ```bash
-OPENHANDSNET_Sandbox__WarmPoolSize=2
+SANDCASTLE_Sandbox__WarmPoolSize=2
 ```
 
-Keeps N pre-created, running containers labelled `openhandsnet.pool=warm`.
+Keeps N pre-created, running containers labelled `sandcastle.pool=warm`.
 A conversation start **claims** one (attach ~sub-second vs multi-second
 cold start); its pre-mounted workspace dir is renamed to the conversation
 path — bind target preserved. The pool:

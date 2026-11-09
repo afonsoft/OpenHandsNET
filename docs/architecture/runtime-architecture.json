@@ -2,11 +2,11 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "OpenHandsNET — Runtime Architecture",
+    "title": "Sandcastle — Runtime Architecture",
     "output": "runtime-architecture.html",
     "quality_profile": "standard",
     "repository": {
-      "url": "https://github.com/afonsoft/OpenHandsNET",
+      "url": "https://github.com/afonsoft/sandcastle",
       "provider": "github",
       "link_mode": "web",
       "revision": "5f862e09d0a55f93f93d812873dabd4c84886197"
@@ -19,13 +19,13 @@
     ]
   },
   "components": [
-    { "id": "wasm-client", "type": "frontend", "label": "Client (Blazor WASM)", "sublabel": "chat · IDE · admin", "pos": [30, 320], "size": [160, 64], "sources": [{ "path": "src/OpenHandsNET.Client/Program.cs", "label": "WASM client" }] },
-    { "id": "cli", "type": "frontend", "label": "Cli (Spectre)", "sublabel": "login · run · serve · eval", "pos": [30, 460], "size": [160, 64], "sources": [{ "path": "cli/OpenHandsNET.Cli/Program.cs", "label": "CLI" }] },
-    { "id": "api", "type": "backend", "label": "Api", "sublabel": "Minimal /api/v1 · SignalR hubs", "pos": [230, 320], "size": [160, 64], "tag": "OIDC + sk-*/svc_*", "sources": [{ "path": "src/OpenHandsNET.Api/Program.cs", "label": "API host" }] },
-    { "id": "app-domain", "type": "backend", "label": "Application + Domain", "sublabel": "contratos · eventos V1", "pos": [230, 540], "size": [160, 64], "sources": [{ "path": "src/OpenHandsNET.Application/Agent/AgentContracts.cs", "label": "contracts" }, { "path": "src/OpenHandsNET.Domain/Events/EventBase.cs", "label": "V1 events" }] },
-    { "id": "infrastructure", "type": "backend", "label": "Infrastructure", "sublabel": "EF Core · agent loop · secrets", "pos": [450, 320], "size": [170, 64], "sources": [{ "path": "src/OpenHandsNET.Infrastructure/DependencyInjection.cs", "label": "infra" }] },
-    { "id": "runtime-api", "type": "backend", "label": "RuntimeApi", "sublabel": "orquestração fora-de-processo", "pos": [680, 320], "size": [160, 64], "sources": [{ "path": "src/OpenHandsNET.RuntimeApi/Program.cs", "label": "runtime" }] },
-    { "id": "sandbox-agent", "type": "security", "label": "Sandboxing + Agent", "sublabel": "ISandboxEngine · PID1 · Squid", "pos": [890, 320], "size": [170, 64], "sources": [{ "path": "src/OpenHandsNET.Sandboxing/DockerSandboxEngine.cs", "label": "engine" }, { "path": "src/OpenHandsNET.SandboxAgent/Program.cs", "label": "PID1" }] },
+    { "id": "wasm-client", "type": "frontend", "label": "Client (Blazor WASM)", "sublabel": "chat · IDE · admin", "pos": [30, 320], "size": [160, 64], "sources": [{ "path": "src/Sandcastle.Client/Program.cs", "label": "WASM client" }] },
+    { "id": "cli", "type": "frontend", "label": "Cli (Spectre)", "sublabel": "login · run · serve · eval", "pos": [30, 460], "size": [160, 64], "sources": [{ "path": "cli/Sandcastle.Cli/Program.cs", "label": "CLI" }] },
+    { "id": "api", "type": "backend", "label": "Api", "sublabel": "Minimal /api/v1 · SignalR hubs", "pos": [230, 320], "size": [160, 64], "tag": "OIDC + sk-*/svc_*", "sources": [{ "path": "src/Sandcastle.Api/Program.cs", "label": "API host" }] },
+    { "id": "app-domain", "type": "backend", "label": "Application + Domain", "sublabel": "contratos · eventos V1", "pos": [230, 540], "size": [160, 64], "sources": [{ "path": "src/Sandcastle.Application/Agent/AgentContracts.cs", "label": "contracts" }, { "path": "src/Sandcastle.Domain/Events/EventBase.cs", "label": "V1 events" }] },
+    { "id": "infrastructure", "type": "backend", "label": "Infrastructure", "sublabel": "EF Core · agent loop · secrets", "pos": [450, 320], "size": [170, 64], "sources": [{ "path": "src/Sandcastle.Infrastructure/DependencyInjection.cs", "label": "infra" }] },
+    { "id": "runtime-api", "type": "backend", "label": "RuntimeApi", "sublabel": "orquestração fora-de-processo", "pos": [680, 320], "size": [160, 64], "sources": [{ "path": "src/Sandcastle.RuntimeApi/Program.cs", "label": "runtime" }] },
+    { "id": "sandbox-agent", "type": "security", "label": "Sandboxing + Agent", "sublabel": "ISandboxEngine · PID1 · Squid", "pos": [890, 320], "size": [170, 64], "sources": [{ "path": "src/Sandcastle.Sandboxing/DockerSandboxEngine.cs", "label": "engine" }, { "path": "src/Sandcastle.SandboxAgent/Program.cs", "label": "PID1" }] },
     { "id": "k8s", "type": "cloud", "label": "Docker / K8s", "sublabel": "container runtime", "pos": [890, 540], "size": [140, 60] },
     { "id": "db", "type": "database", "label": "SQLite / PostgreSQL", "sublabel": "EF Core 10", "pos": [450, 540], "size": [160, 60] },
     { "id": "redis", "type": "messagebus", "label": "Redis / Valkey", "sublabel": "SignalR backplane", "pos": [450, 110], "size": [160, 60] },

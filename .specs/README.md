@@ -1,4 +1,4 @@
-# .specs/ — SPECs SDD/ADD do OpenHandsNET
+# .specs/ — SPECs SDD/ADD do Sandcastle
 
 SPECs (Spec-Driven Development) do port do ecossistema **OpenHands** para
 **.NET 10 / Blazor WASM**, seguindo o workflow afonsoft (`write-specs` →
@@ -12,7 +12,7 @@ gates (aprovação de SPEC, merge).
 ## Convenção
 
 - Os módulos 01–08 seguem a numeração definida em
-  `openhandsnet_full_specification_and_migration_guide.md` (raiz) (seção 8);
+  `sandcastle_full_specification_and_migration_guide.md` (raiz) (seção 8);
   09–13 cobrem lacunas identificadas para execução autônoma (Devin).
 - Cada arquivo: `0. Metadata` → `7. Task Plan` + `8. Deliverables` +
   `9. Referências` + `10. Guardrails` + `11. DoD`.

@@ -1,4 +1,4 @@
-# CLAUDE.md — OpenHandsNET
+# CLAUDE.md — Sandcastle
 
 ## Missão
 
@@ -31,12 +31,12 @@ humana. Agentes são os desenvolvedores primários.
 ## Estrutura do Projeto (alvo — SPEC 01)
 
 ```
-src/OpenHandsNET.Domain          # eventos (kind), entidades — zero deps
-src/OpenHandsNET.Application     # contratos/DTOs/interfaces
-src/OpenHandsNET.Infrastructure  # EF Core, Docker.DotNet, secrets, webhooks
-src/OpenHandsNET.Api             # /api/v1 + hubs SignalR + hosting WASM
-src/OpenHandsNET.Client          # Blazor WASM (base: open-webui-net Client)
-cli/OpenHandsNET.Cli             # `openhandsnet` CLI
+src/Sandcastle.Domain          # eventos (kind), entidades — zero deps
+src/Sandcastle.Application     # contratos/DTOs/interfaces
+src/Sandcastle.Infrastructure  # EF Core, Docker.DotNet, secrets, webhooks
+src/Sandcastle.Api             # /api/v1 + hubs SignalR + hosting WASM
+src/Sandcastle.Client          # Blazor WASM (base: open-webui-net Client)
+cli/Sandcastle.Cli             # `sandcastle` CLI
 tests/                           # Unit · Integration (Testcontainers) · Client
 .specs/                          # SPECs SDD ativas (fonte única de verdade)
 docs/specs/                      # SPECs entregues (arquivo morto)
@@ -76,9 +76,9 @@ Dependências: `Api → Infrastructure → Application → Domain`; `Client → 
 ## Comandos
 
 ```bash
-dotnet restore OpenHandsNET.slnx && dotnet build OpenHandsNET.slnx -c Release
+dotnet restore Sandcastle.slnx && dotnet build Sandcastle.slnx -c Release
 dotnet test
-dotnet run --project src/OpenHandsNET.Api        # app em http://localhost:8080
+dotnet run --project src/Sandcastle.Api        # app em http://localhost:8080
 docker compose up -d --build                      # app em http://localhost:3032
 
 # Client drift guards (SPEC-92) — rodar antes de PR que toca .razor/i18n:

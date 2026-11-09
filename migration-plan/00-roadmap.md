@@ -1,11 +1,11 @@
-# Migration Roadmap — OpenHandsNET
+# Migration Roadmap — Sandcastle
 
 Port do ecossistema **OpenHands** (Python/React) para **.NET 10 / C# 14 / Blazor
 WebAssembly**, entregando o conceito "cloud + enterprise" em código open-source
 (MIT), com UX inspirada no **Devin Web** e componentes de chat/layout reusados de
 `afonsoft/open-webui`.
 
-> **Direção:** rewrite em novo repositório (`afonsoft/OpenHandsNET`), não Strangler
+> **Direção:** rewrite em novo repositório (`afonsoft/Sandcastle`), não Strangler
 > in-place — não há sistema .NET legado; o "legado" é a referência upstream
 > Python/React, analisada read-only. Fontes e baseline em
 > `migration-plan/research/` e `docs/reference/openhands-upstream/`.
@@ -38,7 +38,7 @@ GitHub App/PRs, providers GitLab/Bitbucket/AzureDevOps.
   conversa → sandbox Docker local → **agente roda loop real** → eventos fluem
   via SignalR → chat Devin-like básico (chat + terminal + files).
   SPECs 01–05 + 09 + 10 + 13.
-- **M2 (Produto):** auth + API keys `sk-*`, orgs/quota, CLI (`openhandsnet
+- **M2 (Produto):** auth + API keys `sk-*`, orgs/quota, CLI (`sandcastle
   login|cloud|serve`), MCP básico, skills/hooks, git completo. SPECs 06–08 + 11 + 12.
 - **M3 (Cloud/enterprise):** multi-tenant, deployment self-hosted (compose/Helm),
   warm-pool opcional, auditoria, OTel completo, providers SCM + PRs.
@@ -56,7 +56,7 @@ GitHub App/PRs, providers GitLab/Bitbucket/AzureDevOps.
 
 ## Epics
 
-- [**[E10] OpenHandsNET — port .NET 10 do ecossistema OpenHands**](https://github.com/afonsoft/OpenHandsNET/issues/1) - `todo`
+- [**[E10] Sandcastle — port .NET 10 do ecossistema OpenHands**](https://github.com/afonsoft/sandcastle/issues/1) - `todo`
   - Slices: #2 (01), #3 (02), #4 (03), #5 (04), #6 (05), #7 (06), #8 (07), #9 (08), #10 (09), #11 (10), #12 (11), #13 (12), #14 (13)
 
 ## Questões em aberto

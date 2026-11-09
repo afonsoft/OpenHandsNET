@@ -56,7 +56,7 @@ Pipeline **offline from CI** — the `wwwroot/tailwind.css` artifact is
 committed:
 
 ```bash
-cd src/OpenHandsNET.Client
+cd src/Sandcastle.Client
 npm ci
 npm run css        # → wwwroot/tailwind.css (minified)
 npm run css:watch  # development

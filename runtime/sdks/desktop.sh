@@ -5,7 +5,7 @@
 #
 # Instalação lazy (padrão code-server.sh): a imagem não carrega a stack
 # gráfica por default — pacotes entram via apt na primeira ativação da
-# env SANDBOX_DESKTOP=1. sudo NOPASSWD de /opt/ohn/sdks/*.sh cobre isso.
+# env SANDBOX_DESKTOP=1. sudo NOPASSWD de /opt/sc/sdks/*.sh cobre isso.
 set -euo pipefail
 
 SUDO=""; [[ "$(id -u)" -ne 0 ]] && SUDO="sudo"

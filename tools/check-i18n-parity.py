@@ -20,7 +20,7 @@ import _drift  # noqa: E402
 
 NAME = "check-i18n-parity"
 I18N_DIR = os.path.join(os.path.dirname(__file__), "..",
-                        "src/OpenHandsNET.Client/wwwroot/i18n")
+                        "src/Sandcastle.Client/wwwroot/i18n")
 BASELINE = "en-US.json"
 
 

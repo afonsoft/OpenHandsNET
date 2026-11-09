@@ -5,7 +5,7 @@ deixar o agente mexer livremente.
 
 ## Modelo
 
-- Git-dir separado (`/workspace/.ohn-checkpoints/`) apontando para o
+- Git-dir separado (`/workspace/.sc-checkpoints/`) apontando para o
   worktree — o `.git` do projeto do usuário não é tocado.
 - Snapshot automático ao fim de cada turno (`Finished`) e em `Paused`;
   manual via tool `checkpoint` (agente) ou botão na UI.

@@ -45,9 +45,9 @@ Tudo sob `perm:manage_api_keys` + scope `admin:service_users`.
 ## CLI
 
 ```bash
-openhandsnet service-users list --org <org-id>
-openhandsnet service-users create --name ci-bot --role member --org <org-id>
-openhandsnet service-users key --id <svc-id> \
+sandcastle service-users list --org <org-id>
+sandcastle service-users create --name ci-bot --role member --org <org-id>
+sandcastle service-users key --id <svc-id> \
   --scopes "conversations:write sandboxes:read" --org <org-id>
 # plaintext exibido uma única vez
 ```

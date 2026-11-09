@@ -1,29 +1,29 @@
-# OpenHandsNET + PostgreSQL — compose com:
+# Sandcastle + PostgreSQL — compose com:
 #   docker compose -f docker-compose.yaml -f docker-compose.postgres.yaml up -d --build
 services:
   app:
     environment:
-      - OPENHANDSNET_Database__Provider=PostgreSql
-      - OPENHANDSNET_Database__ConnectionString=Host=postgres;Database=openhandsnet;Username=openhandsnet;Password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      - SANDCASTLE_Database__Provider=PostgreSql
+      - SANDCASTLE_Database__ConnectionString=Host=postgres;Database=sandcastle;Username=sandcastle;Password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy
 
   postgres:
     image: postgres:17-alpine
-    container_name: openhandsnet-postgres
+    container_name: sandcastle-postgres
     environment:
-      - POSTGRES_DB=openhandsnet
-      - POSTGRES_USER=openhandsnet
+      - POSTGRES_DB=sandcastle
+      - POSTGRES_USER=sandcastle
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
     volumes:
-      - openhandsnet-pgdata:/var/lib/postgresql/data
+      - sandcastle-pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U openhandsnet -d openhandsnet"]
+      test: ["CMD-SHELL", "pg_isready -U sandcastle -d sandcastle"]
       interval: 10s
       timeout: 5s
       retries: 6
     restart: unless-stopped
 
 volumes:
-  openhandsnet-pgdata:
+  sandcastle-pgdata:

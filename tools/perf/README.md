@@ -12,10 +12,10 @@ que mede *qualidade*). Dois componentes, dependência única: `aiohttp`.
 
 ```bash
 python3 tools/perf/mock_llm.py &                      # 1. mock em 127.0.0.1:11439
-OPENHANDSNET_AgentLlm__BaseUrl=http://127.0.0.1:11439/v1 \
-OPENHANDSNET_AgentLlm__ApiKey=sk-mock \
-OPENHANDSNET_AgentLlm__Model=mock-fast \
-dotnet run --project src/OpenHandsNET.Api &           # 2. app contra o mock
+SANDCASTLE_AgentLlm__BaseUrl=http://127.0.0.1:11439/v1 \
+SANDCASTLE_AgentLlm__ApiKey=sk-mock \
+SANDCASTLE_AgentLlm__Model=mock-fast \
+dotnet run --project src/Sandcastle.Api &           # 2. app contra o mock
 python3 tools/perf/loadtest.py rps --duration 30      # 3. carga
 ```
 

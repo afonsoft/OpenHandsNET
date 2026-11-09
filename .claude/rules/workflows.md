@@ -2,7 +2,7 @@
 paths: [".github/workflows/**", ".github/**"]
 ---
 
-# GitHub Workflows Rules — OpenHandsNET
+# GitHub Workflows Rules — Sandcastle
 
 - **Hard rule 6**: não modificar `.github/workflows/` sem revisão humana
   explícita — sempre sinalizar no PR body.

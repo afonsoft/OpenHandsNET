@@ -197,7 +197,7 @@ def main():
     # violations: (signature livre-de-linha, display arquivo:linha)
     errors: list[tuple[str, str]] = []
     files = sorted(glob.glob(
-        'src/OpenHandsNET.Client/**/*.razor', recursive=True))
+        'src/Sandcastle.Client/**/*.razor', recursive=True))
     for f in files:
         check_file(f, errors)
 

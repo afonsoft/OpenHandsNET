@@ -37,15 +37,15 @@ jobs:
 
       - name: restore + build test project
         run: |
-          dotnet restore OpenHandsNET.slnx --locked-mode
-          dotnet build tests/OpenHandsNET.UnitTests -c Release --no-restore
+          dotnet restore Sandcastle.slnx --locked-mode
+          dotnet build tests/Sandcastle.UnitTests -c Release --no-restore
 
       # Advisory: mutation testing is expensive and flaky on edge cases. The
       # report still lands as an artifact so mutation-score regressions can be
       # trended; promote to blocking after a few stable weeks.
       - name: run stryker (advisory)
         continue-on-error: true
-        working-directory: tests/OpenHandsNET.UnitTests
+        working-directory: tests/Sandcastle.UnitTests
         run: dotnet stryker --reporter html --reporter json --reporter markdown
 
       - name: upload mutation report
@@ -53,7 +53,7 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: stryker-report
-          path: tests/OpenHandsNET.UnitTests/StrykerOutput/
+          path: tests/Sandcastle.UnitTests/StrykerOutput/
           if-no-files-found: warn
           retention-days: 14
 
@@ -75,7 +75,7 @@ jobs:
           dotnet-version: "10.0.x"   # pinned: WASM lockfiles capture SDK-band implicit package versions — bump with lockfile regen
 
       - name: build api
-        run: dotnet build src/OpenHandsNET.Api -c Release
+        run: dotnet build src/Sandcastle.Api -c Release
 
       # SPEC-97: Auth:Provider=none explícito — appsettings.json não é lido
       # quando o dll roda a partir de outro cwd, e o dev-login (que gera o
@@ -83,9 +83,9 @@ jobs:
       - name: start api (isolated data dir)
         run: |
           mkdir -p "$RUNNER_TEMP/data"
-          DATA_DIR="$RUNNER_TEMP/data" OPENHANDSNET_Auth__Provider=none \
+          DATA_DIR="$RUNNER_TEMP/data" SANDCASTLE_Auth__Provider=none \
             ASPNETCORE_URLS="http://localhost:$PORT" \
-            dotnet src/OpenHandsNET.Api/bin/Release/net10.0/OpenHandsNET.Api.dll \
+            dotnet src/Sandcastle.Api/bin/Release/net10.0/Sandcastle.Api.dll \
             > server.log 2>&1 &
           echo $! > server.pid
           for _ in $(seq 1 60); do

@@ -1,21 +1,21 @@
 # Deploy beta (host único com Docker)
 
-Guia mínimo para subir uma beta do OpenHandsNET em uma VM/host com Docker
+Guia mínimo para subir uma beta do Sandcastle em uma VM/host com Docker
 para testes. Versão em inglês: [`../en/deployment/beta.md`](../en/deployment/beta.md).
 
 ## Pré-requisitos
 
 - Docker + compose plugin no host
 - Acesso a um LLM/gateway (OmniRoute, OpenAI-compat, Ollama remoto)
-- Imagem: publicada em `ghcr.io/afonsoft/openhandsnet` via tag `v*`
+- Imagem: publicada em `ghcr.io/afonsoft/sandcastle` via tag `v*`
   (`.github/workflows/release.yml`) ou build local.
 
 ## Subir
 
 ```bash
 cp .env.exemplo .env
-# edite .env: OPENHANDSNET_LLM__BaseUrl / ApiKey / Model (OmniRoute),
-# OPENHANDSNET_Sandbox__PreviewTokenSecret (recomendado)
+# edite .env: SANDCASTLE_LLM__BaseUrl / ApiKey / Model (OmniRoute),
+# SANDCASTLE_Sandbox__PreviewTokenSecret (recomendado)
 docker compose -f docker-compose.beta.yaml up -d
 # imagem local: docker compose -f docker-compose.beta.yaml up -d --build
 ```
@@ -43,11 +43,11 @@ Detalhes: [`../security/sandbox-networking.md`](../security/sandbox-networking.m
 
 | Var | Para quê |
 |---|---|
-| `OPENHANDSNET_LLM__BaseUrl` / `__ApiKey` / `__Model` | gateway LLM (ex.: OmniRoute) |
-| `OPENHANDSNET_Sandbox__DefaultImage` | imagem do runtime dos sandboxes |
-| `OPENHANDSNET_Sandbox__PreviewTokenSecret` | tokens de preview assinados |
-| `OPENHANDSNET_Sandbox__EgressMode` | `unrestricted` (beta) / `allowlist` / `deny` |
-| `OPENHANDSNET_PORT` | porta externa (default 3032) |
+| `SANDCASTLE_LLM__BaseUrl` / `__ApiKey` / `__Model` | gateway LLM (ex.: OmniRoute) |
+| `SANDCASTLE_Sandbox__DefaultImage` | imagem do runtime dos sandboxes |
+| `SANDCASTLE_Sandbox__PreviewTokenSecret` | tokens de preview assinados |
+| `SANDCASTLE_Sandbox__EgressMode` | `unrestricted` (beta) / `allowlist` / `deny` |
+| `SANDCASTLE_PORT` | porta externa (default 3032) |
 
 ## Smoke test
 

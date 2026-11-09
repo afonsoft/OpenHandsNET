@@ -1,16 +1,16 @@
-# OpenHandsNET + stack de observabilidade (OTel collector → Prometheus + Grafana).
+# Sandcastle + stack de observabilidade (OTel collector → Prometheus + Grafana).
 #   docker compose -f docker-compose.yaml -f docker-compose.observability.yaml up -d --build
 # Grafana: http://localhost:3000 (admin/admin — troque via GRAFANA_ADMIN_PASSWORD).
 services:
   app:
     environment:
-      - OPENHANDSNET_Observability__OtlpEndpoint=http://otel-collector:4317
+      - SANDCASTLE_Observability__OtlpEndpoint=http://otel-collector:4317
     depends_on:
       - otel-collector
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.115.0
-    container_name: openhandsnet-otel
+    container_name: sandcastle-otel
     command: ["--config=/etc/otelcol/config.yaml"]
     volumes:
       - ./deploy/otelcol.yaml:/etc/otelcol/config.yaml:ro
@@ -21,29 +21,29 @@ services:
 
   prometheus:
     image: prom/prometheus:v3.0.1
-    container_name: openhandsnet-prometheus
+    container_name: sandcastle-prometheus
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.retention.time=15d
     volumes:
       - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - openhandsnet-prometheus:/prometheus
+      - sandcastle-prometheus:/prometheus
     ports:
       - "9090:9090"
     restart: unless-stopped
 
   grafana:
     image: grafana/grafana:11.4.0
-    container_name: openhandsnet-grafana
+    container_name: sandcastle-grafana
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
-      - openhandsnet-grafana:/var/lib/grafana
+      - sandcastle-grafana:/var/lib/grafana
     ports:
       - "3000:3000"
     restart: unless-stopped
 
 volumes:
-  openhandsnet-prometheus:
-  openhandsnet-grafana:
+  sandcastle-prometheus:
+  sandcastle-grafana:

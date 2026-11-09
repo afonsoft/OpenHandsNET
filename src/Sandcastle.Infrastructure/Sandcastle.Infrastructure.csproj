@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Docker.DotNet.Enhanced" />
+    <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" />
+    <!-- Pin explícito: levanta System.Security.Cryptography.Xml transitivo p/ versão sem CVE -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" />
+    <PackageReference Include="System.Security.Cryptography.Xml" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Ulid" />
+    <PackageReference Include="YamlDotNet" />
+    <PackageReference Include="prometheus-net.AspNetCore" />
+    <PackageReference Include="ModelContextProtocol" />
+    <!-- SPEC-52: GitHub App client (pinned ≥7d release) -->
+    <PackageReference Include="Octokit" />
+    <PackageReference Include="Microsoft.Playwright" />
+    <!-- SPEC-36: Redis/Valkey backplane (gated por Cache:Provider=redis) -->
+    <PackageReference Include="StackExchange.Redis" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
+    <!-- Pin explícito: levanta SQLitePCLRaw.lib.e_sqlite3 transitivo para versão sem CVE -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Sandcastle.Application/Sandcastle.Application.csproj" />
+    <ProjectReference Include="../Sandcastle.Sandboxing/Sandcastle.Sandboxing.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Skills/Embedded/*.md" />
+    <!-- SPEC-123: agentes builtin .agent.md (catálogo em camadas) -->
+    <EmbeddedResource Include="agents/*.agent.md" />
+    <!-- SPEC-123: prompts embutidos (advisor, smart-permission-judge) -->
+    <EmbeddedResource Include="prompts/*.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Testes dirigem internals (ex.: SandboxTimeoutWatcher.Interval). -->
+    <InternalsVisibleTo Include="Sandcastle.IntegrationTests" />
+    <InternalsVisibleTo Include="Sandcastle.UnitTests" />
+  </ItemGroup>
+</Project>

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# check-env-drift.sh — verifica se toda variável OPENHANDSNET_* consumida no
+# check-env-drift.sh — verifica se toda variável SANDCASTLE_* consumida no
 # código está documentada em .env.exemplo (SPEC-13 RF: drift check).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-used=$(grep -rhoE 'OPENHANDSNET_[A-Za-z_]+' \
+used=$(grep -rhoE 'SANDCASTLE_[A-Za-z_]+' \
     src cli tests .env.exemplo docker-compose*.yaml 2>/dev/null \
     | sort -u)
 # Variáveis realmente lidas do ambiente = prefixo + seções de Configuration.
@@ -14,7 +14,7 @@ sections=$(grep -rhoE '"(Database|Sandbox|Git|AgentLlm|Auth|Observability|MultiT
 missing=0
 echo "== Seções de configuração usadas no código =="
 for s in $sections; do
-    env="OPENHANDSNET_${s//:/__}"
+    env="SANDCASTLE_${s//:/__}"
     if grep -q "$env" .env.exemplo; then
         echo "  OK   $env"
     else

@@ -3,7 +3,7 @@ global:
 
 scrape_configs:
   # Métricas diretas do app (prometheus-net /metrics).
-  - job_name: openhandsnet
+  - job_name: sandcastle
     metrics_path: /metrics
     static_configs:
       - targets: ["app:8080"]

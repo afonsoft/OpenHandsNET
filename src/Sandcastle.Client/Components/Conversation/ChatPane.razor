@@ -1,0 +1,180 @@
+@using Sandcastle.Client.Services
+@using Sandcastle.Client.Components
+@inject IJSRuntime JS
+@inject LocalizationService L
+
+<div class="chat-scroll" id="chat-scroll" @ref="_scroll">
+    @if (State.LoadingBacklog)
+    {
+        <div class="ev-card condense">@L["chat.loading_history"]</div>
+    }
+    @foreach (var grp in EventGroups())
+    {
+        if (grp.Collapsed)
+        {
+            // SPEC-76 RF-003: run finalizada → run de steps colapsa em
+            // "N passos" expansível (padrão open-webui RunActivityFeed).
+            <details class="ev-steps">
+                <summary role="button">@L.T("chat.worklog.steps",
+                    ("count", grp.Events.Count.ToString()))</summary>
+                @foreach (var e in grp.Events)
+                {
+                    <div class="ev-wrap">
+                        <EventCard Event="e" Siblings="State.Events" />
+                    </div>
+                }
+            </details>
+        }
+        else
+        {
+            @foreach (var e in grp.Events)
+            {
+                // SPEC-45 RF-006: última mensagem do usuário ganha "Editar".
+                var isLastUser = ReferenceEquals(e, _lastUser);
+                <div class="ev-wrap @(isLastUser ? "editable" : "")">
+                    <EventCard Event="e" Siblings="State.Events" />
+                    @if (isLastUser && _composer is not null)
+                    {
+                        <button class="ev-edit" title="@L["chat.edit_resend"]"
+                                @onclick="EditLastUserAsync">@L["chat.edit"]</button>
+                    }
+                </div>
+            }
+        }
+    }
+    @* SPEC-34: slots de delta efêmeros — removidos quando o evento durável
+       com o mesmo item_id chega (supersedes). Cursor ▍ via CSS .delta::after.
+       SPEC-41 RF-002: reasoning renderiza na ThinkingSection, auto-colapsa
+       quando o content do mesmo item_id começa. *@
+    @foreach (var r in State.LiveReasoning)
+    {
+        <ThinkingSection Reasoning="@r.Value" Streaming="true"
+                         ContentStarted="@State.LiveDeltas.ContainsKey(r.Key)" />
+    }
+    @foreach (var delta in State.LiveDeltas)
+    {
+        <div class="ev-card msg delta" data-item-id="@delta.Key">
+            <div class="ev-head"><span>assistant</span><em>@L["chat.streaming"]</em></div>
+            <pre>@delta.Value</pre>
+        </div>
+    }
+    @if (State.Conversation is { } conv)
+    {
+        <SubConversationPanel ConversationId="@conv.Id" />
+    }
+    @if (State.Stalled)
+    {
+        <div class="ev-card condense" role="status">
+            <div class="ev-head" style="justify-content:center">
+                <Icon Name="alert" Size="13" />
+                <span>@L["chat.stalled"]</span>
+            </div>
+        </div>
+    }
+</div>
+@if (State.ErrorMessage is { } err)
+{
+    <div class="ev-card error" style="margin:0 16px 8px">
+        <div class="ev-head"><Icon Name="alert" Size="14" /><span>error</span></div>
+        <pre>@err</pre>
+    </div>
+}
+@if (State.PendingAction is { } pending)
+{
+    <ConfirmationBanner Pending="pending" OnConfirm="OnConfirm" />
+}
+<ChatComposer @ref="_composer"
+              ConversationId="@State.Conversation?.Id"
+              DraftKey="@(State.Conversation?.Id ?? "new")"
+              Busy="@(State.ExecutionStatus is "RUNNING")"
+              Paused="@(State.ExecutionStatus is "PAUSED")"
+              OnSend="SendTextAsync"
+              OnPause="() => State.PauseAsync()"
+              OnInterrupt="() => State.InterruptAsync()"
+              OnResume="() => State.ResumeAsync()" />
+
+@code {
+    [Parameter, EditorRequired] public ConversationStateService State { get; set; } = default!;
+
+    private ElementReference _scroll;
+    private ChatComposer? _composer;
+    private int _lastCount;
+
+    /// <summary>Último MessageEvent user — alvo do edit-resend.</summary>
+    private Sandcastle.Client.Services.ClientEvent? _lastUser =>
+        State.Events.LastOrDefault(e =>
+            e.Kind == "MessageEvent" && e.Str("source") == "user");
+
+    /// <summary>SPEC-76 RF-003: grupo de eventos — steps (não-mensagem)
+    /// consecutivos colapsam quando a run está em estado terminal.</summary>
+    private sealed record EventGroup(
+        bool Collapsed, IReadOnlyList<ClientEvent> Events);
+
+    private bool IsTerminal => State.ExecutionStatus.ToUpperInvariant()
+        is "FINISHED" or "READY" or "ERROR" or "STOPPED" or "PAUSED";
+
+    private static bool IsStep(ClientEvent e) =>
+        e.Kind is not ("MessageEvent" or "ConversationStateUpdateEvent");
+
+    private IEnumerable<EventGroup> EventGroups()
+    {
+        if (!IsTerminal || State.Events.Count == 0)
+        {
+            yield return new(false, State.Events);
+            yield break;
+        }
+
+        var run = new List<ClientEvent>();
+        foreach (var e in State.Events)
+        {
+            if (IsStep(e))
+            {
+                run.Add(e);
+                continue;
+            }
+
+            if (run.Count > 0)
+            {
+                yield return new(run.Count >= 2, [.. run]);
+                run.Clear();
+            }
+            yield return new(false, [e]);
+        }
+        if (run.Count > 0)
+        {
+            yield return new(run.Count >= 2, [.. run]);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // SPEC-26 RF-003: auto-scroll só quando o usuário está no fim.
+            // JS é best-effort — bUnit strict lança exceção própria.
+            try { await JS.InvokeVoidAsync("scChat.pin", _scroll); }
+            catch (Exception) { /* best-effort — falha tolerada */ }
+        }
+
+        if (State.Events.Count != _lastCount || State.LiveDeltas.Count > 0)
+        {
+            _lastCount = State.Events.Count;
+            try { await JS.InvokeVoidAsync("scChat.scrollIfPinned", _scroll); }
+            catch (Exception) { /* best-effort — falha tolerada */ }
+        }
+    }
+
+    private async Task SendTextAsync(string text) =>
+        await State.SendMessageAsync(text);
+
+    /// <summary>RF-006: carrega a última msg do usuário no composer.</summary>
+    private async Task EditLastUserAsync()
+    {
+        if (_lastUser is { } e && _composer is not null)
+        {
+            await _composer.SetTextAsync(e.MessageText());
+        }
+    }
+
+    private async Task OnConfirm(bool approved) => await State.ConfirmAsync(approved);
+}

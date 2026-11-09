@@ -6,7 +6,7 @@ Rich input box shared by Home and ChatPane.
 
 `@` opens a workspace file fuzzy picker — the mention injects the
 path into the message. Scanning via `find` on `/exec` (excludes `.git`
-and `.ohn-checkpoints`).
+and `.sc-checkpoints`).
 
 ## /slash
 

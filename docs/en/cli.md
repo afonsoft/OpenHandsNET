@@ -1,13 +1,13 @@
-# `openhandsnet` CLI
+# `sandcastle` CLI
 
-Spectre.Console CLI to operate OpenHandsNET against a local or remote
-backend. Credentials live in `~/.openhandsnet/` (login/API key); with no
+Spectre.Console CLI to operate Sandcastle against a local or remote
+backend. Credentials live in `~/.sandcastle/` (login/API key); with no
 arguments the CLI opens the TUI.
 
 ```bash
-dotnet run --project cli/OpenHandsNET.Cli -- <command>
+dotnet run --project cli/Sandcastle.Cli -- <command>
 # or, after `dotnet tool install`:
-openhandsnet <command>
+sandcastle <command>
 ```
 
 ## Auth and server
@@ -45,5 +45,5 @@ All commands accept `--url <base>` to target another server
 | `eval` | Headless eval runs with fixtures (see `eval.md`). |
 | `support-bundle` | Diagnostic bundle for support. |
 
-See `openhandsnet <command> --help` for flags. Português:
+See `sandcastle <command> --help` for flags. Português:
 [../cli.md](../cli.md).

@@ -1,8 +1,8 @@
 # SCM — GitHub App, webhooks e pull requests (SPEC-52)
 
 Integração de Source Control Management: um **GitHub App** por org permite
-webhooks (`@openhandsnet` → conversa nova) e abrir PRs a partir do workspace
-da conversa, com commit status `openhandsnet/run` ao fim do run.
+webhooks (`@sandcastle` → conversa nova) e abrir PRs a partir do workspace
+da conversa, com commit status `sandcastle/run` ao fim do run.
 
 ## Contrato
 
@@ -20,7 +20,7 @@ Permissões mínimas do app: `contents`, `pull_requests`, `issues`,
 
 ## Fluxo de conexão (manifest)
 
-1. `openhandsnet scm connect --server-url <url>` imprime o manifest.
+1. `sandcastle scm connect --server-url <url>` imprime o manifest.
 2. Crie o app em `github.com/settings/apps/new` (método manifest).
 3. O GitHub redireciona para `/api/v1/scm/github/callback?code=…` — a API
    troca o code em `api.github.com/app-manifests/{code}/conversions` e grava
@@ -34,7 +34,7 @@ Permissões mínimas do app: `contents`, `pull_requests`, `issues`,
 1. Payload ≤ 256 KB; assinatura `sha256=` verificada em tempo constante
    contra `webhook_secret` (assim errada → 401 + audit `scm.webhook_rejected`).
 2. Idempotência por `X-GitHub-Delivery` (replayed → `{status:"duplicate"}`).
-3. Menções `@openhandsnet <instrução>` em `issue_comment`,
+3. Menções `@sandcastle <instrução>` em `issue_comment`,
    `pull_request_review_comment` e `pull_request_review` criam uma
    conversa via `CreateForUserAsync` com `selected_repository` e prompt de
    contexto (repo, PR, branch, autor) + audit `scm.webhook_triggered`.
@@ -51,16 +51,16 @@ guarda o PR.
 ## Commit status
 
 Ao fim do run (`finished`), `IScmStatusReporter` publica
-`openhandsnet/run` = `success|failure` no `pull_request_head_sha`,
+`sandcastle/run` = `success|failure` no `pull_request_head_sha`,
 com `target_url` apontando para a conversa. Melhor esforço — nunca falha
 o run.
 
 ## CLI
 
 ```bash
-openhandsnet scm status --org <id>      # conexões da org
-openhandsnet scm connect                # manifest do GitHub App
-openhandsnet scm pr create <conv> --title "fix" --body "…"
+sandcastle scm status --org <id>      # conexões da org
+sandcastle scm connect                # manifest do GitHub App
+sandcastle scm pr create <conv> --title "fix" --body "…"
 ```
 
 ## Storage
@@ -81,10 +81,10 @@ SPEC-53 estende o registro com GitLab/Bitbucket/Azure DevOps.
 | GitHub | `github` | GitHub App (installation token) | `/webhooks/scm/github` | HMAC `X-Hub-Signature-256` |
 | GitLab | `gitlab` | PAT (`PRIVATE-TOKEN`) | `/webhooks/scm/gitlab` | `X-Gitlab-Token` |
 | Bitbucket | `bitbucket` | app password (`Basic`) | `/webhooks/scm/bitbucket` | HMAC `X-Hub-Signature` |
-| Azure DevOps | `azuredevops` | PAT (`Basic`) | `/webhooks/scm/azuredevops` | shared secret (`X-OpenHandsNet-Secret` ou `?secret=`) |
+| Azure DevOps | `azuredevops` | PAT (`Basic`) | `/webhooks/scm/azuredevops` | shared secret (`X-Sandcastle-Secret` ou `?secret=`) |
 
 - `api_url` por connection habilita self-managed/DC (`https://gitlab.exemplo.com`, `https://dev.azure.com/{org}`).
 - `auth_kind` ∈ `pat|app|oauth|entra_sp`; `meta_json` guarda extras do provider.
 - Diagnóstico: `POST /api/v1/scm/connections/{id}/test` → `{ok, user, server_version, repo_count, detail}`.
-- Eventos de menção por provider: GitLab `Note Hook` (issue/MR), Bitbucket `pullrequest:comment_created`/`issue:comment_created`, AzDO `ms.vss-code.git-pullrequest-comment-event` — todos com `@openhandsnet` → start-task.
+- Eventos de menção por provider: GitLab `Note Hook` (issue/MR), Bitbucket `pullrequest:comment_created`/`issue:comment_created`, AzDO `ms.vss-code.git-pullrequest-comment-event` — todos com `@sandcastle` → start-task.
 - `http` em `api_url` só para labs internos via `AllowInsecureScm` (não implementado por default — https exigido).

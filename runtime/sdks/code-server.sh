@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # SPEC-40 RF-003: instalador lazy do code-server — release oficial pinned,
-# descompactado sob /opt/ohn/code-server (writable pelo usuário openhands)
-# e linkado em /opt/ohn/bin/code-server. Rode sob demanda: a imagem não
+# descompactado sob /opt/sc/code-server (writable pelo usuário openhands)
+# e linkado em /opt/sc/bin/code-server. Rode sob demanda: a imagem não
 # carrega os ~200MB por default.
 set -euo pipefail
 
 VERSION="${CODE_SERVER_VERSION:-4.141.0}"
-INSTALL_DIR="/opt/ohn/code-server"
-BIN_DIR="/opt/ohn/bin"
+INSTALL_DIR="/opt/sc/code-server"
+BIN_DIR="/opt/sc/bin"
 
 arch="$(dpkg --print-architecture)"
 case "$arch" in

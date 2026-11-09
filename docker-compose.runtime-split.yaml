@@ -3,14 +3,14 @@
 # O engine (docker + warm pool) roda em `runtime-api`; o app delega via
 # HTTP interno autenticado por X-Runtime-Key (Sandbox:Provider=remote).
 # Workspace: o daemon resolve binds no HOST — monte o mesmo path absoluto
-# dentro do runtime-api (OPENHANDSNET_WORKSPACE_HOST).
+# dentro do runtime-api (SANDCASTLE_WORKSPACE_HOST).
 services:
   app:
     environment:
-      - OPENHANDSNET_Sandbox__Provider=remote
-      - OPENHANDSNET_Sandbox__RemoteBaseUrl=http://runtime-api:8081
-      - OPENHANDSNET_Sandbox__RemoteApiKey=${OPENHANDSNET_RUNTIME_KEY:?set OPENHANDSNET_RUNTIME_KEY}
-      - OPENHANDSNET_Sandbox__ControlNetwork=openhandsnet-control
+      - SANDCASTLE_Sandbox__Provider=remote
+      - SANDCASTLE_Sandbox__RemoteBaseUrl=http://runtime-api:8081
+      - SANDCASTLE_Sandbox__RemoteApiKey=${SANDCASTLE_RUNTIME_KEY:?set SANDCASTLE_RUNTIME_KEY}
+      - SANDCASTLE_Sandbox__ControlNetwork=sandcastle-control
     networks:
       - default
       - control
@@ -23,18 +23,18 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.runtime-api
-    image: openhandsnet-runtime-api:latest
-    container_name: openhandsnet-runtime-api
+    image: sandcastle-runtime-api:latest
+    container_name: sandcastle-runtime-api
     environment:
-      - OPENHANDSNET_Sandbox__RemoteApiKey=${OPENHANDSNET_RUNTIME_KEY:?set OPENHANDSNET_RUNTIME_KEY}
-      - OPENHANDSNET_Sandbox__ControlNetwork=openhandsnet-control
-      - OPENHANDSNET_Sandbox__WorkspaceRoot=${OPENHANDSNET_WORKSPACE_HOST:-/tmp/ohn-workspaces}
-      - OPENHANDSNET_Sandbox__WarmPoolSize=${OPENHANDSNET_WARM_POOL_SIZE:-0}
+      - SANDCASTLE_Sandbox__RemoteApiKey=${SANDCASTLE_RUNTIME_KEY:?set SANDCASTLE_RUNTIME_KEY}
+      - SANDCASTLE_Sandbox__ControlNetwork=sandcastle-control
+      - SANDCASTLE_Sandbox__WorkspaceRoot=${SANDCASTLE_WORKSPACE_HOST:-/tmp/sc-workspaces}
+      - SANDCASTLE_Sandbox__WarmPoolSize=${SANDCASTLE_WARM_POOL_SIZE:-0}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       # Mesmo path absoluto dentro do container e no host — o daemon
       # interpreta binds como paths do host.
-      - ${OPENHANDSNET_WORKSPACE_HOST:-/tmp/ohn-workspaces}:${OPENHANDSNET_WORKSPACE_HOST:-/tmp/ohn-workspaces}
+      - ${SANDCASTLE_WORKSPACE_HOST:-/tmp/sc-workspaces}:${SANDCASTLE_WORKSPACE_HOST:-/tmp/sc-workspaces}
     networks:
       - control
     restart: unless-stopped
@@ -48,5 +48,5 @@ services:
 
 networks:
   control:
-    name: openhandsnet-control
+    name: sandcastle-control
     driver: bridge

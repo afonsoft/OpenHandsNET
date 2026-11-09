@@ -1,6 +1,6 @@
 # docs/architecture — índice
 
-Documentação arquitetural do OpenHandsNET. Governada pela skill `architecture`:
+Documentação arquitetural do Sandcastle. Governada pela skill `architecture`:
 ADRs em `AD-NNNN-<slug>.md`, fontes Mermaid em `<name>_<type>_<title>.mmd`,
 artefatos interativos via Archify.
 

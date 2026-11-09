@@ -1,4 +1,4 @@
-# Análise competitiva — OpenHandsNET × OpenHands Cloud × Devin Web
+# Análise competitiva — Sandcastle × OpenHands Cloud × Devin Web
 
 Data: 2026-10-18. Fontes: docs oficiais (`docs.openhands.dev`, `docs.devin.ai`),
 DeepWiki (`OpenHands/OpenHands`, `OpenHands/software-agent-sdk`), código local
@@ -23,7 +23,7 @@ visão **por produto/mercado**.
   testes em vídeo, VMs Windows/macOS, e cobertura enorme de integrações
   (Slack/Teams/GitHub/GHE/GitLab/Bitbucket/Azure DevOps/Linear/Jira/
   PagerDuty/Pylon/Databricks/MongoDB/Artifactory…).
-- **OpenHandsNET** já cobre ~90% do escopo funcional do OpenHands Cloud e
+- **Sandcastle** já cobre ~90% do escopo funcional do OpenHands Cloud e
   ultrapassa o upstream OSS em vários pontos (IDE workbench, checkpoints,
   attention inbox, i18n, routine tool, OmniRoute, enterprise de verdade em
   MIT). Contra Devin, o gap não é o "loop do agente" — é a **camada de
@@ -32,7 +32,7 @@ visão **por produto/mercado**.
 
 ## 2. Posicionamento em uma página
 
-| Eixo | OpenHands Cloud | Devin Web | OpenHandsNET |
+| Eixo | OpenHands Cloud | Devin Web | Sandcastle |
 |---|---|---|---|
 | Natureza | SaaS de conversas+sandbox | Plataforma "AI software engineer" | Self-host MIT, paridade cloud+enterprise |
 | Código | núcleo MIT; Cloud/Ent fechado | fechado | **aberto (MIT)** |
@@ -43,7 +43,7 @@ visão **por produto/mercado**.
 
 ### 3.1 Agente, loop e eventos
 
-| Capacidade | OpenHands Cloud/SDK | Devin Web | OpenHandsNET (estado) |
+| Capacidade | OpenHands Cloud/SDK | Devin Web | Sandcastle (estado) |
 |---|---|---|---|
 | Modelo de eventos | V1 discriminated union (`kind`) | proprietário | **V1 completo** (SPEC-02) + `streaming_delta` efêmero (SPEC-34) |
 | Loop | `Agent.step()`, agent-server | proprietário | `AgentRunner` + `IAgentRunnerHost` (SPEC-09) |
@@ -59,12 +59,12 @@ visão **por produto/mercado**.
 
 ### 3.2 Sandbox e runtime
 
-| | OpenHands Cloud | Devin Web | OpenHandsNET |
+| | OpenHands Cloud | Devin Web | Sandcastle |
 |---|---|---|---|
 | Engine | k8s multi-host (Ent) | VMs (Linux **+ Windows + macOS**) | Docker (prod) + `KubernetesSandboxEngine` (SPEC-37/49) |
 | Warm pool | sim | sim | sim (Docker + k8s `ClaimWarmAsync`) |
 | Sleep/wake | pause/resume | sim | sim (pause/stop/resume + PVC retain) |
-| **Sandbox specs selecionáveis** | `search_sandbox_specs` por conversa | environments/blueprints por repo | blueprint `openhandsnet.yaml` + `SandboxProfile` — verificar paridade de "spec por conversa" |
+| **Sandbox specs selecionáveis** | `search_sandbox_specs` por conversa | environments/blueprints por repo | blueprint `sandcastle.yaml` + `SandboxProfile` — verificar paridade de "spec por conversa" |
 | Surfaces | terminal web + preview | IDE VS Code + browser interativo + shell + computer-use desktop | gateway + terminal + VS Code + preview + ACP (SPEC-40) |
 | **Computer-use / desktop GUI** | — | sim (desktop completo, Android emulator, iOS sim) | **não** (somente browser headless Playwright, SPEC-18) |
 | **Browser auth profiles** | secrets | sim — login 1×, perfil salvo p/ próximas sessões | **não** — secrets by-ref, sem persistência de perfil/cookies |
@@ -73,7 +73,7 @@ visão **por produto/mercado**.
 
 ### 3.3 Superfícies de trabalho (UI)
 
-| | OpenHands Cloud | Devin Web | OpenHandsNET |
+| | OpenHands Cloud | Devin Web | Sandcastle |
 |---|---|---|---|
 | Chat/streaming | canvas + stream | chat + Progress tab unificado | streaming + reasoning + heartbeat (SPEC-41) |
 | IDE | file viewer | VS Code web completo | **Monaco workbench + SCM + search + tests** (SPEC-42) — supera ambos |
@@ -88,7 +88,7 @@ visão **por produto/mercado**.
 
 ### 3.4 LLM e modelos
 
-| | OpenHands Cloud | Devin Web | OpenHandsNET |
+| | OpenHands Cloud | Devin Web | Sandcastle |
 |---|---|---|---|
 | Roteamento | LiteLLM proxy | **Adaptive router + Fusion** (lead+sidekick) | OmniRoute catalog + roles + fallback (SPEC-23) |
 | BYOK | BYOR LiteLLM (Ent/Cloud) | ChatGPT plan linking; enterprise model allowlists | BYOR LiteLLM virtual keys (SPEC-50) |
@@ -97,7 +97,7 @@ visão **por produto/mercado**.
 
 ### 3.5 API e extensibilidade
 
-| | OpenHands Cloud | Devin Web | OpenHandsNET |
+| | OpenHands Cloud | Devin Web | Sandcastle |
 |---|---|---|---|
 | Conversas | start-task + search + send-message + patch + delete + **download zip** | v3 sessions CRUD + messages + tags + events | paridade quase total (`/api/v1/app-conversations*`) — falta `/download` zip? *(CLI `export` existe; verificar endpoint HTTP)* |
 | Eventos | search/count/batch-get | session events API | search + SignalR live |
@@ -111,7 +111,7 @@ visão **por produto/mercado**.
 
 ### 3.6 Integrações
 
-| | OpenHands Cloud | Devin Web | OpenHandsNET |
+| | OpenHands Cloud | Devin Web | Sandcastle |
 |---|---|---|---|
 | GitHub | app + PR comments | app + stacked PRs + PR templates + bot-comment settings | **fase 3 — não implementado** (`git_commit` apenas) |
 | GitLab/Bitbucket/Azure DevOps | Cloud: GitLab+Bitbucket; Ent: +GHE+AzDO+BBDC | todos + self-managed | **não** |
@@ -122,7 +122,7 @@ visão **por produto/mercado**.
 
 ### 3.7 Enterprise, identidade e compliance
 
-| | OpenHands Cloud/Ent | Devin Web | OpenHandsNET |
+| | OpenHands Cloud/Ent | Devin Web | Sandcastle |
 |---|---|---|---|
 | SSO | SAML/SSO (Ent) | OIDC+SAML+SCIM+IdP groups | OIDC genérico — **sem SAML, sem SCIM, sem IdP-group→role** |
 | RBAC | multi-user (Ent) | custom roles granulares | orgs + roles + `perm:*` policies (SPEC-08) |
@@ -136,17 +136,17 @@ visão **por produto/mercado**.
 
 ### 3.8 Automação e operações
 
-| | OpenHands Cloud | Devin Web | OpenHandsNET |
+| | OpenHands Cloud | Devin Web | Sandcastle |
 |---|---|---|---|
 | Schedules | automations (cron + eventos GitHub/webhook) | automations + scheduled sessions | routines + webhook triggers + `routine` tool (SPEC-47) |
 | **Templates prontos** | prebuilt (PR reviewer, repo monitor, Slack monitor) | automations em linguagem natural + galeria | **não** — automação é do-zero |
 | **Session insights** | — | análise pós-sessão (issues, learnings, prompt melhorado) | `agent_diagnostic` events existem — **não há produto de insights** |
-| Eval | WebArena/OSWorld | interno | `openhandsnet eval` + llm_judge (SPEC-39) |
+| Eval | WebArena/OSWorld | interno | `sandcastle eval` + llm_judge (SPEC-39) |
 | Deploy | Helm+KOTS+k0s (Ent) | SaaS + dedicated + Outposts | compose + Helm completo (SPEC-49) |
 | Usage/billing | Stripe (Cloud) | ACU metering + analytics | `IUsageService` metering (sem PSP — escopo OK) |
 | Knowledge/memória | `.openhands/memory` | **knowledge notes + sugestões + dreaming (dedup auto)** | remember/recall/forget/promote multi-escopo (SPEC-30) — **sem pipeline de sugestões/revisão** |
 
-## 4. O que OpenHandsNET tem que nenhum dos dois tem
+## 4. O que Sandcastle tem que nenhum dos dois tem
 
 1. **MIT + paridade enterprise** — orgs/RBAC/quotas/audit/BYOR em código aberto
    (upstream cobra via Polyform; Devin é fechado).
@@ -163,7 +163,7 @@ visão **por produto/mercado**.
 
 Legenda: ✅ existe · ◐ parcial · ❌ ausente
 
-| # | Gap | OH Cloud | Devin | OHNET | Esforço | Impacto |
+| # | Gap | OH Cloud | Devin | SC | Esforço | Impacto |
 |---|---|---|---|---|---|---|
 | G1 | GitHub App: PRs, comments, @mention triggers, status checks | ✅ | ✅ | ❌ (fase 3) | Alto | **crítico** — é o fluxo principal dos dois produtos |
 | G2 | Slack (e depois Teams): iniciar sessão, thread sync, notificações | ✅ Slack | ✅ | ❌ | Médio | **crítico** — canal de entrada nº 1 enterprise |
@@ -186,7 +186,7 @@ Legenda: ✅ existe · ◐ parcial · ❌ ausente
 | G19 | Goal-loop (judge-verified completion) | ✅ | ◐ | ❌ | Médio | médio |
 | G20 | AI guardrails no input (prompt-injection screen) | ◐ | ✅ | ❌ | Médio | médio (segurança) |
 | G21 | Usage limits por usuário + tiers IdP + request-more | ◐ | ✅ | ◐ (por plano) | Médio | médio |
-| G22 | MCP server reverso (externos controlam o OpenHandsNET) | ❌ | ✅ Devin MCP | ❌ | Médio | diferenciador ecosistema |
+| G22 | MCP server reverso (externos controlam o Sandcastle) | ❌ | ✅ Devin MCP | ❌ | Médio | diferenciador ecosistema |
 | G23 | Workers remotos/"outposts" (control plane↔data plane) | ❌ | ✅ | ◐ runtime-api split dá a base | Alto | enterprise distribuído |
 | G24 | Side chats (Q&A sobre a sessão sem interromper) | ❌ | ✅ | ❌ | Médio | UX |
 | G25 | Download trajectory zip (endpoint) | ✅ | ◐ | ◐ CLI export | **Baixo** | paridade API |
@@ -203,15 +203,15 @@ Legenda: ✅ existe · ◐ parcial · ❌ ausente
 
 ### Onda A — "Fluxo de trabalho E2E" (o buraco maior: ticket→PR)
 
-O OpenHandsNET tem um **motor de agente maduro num produto que ainda exige que
+O Sandcastle tem um **motor de agente maduro num produto que ainda exige que
 o usuário abra a UI para tudo**. Os dois concorrentes são usados majoritariamente
 via gatilhos externos. Sugerido como SPECs 52–56:
 
 1. **SPEC-52 — GitHub App + SCM providers**: GitHub App próprio (instalação
    por org), criação de PR a partir do workspace, resposta a review comments,
-   `@openhandsnet` mention → start-task, commit status de volta ao PR.
+   `@sandcastle` mention → start-task, commit status de volta ao PR.
    Abstrair `IScmProvider` para GitLab/Bitbucket/AzureDevOps em SPEC-53.
-2. **SPEC-54 — ChatOps**: Slack app (slash `/openhandsnet`, @mention, thread
+2. **SPEC-54 — ChatOps**: Slack app (slash `/sandcastle`, @mention, thread
    sync bidirecional via SignalR/webhook). Teams depois.
 3. **SPEC-55 — Ticketing triggers**: Linear + Jira → start-task com contexto
    do ticket; write-back de status/link da conversa.
@@ -249,7 +249,7 @@ via gatilhos externos. Sugerido como SPECs 52–56:
 ### Onda D — paridade pontual e ecossistema
 
 13. Fork de conversa · pending-message queue endpoint · path-triggered skills ·
-    templates de automação · MCP server reverso (`openhandsnet-mcp`) ·
+    templates de automação · MCP server reverso (`sandcastle-mcp`) ·
     session recording (screenshots→vídeo em artifacts) · goal-loop mode.
     Cada um vira SPEC pequena quando priorizado.
 

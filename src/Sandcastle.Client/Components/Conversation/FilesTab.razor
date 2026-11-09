@@ -1,0 +1,129 @@
+@using Sandcastle.Client.Services
+@implements IAsyncDisposable
+@inject SandcastleApiClient Api
+@inject MonacoInterop Monaco
+@inject LocalizationService L
+
+<div class="file-layout">
+    <div class="file-tree">
+        <div class="dir" @onclick="() => LoadAsync()"><Icon Name="folder" Size="13" /> /workspace</div>
+        @foreach (var (entry, depth) in _flat)
+        {
+            <div class="@(entry.IsDirectory ? "dir" : "file")"
+                 style="padding-left:@(8 + depth * 14)px"
+                 @onclick="() => OnItemClick(entry)">
+                @(entry.IsDirectory ? "▸" : "·") @Name(entry.Path)
+            </div>
+        }
+    </div>
+    <div class="file-view">
+        @if (_filePath is null)
+        {
+            <div class="empty-state">@L["files.select_file"]</div>
+        }
+        else
+        {
+            <div class="diff-meta">@_filePath</div>
+            @* SPEC-21 RF-004: Monaco readonly; fallback <pre> sem JS. *@
+            @if (_monacoFailed)
+            {
+                <pre>@_fileContent</pre>
+            }
+            else
+            {
+                <div id="file-monaco" class="monaco-host"></div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ConversationStateService State { get; set; } = default!;
+
+    private readonly List<(FileItem Entry, int Depth)> _flat = [];
+    private readonly HashSet<string> _expanded = [];
+    private string? _filePath;
+    private string? _fileContent;
+    private bool _monacoFailed;
+    private bool _monacoDirty;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_monacoDirty && _filePath is not null && !_monacoFailed)
+        {
+            _monacoDirty = false;
+            try
+            {
+                await Monaco.CreateEditorAsync("file-monaco",
+                    _fileContent ?? "", MonacoInterop.LanguageFor(_filePath));
+            }
+            catch (JSException)
+            {
+                _monacoFailed = true;
+                await InvokeAsync(StateHasChanged);
+            }
+            catch (InvalidOperationException)
+            {
+                _monacoFailed = true;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    private static string Name(string path) =>
+        path.TrimEnd('/').Split('/')[^1];
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            var root = await Api.ListFilesAsync(State.Conversation!.Id);
+            _flat.Clear();
+            foreach (var f in root.OrderBy(f => f.Path))
+            {
+                _flat.Add((f, 0));
+            }
+        }
+        catch { /* best-effort — falha tolerada */ }
+    }
+
+    private async Task OnItemClick(FileItem entry)
+    {
+        if (entry.IsDirectory)
+        {
+            if (!_expanded.Add(entry.Path))
+            {
+                _expanded.Remove(entry.Path);
+                _flat.RemoveAll(f => f.Entry.Path.StartsWith(entry.Path + "/"));
+                return;
+            }
+
+            var children = await Api.ListFilesAsync(
+                State.Conversation!.Id, entry.Path);
+            var insertAt = _flat.FindIndex(f => f.Entry.Path == entry.Path) + 1;
+            var depth = _flat[insertAt - 1].Depth + 1;
+            _flat.InsertRange(insertAt,
+                children.OrderBy(c => c.Path).Select(c => (c, depth)));
+        }
+        else
+        {
+            _filePath = entry.Path;
+            _fileContent = "loading…";
+            _monacoDirty = true;
+            _fileContent = await Api.ReadFileAsync(
+                State.Conversation!.Id, entry.Path);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await Monaco.DisposeAsync("file-monaco");
+        }
+        catch (JSException) { /* circuito fechado */ }
+        catch (JSDisconnectedException) { /* best-effort — falha tolerada */ }
+    }
+}

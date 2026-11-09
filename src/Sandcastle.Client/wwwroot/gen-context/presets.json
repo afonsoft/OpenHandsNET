@@ -1,0 +1,36 @@
+{
+  "name": "sandcastle",
+  "version": "1.0",
+  "description": "Sandcastle — agent-native software development platform (.NET). Presets for external agents bootstrapping context about the product's capabilities.",
+  "presets": [
+    {
+      "id": "product-capabilities",
+      "title": "Product capabilities",
+      "summary": "Conversations (start-task async), events (durable log), skills, MCP servers, ACP sessions, sandboxes, plans/checkpoints.",
+      "endpoints": [
+        "GET /api/v1/app-conversations",
+        "POST /api/v1/app-conversations",
+        "POST /api/v1/app-conversations/{id}/send-message",
+        "GET /api/v1/app-conversations/start-tasks/{id}",
+        "GET /api/v1/conversation/{id}/events",
+        "GET /api/v1/conversation/{id}/events/search?q=",
+        "GET /api/v1/skills",
+        "GET /api/v1/mcp/servers",
+        "GET /api/v1/models",
+        "POST /api/acp/conversations",
+        "POST /api/acp/conversations/{id}/prompt",
+        "POST /api/acp/conversations/{id}/cancel"
+      ],
+      "mcp": {
+        "command": "sandcastle-mcp",
+        "env": { "SC_API_URL": "http://localhost:8080", "SC_API_KEY": "sk-..." }
+      }
+    },
+    {
+      "id": "agent-runtime",
+      "title": "Agent runtime model",
+      "summary": "V1 event-sourced runs: POST /app-conversations returns an async start-task (WORKING→READY); agent tools run inside a Docker sandbox; mcp__* tools come from registered MCP servers; declarative agents via *.agent.md in workspace/user/builtin layers.",
+      "tools": "34 builtins (file ops, bash, git, worktree, jobs, search, web_fetch, browser, memory, subagents) + MCP-registered tools resolved as mcp__{server}__{tool}."
+    }
+  ]
+}

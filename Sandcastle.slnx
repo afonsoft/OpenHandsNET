@@ -1,0 +1,23 @@
+<Solution>
+  <Folder Name="/cli/">
+    <Project Path="cli/Sandcastle.Cli/Sandcastle.Cli.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Sandcastle.Api/Sandcastle.Api.csproj" />
+    <Project Path="src/Sandcastle.Application/Sandcastle.Application.csproj" />
+    <Project Path="src/Sandcastle.Client/Sandcastle.Client.csproj" />
+    <Project Path="src/Sandcastle.Domain/Sandcastle.Domain.csproj" />
+    <Project Path="src/Sandcastle.Eval/Sandcastle.Eval.csproj" />
+    <Project Path="src/Sandcastle.Infrastructure/Sandcastle.Infrastructure.csproj" />
+    <Project Path="src/Sandcastle.Mcp/Sandcastle.Mcp.csproj" />
+    <Project Path="src/Sandcastle.SandboxAgent/Sandcastle.SandboxAgent.csproj" />
+    <Project Path="src/Sandcastle.RuntimeApi/Sandcastle.RuntimeApi.csproj" />
+    <Project Path="src/Sandcastle.Sandboxing/Sandcastle.Sandboxing.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Sandcastle.Client.Tests/Sandcastle.Client.Tests.csproj" />
+    <Project Path="tests/Sandcastle.IntegrationTests/Sandcastle.IntegrationTests.csproj" />
+    <Project Path="tests/Sandcastle.SandboxAgent.Tests/Sandcastle.SandboxAgent.Tests.csproj" />
+    <Project Path="tests/Sandcastle.UnitTests/Sandcastle.UnitTests.csproj" />
+  </Folder>
+</Solution>

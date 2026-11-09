@@ -1,4 +1,4 @@
-# Arquitetura — OpenHandsNET (overview)
+# Arquitetura — Sandcastle (overview)
 
 Camadas e componentes. Fonte: `CLAUDE.md` estrutura do projeto +
 `.specs/` ativas + `docs/specs/` (arquivo). Atualizado: 2026-10-19.
@@ -6,12 +6,12 @@ Camadas e componentes. Fonte: `CLAUDE.md` estrutura do projeto +
 ```mermaid
 flowchart TB
     subgraph Client["Cliente"]
-        WASM["OpenHandsNET.Client<br/>Blazor WASM — chat, IDE, admin"]
-        CLI["OpenHandsNET.Cli<br/>Spectre.Console — login/run/serve/eval"]
+        WASM["Sandcastle.Client<br/>Blazor WASM — chat, IDE, admin"]
+        CLI["Sandcastle.Cli<br/>Spectre.Console — login/run/serve/eval"]
     end
 
     subgraph Edge["API Edge"]
-        API["OpenHandsNET.Api<br/>Minimal APIs /api/v1 · SignalR hubs<br/>WASM hosting · auth OIDC+sk-*/svc_*"]
+        API["Sandcastle.Api<br/>Minimal APIs /api/v1 · SignalR hubs<br/>WASM hosting · auth OIDC+sk-*/svc_*"]
     end
 
     subgraph Core["Núcleo"]
@@ -23,9 +23,9 @@ flowchart TB
     end
 
     subgraph Runtime["Runtime / Sandbox"]
-        RTAPI["OpenHandsNET.RuntimeApi<br/>orquestração fora-de-processo"]
-        SBOX["OpenHandsNET.Sandboxing<br/>ISandboxEngine · Squid egress"]
-        AGT["OpenHandsNET.SandboxAgent<br/>PID1 HTTP no container"]
+        RTAPI["Sandcastle.RuntimeApi<br/>orquestração fora-de-processo"]
+        SBOX["Sandcastle.Sandboxing<br/>ISandboxEngine · Squid egress"]
+        AGT["Sandcastle.SandboxAgent<br/>PID1 HTTP no container"]
         RTAPI --> SBOX --> AGT
     end
 
@@ -46,7 +46,7 @@ flowchart TB
     INF --> GH
     INF --> LLM
     INF --> CHAT
-    EVAL["OpenHandsNET.Eval<br/>harness de avaliação"] --> APP
+    EVAL["Sandcastle.Eval<br/>harness de avaliação"] --> APP
 ```
 
 ## Dependências (regra de camadas)

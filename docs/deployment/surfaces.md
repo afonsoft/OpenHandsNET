@@ -15,12 +15,12 @@ nenhum processo extra roda por default.
   já vai na imagem.
 - **code-server**: **fora** da imagem (+~200MB). Quando a flag liga e o
   binário falta, o agente roda uma vez
-  `/opt/ohn/sdks/code-server.sh` (pinned `CODE_SERVER_VERSION`, default
-  4.141.0) e instala em `/opt/ohn/code-server`.
+  `/opt/sc/sdks/code-server.sh` (pinned `CODE_SERVER_VERSION`, default
+  4.141.0) e instala em `/opt/sc/code-server`.
 - Supervisor: respawn com backoff até 10 tentativas; liga/desliga é
   registrado como evento `sandbox_surface` no ring `/activity` do agente.
 
-No blueprint (`openhandsnet.yaml` / env do init):
+No blueprint (`sandcastle.yaml` / env do init):
 
 ```yaml
 env:

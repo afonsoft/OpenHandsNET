@@ -78,7 +78,7 @@ normais: aparecem na UI e seguem o mesmo plan enforcement.
 
 ## Métricas (RF-006)
 
-- `openhandsnet_gateway_requests_total{model}`
-- `openhandsnet_gateway_request_seconds{model,stream}` (histograma)
+- `sandcastle_gateway_requests_total{model}`
+- `sandcastle_gateway_request_seconds{model,stream}` (histograma)
 - `/activity` do sandbox-agent: `sandbox_surface` (liga/desliga de
   surfaces — ver `docs/deployment/surfaces.md`).

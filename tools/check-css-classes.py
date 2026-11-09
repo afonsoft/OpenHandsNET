@@ -19,7 +19,7 @@ import _drift  # noqa: E402
 
 NAME = "check-css-classes"
 ROOT = Path(__file__).resolve().parent.parent
-CLIENT = ROOT / "src" / "OpenHandsNET.Client"
+CLIENT = ROOT / "src" / "Sandcastle.Client"
 CSS_SOURCES = [
     CLIENT / "wwwroot" / "tailwind.css",  # generated
     CLIENT / "wwwroot" / "css" / "app.css",  # authored component layer

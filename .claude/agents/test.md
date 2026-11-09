@@ -26,7 +26,7 @@ You are the **Quality Assurance & Automation Engineer**. You ensure code correct
 
 ## Operational Workflow
 1. Invoke the `quality-test-implementation` skill for the test-quality gate (coverage gaps, AAA structure, regression cases).
-2. Execute the configured stack command: `dotnet test OpenHandsNET.slnx`.
+2. Execute the configured stack command: `dotnet test Sandcastle.slnx`.
 3. Parse stdout/stderr. If any test fails, isolate the failing assertion and provide a targeted diagnosis.
 4. Compare test coverage against changes defined in `.specs/` or modified files.
 5. Generate missing unit/integration tests following the Arrange-Act-Assert (AAA) pattern.
@@ -36,10 +36,10 @@ Before declaring the task done, run the six-phase verification gate. Stop at the
 
 | Phase | Command / Action | Pass Criteria |
 | --- | --- | --- |
-| 1. Build | `dotnet build OpenHandsNET.slnx -c Release` | Clean build, no compile errors |
+| 1. Build | `dotnet build Sandcastle.slnx -c Release` | Clean build, no compile errors |
 | 2. Type Check | Run type checker for the stack (`tsc --noEmit`, `mypy`, `pyright`, `dotnet build` implicit) | Zero type errors |
-| 3. Lint | `dotnet format OpenHandsNET.slnx --verify-no-changes` | Zero lint errors; warnings documented |
-| 4. Test Suite | `dotnet test OpenHandsNET.slnx` | All tests pass; coverage ≥ project minimum |
+| 3. Lint | `dotnet format Sandcastle.slnx --verify-no-changes` | Zero lint errors; warnings documented |
+| 4. Test Suite | `dotnet test Sandcastle.slnx` | All tests pass; coverage ≥ project minimum |
 | 5. Security Scan | `grep -rn "sk-\|api_key\|password\|token" --include="*.{cs,py,ts,js,json}" .` and secrets scanner if configured | No leaked secrets or credentials |
 | 6. Diff Review | `git diff --stat` and `git diff HEAD~1 --name-only` | Only intended files changed; no accidental edits |
 

@@ -1,4 +1,4 @@
-# Stack Research — OpenHands → OpenHandsNET
+# Stack Research — OpenHands → Sandcastle
 
 > Fonte de verdade: código clonado de `github.com/OpenHands/*` (HEAD ~2026-10-12)
 > e `docs.openhands.dev`. Evidências citadas como `arquivo:linha` no clone ou URL.
@@ -16,7 +16,7 @@ A família OpenHands **não é um monorepo**. São repositórios separados com p
 | `OpenHands/OpenHands-Cloud` | Infra/deploy: Helm charts, Terraform, Replicated | **Polyform Free Trial** | `OpenHands-Cloud/README.md`, `docs/ARCHITECTURE.md` |
 | `OpenHands/automation` | Automações (scheduling, webhooks, dispatch) | MIT | `software-agent-sdk/AGENTS.md` (tabela de ownership) |
 
-**Implicação para o OpenHandsNET:** a camada "cloud/enterprise" que o usuário quer replicar
+**Implicação para o Sandcastle:** a camada "cloud/enterprise" que o usuário quer replicar
 vive em código sob licença **Polyform** — os SPECs devem reproduzir **conceitos e
 contratos públicos**, nunca portar código. O núcleo (SDK/Agent Server/Canvas/CLI) é MIT.
 
@@ -30,7 +30,7 @@ contratos públicos**, nunca portar código. O núcleo (SDK/Agent Server/Canvas/
 | CLI | Python, Textual TUI, PyInstaller binary | `OpenHands-CLI/` |
 | Infra Cloud | Kubernetes + Helm, Runtime API (warm pod pool), Image Loader, PostgreSQL, Redis, Keycloak, LiteLLM Proxy, blob store (S3) | `OpenHands-Cloud/docs/ARCHITECTURE.md` |
 
-## 3. Stack alvo OpenHandsNET (decisão)
+## 3. Stack alvo Sandcastle (decisão)
 
 Alinhado ao padrão já provado em `afonsoft/open-webui` (migração .NET concluída):
 
@@ -51,12 +51,12 @@ Alinhado ao padrão já provado em `afonsoft/open-webui` (migração .NET conclu
 | Testes | xUnit + Shouldly/FluentAssertions + Testcontainers | — | |
 | Deploy | Dockerfile multi-stage (padrão `:3032→:8080`) + Helm opcional | — | |
 
-**Divergências deliberadas do guia `openhandsnet_full_specification_and_migration_guide.md`:**
+**Divergências deliberadas do guia `sandcastle_full_specification_and_migration_guide.md`:**
 
 | Guia original | Correção aplicada | Motivo |
 |---|---|---|
 | .NET 9 / C# 13 | **.NET 10 / C# 14** | Paridade com open-webui-net |
-| Projetos `OpenHandsNET.Core/Runtime/Web` | **5 projetos Clean Architecture** (`Domain/Application/Infrastructure/Api/Client`) + `Cli` | Mesma divisão já validada |
+| Projetos `Sandcastle.Core/Runtime/Web` | **5 projetos Clean Architecture** (`Domain/Application/Infrastructure/Api/Client`) + `Cli` | Mesma divisão já validada |
 | Eventos `id` inteiro + `action/args` (V0) | **Modelo V1**: `kind` discriminator, `id` ULID/UUID, `source`, `parent_id` | API V0 deprecada (remoção 2026-04-01) |
 | `repository` no body | **`selected_repository`** | Contrato V1 real |
 | Resposta síncrona com `conversation_id` | **Start-task assíncrono** (`WORKING→…→READY`) | Verificado em docs + código |
@@ -65,5 +65,5 @@ Alinhado ao padrão já provado em `afonsoft/open-webui` (migração .NET conclu
 ## 4. Versões/compatibilidade relevantes
 
 - OpenHands app image: `docker.openhands.dev/openhands/openhands:1.8`; agent-server image `ghcr.io/openhands/agent-server:1.26.0-python` (docs local-setup).
-- API V0 (`/api/conversations`) **deprecada — remoção 2026-04-01**; OpenHandsNET implementa **apenas V1**.
+- API V0 (`/api/conversations`) **deprecada — remoção 2026-04-01**; Sandcastle implementa **apenas V1**.
 - Agente-server REST API upstream tem política de compat: breaks exigem 5 minor releases de runway (`openhands-agent-server/AGENTS.md`).

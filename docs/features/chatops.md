@@ -1,6 +1,6 @@
 # ChatOps (Slack) — SPEC-54
 
-ChatOps conecta workspaces Slack ao OpenHandsNET: menções ao bot, slash
+ChatOps conecta workspaces Slack ao Sandcastle: menções ao bot, slash
 commands e replies em thread viram **app-conversations** (start-task
 assíncrono) ou mensagens em conversas existentes, com postback do
 resultado da run no próprio thread.
@@ -71,8 +71,8 @@ sessão de investigação — útil para canais de alertas.
 
 ## CLI e admin
 
-- `openhandsnet chat status` — tabela das conexões da org.
-- `openhandsnet chat test --connection <id>` — diagnóstico `auth.test`.
+- `sandcastle chat status` — tabela das conexões da org.
+- `sandcastle chat test --connection <id>` — diagnóstico `auth.test`.
 - `/admin/chat` — listar/testar/remover conexões por org.
 
 ## Limitações (V1)

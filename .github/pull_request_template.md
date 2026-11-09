@@ -10,7 +10,7 @@
 ## Validation
 
 - [ ] `dotnet format --verify-no-changes` clean
-- [ ] `dotnet build OpenHandsNET.slnx -c Release` clean
+- [ ] `dotnet build Sandcastle.slnx -c Release` clean
 - [ ] `dotnet test` green locally (or a note on what only CI covers)
 - [ ] Production-code changes include a new or updated test in this PR
 - [ ] `packages.lock.json` regenerated when dependencies changed

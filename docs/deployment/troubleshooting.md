@@ -8,7 +8,7 @@ aplique correções por configuração — nunca `kubectl edit`/`docker rm` ad h
 
 `GET /api/v1/support-bundle` (ou o link na página `/admin`) baixa um ZIP
 com: readiness detalhado, versões, entity counts, tail dos logs
-(`openhandsnet-*.log`) e a configuração efetiva **com todo valor
+(`sandcastle-*.log`) e a configuração efetiva **com todo valor
 sensível mascarado** (redação coberta por teste).
 
 ```bash
@@ -27,18 +27,18 @@ conversa: faça os checks da seção 4.
 docker compose ps                              # status por serviço
 docker compose logs --tail=200 app             # app (API + UI)
 docker compose logs --tail=100 runtime-api     # só no modo split (provider=remote)
-docker ps --filter label=openhandsnet.managed  # sandboxes ativos
+docker ps --filter label=sandcastle.managed  # sandboxes ativos
 ```
 
 ### Kubernetes
 
 ```bash
-kubectl get pods -n openhandsnet -o wide
-kubectl get pods -n openhandsnet-sandboxes -o wide
-kubectl get events -n openhandsnet --sort-by=.metadata.creationTimestamp
-kubectl describe pod -n openhandsnet <pod>
-kubectl logs -n openhandsnet <pod> --all-containers=true --previous --timestamps
-kubectl top pods -n openhandsnet               # se a Metrics API existir
+kubectl get pods -n sandcastle -o wide
+kubectl get pods -n sandcastle-sandboxes -o wide
+kubectl get events -n sandcastle --sort-by=.metadata.creationTimestamp
+kubectl describe pod -n sandcastle <pod>
+kubectl logs -n sandcastle <pod> --all-containers=true --previous --timestamps
+kubectl top pods -n sandcastle               # se a Metrics API existir
 ```
 
 Comece pelas colunas `STATUS`/`READY`/`RESTARTS`: `Pending` = scheduling/
@@ -52,7 +52,7 @@ restart.
 |---|---|
 | `app` (Api/UI) | erros de UI/API, conversas, `dotnet` logs, migration no boot |
 | `runtime-api` | create/pause/cleanup de sandbox (provider `remote`) |
-| pods `ohn-sandbox-*` / `ohn-pool-*` | conversa específica não sobe; warm pool não clama |
+| pods `sc-sandbox-*` / `sc-pool-*` | conversa específica não sobe; warm pool não clama |
 | `litellm` | modelo rejeitado, auth do proxy (BYOR), budget |
 | `keycloak` | login/SSO, tokens, client redirect |
 | `postgres` | readiness `database` falho, migrations |
@@ -68,7 +68,7 @@ restart.
 | Egress `deny` quebra clone/LLM | `Sandbox:EgressMode` + `host` clone mode ou mirror interno (ver `dind.md`) |
 | Warm pool não é usado | pool só serve a **default spec**; spec custom → cold start (ver `kubernetes.md`/`dind.md`) |
 
-Diagnóstico rápido: `openhandsnet doctor` (ambiente), `doctor --preflight`
+Diagnóstico rápido: `sandcastle doctor` (ambiente), `doctor --preflight`
 (gate de instalação: DNS/egress/portas/socket docker), `doctor --k8s`
 (cluster, `runtimeclass sysbox-runc`, StorageClass). Probes HTTP:
 `/api/v1/health` (liveness) e `/api/v1/readiness` (dependências reais —

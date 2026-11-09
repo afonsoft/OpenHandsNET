@@ -112,11 +112,11 @@ jobs:
           dotnet-version: "10.0.x"   # pinned: WASM lockfiles capture SDK-band implicit package versions — bump with lockfile regen
 
       - name: restore (locked-mode)
-        run: dotnet restore OpenHandsNET.slnx --locked-mode
+        run: dotnet restore Sandcastle.slnx --locked-mode
 
       - name: dotnet vulnerable-package gate (blocking)
         run: |
-          dotnet list OpenHandsNET.slnx package --vulnerable --include-transitive \
+          dotnet list Sandcastle.slnx package --vulnerable --include-transitive \
             > /tmp/vuln.txt 2>&1 || true
           cat /tmp/vuln.txt
           if grep -qE "has the following vulnerable|Severity.*(High|Critical|Moderate|Low)" /tmp/vuln.txt; then

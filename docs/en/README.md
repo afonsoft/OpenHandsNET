@@ -1,16 +1,16 @@
-# Documentation — OpenHandsNET
+# Documentation — Sandcastle
 
 Documentation index (English). Versão em português na raiz: [`../README.md`](../README.md).
 
 ## Product
 
-- [comparison.md](comparison.md) — OpenHandsNET vs OpenHands (OSS/Cloud/Ent)
+- [comparison.md](comparison.md) — Sandcastle vs OpenHands (OSS/Cloud/Ent)
   vs Devin Web, in depth.
 - [automations.md](automations.md) — scheduled routines + webhook triggers +
   `routine` tool (SPEC-47).
-- [eval.md](eval.md) — `openhandsnet eval` headless + asserts + `llm_judge`
+- [eval.md](eval.md) — `sandcastle eval` headless + asserts + `llm_judge`
   (SPEC-39).
-- [cli.md](cli.md) — `openhandsnet` CLI/TUI (SPEC-06/31).
+- [cli.md](cli.md) — `sandcastle` CLI/TUI (SPEC-06/31).
 
 ## Features (UI)
 

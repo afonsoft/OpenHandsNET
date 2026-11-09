@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sandcastle</title>
+    <base href="/" />
+    <meta name="color-scheme" content="light" />
+    <!-- SPEC-117: metas PWA/SEO -->
+    <meta name="description" content="Sandcastle — autonomous software agent sessions (.NET / Blazor WebAssembly)." />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0d1117" media="(prefers-color-scheme: dark)" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="preload" id="webassembly" />
+    <!-- SPEC-136 RF-002: preload das 2 fatias Inter — evita FOUT no
+         primeiro paint (espelha OWUIC index.html). -->
+    <link rel="preload" href="fonts/inter-var-latin.woff2" as="font"
+          type="font/woff2" crossorigin />
+    <link rel="preload" href="fonts/inter-var-latin-ext.woff2" as="font"
+          type="font/woff2" crossorigin />
+    <!-- SPEC-26: aplica data-theme ANTES do CSS — zero flash de tema errado.
+         SPEC-117: <html lang> inicial vem do locale persistido (sc.locale). -->
+    <script>
+        (function () {
+            var t = 'light';
+            try { t = localStorage.getItem('sc.theme') || 'light'; } catch (e) { }
+            if (t === 'system') {
+                t = window.matchMedia('(prefers-color-scheme: light)').matches
+                    ? 'light' : 'dark';
+            }
+            document.documentElement.dataset.theme = t;
+            try {
+                var lang = localStorage.getItem('sc.locale');
+                if (lang) document.documentElement.lang = lang;
+            } catch (e) { }
+            // SPEC-116: re-aplica paleta custom persistida antes do paint.
+            try {
+                var tid = localStorage.getItem('sc.theme.id');
+                var tcss = localStorage.getItem('sc.theme.css') || '';
+                if (tid && tid !== 'default') {
+                    document.documentElement.classList.add('theme-' + tid);
+                    var st = document.createElement('style');
+                    st.id = 'user-theme';
+                    st.textContent = tcss;
+                    document.head.appendChild(st);
+                }
+            } catch (e) { }
+        })();
+    </script>
+    <link rel="stylesheet" href="lib/xterm/xterm.css" />
+    <link rel="stylesheet" href="css/app.css" />
+    <!-- SPEC-21: utilidades Tailwind v4 depois do CSS custom (zero regressão) -->
+    <link rel="stylesheet" href="tailwind.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="Sandcastle.Client.styles.css" rel="stylesheet" />
+    <script type="importmap"></script>
+</head>
+
+<body>
+    <div id="app">
+        <svg class="loading-progress">
+            <circle r="40%" cx="50%" cy="50%" />
+            <circle r="40%" cx="50%" cy="50%" />
+        </svg>
+        <div class="loading-progress-text"></div>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="." class="reload">Reload</a>
+        <span class="dismiss" style="cursor:pointer">✕</span>
+    </div>
+    <script src="lib/xterm/xterm.js"></script>
+    <script src="lib/xterm/addon-fit.js"></script>
+    <script src="js/theme.js"></script>
+    <script src="js/xtermInterop.js"></script>
+    <script src="js/splitPane.js"></script>
+    <script src="js/monacoInterop.js"></script>
+    <script src="js/codeblocks.js"></script>
+    <script src="js/notifications.js"></script>
+    <script src="_framework/blazor.webassembly.js" autostart="false" defer></script>
+    <script src="js/boot.js" defer></script>
+    <!-- SPEC-117 RF-002: service worker do shell PWA (framework-assets
+         cache-first, shell network-first, /api + /hubs nunca cacheiam). -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js')
+                .then(reg => console.debug('SW registered', reg.scope))
+                .catch(err => console.warn('SW registration failed', err));
+        }
+    </script>
+</body>
+
+</html>

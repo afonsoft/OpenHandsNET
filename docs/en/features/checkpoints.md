@@ -5,7 +5,7 @@ the agent edit freely.
 
 ## Model
 
-- A separate git dir (`/workspace/.ohn-checkpoints/`) pointing at the
+- A separate git dir (`/workspace/.sc-checkpoints/`) pointing at the
   worktree — the project's `.git` is never touched.
 - Automatic snapshot at the end of each turn (`Finished`) and on
   `Paused`; manual via the `checkpoint` tool (agent) or the UI button.

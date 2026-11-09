@@ -4,7 +4,7 @@
 
 | Ferramenta | Uso |
 |---|---|
-| `dotnet` 10 SDK | build/test/format/ef — slnx: `OpenHandsNET.slnx` |
+| `dotnet` 10 SDK | build/test/format/ef — slnx: `Sandcastle.slnx` |
 | `dotnet-sonarscanner` | análise SonarCloud (`afonsoft_OpenHandsNET`) — via CI ou local com `SONAR_TOKEN` |
 | `sonar-scanner` | instalado em `~/.local/share/sonar-scanner/` (alternativo) |
 | `gh` (autenticado `afonsoft`) | issues, PRs, labels, `gh api` (SHA de actions) |
@@ -14,12 +14,12 @@
 ## Comandos-chave
 
 ```bash
-dotnet restore OpenHandsNET.slnx && dotnet build OpenHandsNET.slnx -c Release
+dotnet restore Sandcastle.slnx && dotnet build Sandcastle.slnx -c Release
 dotnet test                                   # 851 testes (4 projetos)
-dotnet format OpenHandsNET.slnx --verify-no-changes   # lint gate
-dotnet ef migrations add <Name> --startup-project src/OpenHandsNET.Api \
-  --project src/OpenHandsNET.Infrastructure --context AppDbContext
-dotnet run --project src/OpenHandsNET.Api     # app em :8080
+dotnet format Sandcastle.slnx --verify-no-changes   # lint gate
+dotnet ef migrations add <Name> --startup-project src/Sandcastle.Api \
+  --project src/Sandcastle.Infrastructure --context AppDbContext
+dotnet run --project src/Sandcastle.Api     # app em :8080
 docker compose up -d --build                  # app em :3032
 ./scripts/check-env-drift.sh                  # gate CI de env drift
 ```

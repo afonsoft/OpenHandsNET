@@ -17,7 +17,7 @@ docker compose -f docker-compose.yaml -f docker-compose.enterprise.yaml up -d --
 
 | Serviço | Porta | Função |
 |---|---|---|
-| app | 3032→8080 | OpenHandsNET (DeploymentMode=self_hosted) |
+| app | 3032→8080 | Sandcastle (DeploymentMode=self_hosted) |
 | postgres | interno | Dados (users, orgs, api keys, events) + db `litellm` |
 | keycloak | 8081 | Broker OIDC — SAML/social atrás dele |
 | litellm | 4000 | Gateway OpenAI-compat + **BYOR** (virtual keys por usuário, SPEC-50) |
@@ -40,9 +40,9 @@ Cada usuário pode ter uma **virtual key** do proxy com budget próprio:
 
 ## Keycloak
 
-1. Crie o realm `openhandsnet` (`http://localhost:8081`, admin).
-2. Client `openhandsnet-web` (public, redirect `http://localhost:3032/*`).
-3. `Auth__Authority=http://keycloak:8080/realms/openhandsnet` já configurado.
+1. Crie o realm `sandcastle` (`http://localhost:8081`, admin).
+2. Client `sandcastle-web` (public, redirect `http://localhost:3032/*`).
+3. `Auth__Authority=http://keycloak:8080/realms/sandcastle` já configurado.
 
 ## Observabilidade
 

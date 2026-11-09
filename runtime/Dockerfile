@@ -1,22 +1,22 @@
 # syntax=docker/dockerfile:1
-# SPEC-17 RF-001: imagem runtime do OpenHandsNET.
+# SPEC-17 RF-001: imagem runtime do Sandcastle.
 #
-# ubuntu:24.04 + toolchain base + openhandsnet-sandbox-agent (PID 1 sob tini).
+# ubuntu:24.04 + toolchain base + sandcastle-sandbox-agent (PID 1 sob tini).
 # O agente é publicado no próprio build (multi-stage) — sem binário commitado.
 #
 # Regras (paridade upstream custom-sandbox-images):
 # - nunca sobrescreva o ENTRYPOINT — estenda com RUN/ENV;
 # - nunca embuta secrets — credenciais chegam via env no start/init;
-# - setup de repo pertence ao blueprint (openhandsnet.yaml/.openhands/setup.sh),
+# - setup de repo pertence ao blueprint (sandcastle.yaml/.openhands/setup.sh),
 #   não à imagem.
 
 # ---- stage 1: publish do sandbox-agent (self-contained single-file) ----
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS agent-build
 WORKDIR /src
 COPY Directory.Build.props Directory.Packages.props ./
-COPY src/OpenHandsNET.SandboxAgent ./src/OpenHandsNET.SandboxAgent
+COPY src/Sandcastle.SandboxAgent ./src/Sandcastle.SandboxAgent
 ARG TARGETARCH
-RUN dotnet publish src/OpenHandsNET.SandboxAgent -c Release \
+RUN dotnet publish src/Sandcastle.SandboxAgent -c Release \
     -r linux-$( [ "$TARGETARCH" = "arm64" ] && echo arm64 || echo x64 ) \
     --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false \
     -o /out
@@ -26,7 +26,7 @@ FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=UTC \
-    OHN_WORKSPACE=/workspace
+    SC_WORKSPACE=/workspace
 
 # NOSONAR S7031 — RUNs separados por propósito preservam cache de camada
 # e legibilidade (apt-base, gh cli, node, ttyd, usuário).
@@ -63,7 +63,7 @@ RUN curl -fsSL --proto '=https' --tlsv1.2 https://deb.nodesource.com/setup_22.x 
 # agente; --with-deps resolve as libs de sistema do Chromium.
 ARG PLAYWRIGHT_NPM_VERSION=1.64.1
 ARG CHROME_DEVTOOLS_MCP_VERSION=1.12.0
-ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ohn/ms-playwright \
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/sc/ms-playwright \
     PUPPETEER_SKIP_DOWNLOAD=1
 RUN npm install -g --ignore-scripts "playwright@${PLAYWRIGHT_NPM_VERSION}" \
         "chrome-devtools-mcp@${CHROME_DEVTOOLS_MCP_VERSION}" \
@@ -93,21 +93,21 @@ RUN arch="$(dpkg --print-architecture)" \
 # Usuário não-root + workspace. sudo restrito a apt/installers de SDK
 # (blueprint roda como openhands; installers conhecidos podem usar sudo).
 RUN useradd -m -u 10001 -s /bin/bash openhands \
-    && mkdir -p /workspace /opt/ohn/sdks \
-    && chown -R openhands:openhands /workspace /opt/ohn \
-    && echo 'openhands ALL=(root) NOPASSWD: /usr/bin/apt-get, /usr/bin/apt, /opt/ohn/sdks/*.sh' \
-        > /etc/sudoers.d/ohn-sdk \
-    && chmod 0440 /etc/sudoers.d/ohn-sdk
+    && mkdir -p /workspace /opt/sc/sdks \
+    && chown -R openhands:openhands /workspace /opt/sc \
+    && echo 'openhands ALL=(root) NOPASSWD: /usr/bin/apt-get, /usr/bin/apt, /opt/sc/sdks/*.sh' \
+        > /etc/sudoers.d/sc-sdk \
+    && chmod 0440 /etc/sudoers.d/sc-sdk
 
-COPY runtime/sdks/ /opt/ohn/sdks/
-RUN chmod +x /opt/ohn/sdks/*.sh
+COPY runtime/sdks/ /opt/sc/sdks/
+RUN chmod +x /opt/sc/sdks/*.sh
 
-COPY --from=agent-build /out/openhandsnet-sandbox-agent /usr/local/bin/
-RUN chmod +x /usr/local/bin/openhandsnet-sandbox-agent
+COPY --from=agent-build /out/sandcastle-sandbox-agent /usr/local/bin/
+RUN chmod +x /usr/local/bin/sandcastle-sandbox-agent
 
 USER openhands
 WORKDIR /workspace
 EXPOSE 8000
 
 # tini como init (reaping/forward de sinais) → agente como PID supervisionado.
-ENTRYPOINT ["tini", "--", "/usr/local/bin/openhandsnet-sandbox-agent"]
+ENTRYPOINT ["tini", "--", "/usr/local/bin/sandcastle-sandbox-agent"]

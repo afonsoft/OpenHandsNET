@@ -27,7 +27,7 @@ effectively root on the host.
 
 ## Image
 
-- Final runtime `aspnet:10.0`, `openhandsnet` user (non-root), no SDK.
+- Final runtime `aspnet:10.0`, `sandcastle` user (non-root), no SDK.
 - `HEALTHCHECK` on `/api/v1/ready` (failure ≠ automatic restart — the
   compose also has a healthcheck for orchestration).
 

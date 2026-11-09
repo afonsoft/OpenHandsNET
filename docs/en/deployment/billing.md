@@ -1,6 +1,6 @@
 # Billing & plan enforcement (SPEC-20)
 
-OpenHandsNET has a plan catalogue, per-org subscriptions and usage
+Sandcastle has a plan catalogue, per-org subscriptions and usage
 metering. **Enforcement is off by default** — on OSS self-host nothing
 blocks; an operator enables it with `Billing:EnforcementEnabled=true`
 when quotas should apply.
@@ -58,10 +58,10 @@ internal metering (`usage_records`) stays active.
 ### Configuration
 
 ```bash
-OPENHANDSNET_LlmProxy__BaseUrl=http://litellm:4000
-OPENHANDSNET_LlmProxy__MasterKey=<secret — never in appsettings>
-OPENHANDSNET_LlmProxy__Mode=hybrid      # off | hybrid | byor
-OPENHANDSNET_LlmProxy__DefaultBudgetUsd=50
+SANDCASTLE_LlmProxy__BaseUrl=http://litellm:4000
+SANDCASTLE_LlmProxy__MasterKey=<secret — never in appsettings>
+SANDCASTLE_LlmProxy__Mode=hybrid      # off | hybrid | byor
+SANDCASTLE_LlmProxy__DefaultBudgetUsd=50
 ```
 
 - `off` (default): BYOR disabled — zero behavior change.

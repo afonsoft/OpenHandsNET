@@ -55,7 +55,7 @@ Decisões travadas:
 - **`.openhands/` convention**: diretórios de hooks/skills/microagents
   no workspace do usuário seguem a convenção upstream — **preservados**
   (compat de ecossistema, como `.claude/`/`.agents/`).
-- **MCP tools**: prefixo `ohn_*` → `sc_*` (breaking para clientes MCP;
+- **MCP tools**: prefixo `sc_*` → `sc_*` (breaking para clientes MCP;
   documentado no CHANGELOG).
 - **Casing variants**: tanto `OpenHandsNET` (namespaces) quanto
   `OpenHandsNet` (classes como `OpenHandsNetOptions`) → `Sandcastle`.
@@ -69,7 +69,7 @@ Decisões travadas:
 - ~226 `.md`, ~219 `.json` (appsettings, i18n, golden OpenAPI, lock
   files), 26 workflows, 9 Dockerfile/compose
 - 119 referências ao prefixo `OPENHANDSNET_`
-- 13 tools MCP `ohn_*` + baseline `tools/drift-baseline/mcp-tools.json`
+- 13 tools MCP `sc_*` + baseline `tools/drift-baseline/mcp-tools.json`
 - `cli/OpenHandsNET.Cli` — `ToolCommandName` `openhandsnet`
 - `data/openhandsnet.db` em `appsettings.json`; `manifest.webmanifest`
   + `index.html` com nome/título do produto
@@ -91,7 +91,7 @@ Decisões travadas:
 - RF-004 — **UI/i18n**: `manifest.webmanifest` (`name`/`short_name`),
   `index.html` (`<title>`, meta description), strings i18n com nome de
   produto → "Sandcastle"; "Sandcastle Cloud" só onde fala da edição.
-- RF-005 — **MCP**: tools `ohn_*` → `sc_*` em `src/OpenHandsNET.Mcp` +
+- RF-005 — **MCP**: tools `sc_*` → `sc_*` em `src/OpenHandsNET.Mcp` +
   baseline `tools/drift-baseline/mcp-tools.json` regen.
 - RF-006 — **CI/CD**: `release.yml` `IMAGE` → `ghcr.io/afonsoft/
   sandcastle`; referências de nome de repo em workflows/badges;
@@ -116,7 +116,7 @@ Rotas `/api/v1/**` inalteradas (paths, shapes, discriminadores).
 Mudanças de contrato **externo** (breaking, documentadas):
 
 - Env vars `OPENHANDSNET_*` deixam de ser lidas (hard break).
-- MCP `tools/list`: `ohn_*` → `sc_*` (clientes MCP atualizam config).
+- MCP `tools/list`: `sc_*` → `sc_*` (clientes MCP atualizam config).
 - Nomes de imagem/volume/DB file (deployment contract).
 - `info.title` do OpenAPI document passa a "Sandcastle" — golden regen.
 - URLs do repo: `github.com/afonsoft/OpenHandsNET` redireciona para
@@ -153,7 +153,7 @@ Mudanças de contrato **externo** (breaking, documentadas):
    `Sandcastle.*`.
 3. Passo mecânico 2 — conteúdo: sed ordenado
    `OpenHandsNET`→`Sandcastle`, `OpenHandsNet`→`Sandcastle`,
-   `openhandsnet`→`sandcastle`, `OPENHANDSNET`→`SANDCASTLE`, `ohn_`→
+   `openhandsnet`→`sandcastle`, `OPENHANDSNET`→`SANDCASTLE`, `sc_`→
    `sc_` (escopo MCP/baseline) em arquivos tracked, excluindo
    `docs/specs/`, `CHANGELOG.md`, `.claude/memory/`.
 4. Fixes manuais: DB name, imagens/compose, manifest/title, env docs,
@@ -178,7 +178,7 @@ Mudanças de contrato **externo** (breaking, documentadas):
 - `src/OpenHandsNET.Api/appsettings.json:14` — `data/openhandsnet.db`.
 - `src/OpenHandsNET.Client/wwwroot/manifest.webmanifest` + `index.html`
   — nome/título do produto.
-- `src/OpenHandsNET.Mcp/McpServer.cs` — 13 tools `ohn_*`.
+- `src/OpenHandsNET.Mcp/McpServer.cs` — 13 tools `sc_*`.
 - `src/OpenHandsNET.Domain/Sandbox/SandboxSpec.cs:22` —
   `DefaultImage` upstream default (`sandcastle-runtime` é opt-in doc).
 - `.github/workflows/release.yml` — `IMAGE: ghcr.io/afonsoft/openhandsnet`.

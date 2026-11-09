@@ -1,6 +1,6 @@
 # Ticket Triggers (Linear / Jira)
 
-SPEC-55 — dispara sessões OpenHandsNET a partir de eventos de ticket e
+SPEC-55 — dispara sessões Sandcastle a partir de eventos de ticket e
 escreve o resultado de volta no ticket (comentário + transição de estado).
 
 ## Conceitos
@@ -20,7 +20,7 @@ escreve o resultado de volta no ticket (comentário + transição de estado).
       (ex.: `openhands`).
     - `assignee` — dispara quando `value` vira assignee.
     - `state` — dispara quando o status vira `value`.
-    - Comentário `@openhandsnet` dispara **sempre** (mention bypass).
+    - Comentário `@sandcastle` dispara **sempre** (mention bypass).
     - `prompt_template` opcional com placeholders `{identifier}`,
       `{title}`, `{description}`, `{labels}`, `{url}`, `{comment}`.
 - **Project → repo** (`POST …/ticket-connections/{id}/projects`) —
@@ -32,7 +32,7 @@ escreve o resultado de volta no ticket (comentário + transição de estado).
 | Endpoint | Assinatura | Eventos |
 |---|---|---|
 | `POST /api/v1/webhooks/tickets/linear` | `Linear-Signature` = hex HMAC-SHA256(webhook secret, body) | `Issue` update; `Comment` create |
-| `POST /api/v1/webhooks/tickets/jira` | `?secret=` ou header `X-OpenHandsNet-Secret` (fixed-time compare) | `jira:issue_updated`; `comment_created` |
+| `POST /api/v1/webhooks/tickets/jira` | `?secret=` ou header `X-Sandcastle-Secret` (fixed-time compare) | `jira:issue_updated`; `comment_created` |
 
 Payload máximo 256 KB. Replays são deduplicados via `webhook_deliveries`
 (kind `ticket`) — resposta idempotente.
@@ -43,7 +43,7 @@ Quando uma conversa disparada por ticket termina, o `TicketReporter`
 comenta no issue:
 
 ```
-OpenHandsNET: run finished — {resumo redigido}.
+Sandcastle: run finished — {resumo redigido}.
 PR: {pr_url} Conversation: {conv_id}
 ```
 
@@ -55,9 +55,9 @@ comentário de erro. Audit: `ticket.run_started` e `ticket.writeback`.
 Sem expor webhook público? Use o run autenticado:
 
 ```bash
-openhandsnet tickets status --org <org-id>
-openhandsnet tickets test --connection <id>
-openhandsnet tickets run --connection <id> --issue ENG-42
+sandcastle tickets status --org <org-id>
+sandcastle tickets test --connection <id>
+sandcastle tickets run --connection <id> --issue ENG-42
 ```
 
 ## Admin UI

@@ -1,5 +1,10 @@
 # docs/specs/ — SPECs entregues (arquivo)
 
+> **Rename note (SPEC-138, 2026-11-09)**: o produto foi renomeado de
+> OpenHandsNET para **Sandcastle** (`v0.1.0-beta.2`). As SPECs abaixo são
+> arquivo morto e mantêm o nome antigo nos títulos/conteúdo — ler
+> "OpenHandsNET" nelas como "Sandcastle".
+
 SPECs SDD concluídas e arquivadas, conforme convenção `.specs/README.md`
 (`Done`/`Delivered` → mover para `docs/specs/` com `Status: Completed`).
 Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
