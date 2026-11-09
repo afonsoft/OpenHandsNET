@@ -21,7 +21,7 @@ Checklist executável para cortar a primeira tag beta (Epic #365 · SPECs
       corpo da tag (SPEC-78 quarantine list)
 - [x] Golden OpenAPI (`Spec51OpenApiContractTests`) byte-idêntico —
       regerado na SPEC-135 (#384: fork/undo/revert-hunks)
-- [ ] SonarCloud gate verde na main (0 bugs/vulnerabilities novos)
+- [x] SonarCloud gate verde na main — fix #387 (0 bugs/vulnerabilities novos)
 - [x] Drift guards client: `tools/check-*.py` todos passando
 - [x] `gitleaks`/GitGuardian limpos (fix #378 na main)
 
