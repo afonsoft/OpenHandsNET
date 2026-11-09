@@ -218,6 +218,33 @@ public sealed class AgentRunner(
         AgentLlmOptions opt, RunActivityTracker activity,
         CancellationToken ct)
     {
+        var st = await InitLoopAsync(
+            events, db, conv, sandbox, executor, tools, mcp, llm,
+            condenser, opt, activity, ct);
+        if (st is null)
+        {
+            return;
+        }
+
+        await RunIterationsAsync(st, conversationId, ct);
+    }
+
+    /// <summary>
+    /// Fase de setup do loop — resolve permissions/catálogo de tools,
+    /// security policy + analyzer, rota de modelo (SPEC-23), BYOR
+    /// (SPEC-50, fail-closed) e reconstrói o histórico. Retorna o
+    /// <see cref="LoopState"/> pronto, ou <see langword="null"/> quando
+    /// o run deve abortar (contract emit falhou / BYOR rejeitou — o
+    /// evento terminal já foi emitido e o status marcado).
+    /// </summary>
+    private async Task<LoopState?> InitLoopAsync(
+        IEventService events, AppDbContext db, ConversationRecord conv,
+        Domain.Sandbox.Sandbox sandbox, ISandboxExecutor executor,
+        IToolRegistry tools, Application.Mcp.IMcpClientService? mcp,
+        IAgentLlmProvider llm, ICondenser condenser,
+        AgentLlmOptions opt, RunActivityTracker activity,
+        CancellationToken ct)
+    {
         var builder = services.GetRequiredService<Context.ConversationHistoryBuilder>();
         var contextMeter = services.GetRequiredService<IContextMeter>();
         // SPEC-29 RF-002: permissões efetivas (org floor → plan overlay →
@@ -243,7 +270,7 @@ public sealed class AgentRunner(
         if (!await EmitAgentContractAsync(
                 events, db, conv, effectiveTools.All, opt, policy, ct))
         {
-            return;
+            return null;
         }
 
         var rebuilt = await builder.BuildAsync(
@@ -301,12 +328,12 @@ public sealed class AgentRunner(
                     }, CancellationToken.None);
                 await SetStatusAsync(events, db, conv, Error,
                     ConversationExecutionStatus.Error);
-                return;
+                return null;
             }
         }
 
         var routeWait = System.Diagnostics.Stopwatch.StartNew();
-        var st = new LoopState
+        return new LoopState
         {
             RouteWait = routeWait,
             Services = services,
@@ -337,7 +364,21 @@ public sealed class AgentRunner(
             Model = model,
             Selection = selection,
         };
+    }
 
+    /// <summary>
+    /// Fase de iteração — loop principal até max_iterations (retry não
+    /// consome iteração). Abort/Retry são traduzidos pelos vereditos de
+    /// stream/dispatch; libera o estado deferred no finally.
+    /// </summary>
+    private async Task RunIterationsAsync(
+        LoopState st, Guid conversationId, CancellationToken ct)
+    {
+        var (events, db, conv, opt, activity, deferred, effectiveTools,
+            mcp, permissions, services, hooks, sandbox) = (st.Events,
+            st.Db, st.Conv, st.Opt, st.Activity, st.Deferred,
+            st.EffectiveTools, st.Mcp, st.Permissions, st.Services,
+            st.Hooks, st.Sandbox);
         var extraAttempts = 0;
         try
         {
@@ -587,42 +628,8 @@ public sealed class AgentRunner(
                         turn.Calls[tcd.Index] = cur;
                         break;
                     case CompletionEnd end:
-                        responseId = end.ResponseId;
-                        // SPEC-22 RF-001: calibração online do meter.
-                        st.ContextMeter.ObserveUsage(end.Usage.PromptTokens,
-                            st.LastEstimate);
-                        if (end.FinishReason == "length"
-                            && st.Opt.Compaction.Enabled)
-                        {
-                            st.StopLengthPending = true;
-                        }
-
-                        await st.Events.AppendAsync(conversationId, new TokenEvent
-                        {
-                            Source = EventSource.Agent,
-                            ParentId = st.LastEventId,
-                            PromptTokens = end.Usage.PromptTokens,
-                            CompletionTokens = end.Usage.CompletionTokens,
-                            CostUsd = end.Usage.CostUsd,
-                            Model = st.Model,
-                            Role = "worker",
-                        }, ct);
-                        Telemetry.OpenNetTelemetry.LlmTokens
-                            .WithLabels("prompt").Inc(end.Usage.PromptTokens);
-                        Telemetry.OpenNetTelemetry.LlmTokens
-                            .WithLabels("completion").Inc(end.Usage.CompletionTokens);
-                        // SPEC-20 RF-004: metering por org/período — o
-                        // run atual completa; a quota bloqueia o próximo.
-                        if (st.Conv.OrgId is { } meterOrg
-                            && st.Services.GetService<Application.Identity.IUsageMeter>()
-                                is { } meter)
-                        {
-                            await meter.RecordTokensAsync(meterOrg,
-                                end.Usage.PromptTokens
-                                    + end.Usage.CompletionTokens,
-                                end.Usage.CostUsd, ct);
-                        }
-
+                        responseId = await EmitCompletionEndAsync(
+                            st, end, conversationId, ct);
                         break;
                 }
             }
@@ -635,140 +642,13 @@ public sealed class AgentRunner(
         }
         catch (ContextOverflowException cex)
         {
-            // SPEC-22 RF-006: promover para janela maior antes de compactar.
-            if (!st.Promoted && st.Opt.PromotionTarget is { } target
-                && target != st.Model)
-            {
-                st.Promoted = true;
-                var fromModel = st.Model;
-                logger.LogInformation(
-                    "Context overflow — promoting model {From} → {To}",
-                    fromModel, target);
-                await st.Activity.DiagnosticAsync(st.Events, conversationId,
-                    "info", "context_promotion",
-                    $"context overflow — promoted {fromModel} → {target}",
-                    CancellationToken.None);
-                st.Model = target;
-                st.Conv.LlmModel = target;
-                await st.Events.AppendAsync(conversationId,
-                    new ConversationStateUpdateEvent
-                    {
-                        Key = "model_change",
-                        Value = JsonSerializer.SerializeToElement(new
-                        {
-                            from = fromModel,
-                            to = target,
-                            reason = "context_promotion",
-                        }, EventJson.Options),
-                    }, CancellationToken.None);
-                st.Conv.UpdatedAt = DateTimeOffset.UtcNow;
-                await st.Db.SaveChangesAsync(CancellationToken.None);
-                return new StreamOutcome(StreamVerdict.Retry, "");
-            }
-
-            if (!st.OverflowRetried)
-            {
-                st.OverflowRetried = true;
-                logger.LogWarning(cex,
-                    "Context overflow — forcing compaction and retry");
-                await st.Activity.DiagnosticAsync(st.Events, conversationId,
-                    "warn", "context_overflow",
-                    "context overflow — compacting and retrying",
-                    CancellationToken.None);
-                st.OverflowPending = true;
-                return new StreamOutcome(StreamVerdict.Retry, "");
-            }
-
-            logger.LogError(cex, "LLM context overflow persists");
-            await st.Events.AppendAsync(conversationId, new AgentErrorEvent
-            {
-                ToolName = "llm",
-                ToolCallId = "",
-                Error = SecretRedactor.Redact(cex.Message),
-            }, CancellationToken.None);
-            await st.Activity.DiagnosticAsync(st.Events, conversationId,
-                Error, "context_overflow",
-                SecretRedactor.Redact(cex.Message), CancellationToken.None);
-            await st.Activity.SummaryAsync(st.Events, conversationId,
-                Error, "context overflow", CancellationToken.None);
-            await SetStatusAsync(st.Events, st.Db, st.Conv, Error,
-                ConversationExecutionStatus.Error);
-            return new StreamOutcome(StreamVerdict.Abort, "");
+            return await HandleOverflowAsync(st, cex, conversationId);
         }
         catch (LlmCallException lce) when (st.Router is not null
             && st.Selection is not null)
         {
-            // SPEC-23 RF-003: turn recovery — classificação → ação.
-            llmTimer.Stop();
-            await st.Events.AppendAsync(conversationId,
-                new ConversationStateUpdateEvent
-                {
-                    Key = "llm_route",
-                    Value = JsonSerializer.SerializeToElement(new
-                    {
-                        model = st.Selection.Model,
-                        role = "worker",
-                        attempt = st.Selection.Attempt,
-                        kind = lce.Kind.ToString().ToLowerInvariant(),
-                        latency_ms = (int)llmTimer.ElapsedMilliseconds,
-                    }, EventJson.Options),
-                }, CancellationToken.None);
-
-            if (lce.Kind == LlmErrorKind.Auth)
-            {
-                logger.LogError("LLM auth failure — aborting run");
-                await st.Events.AppendAsync(conversationId, new AgentErrorEvent
-                {
-                    ToolName = "llm",
-                    ToolCallId = "",
-                    Error = SecretRedactor.Redact(lce.Message),
-                }, CancellationToken.None);
-                await SetStatusAsync(st.Events, st.Db, st.Conv, Error,
-                    ConversationExecutionStatus.Error);
-                return new StreamOutcome(StreamVerdict.Abort, "");
-            }
-
-            if (st.RouteWait.Elapsed
-                > TimeSpan.FromSeconds(st.Opt.MaxRouteWaitSeconds))
-            {
-                logger.LogError("Route wait budget exhausted");
-                await st.Events.AppendAsync(conversationId, new AgentErrorEvent
-                {
-                    ToolName = "llm",
-                    ToolCallId = "",
-                    Error = SecretRedactor.Redact(
-                        $"route budget exceeded: {lce.Message}"),
-                }, CancellationToken.None);
-                await SetStatusAsync(st.Events, st.Db, st.Conv, Error,
-                    ConversationExecutionStatus.Error);
-                return new StreamOutcome(StreamVerdict.Abort, "");
-            }
-
-            var next = await st.Router.NextFallbackAsync(
-                st.Selection, lce.Kind, CancellationToken.None);
-            if (next is null)
-            {
-                logger.LogError(lce, "LLM call failed — no fallback left");
-                await st.Events.AppendAsync(conversationId, new AgentErrorEvent
-                {
-                    ToolName = "llm",
-                    ToolCallId = "",
-                    Error = SecretRedactor.Redact(lce.Message),
-                }, CancellationToken.None);
-                await SetStatusAsync(st.Events, st.Db, st.Conv, Error,
-                    ConversationExecutionStatus.Error);
-                return new StreamOutcome(StreamVerdict.Abort, "");
-            }
-
-            logger.LogWarning(
-                "LLM {Kind} em {From} — fallback para {To}",
-                lce.Kind, st.Selection.Model, next.Model);
-            st.Model = next.Model;
-            st.Selection = next;
-            st.Conv.LlmModel = next.Model;
-            st.Conv.UpdatedAt = DateTimeOffset.UtcNow;
-            await st.Db.SaveChangesAsync(CancellationToken.None);
-            return new StreamOutcome(StreamVerdict.Retry, "");
+            return await HandleLlmFailureAsync(
+                st, lce, llmTimer, conversationId);
         }
         catch (Exception ex)
         {
@@ -786,6 +666,197 @@ public sealed class AgentRunner(
                 ConversationExecutionStatus.Error);
             return new StreamOutcome(StreamVerdict.Abort, "");
         }
+    }
+
+    /// <summary>CompletionEnd: token event, metering e calibração do meter.</summary>
+    private async Task<string> EmitCompletionEndAsync(
+        LoopState st, CompletionEnd end, Guid conversationId,
+        CancellationToken ct)
+    {
+        // SPEC-22 RF-001: calibração online do meter.
+        st.ContextMeter.ObserveUsage(end.Usage.PromptTokens,
+            st.LastEstimate);
+        if (end.FinishReason == "length"
+            && st.Opt.Compaction.Enabled)
+        {
+            st.StopLengthPending = true;
+        }
+
+        await st.Events.AppendAsync(conversationId, new TokenEvent
+        {
+            Source = EventSource.Agent,
+            ParentId = st.LastEventId,
+            PromptTokens = end.Usage.PromptTokens,
+            CompletionTokens = end.Usage.CompletionTokens,
+            CostUsd = end.Usage.CostUsd,
+            Model = st.Model,
+            Role = "worker",
+        }, ct);
+        Telemetry.OpenNetTelemetry.LlmTokens
+            .WithLabels("prompt").Inc(end.Usage.PromptTokens);
+        Telemetry.OpenNetTelemetry.LlmTokens
+            .WithLabels("completion").Inc(end.Usage.CompletionTokens);
+        // SPEC-20 RF-004: metering por org/período — o
+        // run atual completa; a quota bloqueia o próximo.
+        if (st.Conv.OrgId is { } meterOrg
+            && st.Services.GetService<Application.Identity.IUsageMeter>()
+                is { } meter)
+        {
+            await meter.RecordTokensAsync(meterOrg,
+                end.Usage.PromptTokens
+                    + end.Usage.CompletionTokens,
+                end.Usage.CostUsd, ct);
+        }
+
+        return end.ResponseId;
+    }
+
+    /// <summary>
+    /// SPEC-22 RF-006/RF-001: overflow → promover para janela maior;
+    /// segunda ocorrência → compaction + retry; terceira → abort.
+    /// </summary>
+    private async Task<StreamOutcome> HandleOverflowAsync(
+        LoopState st, ContextOverflowException cex, Guid conversationId)
+    {
+        // SPEC-22 RF-006: promover para janela maior antes de compactar.
+        if (!st.Promoted && st.Opt.PromotionTarget is { } target
+            && target != st.Model)
+        {
+            st.Promoted = true;
+            var fromModel = st.Model;
+            logger.LogInformation(
+                "Context overflow — promoting model {From} → {To}",
+                fromModel, target);
+            await st.Activity.DiagnosticAsync(st.Events, conversationId,
+                "info", "context_promotion",
+                $"context overflow — promoted {fromModel} → {target}",
+                CancellationToken.None);
+            st.Model = target;
+            st.Conv.LlmModel = target;
+            await st.Events.AppendAsync(conversationId,
+                new ConversationStateUpdateEvent
+                {
+                    Key = "model_change",
+                    Value = JsonSerializer.SerializeToElement(new
+                    {
+                        from = fromModel,
+                        to = target,
+                        reason = "context_promotion",
+                    }, EventJson.Options),
+                }, CancellationToken.None);
+            st.Conv.UpdatedAt = DateTimeOffset.UtcNow;
+            await st.Db.SaveChangesAsync(CancellationToken.None);
+            return new StreamOutcome(StreamVerdict.Retry, "");
+        }
+
+        if (!st.OverflowRetried)
+        {
+            st.OverflowRetried = true;
+            logger.LogWarning(cex,
+                "Context overflow — forcing compaction and retry");
+            await st.Activity.DiagnosticAsync(st.Events, conversationId,
+                "warn", "context_overflow",
+                "context overflow — compacting and retrying",
+                CancellationToken.None);
+            st.OverflowPending = true;
+            return new StreamOutcome(StreamVerdict.Retry, "");
+        }
+
+        logger.LogError(cex, "LLM context overflow persists");
+        await st.Events.AppendAsync(conversationId, new AgentErrorEvent
+        {
+            ToolName = "llm",
+            ToolCallId = "",
+            Error = SecretRedactor.Redact(cex.Message),
+        }, CancellationToken.None);
+        await st.Activity.DiagnosticAsync(st.Events, conversationId,
+            Error, "context_overflow",
+            SecretRedactor.Redact(cex.Message), CancellationToken.None);
+        await st.Activity.SummaryAsync(st.Events, conversationId,
+            Error, "context overflow", CancellationToken.None);
+        await SetStatusAsync(st.Events, st.Db, st.Conv, Error,
+            ConversationExecutionStatus.Error);
+        return new StreamOutcome(StreamVerdict.Abort, "");
+    }
+
+    /// <summary>
+    /// SPEC-23 RF-003: turn recovery — classifica o erro LLM e aplica
+    /// abort (auth/budget/sem fallback) ou fallback de rota (Retry).
+    /// </summary>
+    private async Task<StreamOutcome> HandleLlmFailureAsync(
+        LoopState st, LlmCallException lce,
+        System.Diagnostics.Stopwatch llmTimer, Guid conversationId)
+    {
+        llmTimer.Stop();
+        await st.Events.AppendAsync(conversationId,
+            new ConversationStateUpdateEvent
+            {
+                Key = "llm_route",
+                Value = JsonSerializer.SerializeToElement(new
+                {
+                    model = st.Selection!.Model,
+                    role = "worker",
+                    attempt = st.Selection.Attempt,
+                    kind = lce.Kind.ToString().ToLowerInvariant(),
+                    latency_ms = (int)llmTimer.ElapsedMilliseconds,
+                }, EventJson.Options),
+            }, CancellationToken.None);
+
+        if (lce.Kind == LlmErrorKind.Auth)
+        {
+            logger.LogError("LLM auth failure — aborting run");
+            await st.Events.AppendAsync(conversationId, new AgentErrorEvent
+            {
+                ToolName = "llm",
+                ToolCallId = "",
+                Error = SecretRedactor.Redact(lce.Message),
+            }, CancellationToken.None);
+            await SetStatusAsync(st.Events, st.Db, st.Conv, Error,
+                ConversationExecutionStatus.Error);
+            return new StreamOutcome(StreamVerdict.Abort, "");
+        }
+
+        if (st.RouteWait.Elapsed
+            > TimeSpan.FromSeconds(st.Opt.MaxRouteWaitSeconds))
+        {
+            logger.LogError("Route wait budget exhausted");
+            await st.Events.AppendAsync(conversationId, new AgentErrorEvent
+            {
+                ToolName = "llm",
+                ToolCallId = "",
+                Error = SecretRedactor.Redact(
+                    $"route budget exceeded: {lce.Message}"),
+            }, CancellationToken.None);
+            await SetStatusAsync(st.Events, st.Db, st.Conv, Error,
+                ConversationExecutionStatus.Error);
+            return new StreamOutcome(StreamVerdict.Abort, "");
+        }
+
+        var next = await st.Router!.NextFallbackAsync(
+            st.Selection, lce.Kind, CancellationToken.None);
+        if (next is null)
+        {
+            logger.LogError(lce, "LLM call failed — no fallback left");
+            await st.Events.AppendAsync(conversationId, new AgentErrorEvent
+            {
+                ToolName = "llm",
+                ToolCallId = "",
+                Error = SecretRedactor.Redact(lce.Message),
+            }, CancellationToken.None);
+            await SetStatusAsync(st.Events, st.Db, st.Conv, Error,
+                ConversationExecutionStatus.Error);
+            return new StreamOutcome(StreamVerdict.Abort, "");
+        }
+
+        logger.LogWarning(
+            "LLM {Kind} em {From} — fallback para {To}",
+            lce.Kind, st.Selection.Model, next.Model);
+        st.Model = next.Model;
+        st.Selection = next;
+        st.Conv.LlmModel = next.Model;
+        st.Conv.UpdatedAt = DateTimeOffset.UtcNow;
+        await st.Db.SaveChangesAsync(CancellationToken.None);
+        return new StreamOutcome(StreamVerdict.Retry, "");
     }
 
     /// <summary>
@@ -904,143 +975,250 @@ public sealed class AgentRunner(
         if (tool is not null
             && st.Deferred?.IsDeferredOnly(conversationId, call.Name) == true)
         {
-            var obsId = await ObserveAsync(st.Events, conversationId,
-                actionEvent,
+            return await RejectCallAsync(st, conversationId, actionEvent,
+                call,
                 ToolResult.Error(
                     $"tool '{call.Name}' está deferida — chame tool_search "
                     + "para carregar o schema antes de usar"),
-                st.Sandbox, st.Executor, ct);
-            st.History.Add(LlmMessage.ToolResult(call.Id,
-                $"{{\"error\":\"tool '{call.Name}' deferred — use tool_search first\"}}"));
-            st.Ids.Add(obsId);
-            st.LastEventId = obsId;
-            return ToolCallVerdict.Next;
+                $"{{\"error\":\"tool '{call.Name}' deferred — use tool_search first\"}}",
+                ct);
         }
         if (tool is null)
         {
-            // SPEC-29 RF-002: chamada a tool negada é observabilidade
-            // (drift do modelo) — diagnostic + erro explícito.
-            if (decision == Application.Agent.PermissionDecision.Deny)
-            {
-                st.LastEventId = (await st.Events.AppendAsync(conversationId,
-                    new Domain.Events.AgentDiagnosticEvent
-                    {
-                        Severity = "warn",
-                        Code = "permission_deny",
-                        Message = $"tool '{call.Name}' denied by " +
-                            "permission policy",
-                    }, ct)).Id;
-            }
-
-            var obsId = await ObserveAsync(st.Events, conversationId,
-                actionEvent,
-                ToolResult.Error(decision ==
-                    Application.Agent.PermissionDecision.Deny
-                        ? $"tool '{call.Name}' denied by permission policy"
-                        : $"unknown tool '{call.Name}'"),
-                st.Sandbox, st.Executor, ct);
-            st.History.Add(LlmMessage.ToolResult(
-                call.Id, decision ==
-                    Application.Agent.PermissionDecision.Deny
-                        ? "{\"error\":\"tool denied by permission policy\"}"
-                        : $"{{\"error\":\"unknown tool '{call.Name}'\"}}"));
-            st.Ids.Add(obsId);
-            st.LastEventId = obsId;
-            return ToolCallVerdict.Next;
+            return await RejectUnknownToolAsync(
+                st, conversationId, actionEvent, call, decision, ct);
         }
 
-        // SPEC-11: on_tool_pre — hook blocking pode vetar a ação.
-        // SPEC-127: hooks de arquivo avaliam junto (ambos rodam, sem
-        // short-circuit — cada firing vira evento durável).
-        var hookVeto = st.Hooks is not null && await st.Hooks.RunAsync(
-            Domain.Hooks.HookEvent.OnToolPre,
-            new Application.Hooks.HookContext
-            {
-                ConversationId = conversationId,
-                Sandbox = st.Sandbox,
-                Services = st.Services,
-                ToolName = call.Name,
-                ActionId = actionEvent.Id,
-                HookInput = actionEvent.Action,
-            }, ct);
-        hookVeto |= st.WsHooks is not null && await st.WsHooks.RunAsync(
-            Domain.Hooks.HookEvent.OnToolPre,
-            new Application.Hooks.HookContext
-            {
-                ConversationId = conversationId,
-                Sandbox = st.Sandbox,
-                Services = st.Services,
-                ToolName = call.Name,
-                ActionId = actionEvent.Id,
-                HookInput = actionEvent.Action,
-            }, ct);
-        if (hookVeto)
+        if (await RunPreHooksAsync(
+                st, conversationId, call, actionEvent, ct))
         {
-            var vetoId = await ObserveAsync(st.Events, conversationId,
-                actionEvent,
-                ToolResult.Error("blocked by hook"),
-                st.Sandbox, st.Executor, ct);
-            st.History.Add(LlmMessage.ToolResult(
-                call.Id, "{\"error\":\"blocked by hook\"}"));
-            st.Ids.Add(vetoId);
-            st.LastEventId = vetoId;
-            return ToolCallVerdict.Next;
+            return await RejectCallAsync(st, conversationId, actionEvent,
+                call, ToolResult.Error("blocked by hook"),
+                "{\"error\":\"blocked by hook\"}", ct);
         }
 
-        // SPEC-33 RF-001: security analyzer — High força confirmação
-        // humana (piso igual ao guardrail destrutivo).
-        var risk = st.Security is null || actionEvent.Action is not { } act
-            ? SecurityRisk.Low
-            : await st.Security.AnalyzeAsync(call.Name, act, ct);
-        if (risk >= SecurityRisk.Medium)
-        {
-            // SPEC-48 RF-002: o diagnostic carrega preset + floor
-            // aplicados (observabilidade da decisão por org).
-            await st.Events.AppendAsync(conversationId,
-                new AgentDiagnosticEvent
-                {
-                    Severity = risk == SecurityRisk.High
-                        ? "warning" : "info",
-                    Code = "security_risk",
-                    Message = $"tool {call.Name} scored {risk
-                        .ToString().ToLowerInvariant()} risk"
-                        + $" (policy={st.Policy.Preset}, min_confirm="
-                        + st.Policy.MinConfirmRisk.ToString()
-                            .ToLowerInvariant() + ")",
-                    ParentId = actionEvent.Id,
-                }, ct);
-
-            // SPEC-125 RF-003: advisor opina sobre ação risky-mas-
-            // permitida — observacional (o usuário/juiz decide), evento
-            // advisor no stream; fail-open se AdvisorModel ausente.
-            if (st.Services.GetService<
-                    Application.Agent.IAdvisorService>()
-                is { Enabled: true } advisor)
-            {
-                var verdict = await advisor.ConsultAsync(
-                    $"tool={call.Name} action={actionEvent.Action}",
-                    "Is this action safe and on-scope for the task?",
-                    ct);
-                if (verdict is not null)
-                {
-                    await st.Events.AppendAsync(conversationId,
-                        new Domain.Events.AdvisorEvent
-                        {
-                            Question = $"risky action: {call.Name}",
-                            Answer = verdict.Answer,
-                            Model = verdict.Model,
-                            ElapsedMs = verdict.ElapsedMs,
-                            ParentId = actionEvent.Id,
-                        }, ct);
-                }
-            }
-        }
+        var risk = await AnalyzeAndAdviseAsync(
+            st, conversationId, call, actionEvent, ct);
 
         // SPEC-15 RF-003 + SPEC-29 RF-002 + SPEC-33 + SPEC-48:
         // confirmação exigida por regra ask, guardrail destrutivo,
         // analyzer no floor da st.Policy, ask de mcp__* (policy),
         // ou default Risky+confirmation-mode. Allow explícito pula
         // confirmação — exceto destrutiva/floor (pisos).
+        var needsConfirm = NeedsConfirmation(
+            st, call, tool, risk, decision, actionEvent);
+        if (tool.Risky && !needsConfirm)
+        {
+            st.LastEventId = (await st.Events.AppendAsync(conversationId,
+                new DecisionAutoEvent
+                {
+                    ParentId = st.LastEventId,
+                    AskedId = actionEvent.Id,
+                    Chosen = "approve",
+                    Reason = decision ==
+                        Application.Agent.PermissionDecision.Allow
+                            ? "permission_allow" : "always_allow",
+                }, ct)).Id;
+        }
+
+        if (needsConfirm)
+        {
+            var confirm = await ConfirmOrAbortAsync(
+                st, conversationId, call, actionEvent, ct);
+            if (confirm is not null)
+            {
+                return confirm.Value;
+            }
+        }
+
+        var execOutcome = await ExecuteOrAskAsync(
+            st, conversationId, call, tool, actionEvent, ct);
+        if (execOutcome.Verdict is not null)
+        {
+            return execOutcome.Verdict.Value;
+        }
+
+        var result = execOutcome.Result!;
+
+        var observationId = await ObserveAsync(
+            st.Events, conversationId, actionEvent, result,
+            st.Sandbox, st.Executor, ct);
+        st.History.Add(LlmMessage.ToolResult(
+            call.Id, result.Observation.GetRawText()));
+        st.Ids.Add(observationId);
+
+        await MaybeCompactMidTurnAsync(st, turn, conversationId, ct);
+
+        await RunPostHooksAsync(
+            st, conversationId, call, actionEvent, ct);
+
+        if (call.Name == "finish")
+        {
+            var verdict = await HandleFinishAsync(
+                st, conversationId, turn, call, actionEvent, result,
+                observationId, ct);
+            if (verdict is not null)
+            {
+                return verdict.Value;
+            }
+        }
+
+        return ToolCallVerdict.Next;
+    }
+
+    /// <summary>Observa erro + registra tool_result — rejects early-next.</summary>
+    private async Task<ToolCallVerdict> RejectCallAsync(
+        LoopState st, Guid conversationId, ActionEvent actionEvent,
+        LlmToolCall call, ToolResult result, string historyJson,
+        CancellationToken ct)
+    {
+        var obsId = await ObserveAsync(st.Events, conversationId,
+            actionEvent, result, st.Sandbox, st.Executor, ct);
+        st.History.Add(LlmMessage.ToolResult(call.Id, historyJson));
+        st.Ids.Add(obsId);
+        st.LastEventId = obsId;
+        return ToolCallVerdict.Next;
+    }
+
+    /// <summary>
+    /// SPEC-29 RF-002: tool desconhecida/negada — diagnostic de drift
+    /// (deny) + observação de erro explícito.
+    /// </summary>
+    private async Task<ToolCallVerdict> RejectUnknownToolAsync(
+        LoopState st, Guid conversationId, ActionEvent actionEvent,
+        LlmToolCall call,
+        Application.Agent.PermissionDecision? decision,
+        CancellationToken ct)
+    {
+        if (decision == Application.Agent.PermissionDecision.Deny)
+        {
+            st.LastEventId = (await st.Events.AppendAsync(conversationId,
+                new Domain.Events.AgentDiagnosticEvent
+                {
+                    Severity = "warn",
+                    Code = "permission_deny",
+                    Message = $"tool '{call.Name}' denied by " +
+                        "permission policy",
+                }, ct)).Id;
+        }
+
+        return await RejectCallAsync(st, conversationId, actionEvent,
+            call,
+            ToolResult.Error(decision ==
+                Application.Agent.PermissionDecision.Deny
+                    ? $"tool '{call.Name}' denied by permission policy"
+                    : $"unknown tool '{call.Name}'"),
+            decision == Application.Agent.PermissionDecision.Deny
+                ? "{\"error\":\"tool denied by permission policy\"}"
+                : $"{{\"error\":\"unknown tool '{call.Name}'\"}}",
+            ct);
+    }
+
+    /// <summary>
+    /// SPEC-11 + SPEC-127: on_tool_pre — app hooks e workspace hooks
+    /// avaliam juntos (sem short-circuit); qualquer veto bloqueia.
+    /// </summary>
+    private async Task<bool> RunPreHooksAsync(
+        LoopState st, Guid conversationId, LlmToolCall call,
+        ActionEvent actionEvent, CancellationToken ct)
+    {
+        var veto = st.Hooks is not null && await st.Hooks.RunAsync(
+            Domain.Hooks.HookEvent.OnToolPre,
+            new Application.Hooks.HookContext
+            {
+                ConversationId = conversationId,
+                Sandbox = st.Sandbox,
+                Services = st.Services,
+                ToolName = call.Name,
+                ActionId = actionEvent.Id,
+                HookInput = actionEvent.Action,
+            }, ct);
+        veto |= st.WsHooks is not null && await st.WsHooks.RunAsync(
+            Domain.Hooks.HookEvent.OnToolPre,
+            new Application.Hooks.HookContext
+            {
+                ConversationId = conversationId,
+                Sandbox = st.Sandbox,
+                Services = st.Services,
+                ToolName = call.Name,
+                ActionId = actionEvent.Id,
+                HookInput = actionEvent.Action,
+            }, ct);
+        return veto;
+    }
+
+    /// <summary>
+    /// SPEC-33 RF-001 + SPEC-48 RF-002 + SPEC-125 RF-003: analyzer +
+    /// diagnostic (policy preset/floor) + advisor observacional.
+    /// </summary>
+    private async Task<SecurityRisk> AnalyzeAndAdviseAsync(
+        LoopState st, Guid conversationId, LlmToolCall call,
+        ActionEvent actionEvent, CancellationToken ct)
+    {
+        var risk = st.Security is null || actionEvent.Action is not { } act
+            ? SecurityRisk.Low
+            : await st.Security.AnalyzeAsync(call.Name, act, ct);
+        if (risk < SecurityRisk.Medium)
+        {
+            return risk;
+        }
+
+        // SPEC-48 RF-002: o diagnostic carrega preset + floor
+        // aplicados (observabilidade da decisão por org).
+        await st.Events.AppendAsync(conversationId,
+            new AgentDiagnosticEvent
+            {
+                Severity = risk == SecurityRisk.High
+                    ? "warning" : "info",
+                Code = "security_risk",
+                Message = $"tool {call.Name} scored {risk
+                    .ToString().ToLowerInvariant()} risk"
+                    + $" (policy={st.Policy.Preset}, min_confirm="
+                    + st.Policy.MinConfirmRisk.ToString()
+                        .ToLowerInvariant() + ")",
+                ParentId = actionEvent.Id,
+            }, ct);
+
+        // SPEC-125 RF-003: advisor opina sobre ação risky-mas-
+        // permitida — observacional (o usuário/juiz decide), evento
+        // advisor no stream; fail-open se AdvisorModel ausente.
+        if (st.Services.GetService<
+                Application.Agent.IAdvisorService>()
+            is { Enabled: true } advisor)
+        {
+            var verdict = await advisor.ConsultAsync(
+                $"tool={call.Name} action={actionEvent.Action}",
+                "Is this action safe and on-scope for the task?",
+                ct);
+            if (verdict is not null)
+            {
+                await st.Events.AppendAsync(conversationId,
+                    new Domain.Events.AdvisorEvent
+                    {
+                        Question = $"risky action: {call.Name}",
+                        Answer = verdict.Answer,
+                        Model = verdict.Model,
+                        ElapsedMs = verdict.ElapsedMs,
+                        ParentId = actionEvent.Id,
+                    }, ct);
+            }
+        }
+
+        return risk;
+    }
+
+    /// <summary>
+    /// SPEC-15 RF-003 + SPEC-29 RF-002 + SPEC-33 + SPEC-48:
+    /// confirmação exigida por regra ask, guardrail destrutivo,
+    /// analyzer no floor da st.Policy, ask de mcp__* (policy),
+    /// ou default Risky+confirmation-mode.
+    /// </summary>
+    private static bool NeedsConfirmation(
+        LoopState st, LlmToolCall call, AgentTool tool,
+        SecurityRisk risk,
+        Application.Agent.PermissionDecision? decision,
+        ActionEvent actionEvent)
+    {
         var riskAsks = st.Policy.MinConfirmRisk switch
         {
             // low: qualquer tool Risky confirma, mesmo score baixo.
@@ -1060,144 +1238,150 @@ public sealed class AgentRunner(
             && !(mcpTool && st.Policy.Preset == "permissive"
                 && !st.Policy.AskMcpTools);
         var alwaysAsk = (tool.Risky && guardrailAsk) || riskAsks;
-        var needsConfirm = alwaysAsk || mcpAsk
+        return alwaysAsk || mcpAsk
             || decision == Application.Agent.PermissionDecision.Ask
             || (decision is null && tool.Risky && st.Conv.ConfirmationMode);
-        if (tool.Risky && !needsConfirm)
+    }
+
+    /// <summary>
+    /// Espera a confirmação humana. Retorna o veredito quando a call
+    /// não deve prosseguir (abort em timeout/interrupt; Next quando o
+    /// usuário rejeitou) — <see langword="null"/> = aprovada.
+    /// </summary>
+    private async Task<ToolCallVerdict?> ConfirmOrAbortAsync(
+        LoopState st, Guid conversationId, LlmToolCall call,
+        ActionEvent actionEvent, CancellationToken ct)
+    {
+        await SetStatusAsync(st.Events, st.Db, st.Conv,
+            "waiting_for_confirmation", null,
+            pendingAction: actionEvent.Id,
+            pendingTool: call.Name);
+        var approved = await WaitConfirmationAsync(
+            st.Events, st.Db, st.Conv, actionEvent.Id, st.Opt, ct);
+        if (approved is null)
         {
-            st.LastEventId = (await st.Events.AppendAsync(conversationId,
-                new DecisionAutoEvent
-                {
-                    ParentId = st.LastEventId,
-                    AskedId = actionEvent.Id,
-                    Chosen = "approve",
-                    Reason = decision ==
-                        Application.Agent.PermissionDecision.Allow
-                            ? "permission_allow" : "always_allow",
-                }, ct)).Id;
+            return ToolCallVerdict.Abort; // timeout/interrupt já sinalizados
         }
 
-        if (needsConfirm)
+        if (!approved.Value)
         {
-            await SetStatusAsync(st.Events, st.Db, st.Conv,
-                "waiting_for_confirmation", null,
-                pendingAction: actionEvent.Id,
-                pendingTool: call.Name);
-            var approved = await WaitConfirmationAsync(
-                st.Events, st.Db, st.Conv, actionEvent.Id, st.Opt, ct);
-            if (approved is null)
-            {
-                return ToolCallVerdict.Abort; // timeout/interrupt já sinalizados
-            }
-
-            if (!approved.Value)
-            {
-                st.History.Add(LlmMessage.ToolResult(
-                    call.Id, "User rejected this action."));
-                st.Ids.Add(null); // rejeição sem observation event
-                return ToolCallVerdict.Next;
-            }
-
-            await SetStatusAsync(st.Events, st.Db, st.Conv, "running",
-                ConversationExecutionStatus.Running);
+            st.History.Add(LlmMessage.ToolResult(
+                call.Id, "User rejected this action."));
+            st.Ids.Add(null); // rejeição sem observation event
+            return ToolCallVerdict.Next;
         }
 
-        ToolResult result;
+        await SetStatusAsync(st.Events, st.Db, st.Conv, "running",
+            ConversationExecutionStatus.Running);
+        return null;
+    }
+
+    private sealed record ExecOutcome(ToolCallVerdict? Verdict, ToolResult? Result);
+
+    /// <summary>
+    /// ask_user (SPEC-44: resposta vem do canal _incoming) ou execução
+    /// da tool com timeout linked-token + telemetria.
+    /// </summary>
+    private async Task<ExecOutcome> ExecuteOrAskAsync(
+        LoopState st, Guid conversationId, LlmToolCall call,
+        AgentTool tool, ActionEvent actionEvent, CancellationToken ct)
+    {
         if (string.Equals(call.Name, "ask_user",
             StringComparison.Ordinal))
         {
-            // SPEC-44 RF-001: ask_user — a resposta é a próxima
-            // mensagem do usuário no canal _incoming (mesma UX de
-            // uma pergunta no chat; kind=question no inbox).
             var answer = await WaitUserAnswerAsync(
                 st.Events, st.Db, st.Conv, st.Opt, ct);
-            if (answer is null)
-            {
-                return ToolCallVerdict.Abort; // interrupt/timeout já sinalizados
-            }
-
-            result = answer;
+            return answer is null
+                ? new ExecOutcome(ToolCallVerdict.Abort, null)
+                : new ExecOutcome(null, answer);
         }
-        else
+
+        using var toolSpan = Telemetry.OpenNetTelemetry.StartSpan(
+            "tool_call", conversationId, st.Sandbox.Id.ToString());
+        toolSpan?.SetTag("tool", call.Name);
+        Telemetry.OpenNetTelemetry.ToolCalls
+            .WithLabels(call.Name).Inc();
+        try
         {
-            using var toolSpan = Telemetry.OpenNetTelemetry.StartSpan(
-                "tool_call", conversationId, st.Sandbox.Id.ToString());
-            toolSpan?.SetTag("tool", call.Name);
-            Telemetry.OpenNetTelemetry.ToolCalls
-                .WithLabels(call.Name).Inc();
-            try
-            {
-                using var toolCts =
-                    CancellationTokenSource.CreateLinkedTokenSource(ct);
-                toolCts.CancelAfter(
-                    TimeSpan.FromSeconds(st.Opt.ToolTimeoutSeconds));
-                var ctx = new ToolCallContext(conversationId, st.Sandbox,
-                    st.Executor, st.Events, st.Services,
-                    TimeSpan.FromSeconds(st.Opt.ToolTimeoutSeconds),
-                    call.Id, actionEvent.Id);
-                st.Activity.NoteToolCall(call.Name, call.ArgumentsJson);
-                result = await tool.Handler(ctx,
-                    TryParseJson(call.ArgumentsJson)
-                        ?? JsonDocument.Parse("{}").RootElement.Clone(),
-                    toolCts.Token);
-            }
-            catch (OperationCanceledException)
-                when (!ct.IsCancellationRequested)
-            {
-                result = ToolResult.Error("tool timed out");
-            }
-            catch (Exception ex)
-                when (ex is not OperationCanceledException)
-            {
-                result = ToolResult.Error(
-                    SecretRedactor.Redact(ex.Message));
-            }
+            using var toolCts =
+                CancellationTokenSource.CreateLinkedTokenSource(ct);
+            toolCts.CancelAfter(
+                TimeSpan.FromSeconds(st.Opt.ToolTimeoutSeconds));
+            var ctx = new ToolCallContext(conversationId, st.Sandbox,
+                st.Executor, st.Events, st.Services,
+                TimeSpan.FromSeconds(st.Opt.ToolTimeoutSeconds),
+                call.Id, actionEvent.Id);
+            st.Activity.NoteToolCall(call.Name, call.ArgumentsJson);
+            var result = await tool.Handler(ctx,
+                TryParseJson(call.ArgumentsJson)
+                    ?? JsonDocument.Parse("{}").RootElement.Clone(),
+                toolCts.Token);
+            return new ExecOutcome(null, result);
         }
-
-        var observationId = await ObserveAsync(
-            st.Events, conversationId, actionEvent, result,
-            st.Sandbox, st.Executor, ct);
-        st.History.Add(LlmMessage.ToolResult(
-            call.Id, result.Observation.GetRawText()));
-        st.Ids.Add(observationId);
-
-        // SPEC-22 RF-004: mid-turn — se o resultado estourou o
-        // threshold, compacta entre tool calls da mesma iteração.
-        if (st.Opt.Compaction.MidTurnEnabled
-            && await st.Condenser.EvaluateAsync(
-                st.History, st.Model, ct)
-                is not null)
+        catch (OperationCanceledException)
+            when (!ct.IsCancellationRequested)
         {
-            var midResult = await st.Condenser.CondenseAsync(
-                st.History, st.Ids, CompactionTrigger.MidTurn, st.Model,
-                cs => Context.CompactionService.EmitRequestAsync(
-                    st.Events, conversationId, cs, null, ct), ct);
-            if (midResult.Compacted)
-            {
-                var midCond = await Context.CompactionService
-                    .EmitCondensationAsync(st.Events, conversationId,
-                        midResult, ct);
-                if (midResult.SummaryOffset is { } so2
-                    && so2 < midResult.ResultEventIds.Count)
-                {
-                    var midIds = midResult.ResultEventIds.ToList();
-                    midIds[so2] = midCond.Id;
-                    midResult = midResult with
-                    {
-                        ResultEventIds = midIds,
-                    };
-                }
+            return new ExecOutcome(null, ToolResult.Error("tool timed out"));
+        }
+        catch (Exception ex)
+            when (ex is not OperationCanceledException)
+        {
+            return new ExecOutcome(null, ToolResult.Error(
+                SecretRedactor.Redact(ex.Message)));
+        }
+    }
 
-                st.History = midResult.Messages.ToList();
-                st.Ids = midResult.ResultEventIds.ToList();
-                st.CompactionCount++;
-                // a msg assistant-toolcall pode ter sido esquecida.
-                turn.TcMsgIdx = st.History.FindLastIndex(
-                    m => m.ToolCalls is { Count: > 0 });
-            }
+    /// <summary>
+    /// SPEC-22 RF-004: mid-turn — resultado estourou o threshold →
+    /// compaction entre tool calls da mesma iteração.
+    /// </summary>
+    private async Task MaybeCompactMidTurnAsync(
+        LoopState st, TurnState turn, Guid conversationId,
+        CancellationToken ct)
+    {
+        if (!st.Opt.Compaction.MidTurnEnabled
+            || await st.Condenser.EvaluateAsync(
+                st.History, st.Model, ct) is null)
+        {
+            return;
         }
 
-        // SPEC-11: on_tool_post — auditoria após a observação.
+        var midResult = await st.Condenser.CondenseAsync(
+            st.History, st.Ids, CompactionTrigger.MidTurn, st.Model,
+            cs => Context.CompactionService.EmitRequestAsync(
+                st.Events, conversationId, cs, null, ct), ct);
+        if (!midResult.Compacted)
+        {
+            return;
+        }
+
+        var midCond = await Context.CompactionService
+            .EmitCondensationAsync(st.Events, conversationId,
+                midResult, ct);
+        if (midResult.SummaryOffset is { } so2
+            && so2 < midResult.ResultEventIds.Count)
+        {
+            var midIds = midResult.ResultEventIds.ToList();
+            midIds[so2] = midCond.Id;
+            midResult = midResult with
+            {
+                ResultEventIds = midIds,
+            };
+        }
+
+        st.History = midResult.Messages.ToList();
+        st.Ids = midResult.ResultEventIds.ToList();
+        st.CompactionCount++;
+        // a msg assistant-toolcall pode ter sido esquecida.
+        turn.TcMsgIdx = st.History.FindLastIndex(
+            m => m.ToolCalls is { Count: > 0 });
+    }
+
+    /// <summary>SPEC-11: on_tool_post — auditoria após a observação.</summary>
+    private async Task RunPostHooksAsync(
+        LoopState st, Guid conversationId, LlmToolCall call,
+        ActionEvent actionEvent, CancellationToken ct)
+    {
         if (st.Hooks is not null)
         {
             await st.Hooks.RunAsync(Domain.Hooks.HookEvent.OnToolPost,
@@ -1223,93 +1407,98 @@ public sealed class AgentRunner(
                     ActionId = actionEvent.Id,
                 }, ct);
         }
+    }
 
-        if (call.Name == "finish")
+    /// <summary>
+    /// finish — final_message + summary + postbacks (SPEC-52/54/55,
+    /// fire-and-forget), auto-checkpoint (SPEC-43) e OnFinish hooks.
+    /// </summary>
+    private async Task<ToolCallVerdict?> HandleFinishAsync(
+        LoopState st, Guid conversationId, TurnState turn,
+        LlmToolCall call, ActionEvent actionEvent, ToolResult result,
+        string observationId, CancellationToken ct)
+    {
+
+        var finalText = result.Observation.TryGetProperty(
+            "final_message", out var fm) ? fm.GetString() : null;
+        if (!string.IsNullOrEmpty(finalText))
         {
-            var finalText = result.Observation.TryGetProperty(
-                "final_message", out var fm) ? fm.GetString() : null;
-            if (!string.IsNullOrEmpty(finalText))
+            await st.Events.AppendAsync(conversationId, new MessageEvent
             {
-                await st.Events.AppendAsync(conversationId, new MessageEvent
+                Source = EventSource.Agent,
+                ParentId = observationId,
+                LlmResponseId = turn.ResponseId,
+                LlmMessage = JsonSerializer.SerializeToElement(new
                 {
-                    Source = EventSource.Agent,
-                    ParentId = observationId,
-                    LlmResponseId = turn.ResponseId,
-                    LlmMessage = JsonSerializer.SerializeToElement(new
+                    role = "assistant",
+                    content = new[]
                     {
-                        role = "assistant",
-                        content = new[]
-                        {
-                                    new { type = "text", text = finalText },
-                                },
-                    }, EventJson.Options),
-                }, ct);
-            }
-
-            await st.Activity.SummaryAsync(st.Events, conversationId,
-                "completed", finalText, CancellationToken.None);
-            await SetStatusAsync(st.Events, st.Db, st.Conv, "finished",
-                ConversationExecutionStatus.Finished);
-            // SPEC-52 RF-005: commit status no head SHA do PR
-            // (fire-and-forget — nunca falha a run).
-            _ = Task.Run(() => st.Services
-                    .GetService<Application.Scm.IScmStatusReporter>()?
-                    .ReportRunFinishedAsync(
-                        conversationId, success: true,
-                        CancellationToken.None)
-                ?? Task.CompletedTask, CancellationToken.None);
-            // SPEC-54 RF-003: postback no thread Slack bound
-            // (fire-and-forget — nunca falha a run).
-            _ = Task.Run(() => st.Services
-                    .GetService<Application.ChatOps.IChatOpsReporter>()?
-                    .ReportRunFinishedAsync(
-                        conversationId, success: true,
-                        finalText, CancellationToken.None)
-                ?? Task.CompletedTask, CancellationToken.None);
-            // SPEC-55 RF-004: write-back no ticket (comentário +
-            // transição) — fire-and-forget.
-            _ = Task.Run(() => st.Services
-                    .GetService<Application.Tickets.ITicketReporter>()?
-                    .ReportRunFinishedAsync(
-                        conversationId, success: true,
-                        finalText, st.Conv.PullRequestUrl,
-                        CancellationToken.None)
-                ?? Task.CompletedTask, CancellationToken.None);
-            // SPEC-43 RF-002: snapshot automático pós-turno
-            // (Checkpoints:Auto) — melhor esforço, nunca falha a run.
-            await AutoCheckpointAsync(st.Services, st.Sandbox,
-                conversationId, $"turn {turn.Iteration}", ct);
-            if (st.Hooks is not null)
-            {
-                await st.Hooks.RunAsync(Domain.Hooks.HookEvent.OnFinish,
-                    new Application.Hooks.HookContext
-                    {
-                        ConversationId = conversationId,
-                        Sandbox = st.Sandbox,
-                        Services = st.Services,
-                        ToolName = call.Name,
-                        ActionId = actionEvent.Id,
-                    }, CancellationToken.None);
-            }
-
-            if (st.WsHooks is not null)
-            {
-                await st.WsHooks.RunAsync(Domain.Hooks.HookEvent.OnFinish,
-                    new Application.Hooks.HookContext
-                    {
-                        ConversationId = conversationId,
-                        Sandbox = st.Sandbox,
-                        Services = st.Services,
-                        ToolName = call.Name,
-                        ActionId = actionEvent.Id,
-                    }, CancellationToken.None);
-            }
-
-            return ToolCallVerdict.Abort;
+                                new { type = "text", text = finalText },
+                            },
+                }, EventJson.Options),
+            }, ct);
         }
 
-        st.LastEventId = observationId;
-        return ToolCallVerdict.Next;
+        await st.Activity.SummaryAsync(st.Events, conversationId,
+            "completed", finalText, CancellationToken.None);
+        await SetStatusAsync(st.Events, st.Db, st.Conv, "finished",
+            ConversationExecutionStatus.Finished);
+        // SPEC-52 RF-005: commit status no head SHA do PR
+        // (fire-and-forget — nunca falha a run).
+        _ = Task.Run(() => st.Services
+                .GetService<Application.Scm.IScmStatusReporter>()?
+                .ReportRunFinishedAsync(
+                    conversationId, success: true,
+                    CancellationToken.None)
+            ?? Task.CompletedTask, CancellationToken.None);
+        // SPEC-54 RF-003: postback no thread Slack bound
+        // (fire-and-forget — nunca falha a run).
+        _ = Task.Run(() => st.Services
+                .GetService<Application.ChatOps.IChatOpsReporter>()?
+                .ReportRunFinishedAsync(
+                    conversationId, success: true,
+                    finalText, CancellationToken.None)
+            ?? Task.CompletedTask, CancellationToken.None);
+        // SPEC-55 RF-004: write-back no ticket (comentário +
+        // transição) — fire-and-forget.
+        _ = Task.Run(() => st.Services
+                .GetService<Application.Tickets.ITicketReporter>()?
+                .ReportRunFinishedAsync(
+                    conversationId, success: true,
+                    finalText, st.Conv.PullRequestUrl,
+                    CancellationToken.None)
+            ?? Task.CompletedTask, CancellationToken.None);
+        // SPEC-43 RF-002: snapshot automático pós-turno
+        // (Checkpoints:Auto) — melhor esforço, nunca falha a run.
+        await AutoCheckpointAsync(st.Services, st.Sandbox,
+            conversationId, $"turn {turn.Iteration}", ct);
+        if (st.Hooks is not null)
+        {
+            await st.Hooks.RunAsync(Domain.Hooks.HookEvent.OnFinish,
+                new Application.Hooks.HookContext
+                {
+                    ConversationId = conversationId,
+                    Sandbox = st.Sandbox,
+                    Services = st.Services,
+                    ToolName = call.Name,
+                    ActionId = actionEvent.Id,
+                }, CancellationToken.None);
+        }
+
+        if (st.WsHooks is not null)
+        {
+            await st.WsHooks.RunAsync(Domain.Hooks.HookEvent.OnFinish,
+                new Application.Hooks.HookContext
+                {
+                    ConversationId = conversationId,
+                    Sandbox = st.Sandbox,
+                    Services = st.Services,
+                    ToolName = call.Name,
+                    ActionId = actionEvent.Id,
+                }, CancellationToken.None);
+        }
+
+        return ToolCallVerdict.Abort;
     }
 
     private enum ToolCallVerdict
