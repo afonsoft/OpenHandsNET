@@ -8,7 +8,7 @@
 | Type | `Analysis / Backlog (research spec)` |
 | Stack | `.NET 10` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Superseded — see children 101-106` |
+| Status | `Completed — archived (superseded; children 101–107 delivered)` |
 | Ticket | gap-analysis 2026-10-22 · Lote D |
 | Depends on | SPECs 70–74 (sonar slices) |
 | Touches | nada — backlog |

@@ -66,16 +66,19 @@ Em uma VM/runner sem estado dev (`git clone` fresco):
       enterprise ops) + breaking notes (remoção `/api/v1/pending-messages`)
 - [x] Bump de versão se houver campo — N/A: nenhum `.csproj`/
       `Directory.Build.props` declara `VersionPrefix` (sem campo a bater)
-- [ ] `git tag -a v0.1.0-beta.1 -m "first public beta"` + push da tag
-- [ ] GitHub Release: notas a partir do CHANGELOG + screenshots +
-      quickstart snippet (compose beta)
-- [ ] Imagem Docker etiquetada `openhandsnet:0.1.0-beta.1` (+ `latest`
-      se for o canal) — build via `docker build .` ou CI `docker image`
+- [x] `git tag -a v0.1.0-beta.1` + push da tag — **re-cut em 2026-11-09**:
+      a tag original (26/10) apontava commit anterior às SPECs beta;
+      re-apontada para `main` (66d0628) — release.yml disparou no push
+- [x] GitHub Release: notas a partir do CHANGELOG + screenshots +
+      quickstart snippet (compose beta) — [release](https://github.com/afonsoft/OpenHandsNET/releases/tag/v0.1.0-beta.1)
+- [x] Imagem Docker etiquetada `openhandsnet:0.1.0-beta.1` — build+push
+      via CI `release.yml` na tag → `ghcr.io/afonsoft/openhandsnet:0.1.0-beta.1`
+      (+ `latest`)
 - [x] README: badge de versão/status "beta" no cabeçalho
 
 ## 6. Pós-tag
 
-- [ ] Issue de feedback beta pinada (canal de report)
+- [x] Issue de feedback beta pinada (canal de report) — #393
 - [ ] Rename do projeto (decisão pendente — família "fusão dos 4";
       recomendado executar **antes** do anúncio público para não
       rebatizar depois do lançamento)

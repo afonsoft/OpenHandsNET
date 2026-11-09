@@ -36,7 +36,7 @@ gates (aprovação de SPEC, merge).
 | `72_sonar_critical_code_smells_spec.md` | SonarCloud — 121 smells BLOCKER/CRITICAL | `Completed` → docs/specs | #154 · PR #343 (Epic #152) |
 | `73_sonar_major_code_smells_spec.md` | SonarCloud — 243 smells MAJOR | `Completed` (docs/specs/) | #155 · PR #345 |
 | `74_sonar_minor_code_smells_spec.md` | SonarCloud — 331 smells MINOR/INFO | `Completed` (docs/specs/) | #156 · PRs #347/#348 |
-| `89_sonar_deferred_refactors_spec.md` | Sonar — defer Lote D (S3776/S107/S3903/S1075) | `Draft` | gap-analysis 2026-10-22 |
+| `89_sonar_deferred_refactors_spec.md` | Sonar — defer Lote D (S3776/S107/S3903/S1075) | `Completed` → docs/specs (superseded; filhos 101–107 entregues) | gap-analysis 2026-10-22 · Epic #152 |
 | `92_client_drift_guards_spec.md` | Client/CI — drift guards (css-classes, form-a11y, i18n parity/placeholders) | `Completed` | PR #241 · #235 (Epic #231) |
 | `93_perf_loadtest_harness_spec.md` | Tooling — mock LLM OpenAI-compat + loadtest (rps/conversations/subagents) | `Completed` | PR #242 · #236 (Epic #231) |
 | `94_wasm_boot_resilience_spec.md` | Infra — boot.js autostart=false + `/framework-assets` mirror (proxies corporativos) | `Completed` | PR #243 · #237 (Epic #231) |
