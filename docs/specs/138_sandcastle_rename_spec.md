@@ -8,7 +8,7 @@
 | Type | `Refactor (cross-cutting) / Infra / Release` |
 | Stack | `.NET 10` |
 | Repository | `afonsoft/OpenHandsNET` → `afonsoft/sandcastle` |
-| Status | `Approved` |
+| Status | `Completed` |
 | Ticket | #395 |
 | Scope | `src/` + `cli/` + `tests/` + `.specs/` + `docs/` + `.github/` + `docker/` + `runtime/` + `tools/` + raiz |
 
