@@ -4,18 +4,18 @@
     "net10.0": {
       "AngleSharp": {
         "type": "Direct",
-        "requested": "[1.9.1, )",
-        "resolved": "1.9.1",
-        "contentHash": "QgOLaoPvDofo66KBOHlI9WLH+L/3xGDDd1joM4CrsFsxm0knRu/6ZoiWU0DUOhBZzSCa13zYKAeVPS/CxnF12Q=="
+        "requested": "[1.10.1, )",
+        "resolved": "1.10.1",
+        "contentHash": "yWQuJAaxcvKmhzl77SYfiIbSMloqsHWrzJaqgY5QOoIfEFk0HQZbQQv3gKyIuQBxMwmglcqzXfykGZ4JrkWK5Q=="
       },
       "bunit": {
         "type": "Direct",
-        "requested": "[2.13.3, )",
-        "resolved": "2.13.3",
-        "contentHash": "CzF30KIYqLTBdKOCydGHBzGEpWuPhVhYcjXOq8MzOLhX21078ZK+beEJ+wWpHBJifxAxJzIQ67PS31IztSnv7w==",
+        "requested": "[2.14.0, )",
+        "resolved": "2.14.0",
+        "contentHash": "vjeG/OtGILtqkznREwgyfFgBod958ifHq1KORIocApYAuC/r29WlGqRR06zF716KBq1v5N3gbZccnEQUL4L+8A==",
         "dependencies": {
-          "AngleSharp": "1.8.6",
-          "AngleSharp.Css": "1.2.0",
+          "AngleSharp": "1.10.0",
+          "AngleSharp.Css": "1.4.0",
           "AngleSharp.Diffing": "1.1.1",
           "Microsoft.AspNetCore.Components": "10.0.13",
           "Microsoft.AspNetCore.Components.Authorization": "10.0.13",
@@ -73,10 +73,10 @@
       },
       "AngleSharp.Css": {
         "type": "Transitive",
-        "resolved": "1.3.1",
-        "contentHash": "l930Ghj0vGGXyoDRYWzi0ls8v0RTLmtouIkWep17Ob0wxU/mn+Rw6xUnmFHUjrWJQ66gYLwS22C6/btMjiBTyg==",
+        "resolved": "1.4.0",
+        "contentHash": "AAy28SOmB5EOdXqJC9dVBCKKeoQHyU2EKVMGpy/PT0jJpFvLd4bd5TyufwN09/piQmh0DBtkEn0X/F0SYuF9xQ==",
         "dependencies": {
-          "AngleSharp": "[1.9.0, 2.0.0)"
+          "AngleSharp": "[1.10.0, 2.0.0)"
         }
       },
       "AngleSharp.Diffing": {
@@ -229,11 +229,6 @@
         "type": "Transitive",
         "resolved": "18.11.0",
         "contentHash": "MhN9wpvL1Es4hfIYslrsVgIsUdDFxuOBTbAl9mGIMvFo8PP5CLf4DrGdNrfwWSyn0lqi6sssm+I/qkkLL3MU+g=="
-      },
-      "Microsoft.DotNet.HotReload.WebAssembly.Browser": {
-        "type": "Transitive",
-        "resolved": "10.0.114",
-        "contentHash": "/5vjMWPo2tTac0g8x6hh0fMu2OwU7rnUGhTeOtn52IwYzjLUGNWTde/jatpkNOsoufdZpgkpTdMV6EibfEoSTA=="
       },
       "Microsoft.Extensions.Caching.Abstractions": {
         "type": "Transitive",
@@ -510,12 +505,11 @@
       "openhandsnet.client": {
         "type": "Project",
         "dependencies": {
-          "AngleSharp": "[1.9.1, )",
+          "AngleSharp": "[1.10.1, )",
           "HtmlSanitizer": "[10.0.1120, )",
           "Markdig": "[1.5.1, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.14, )",
           "Microsoft.AspNetCore.SignalR.Client": "[10.0.14, )",
-          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.114, )",
           "OpenHandsNET.Application": "[1.0.0, )"
         }
       },
