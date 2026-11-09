@@ -70,11 +70,11 @@ public sealed partial class WebSearchService(
             return provider.ToLowerInvariant() switch
             {
                 "tavily" when !string.IsNullOrWhiteSpace(opts.ApiKey)
-                    => await TavilyAsync(http, opts.ApiKey, query, maxResults, cts.Token),
+                    => await TavilyAsync(http, opts, query, maxResults, cts.Token),
                 "brave" when !string.IsNullOrWhiteSpace(opts.ApiKey)
-                    => await BraveAsync(http, opts.ApiKey, query, maxResults, cts.Token),
-                "tavily" or "brave" => await DuckDuckGoAsync(http, query, maxResults, cts.Token),
-                _ => await DuckDuckGoAsync(http, query, maxResults, cts.Token),
+                    => await BraveAsync(http, opts, query, maxResults, cts.Token),
+                "tavily" or "brave" => await DuckDuckGoAsync(http, opts, query, maxResults, cts.Token),
+                _ => await DuckDuckGoAsync(http, opts, query, maxResults, cts.Token),
             };
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
@@ -86,9 +86,16 @@ public sealed partial class WebSearchService(
 
     /// <summary>DDG html endpoint — zero config (SPEC-133 RF-002).</summary>
     private static async Task<WebSearchOutcome> DuckDuckGoAsync(
-        HttpClient http, string query, int maxResults, CancellationToken ct)
+        HttpClient http, WebSearchOptions opts, string query,
+        int maxResults, CancellationToken ct)
     {
-        var url = "https://html.duckduckgo.com/html/?q=" + Uri.EscapeDataString(query);
+        if (string.IsNullOrWhiteSpace(opts.Endpoints.DuckDuckGo))
+        {
+            return new WebSearchOutcome(
+                false, [], "WebSearch:Endpoints:DuckDuckGo not configured");
+        }
+
+        var url = opts.Endpoints.DuckDuckGo + "?q=" + Uri.EscapeDataString(query);
         var html = await http.GetStringAsync(url, ct);
         var results = ParseDuckDuckGo(html, maxResults);
         return new WebSearchOutcome(true, results, null);
@@ -123,12 +130,18 @@ public sealed partial class WebSearchService(
     }
 
     private static async Task<WebSearchOutcome> TavilyAsync(
-        HttpClient http, string apiKey, string query,
+        HttpClient http, WebSearchOptions opts, string query,
         int maxResults, CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(opts.Endpoints.Tavily))
+        {
+            return new WebSearchOutcome(
+                false, [], "WebSearch:Endpoints:Tavily not configured");
+        }
+
         using var resp = await http.PostAsJsonAsync(
-            "https://api.tavily.com/search",
-            new { api_key = apiKey, query, max_results = maxResults }, ct);
+            opts.Endpoints.Tavily,
+            new { api_key = opts.ApiKey, query, max_results = maxResults }, ct);
         if (!resp.IsSuccessStatusCode)
         {
             return new WebSearchOutcome(
@@ -139,31 +152,26 @@ public sealed partial class WebSearchService(
         var results = new List<WebSearchResult>(maxResults);
         if (doc.TryGetProperty("results", out var arr))
         {
-            foreach (var r in arr.EnumerateArray())
-            {
-                results.Add(new WebSearchResult(
-                    r.TryGetProperty("title", out var t) ? t.GetString() ?? "" : "",
-                    r.TryGetProperty("url", out var u) ? u.GetString() ?? "" : "",
-                    Truncate(r.TryGetProperty("content", out var c)
-                        ? c.GetString() ?? "" : "", MaxSnippetChars)));
-                if (results.Count >= maxResults)
-                {
-                    break;
-                }
-            }
+            AppendResults(arr, "content", maxResults, results);
         }
 
         return new WebSearchOutcome(true, results, null);
     }
 
     private static async Task<WebSearchOutcome> BraveAsync(
-        HttpClient http, string apiKey, string query,
+        HttpClient http, WebSearchOptions opts, string query,
         int maxResults, CancellationToken ct)
     {
-        var url = "https://api.search.brave.com/res/v1/web/search?q="
-            + Uri.EscapeDataString(query) + "&count=" + maxResults;
+        if (string.IsNullOrWhiteSpace(opts.Endpoints.Brave))
+        {
+            return new WebSearchOutcome(
+                false, [], "WebSearch:Endpoints:Brave not configured");
+        }
+
+        var url = opts.Endpoints.Brave + "?q=" + Uri.EscapeDataString(query)
+            + "&count=" + maxResults;
         using var req = new HttpRequestMessage(HttpMethod.Get, url);
-        req.Headers.Add("X-Subscription-Token", apiKey);
+        req.Headers.Add("X-Subscription-Token", opts.ApiKey!);
         req.Headers.Accept.ParseAdd("application/json");
         using var resp = await http.SendAsync(req, ct);
         if (!resp.IsSuccessStatusCode)
@@ -177,21 +185,29 @@ public sealed partial class WebSearchService(
         if (doc.TryGetProperty("web", out var web)
             && web.TryGetProperty("results", out var arr))
         {
-            foreach (var r in arr.EnumerateArray())
-            {
-                results.Add(new WebSearchResult(
-                    r.TryGetProperty("title", out var t) ? t.GetString() ?? "" : "",
-                    r.TryGetProperty("url", out var u) ? u.GetString() ?? "" : "",
-                    Truncate(r.TryGetProperty("description", out var d)
-                        ? d.GetString() ?? "" : "", MaxSnippetChars)));
-                if (results.Count >= maxResults)
-                {
-                    break;
-                }
-            }
+            AppendResults(arr, "description", maxResults, results);
         }
 
         return new WebSearchOutcome(true, results, null);
+    }
+
+    /// <summary>Mapeia array JSON → <see cref="WebSearchResult"/>s
+    /// (tavily/brave compartilham shape title+url+conteúdo).</summary>
+    private static void AppendResults(JsonElement arr, string contentProp,
+        int maxResults, List<WebSearchResult> results)
+    {
+        foreach (var r in arr.EnumerateArray())
+        {
+            results.Add(new WebSearchResult(
+                r.TryGetProperty("title", out var t) ? t.GetString() ?? "" : "",
+                r.TryGetProperty("url", out var u) ? u.GetString() ?? "" : "",
+                Truncate(r.TryGetProperty(contentProp, out var c)
+                    ? c.GetString() ?? "" : "", MaxSnippetChars)));
+            if (results.Count >= maxResults)
+            {
+                break;
+            }
+        }
     }
 
     private static string StripTags(string s)

@@ -168,7 +168,7 @@ public sealed class Spec52ScmTests : IAsyncDisposable
         (await _connections.FindForRepositoryAsync(
             _orgId, ScmKind.GitHub, "afonsoft/demo",
             CancellationToken.None)).ShouldNotBeNull();
-        (await _connections.DeleteAsync(conn.Id, CancellationToken.None))
+        (await _connections.DeleteAsync(_orgId, conn.Id, CancellationToken.None))
             .ShouldBeTrue();
     }
 

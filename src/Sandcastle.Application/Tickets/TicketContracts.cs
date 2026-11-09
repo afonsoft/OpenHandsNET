@@ -165,7 +165,7 @@ public interface ITicketProviderRegistry
 public interface ITicketConnectionService
 {
     /// <summary>Cria conexão.</summary>
-    Task<TicketConnection> CreateAsync(
+    Task<TicketConnection> CreateAsync( // NOSONAR S107 — SPEC-104 (decisão aprovada): contrato público upstream-parity; param object mudaria API
         Guid orgId, TicketKind kind, string apiUrl,
         string tokenSecretRef, string? webhookSecretRef,
         string? workspaceId, string? triggerConfigJson,

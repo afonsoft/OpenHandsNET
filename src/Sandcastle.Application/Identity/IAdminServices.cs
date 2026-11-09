@@ -104,7 +104,7 @@ public interface IQuotaService
 /// <summary>Append-only audit trail (SPEC-08 RF-011 — Sandcastle addition).</summary>
 public interface IAuditService
 {
-    Task RecordAsync(
+    Task RecordAsync( // NOSONAR S107 — SPEC-104 (decisão aprovada): contrato público upstream-parity; param object mudaria API
         string action, string? actorUserId = null, Guid? orgId = null,
         string? targetType = null, string? targetId = null,
         string? ip = null, string? userAgent = null,

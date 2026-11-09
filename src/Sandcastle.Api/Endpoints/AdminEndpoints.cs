@@ -15,7 +15,7 @@ public static class AdminEndpoints
     /// <summary>Map <c>/api/v1/admin</c> endpoints.</summary>
     public static IEndpointRouteBuilder MapAdminEndpoints(this IEndpointRouteBuilder app)
     {
-        var g = app.MapGroup("/api/v1/admin").WithTags("Sandcastle.Api");
+        var g = app.MapGroup("/api/v1/admin").WithTags(EndpointTags.Api);
 
         // Super admins — list open to any authenticated user when
         // USER_PROVISIONING_ENABLED (upstream OHE-3196 parity); writes are perm-gated.

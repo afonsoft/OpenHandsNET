@@ -24,7 +24,7 @@ public interface IKnowledgeService
 {
     Task<IReadOnlyList<KnowledgeSuggestionInfo>> ListSuggestionsAsync(
         SuggestionStatus? status, string? scope, CancellationToken ct);
-    Task<KnowledgeSuggestionInfo> SuggestAsync(
+    Task<KnowledgeSuggestionInfo> SuggestAsync( // NOSONAR S107 — SPEC-104 (decisão aprovada): contrato público upstream-parity; param object mudaria API
         string title, string content, string scope, string? repoPath,
         SuggestionKind kind, string? reason,
         IReadOnlyList<Guid>? sourceConversationIds,

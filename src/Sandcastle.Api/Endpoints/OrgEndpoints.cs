@@ -17,95 +17,95 @@ public static class OrgEndpoints
         var g = app.MapGroup("/api/v1/organizations");
 
         g.MapGet("",
-            ListOrgsAsync).WithTags("Sandcastle.Api").RequireAuthorization();
+            ListOrgsAsync).WithTags(EndpointTags.Api).RequireAuthorization();
 
         g.MapPost("",
-            CreateOrgAsync).WithTags("Sandcastle.Api").RequireAuthorization("perm:create_organization");
+            CreateOrgAsync).WithTags(EndpointTags.Api).RequireAuthorization("perm:create_organization");
 
         g.MapGet("/{org_id:guid}",
-            GetOrgAsync).WithTags("Sandcastle.Api").RequireAuthorization("perm:view_org_settings");
+            GetOrgAsync).WithTags(EndpointTags.Api).RequireAuthorization("perm:view_org_settings");
 
         g.MapPatch("/{org_id:guid}",
-            UpdateOrgAsync).WithTags("Sandcastle.Api").RequireAuthorization(PermEditOrgSettings);
+            UpdateOrgAsync).WithTags(EndpointTags.Api).RequireAuthorization(PermEditOrgSettings);
 
         g.MapDelete("/{org_id:guid}",
-            DeleteOrgAsync).WithTags("Sandcastle.Api").RequireAuthorization("perm:delete_organization");
+            DeleteOrgAsync).WithTags(EndpointTags.Api).RequireAuthorization("perm:delete_organization");
 
         // Members
         g.MapGet("/{org_id:guid}/members",
-            ListMembersAsync).WithTags("Sandcastle.Api").RequireAuthorization();
+            ListMembersAsync).WithTags(EndpointTags.Api).RequireAuthorization();
 
         g.MapGet("/{org_id:guid}/members/count",
-            CountMembersAsync).WithTags("Sandcastle.Api").RequireAuthorization();
+            CountMembersAsync).WithTags(EndpointTags.Api).RequireAuthorization();
 
         g.MapPatch("/{org_id:guid}/members/{uid:guid}",
-            UpdateMemberRoleAsync).WithTags("Sandcastle.Api").RequireAuthorization();
+            UpdateMemberRoleAsync).WithTags(EndpointTags.Api).RequireAuthorization();
 
         g.MapDelete("/{org_id:guid}/members/{uid:guid}",
-            RemoveMemberAsync).WithTags("Sandcastle.Api").RequireAuthorization();
+            RemoveMemberAsync).WithTags(EndpointTags.Api).RequireAuthorization();
 
         // Settings
         g.MapGet("/{org_id:guid}/settings",
-            GetOrgSettingsAsync).WithTags("Sandcastle.Api").RequireAuthorization("perm:view_org_settings");
+            GetOrgSettingsAsync).WithTags(EndpointTags.Api).RequireAuthorization("perm:view_org_settings");
 
         g.MapPatch("/{org_id:guid}/settings",
-            UpdateOrgSettingsAsync).WithTags("Sandcastle.Api").RequireAuthorization(PermEditOrgSettings);
+            UpdateOrgSettingsAsync).WithTags(EndpointTags.Api).RequireAuthorization(PermEditOrgSettings);
 
         // SPEC-30 RF-004: org memory — leitura p/ membros, delete p/ admins.
         g.MapGet("/{org_id:guid}/memory",
-            GetOrgMemoryAsync).WithTags("Sandcastle.Api").RequireAuthorization();
+            GetOrgMemoryAsync).WithTags(EndpointTags.Api).RequireAuthorization();
 
         g.MapDelete("/{org_id:guid}/memory/{key}",
-            DeleteOrgMemoryAsync).WithTags("Sandcastle.Api").RequireAuthorization(PermEditOrgSettings);
+            DeleteOrgMemoryAsync).WithTags(EndpointTags.Api).RequireAuthorization(PermEditOrgSettings);
 
         // SPEC-48 RF-003: security policy por org — GET membros admin+
         // (view_org_settings), PUT edit_org_settings + audit diff.
         g.MapGet("/{org_id:guid}/security-policy",
-            GetSecurityPolicyAsync).WithTags("Sandcastle.Api").RequireAuthorization("perm:view_org_settings");
+            GetSecurityPolicyAsync).WithTags(EndpointTags.Api).RequireAuthorization("perm:view_org_settings");
 
         g.MapPut("/{org_id:guid}/security-policy",
-            PutSecurityPolicyAsync).WithTags("Sandcastle.Api").RequireAuthorization(PermEditOrgSettings);
+            PutSecurityPolicyAsync).WithTags(EndpointTags.Api).RequireAuthorization(PermEditOrgSettings);
 
         // Quota — manage_org_quota is instance-level (super-role only).
         g.MapGet("/{org_id:guid}/quota",
-            GetQuotaAsync).WithTags("Sandcastle.Api").RequireAuthorization("perm:view_billing");
+            GetQuotaAsync).WithTags(EndpointTags.Api).RequireAuthorization("perm:view_billing");
 
         g.MapPut("/{org_id:guid}/quota",
-            PutQuotaAsync).WithTags("Sandcastle.Api").RequireAuthorization("perm:manage_org_quota");
+            PutQuotaAsync).WithTags(EndpointTags.Api).RequireAuthorization("perm:manage_org_quota");
 
         g.MapDelete("/{org_id:guid}/quota",
-            DeleteQuotaAsync).WithTags("Sandcastle.Api").RequireAuthorization("perm:manage_org_quota");
+            DeleteQuotaAsync).WithTags(EndpointTags.Api).RequireAuthorization("perm:manage_org_quota");
 
         // SPEC-14 RF-005: aggregated usage — tokens/cost (usage_records),
         // live sandbox seconds and run counts.
         g.MapGet("/{org_id:guid}/usage",
-            GetUsageAsync).WithTags("Sandcastle.Api")
+            GetUsageAsync).WithTags(EndpointTags.Api)
             .RequireAuthorization("perm:view_billing");
 
         // SPEC-20 RF-006: plano efetivo da org (subscrição ativa → org → free).
         g.MapGet("/{org_id:guid}/plan",
-            GetOrgPlanAsync).WithTags("Sandcastle.Api").RequireAuthorization("perm:view_billing");
+            GetOrgPlanAsync).WithTags(EndpointTags.Api).RequireAuthorization("perm:view_billing");
 
         // Invitations (batch + token)
         g.MapPost("/{org_id:guid}/members/invite",
-            InviteMemberAsync).WithTags("Sandcastle.Api").RequireAuthorization("perm:invite_user_to_organization");
+            InviteMemberAsync).WithTags(EndpointTags.Api).RequireAuthorization("perm:invite_user_to_organization");
 
         g.MapGet("/{org_id:guid}/members/invite",
-            ListInvitesAsync).WithTags("Sandcastle.Api").RequireAuthorization("perm:invite_user_to_organization");
+            ListInvitesAsync).WithTags(EndpointTags.Api).RequireAuthorization("perm:invite_user_to_organization");
 
         g.MapDelete("/{org_id:guid}/members/invite/{inv_id:guid}",
-            RevokeInviteAsync).WithTags("Sandcastle.Api").RequireAuthorization("perm:invite_user_to_organization");
+            RevokeInviteAsync).WithTags(EndpointTags.Api).RequireAuthorization("perm:invite_user_to_organization");
 
         // Token accept — GET redirects to signup, POST creates membership.
         g.MapGet("/members/invite/accept",
-            GetAcceptInviteAsync).WithTags("Sandcastle.Api").AllowAnonymous();
+            GetAcceptInviteAsync).WithTags(EndpointTags.Api).AllowAnonymous();
 
         g.MapPost("/members/invite/accept",
-            AcceptInviteAsync).WithTags("Sandcastle.Api").RequireAuthorization();
+            AcceptInviteAsync).WithTags(EndpointTags.Api).RequireAuthorization();
 
         // Provisioning (instance admin — gated by USER_PROVISIONING_ENABLED).
         g.MapPost("/provision-user",
-            ProvisionUserAsync).WithTags("Sandcastle.Api").RequireAuthorization("perm:provision_user");
+            ProvisionUserAsync).WithTags(EndpointTags.Api).RequireAuthorization("perm:provision_user");
 
         return app;
     }

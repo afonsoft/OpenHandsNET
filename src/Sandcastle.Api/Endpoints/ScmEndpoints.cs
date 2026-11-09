@@ -33,7 +33,7 @@ public static class ScmEndpoints
 
         // Pull request a partir do workspace da conversa.
         app.MapPost("/api/v1/app-conversations/{id:guid}/pull-request",
-            CreatePullRequestAsync).WithTags("Sandcastle.Api")
+            CreatePullRequestAsync).WithTags(EndpointTags.Api)
             .RequireAuthorization();
 
         // Admin: connections CRUD.
@@ -52,7 +52,7 @@ public static class ScmEndpoints
 
         // Webhook público (HMAC + idempotência; sem auth de usuário).
         app.MapPost("/api/v1/webhooks/scm/{kind}",
-            HandleScmWebhookAsync).WithTags("Sandcastle.Api");
+            HandleScmWebhookAsync).WithTags(EndpointTags.Api);
 
         return app;
     }
@@ -213,7 +213,7 @@ public static class ScmEndpoints
         var user = current.User;
         if (user is null)
             return Results.Unauthorized();
-        return await svc.DeleteAsync(id, ct)
+        return await svc.DeleteAsync(org_id, id, ct)
             ? Results.NoContent() : Results.NotFound();
 
     }

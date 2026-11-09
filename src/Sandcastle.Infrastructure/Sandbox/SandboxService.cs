@@ -19,7 +19,7 @@ namespace Sandcastle.Infrastructure.Sandbox;
 /// remote, SPEC-35). Engine-agnostic: the same record logic serves both
 /// providers.
 /// </summary>
-public sealed class SandboxService(
+public sealed class SandboxService( // NOSONAR S107 — SPEC-104 (decisão aprovada): DI ctor — aridade = lista de dependências (bundle = service locator)
     AppDbContext db,
     ISandboxEngine engine,
     IOptions<SandboxOptions> options,

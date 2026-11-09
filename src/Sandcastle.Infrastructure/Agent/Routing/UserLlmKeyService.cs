@@ -175,7 +175,7 @@ public sealed class UserLlmKeyService(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogWarning("LLM key test failed for provider {Provider}: {Type}",
+            logger.LogWarning(ex, "LLM key test failed for provider {Provider}: {Type}",
                 descriptor.Id, ex.GetType().Name);
             return (false, "unreachable");
         }

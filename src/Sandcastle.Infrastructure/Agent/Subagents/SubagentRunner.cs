@@ -29,7 +29,7 @@ public sealed class SubagentRunner(
     /// <c>Tools</c>/<c>Model</c> restringem/sobrescrevem (nunca expandem)
     /// o toolset e o modelo do filho.
     /// </summary>
-    public async Task<string> RunAsync(
+    public async Task<string> RunAsync( // NOSONAR S107 — SPEC-104 (decisão aprovada): contexto de fluxo único; param object só desloca aridade
         Guid conversationId, Domain.Sandbox.Sandbox sandbox,
         ISandboxExecutor executor,
         IEventService events, IServiceProvider services,

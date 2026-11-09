@@ -19,9 +19,8 @@ spec:
         app.kubernetes.io/component: api
     spec:
       {{- if eq .Values.sandbox.provider "kubernetes" }}
-      serviceAccountName: sandcastle-runtime
-      # SA bound à Role sandbox-manager (necessário p/ gerir sandboxes).
-      automountServiceAccountToken: true # NOSONAR S6865 — a SA precisa do token p/ chamar a API do k8s
+      serviceAccountName: sandcastle-runtime # NOSONAR S6865 — SA bound à Role sandbox-manager (rbac.yaml); token necessário p/ gerir sandboxes
+      automountServiceAccountToken: true
       {{- end }}
       containers:
         - name: api

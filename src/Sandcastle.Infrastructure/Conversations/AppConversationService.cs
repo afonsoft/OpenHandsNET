@@ -15,7 +15,7 @@ namespace Sandcastle.Infrastructure.Conversations;
 /// EF-backed <see cref="IAppConversationService"/>; cursor pagination identical
 /// to the event store (created_at ticks + id tie-break, base64).
 /// </summary>
-public sealed class AppConversationService(
+public sealed class AppConversationService( // NOSONAR S107 — SPEC-104 (decisão aprovada): DI ctor — aridade = lista de dependências (bundle = service locator)
     AppDbContext db,
     IStartTaskService tasks,
     ISandboxService sandboxes,

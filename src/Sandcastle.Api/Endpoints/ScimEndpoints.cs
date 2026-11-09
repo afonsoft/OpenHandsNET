@@ -70,80 +70,80 @@ public static class ScimEndpoints
 
         // ---------- Users ----------
         scim.MapGet("/Users",
-            ListScimUsersAsync).WithTags("Sandcastle.Api").DisableAntiforgery();
+            ListScimUsersAsync).WithTags(EndpointTags.Api).DisableAntiforgery();
 
         scim.MapGet("/Users/{id:guid}",
-            GetScimUserAsync).WithTags("Sandcastle.Api");
+            GetScimUserAsync).WithTags(EndpointTags.Api);
 
         scim.MapPost("/Users",
-            CreateScimUserAsync).WithTags("Sandcastle.Api").DisableAntiforgery();
+            CreateScimUserAsync).WithTags(EndpointTags.Api).DisableAntiforgery();
 
         scim.MapMethods("/Users/{id:guid}", ["PATCH"],
-            PatchScimUserAsync).WithTags("Sandcastle.Api");
+            PatchScimUserAsync).WithTags(EndpointTags.Api);
 
         scim.MapDelete("/Users/{id:guid}",
-            DeleteScimUserAsync).WithTags("Sandcastle.Api");
+            DeleteScimUserAsync).WithTags(EndpointTags.Api);
 
         // ---------- Groups (displayName → idp_group_mapping) ----------
         scim.MapGet("/Groups",
-            ListScimGroupsAsync).WithTags("Sandcastle.Api");
+            ListScimGroupsAsync).WithTags(EndpointTags.Api);
 
         scim.MapPost("/Groups",
-            CreateScimGroupAsync).WithTags("Sandcastle.Api").DisableAntiforgery();
+            CreateScimGroupAsync).WithTags(EndpointTags.Api).DisableAntiforgery();
 
         scim.MapPut("/Groups/{id:guid}",
-            PutScimGroupAsync).WithTags("Sandcastle.Api");
+            PutScimGroupAsync).WithTags(EndpointTags.Api);
 
         scim.MapDelete("/Groups/{id:guid}",
-            DeleteScimGroupAsync).WithTags("Sandcastle.Api");
+            DeleteScimGroupAsync).WithTags(EndpointTags.Api);
 
         // ---------- admin API (cookie/sk-*, perm) ----------
         var admin = app.MapGroup("/api/v1/orgs/{org_id:guid}");
 
         admin.MapGet("/idp-mappings",
-            ListIdpMappingsAsync).WithTags("Sandcastle.Api")
+            ListIdpMappingsAsync).WithTags(EndpointTags.Api)
             .RequireAuthorization("perm:view_org_settings");
 
         admin.MapPost("/idp-mappings",
-            CreateIdpMappingAsync).WithTags("Sandcastle.Api").RequireAuthorization(PermEditOrgSettings);
+            CreateIdpMappingAsync).WithTags(EndpointTags.Api).RequireAuthorization(PermEditOrgSettings);
 
         admin.MapDelete("/idp-mappings/{id:guid}",
-            DeleteIdpMappingAsync).WithTags("Sandcastle.Api")
+            DeleteIdpMappingAsync).WithTags(EndpointTags.Api)
             .RequireAuthorization(PermEditOrgSettings);
 
         admin.MapGet("/usage-tiers",
-            ListUsageTiersAsync).WithTags("Sandcastle.Api")
+            ListUsageTiersAsync).WithTags(EndpointTags.Api)
             .RequireAuthorization("perm:view_org_settings");
 
         admin.MapPost("/usage-tiers",
-            CreateUsageTierAsync).WithTags("Sandcastle.Api").RequireAuthorization(PermEditOrgSettings);
+            CreateUsageTierAsync).WithTags(EndpointTags.Api).RequireAuthorization(PermEditOrgSettings);
 
         admin.MapPatch("/usage-tiers/{id:guid}",
-            UpdateUsageTierAsync).WithTags("Sandcastle.Api").RequireAuthorization(PermEditOrgSettings);
+            UpdateUsageTierAsync).WithTags(EndpointTags.Api).RequireAuthorization(PermEditOrgSettings);
 
         admin.MapDelete("/usage-tiers/{id:guid}",
-            DeleteUsageTierAsync).WithTags("Sandcastle.Api")
+            DeleteUsageTierAsync).WithTags(EndpointTags.Api)
             .RequireAuthorization(PermEditOrgSettings);
 
         // scim_* token mint/revoke (admin)
         admin.MapGet("/scim-tokens",
-            ListScimTokensAsync).WithTags("Sandcastle.Api").RequireAuthorization("perm:manage_api_keys");
+            ListScimTokensAsync).WithTags(EndpointTags.Api).RequireAuthorization("perm:manage_api_keys");
 
         admin.MapPost("/scim-tokens",
-            CreateScimTokenAsync).WithTags("Sandcastle.Api").RequireAuthorization("perm:manage_api_keys")
+            CreateScimTokenAsync).WithTags(EndpointTags.Api).RequireAuthorization("perm:manage_api_keys")
             .RequireScope(ApiScopes.AdminServiceUsers);
 
         admin.MapDelete("/scim-tokens/{id:guid}",
-            DeleteScimTokenAsync).WithTags("Sandcastle.Api")
+            DeleteScimTokenAsync).WithTags(EndpointTags.Api)
             .RequireAuthorization("perm:manage_api_keys")
             .RequireScope(ApiScopes.AdminServiceUsers);
 
         // usage override por usuário (admin)
         app.MapPost("/api/v1/users/{id:guid}/usage-override",
-            SetUsageOverrideAsync).WithTags("Sandcastle.Api").RequireAuthorization(PermEditOrgSettings);
+            SetUsageOverrideAsync).WithTags(EndpointTags.Api).RequireAuthorization(PermEditOrgSettings);
 
         app.MapDelete("/api/v1/users/{id:guid}/usage-override",
-            DeleteUsageOverrideAsync).WithTags("Sandcastle.Api").RequireAuthorization(PermEditOrgSettings);
+            DeleteUsageOverrideAsync).WithTags(EndpointTags.Api).RequireAuthorization(PermEditOrgSettings);
 
         return app;
     }

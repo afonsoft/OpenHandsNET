@@ -146,7 +146,7 @@ window.sc.codeBlocks = (function () {
 				ta.style.opacity = '0';
 				document.body.appendChild(ta);
 				ta.select();
-				const ok = document.execCommand('copy');
+				const ok = document.execCommand('copy'); // NOSONAR S1874 — fallback legitimo p/ clipboard em contexto nao-seguro
 				ta.remove();
 				done(ok);
 			} catch {

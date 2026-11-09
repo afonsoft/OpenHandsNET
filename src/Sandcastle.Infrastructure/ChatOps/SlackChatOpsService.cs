@@ -24,7 +24,7 @@ namespace Sandcastle.Infrastructure.ChatOps;
 /// thread binding → start-task/send-message. Payloads externos só
 /// viram contexto de prompt — nunca executados.
 /// </summary>
-public sealed class SlackChatOpsService(
+public sealed class SlackChatOpsService( // NOSONAR S107 — SPEC-104 (decisão aprovada): DI ctor — aridade = lista de dependências (bundle = service locator)
     AppDbContext db,
     ISecretStore secrets,
     IChatConnectionService connections,

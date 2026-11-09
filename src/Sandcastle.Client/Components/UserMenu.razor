@@ -9,11 +9,8 @@
 @inject NavigationManager Nav
 @implements IDisposable
 
-@if (Auth.RequiresAuth && !Auth.IsAuthenticated)
-{
-    @* Sem sessão → guard já levou a /auth; não renderiza menu. *@
-}
-else
+@* Sem sessão (RequiresAuth && !IsAuthenticated) → guard já levou a /auth. *@
+@if (!Auth.RequiresAuth || Auth.IsAuthenticated)
 {
     <div class="usermenu">
         <button class="avatar-btn" @onclick="() => _open = !_open"

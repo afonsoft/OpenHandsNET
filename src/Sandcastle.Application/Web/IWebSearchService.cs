@@ -36,4 +36,21 @@ public sealed class WebSearchOptions
 
     /// <summary>In-process result cache TTL (seconds).</summary>
     public int CacheSeconds { get; set; } = 300;
+
+    /// <summary>Provider endpoints — defaults ship em
+    /// <c>appsettings.json</c>; override p/ proxy/self-hosted/testes.</summary>
+    public WebSearchEndpoints Endpoints { get; set; } = new();
+}
+
+/// <summary>Endpoint URIs por provider (S1075 — nada hardcoded no código).</summary>
+public sealed class WebSearchEndpoints
+{
+    /// <summary>DDG html endpoint.</summary>
+    public string? DuckDuckGo { get; set; }
+
+    /// <summary>Tavily search endpoint.</summary>
+    public string? Tavily { get; set; }
+
+    /// <summary>Brave search endpoint.</summary>
+    public string? Brave { get; set; }
 }

@@ -14,32 +14,14 @@ public static class KeysEndpoints
         var g = app.MapGroup("/api/v1/keys");
 
         g.MapPost("", CreateApiKeyAsync)
-            .WithTags("Sandcastle.Api")
+            .WithTags(EndpointTags.Api)
             .RequireAuthorization("perm:manage_api_keys");
 
-        g.MapGet("", async (
-            ICurrentUserAccessor current, IApiKeyService keys, CancellationToken ct) =>
-        {
-            var user = current.User;
-            return user is null
-                ? Results.Unauthorized()
-                : Results.Ok(await keys.ListAsync(user, ct));
-        }).RequireAuthorization("perm:manage_api_keys");
+        g.MapGet("", ListApiKeysAsync)
+            .RequireAuthorization("perm:manage_api_keys");
 
-        g.MapDelete("/{id:guid}", async (
-            Guid id, ICurrentUserAccessor current, IApiKeyService keys,
-            IAuditService audit, CancellationToken ct) =>
-        {
-            var user = current.User;
-            if (user is null)
-                return Results.Unauthorized();
-            if (!await keys.DeleteAsync(user, id, ct))
-                return Results.NotFound();
-            await audit.RecordAsync(
-                "api_key.delete", user.UserId.ToString(), null,
-                "api_key", id.ToString(), cancellationToken: ct);
-            return Results.NoContent();
-        }).RequireAuthorization("perm:manage_api_keys");
+        g.MapDelete("/{id:guid}", DeleteApiKeyAsync)
+            .RequireAuthorization("perm:manage_api_keys");
 
         // Bearer-only parity: /keys/current rejects cookie sessions (RF-002).
         g.MapGet("/current", (
@@ -53,19 +35,19 @@ public static class KeysEndpoints
         // 503 litellm_unavailable (nunca cai para providers locais).
         // A chave sai em claro SÓ no refresh.
         g.MapGet("/llm/byor",
-            GetByorAsync).WithTags("Sandcastle.Api")
+            GetByorAsync).WithTags(EndpointTags.Api)
             .RequireAuthorization().ProducesProblem(404).ProducesProblem(503);
 
         g.MapPost("/llm/byor/refresh",
-            RefreshByorAsync).WithTags("Sandcastle.Api")
+            RefreshByorAsync).WithTags(EndpointTags.Api)
             .RequireAuthorization().ProducesProblem(404).ProducesProblem(503);
 
         g.MapGet("/llm/byor/permitted",
-            PermittedByorAsync).WithTags("Sandcastle.Api")
+            PermittedByorAsync).WithTags(EndpointTags.Api)
             .RequireAuthorization().ProducesProblem(404).ProducesProblem(503);
 
         g.MapDelete("/llm/byor",
-            RevokeByorAsync).WithTags("Sandcastle.Api")
+            RevokeByorAsync).WithTags(EndpointTags.Api)
             .RequireAuthorization().ProducesProblem(404).ProducesProblem(503);
 
         // SPEC-134 RF-003/RF-004: BYOK por usuário — CRUD owner-scoped,
@@ -80,78 +62,112 @@ public static class KeysEndpoints
                 ? Results.Unauthorized()
                 : Results.Ok(await keys.ListAsync(
                     user.UserId.ToString(), ct));
-        }).WithTags("Sandcastle.Api").RequireAuthorization();
+        }).WithTags(EndpointTags.Api).RequireAuthorization();
 
         g.MapGet("/llm/providers", (
             IUserLlmKeyService keys) => Results.Ok(keys.Providers))
-            .WithTags("Sandcastle.Api").RequireAuthorization();
+            .WithTags(EndpointTags.Api).RequireAuthorization();
 
-        g.MapPut("/llm/{provider}", async (
-            string provider, [FromBody] UserLlmKeyUpsertRequest req,
-            ICurrentUserAccessor current, IUserLlmKeyService keys,
-            IAuditService audit, CancellationToken ct) =>
-        {
-            var user = current.User;
-            if (user is null)
-                return Results.Unauthorized();
-            try
-            {
-                var info = await keys.UpsertAsync(
-                    user.UserId.ToString(), provider, req.Key,
-                    req.BaseUrl, ct);
-                await audit.RecordAsync(
-                    "keys.llm.upsert", user.UserId.ToString(), null,
-                    "user_llm_key", provider, cancellationToken: ct);
-                return Results.Ok(info);
-            }
-            catch (LlmKeyValidationException e)
-            {
-                return Results.BadRequest(new { detail = e.Code });
-            }
-        }).WithTags("Sandcastle.Api").RequireAuthorization();
+        g.MapPut("/llm/{provider}", UpsertLlmKeyAsync)
+            .WithTags(EndpointTags.Api).RequireAuthorization();
 
-        g.MapDelete("/llm/{provider}", async (
-            string provider,
-            ICurrentUserAccessor current, IUserLlmKeyService keys,
-            IAuditService audit, CancellationToken ct) =>
-        {
-            var user = current.User;
-            if (user is null)
-                return Results.Unauthorized();
-            if (!await keys.DeleteAsync(
-                    user.UserId.ToString(), provider, ct))
-                return Results.NotFound();
-            await audit.RecordAsync(
-                "keys.llm.delete", user.UserId.ToString(), null,
-                "user_llm_key", provider, cancellationToken: ct);
-            return Results.NoContent();
-        }).WithTags("Sandcastle.Api").RequireAuthorization();
+        g.MapDelete("/llm/{provider}", DeleteLlmKeyAsync)
+            .WithTags(EndpointTags.Api).RequireAuthorization();
 
-        g.MapPost("/llm/{provider}/test", async (
-            string provider,
-            ICurrentUserAccessor current, IUserLlmKeyService keys,
-            CancellationToken ct) =>
-        {
-            var user = current.User;
-            if (user is null)
-                return Results.Unauthorized();
-            try
-            {
-                var (ok, detail) = await keys.TestAsync(
-                    user.UserId.ToString(), provider, ct);
-                return detail == "rate_limited"
-                    ? Results.Problem(statusCode: 429, title: "rate_limited")
-                    : Results.Ok(new { ok, detail });
-            }
-            catch (LlmKeyValidationException e)
-            {
-                return Results.BadRequest(new { detail = e.Code });
-            }
-        }).WithTags("Sandcastle.Api").RequireAuthorization();
+        g.MapPost("/llm/{provider}/test", TestLlmKeyAsync)
+            .WithTags(EndpointTags.Api).RequireAuthorization();
 
         return app;
     }
 
+
+    private static async Task<IResult> ListApiKeysAsync(
+        ICurrentUserAccessor current, IApiKeyService keys,
+        CancellationToken ct)
+    {
+        var user = current.User;
+        return user is null
+            ? Results.Unauthorized()
+            : Results.Ok(await keys.ListAsync(user, ct));
+    }
+
+    private static async Task<IResult> DeleteApiKeyAsync(
+        Guid id, ICurrentUserAccessor current, IApiKeyService keys,
+        IAuditService audit, CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+            return Results.Unauthorized();
+        if (!await keys.DeleteAsync(user, id, ct))
+            return Results.NotFound();
+        await audit.RecordAsync(
+            "api_key.delete", user.UserId.ToString(), null,
+            "api_key", id.ToString(), cancellationToken: ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> UpsertLlmKeyAsync(
+        string provider, [FromBody] UserLlmKeyUpsertRequest req,
+        ICurrentUserAccessor current, IUserLlmKeyService keys,
+        IAuditService audit, CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+            return Results.Unauthorized();
+        try
+        {
+            var info = await keys.UpsertAsync(
+                user.UserId.ToString(), provider, req.Key,
+                req.BaseUrl, ct);
+            await audit.RecordAsync(
+                "keys.llm.upsert", user.UserId.ToString(), null,
+                "user_llm_key", provider, cancellationToken: ct);
+            return Results.Ok(info);
+        }
+        catch (LlmKeyValidationException e)
+        {
+            return Results.BadRequest(new { detail = e.Code });
+        }
+    }
+
+    private static async Task<IResult> DeleteLlmKeyAsync(
+        string provider,
+        ICurrentUserAccessor current, IUserLlmKeyService keys,
+        IAuditService audit, CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+            return Results.Unauthorized();
+        if (!await keys.DeleteAsync(
+                user.UserId.ToString(), provider, ct))
+            return Results.NotFound();
+        await audit.RecordAsync(
+            "keys.llm.delete", user.UserId.ToString(), null,
+            "user_llm_key", provider, cancellationToken: ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> TestLlmKeyAsync(
+        string provider,
+        ICurrentUserAccessor current, IUserLlmKeyService keys,
+        CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+            return Results.Unauthorized();
+        try
+        {
+            var (ok, detail) = await keys.TestAsync(
+                user.UserId.ToString(), provider, ct);
+            return detail == "rate_limited"
+                ? Results.Problem(statusCode: 429, title: "rate_limited")
+                : Results.Ok(new { ok, detail });
+        }
+        catch (LlmKeyValidationException e)
+        {
+            return Results.BadRequest(new { detail = e.Code });
+        }
+    }
 
     private static async Task<IResult> CreateApiKeyAsync(
         [FromBody] ApiKeyCreateRequest req,
