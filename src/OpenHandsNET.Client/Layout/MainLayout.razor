@@ -9,6 +9,7 @@
 @inject DialogService Dialogs
 @inject ChatNotificationsService ChatNotify
 @inject LocalizationService L
+@inject AuthStateService Auth
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -133,7 +134,9 @@
             }
         </div>
         <div class="sb-foot">
-            <ThemeToggle />
+            @* SPEC-132 RF-004: user menu (avatar + theme + sign-out)
+               substitui o ThemeToggle solto do footer. *@
+            <UserMenu />
             <span class="grow"></span>
             @if (_collapsed)
             {
@@ -178,11 +181,35 @@
     private string _filter = "";
     private IReadOnlyList<ConversationItem> _convs = [];
 
+    private bool _inited;
+
     protected override async Task OnInitializedAsync()
     {
-        _isAdmin = await Admin.EnsureLoadedAsync();
+        // SPEC-132 RF-003: subscrições antes do guard — cair direto em
+        // /auth ainda garante eventos de nav e o init adiado pós-login.
         Inbox.Changed += OnAttentionChanged;
         L.Changed += OnLocaleChanged;
+        Nav.LocationChanged += OnNav;
+        Palette.Provider = BuildPaletteAsync;
+        if (!GuardCurrentRoute())
+        {
+            return;
+        }
+
+        await InitShellAsync();
+    }
+
+    /// <summary>Trabalho pesado só após passar no guard de auth
+    /// (a página /auth não dispara tempestade de 401).</summary>
+    private async Task InitShellAsync()
+    {
+        if (_inited)
+        {
+            return;
+        }
+
+        _inited = true;
+        _isAdmin = await Admin.EnsureLoadedAsync();
         await Inbox.EnsureStartedAsync();
         await ChatNotify.EnsureStartedAsync();
         try
@@ -197,16 +224,34 @@
                 .OrderByDescending(c => c.UpdatedAt).Take(20).ToList();
         }
         catch (Exception) { /* JS indisponível em pré-render / offline */ }
-
-        Palette.Provider = BuildPaletteAsync;
-        Nav.LocationChanged += OnNav;
     }
 
     private void OnNav(object? s, LocationChangedEventArgs e)
     {
         _mobileMenu = false;
         _menuFor = null;
+        if (GuardCurrentRoute() && !_inited)
+        {
+            _ = InitShellAsync();
+        }
+
         InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>SPEC-132: false = navegação interceptada para /auth.
+    /// Rotas públicas (/auth, /share/*, /shared/*) nunca bloqueiam.</summary>
+    private bool GuardCurrentRoute()
+    {
+        var relative = Nav.ToBaseRelativePath(Nav.Uri);
+        if (Auth.RequiresAuth && !Auth.IsAuthenticated
+            && !AuthStateService.IsPublicPath(relative))
+        {
+            Nav.NavigateTo(
+                $"/auth?returnUrl={Uri.EscapeDataString("/" + relative)}");
+            return false;
+        }
+
+        return true;
     }
 
     /// <summary>SPEC-118: menu de contexto por conversa (padrão OWUIC).</summary>

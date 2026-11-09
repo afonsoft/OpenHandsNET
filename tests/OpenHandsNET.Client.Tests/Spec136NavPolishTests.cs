@@ -47,6 +47,8 @@ public class Spec136NavPolishTests : BunitContext
         Services.AddSingleton(new AdminState(adminApi));
         Services.AddSingleton(new PaletteService());
         Services.AddSingleton(new DialogService());
+        // SPEC-132: MainLayout injeta AuthStateService (guard de auth).
+        AuthStub.Register(this);
     }
 
     [Fact]

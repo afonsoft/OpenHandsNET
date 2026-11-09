@@ -486,5 +486,18 @@
   "usage.completion_tokens": "Completion-Tokens",
   "usage.estimated_cost": "geschätzte Kosten",
   "usage.events": "Ereignisse",
-  "usage.prompt_tokens": "Prompt-Tokens"
+  "usage.prompt_tokens": "Prompt-Tokens",
+  "auth.title": "Anmelden",
+  "auth.subtitle": "Melden Sie sich an, um zu Ihrem Arbeitsbereich zu gelangen.",
+  "auth.sso_button": "Mit SSO fortfahren",
+  "auth.email_label": "E-Mail",
+  "auth.email_placeholder": "sie@beispiel.de",
+  "auth.error": "Anmeldung fehlgeschlagen. E-Mail prüfen und erneut versuchen.",
+  "auth.sign_in": "Anmelden",
+  "auth.local_mode": "Dieses Deployment läuft im lokalen Einzelnutzermodus.",
+  "auth.enter_app": "Arbeitsbereich öffnen",
+  "user_menu.aria": "Benutzermenü",
+  "user_menu.local_user": "Lokaler Benutzer",
+  "user_menu.local_mode": "Lokaler Modus",
+  "user_menu.sign_out": "Abmelden"
 }

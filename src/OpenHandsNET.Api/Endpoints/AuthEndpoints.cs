@@ -96,13 +96,41 @@ public static class AuthEndpoints
 
         var auth = app.MapGroup("/api/v1/auth");
 
-        // OSS dev login — only when Auth:Provider=none (first user bootstrap).
+        // SPEC-132: probe de sessão anônimo — o client decide entre
+        // boot direto (provider=none) ou a tela /auth. Nunca vaza
+        // dados sensíveis: só provider + perfil público da sessão.
+        auth.MapGet("/session", (
+                HttpContext ctx, ICurrentUserAccessor current,
+                IConfiguration config) =>
+            {
+                var user = current.User;
+                return Results.Ok(new
+                {
+                    provider = config["Auth:Provider"] ?? "none",
+                    authenticated = user is not null,
+                    user = user is null ? null : new
+                    {
+                        id = user.UserId,
+                        email = user.Email,
+                        display_name = user.DisplayName,
+                        is_super_admin = user.IsSuperAdmin,
+                    },
+                });
+            }).AllowAnonymous().WithTags("OpenHandsNET.Api")
+            .Produces<object>()
+            .WithSummary("Current auth session + provider");
+
+        // OSS local login — Auth:Provider=none (first user bootstrap) ou
+        // 'local' (login confiado por e-mail, sem senha — deployment
+        // single-tenant de confiança, paridade upstream).
         auth.MapPost("/dev-login", async (
             DevLoginRequest req, HttpContext ctx,
             IUserService users, IConfiguration config, IAuditService audit,
             CancellationToken ct) =>
         {
-            if (!string.Equals(config["Auth:Provider"], "none", StringComparison.Ordinal))
+            var provider = config["Auth:Provider"];
+            if (!string.Equals(provider, "none", StringComparison.Ordinal)
+                && !string.Equals(provider, "local", StringComparison.Ordinal))
                 return Results.NotFound();
             if (string.IsNullOrWhiteSpace(req.Email))
                 return Results.BadRequest(new { error = "email_required" });
