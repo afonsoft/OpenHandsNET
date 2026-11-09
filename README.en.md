@@ -1,5 +1,6 @@
 # OpenHandsNET
 
+[![version](https://img.shields.io/badge/version-0.1.0--beta.1-orange)](https://github.com/afonsoft/OpenHandsNET/releases)
 [![ci](https://github.com/afonsoft/OpenHandsNET/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/afonsoft/OpenHandsNET/actions/workflows/ci.yml)
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=afonsoft_OpenHandsNET&metric=alert_status)](https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main)
 [![Maintainability](https://sonarcloud.io/api/project_badges/measure?project=afonsoft_OpenHandsNET&metric=sqale_rating)](https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main)
@@ -111,13 +112,21 @@ Full installation guides:
 
 ## Screenshots
 
-| Home | Settings | Automations |
+| Home | Conversation (real agent run) | Sign in |
 |---|---|---|
-| ![home](docs/images/app-home.png) | ![settings](docs/images/app-settings.png) | ![automations](docs/images/app-automations.png) |
+| ![home](docs/images/app-home.png) | ![conversation](docs/images/conversation.png) | ![auth](docs/images/auth.png) |
 
-| Admin | Live sandbox desktop (noVNC — SPEC-113) |
-|---|---|
-| ![admin](docs/images/admin-usage.png) | ![desktop](docs/images/desktop-novnc.png) |
+| Settings | Skills and MCP | Automations |
+|---|---|---|
+| ![settings](docs/images/settings.png) | ![settings-mcp](docs/images/settings-mcp.png) | ![automations](docs/images/app-automations.png) |
+
+| Admin | Users | Audit | Security |
+|---|---|---|---|
+| ![admin](docs/images/admin.png) | ![users](docs/images/admin-users.png) | ![audit](docs/images/admin-audit.png) | ![security](docs/images/admin-security.png) |
+
+| Live sandbox desktop (noVNC — SPEC-113) |
+|---|
+| ![desktop](docs/images/desktop-novnc.png) |
 
 ## Repository layout
 

@@ -18,6 +18,16 @@
             <Icon Name="chevron-left" Size="16" />
         </a>
         <span class="title">@(State.Conversation?.Title ?? L["common.loading"])</span>
+        @* SPEC-135 RF-002: badge de proveniência em conversa-filha. *@
+        @if (State.Conversation?.ParentConversationId is { } parentId)
+        {
+            <a class="badge fork-badge" href="/conversations/@parentId"
+               data-kind="fork"
+               title="@L["conv.forked_from_hint"]">
+                <Icon Name="fork" Size="11" />
+                @L["conv.forked_from"]
+            </a>
+        }
         @if (State.Conversation?.SelectedRepository is { } repo)
         {
             <button class="repo repo-btn" title="@repo — diff"
@@ -50,6 +60,28 @@
                 aria-label="@L["conv.share"]" @onclick="OnShareAsync">
             <Icon Name="external" Size="15" />
         </button>
+        @* SPEC-135 RF-002/004: overflow menu — Fork + Desfazer turno. *@
+        <button class="icon-btn" title="@L["conv.more"]"
+                aria-label="@L["conv.more"]"
+                aria-expanded="@_overflowMenu"
+                @onclick="() => _overflowMenu = !_overflowMenu">
+            <Icon Name="dots" Size="15" />
+        </button>
+        @if (_overflowMenu)
+        {
+            <div class="sb-menu-scrim" @onclick="() => _overflowMenu = false"></div>
+            <div class="menu sb-menu topbar-menu" role="menu">
+                <button class="menu-item" role="menuitem"
+                        @onclick="OnForkAsync">
+                    <Icon Name="fork" Size="13" /> @L["conv.fork"]
+                </button>
+                <button class="menu-item" role="menuitem"
+                        disabled="@IsRunActive(State.ExecutionStatus)"
+                        @onclick="OnUndoAsync">
+                    <Icon Name="undo" Size="13" /> @L["conv.undo_turn"]
+                </button>
+            </div>
+        }
         <button class="icon-btn" title="@L["conv.download"]"
                 aria-label="@L["conv.download"]" @onclick="OnDownloadAsync">
             <Icon Name="download" Size="15" />
@@ -133,6 +165,7 @@
     [Parameter] public string Id { get; set; } = "";
 
     private string _tab = "terminal";
+    private bool _overflowMenu;
     private IReadOnlyList<OpenHandsNetApiClient.SurfaceItem> _surfaces = [];
 
     private static readonly (string Tab, string Label)[] _tabs =
@@ -255,6 +288,57 @@
         catch (Exception ex)
         {
             Toasts.Error(L.T("conv.share_failed", ("error", ex.Message)));
+        }
+    }
+
+    /// <summary>
+    /// SPEC-135 RF-002: fork — navega para a conversa-filha (boot via
+    /// start-task dela; a página responde a IsRunActive=409 do servidor).
+    /// </summary>
+    private async Task OnForkAsync()
+    {
+        _overflowMenu = false;
+        try
+        {
+            var fork = await Api.ForkConversationAsync(Id);
+            Toasts.Success(L["conv.fork_started"]);
+            Nav.NavigateTo($"/conversations/{fork.Id}");
+        }
+        catch (HttpRequestException ex)
+        {
+            Toasts.Error(L.T("conv.fork_failed", ("error", ex.Message)));
+        }
+    }
+
+    /// <summary>
+    /// SPEC-135 RF-004: undo do último turno — confirmação perigosa e
+    /// reload do stream (events truncados somem, arquivos revertidos).
+    /// </summary>
+    private async Task OnUndoAsync()
+    {
+        _overflowMenu = false;
+        if (!await Dialogs.ConfirmAsync(L["conv.undo_confirm"], danger: true))
+        {
+            return;
+        }
+
+        try
+        {
+            var result = await Api.UndoConversationAsync(Id);
+            if (result is null)
+            {
+                Toasts.Info(L["conv.undo_no_turn"]);
+            }
+            else
+            {
+                Toasts.Success(L.T("conv.undo_done",
+                    ("n", result.TruncatedEvents.ToString())));
+                await State.OpenAsync(Id);
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            Toasts.Error(L.T("conv.undo_failed", ("error", ex.Message)));
         }
     }
 

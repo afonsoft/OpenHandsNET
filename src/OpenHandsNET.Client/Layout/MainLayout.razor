@@ -86,6 +86,10 @@
                                         @onclick="() => CopyConvLinkAsync(c.Id)">
                                     <Icon Name="copy" Size="13" /> @L["sidebar.copy_link"]
                                 </button>
+                                <button class="menu-item" role="menuitem"
+                                        @onclick="() => ForkConvAsync(c.Id)">
+                                    <Icon Name="fork" Size="13" /> @L["conv.fork"]
+                                </button>
                                 <button class="menu-item danger" role="menuitem"
                                         @onclick="() => DeleteConvAsync(c.Id)">
                                     <Icon Name="trash" Size="13" /> @L["sidebar.delete"]
@@ -267,6 +271,19 @@
                 $"{Nav.BaseUri.TrimEnd('/')}/conversations/{id}");
         }
         catch (Exception) { /* clipboard indisponível */ }
+    }
+
+    /// <summary>SPEC-135 RF-002: fork da conversa pela sidebar —
+    /// navega para a filha (boot via start-task dela).</summary>
+    private async Task ForkConvAsync(string id)
+    {
+        _menuFor = null;
+        try
+        {
+            var fork = await Api.ForkConversationAsync(id);
+            Nav.NavigateTo($"/conversations/{fork.Id}");
+        }
+        catch (Exception) { /* 409 run ativa / offline */ }
     }
 
     private async Task DeleteConvAsync(string id)

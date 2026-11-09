@@ -31,9 +31,15 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
     ASPNETCORE_URLS=http://+:8080 \
     ASPNETCORE_ENVIRONMENT=Production \
     OPENHANDSNET_Database__ConnectionString="Data Source=/app/data/openhandsnet.db"
+# SPEC-131: servidores MCP stdio rodam via `docker exec -i` no container
+# do sandbox — a imagem do app precisa do cliente docker (só o binário;
+# o engine é acessado pelo socket montado, via Docker.DotNet ou CLI).
+ARG DOCKER_CLI_VERSION=27.5.1
 RUN apt-get update && apt-get install -y --no-install-recommends curl && \
     /app/.playwright/node/*/node /app/.playwright/package/cli.js \
       install --with-deps chromium && \
+    curl -fsSL "https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_CLI_VERSION}.tgz" \
+      | tar xz --strip-components=1 -C /usr/local/bin docker/docker && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
     mkdir -p /app/data /workspace && \
     groupadd -r openhandsnet && useradd -r -g openhandsnet openhandsnet && \

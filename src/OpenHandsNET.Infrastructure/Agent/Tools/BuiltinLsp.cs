@@ -8,7 +8,7 @@ namespace OpenHandsNET.Infrastructure.Agent.Tools;
 /// <summary>
 /// SPEC-122: suíte <c>lsp_*</c>×6 — code intelligence dentro do sandbox
 /// via bridge Python (<see cref="BridgeScript"/> escrito em
-/// <c>/tmp/ohn-lsp/bridge.py</c>). O bridge spawna o language server
+/// <c>/home/openhands/.local/state/ohn/lsp/bridge.py</c>). O bridge spawna o language server
 /// da linguagem (one-shot por chamada: init → didOpen → request →
 /// shutdown), imprime o JSON da resposta e sai — transporte
 /// <see cref="ISandboxExecutor.ExecAsync"/>, nada roda no host.
@@ -21,9 +21,9 @@ public static class BuiltinLsp
     private const string Character = "character";
 
     private const string Workspace = "/workspace/repo";
-    private const string BridgePath = "/tmp/ohn-lsp/bridge.py";
-    private const string CallPath = "/tmp/ohn-lsp/call.py";
-    private const string BridgeDir = "/tmp/ohn-lsp";
+    private const string BridgePath = "/home/openhands/.local/state/ohn/lsp/bridge.py";
+    private const string CallPath = "/home/openhands/.local/state/ohn/lsp/call.py";
+    private const string BridgeDir = "/home/openhands/.local/state/ohn/lsp";
     private const int CapBytes = 24 * 1024;
     private static readonly TimeSpan LspTimeout = TimeSpan.FromSeconds(45);
 
@@ -471,13 +471,13 @@ def run_op(proc, file_uri, op, pos, query):
     return wait_response(proc, 1)
 
 # ---- SPEC-126: modo serve — daemon residente por sandbox ----
-# Unix socket /tmp/ohn-lsp/bridge.sock; uma conexão por request
+# Unix socket /home/openhands/.local/state/ohn/lsp/bridge.sock; uma conexão por request
 # (serialização natural). Servidores LSP ficam quentes por linguagem;
 # arquivos já abertos recebem didChange (versão incremental).
 # Idle > IDLE_TTL_S → encerra (o próximo call reinicia sob demanda).
 
 IDLE_TTL_S = 600
-SOCK = "/tmp/ohn-lsp/bridge.sock"
+SOCK = "/home/openhands/.local/state/ohn/lsp/bridge.sock"
 _servers = {}   # ext -> Popen
 _opened = {}    # ext -> {uri: version}
 _reqid = [1]
@@ -614,7 +614,7 @@ import socket, sys
 try:
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     s.settimeout(45)
-    s.connect("/tmp/ohn-lsp/bridge.sock")
+    s.connect("/home/openhands/.local/state/ohn/lsp/bridge.sock")
     s.sendall(sys.argv[1].encode() + b"\n")
     s.shutdown(socket.SHUT_WR)
     out = b""

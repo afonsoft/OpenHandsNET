@@ -190,3 +190,4 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | 136 | beta-nav-visual-polish — nav órfã, fontes, ícones | PR #374 · #370 |
 | 137 | beta-release-housekeeping — checklist, dead code, docs | PR #372 · #371 |
 | 134 | beta-byok — user LLM keys, encrypted store, precedence | PR #377 (+#378) · #368 |
+| 135 | beta-conversation-ux — fork, turn undo, diff hunk revert | PR #384 · #369 |

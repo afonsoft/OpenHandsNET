@@ -108,7 +108,7 @@ public sealed class ConversationRecord : IOrgScoped
         Pinned, CreatedAt, UpdatedAt, CreatedByUserId, ConfirmationMode,
         SandboxProfile, NeedsAttentionKind,
         PullRequestUrl, PullRequestNumber, PullRequestState,
-        TicketKind, TicketId, TicketUrl);
+        TicketKind, TicketId, TicketUrl, ParentConversationId);
 }
 
 /// <summary>Persisted start-task row.</summary>

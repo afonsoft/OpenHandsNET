@@ -725,6 +725,10 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("bigint")
                         .HasColumnName("timestamp_ticks");
 
+                    b.Property<long?>("TruncatedAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("truncated_at_ticks");
+
                     b.HasKey("Id")
                         .HasName("pk_events");
 

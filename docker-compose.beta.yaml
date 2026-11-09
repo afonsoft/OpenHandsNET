@@ -22,12 +22,23 @@ services:
     environment:
       - OPENHANDSNET_Database__ConnectionString=Data Source=/app/data/openhandsnet.db
       - OPENHANDSNET_Sandbox__DockerSocketMount=true
+      # SPEC-36: rate limit ligado por default no beta (single-user local
+      # pode ser exposto — IP rules do SPEC-59 já são always-on). Ajuste
+      # ou zere via .env se quiser desligar.
+      - OPENHANDSNET_RateLimit__RequestsPerMinute=120
+      - OPENHANDSNET_RateLimit__ReadPerMinute=600
+      - OPENHANDSNET_RateLimit__WritePerMinute=120
     ports:
       - "${OPENHANDSNET_PORT:-3032}:8080"
     volumes:
       - openhandsnet-data:/app/data
       - openhandsnet-workspace:/workspace
       - /var/run/docker.sock:/var/run/docker.sock
+    # O app roda como uid 999 (openhandsnet) — precisa do gid do grupo
+    # docker do host para falar no socket montado. Override via
+    # `DOCKER_GID=$(stat -c %g /var/run/docker.sock) docker compose ...`.
+    group_add:
+      - "${DOCKER_GID:-998}"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/v1/health"]

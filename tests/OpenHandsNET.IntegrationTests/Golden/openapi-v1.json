@@ -525,6 +525,24 @@
         ],
         "type": "object"
       },
+      "ForkConversationRequest": {
+        "description": "SPEC-135 RF-001: body do fork \u2014 corte opcional por evento.",
+        "properties": {
+          "at_event_id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "type": "object"
+      },
       "GitCommitRequest": {
         "properties": {
           "files": {
@@ -1134,6 +1152,35 @@
         "required": [
           "from",
           "to"
+        ],
+        "type": "object"
+      },
+      "RevertHunksBody": {
+        "properties": {
+          "hunk_indexes": {
+            "items": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "path": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "path",
+          "hunk_indexes"
         ],
         "type": "object"
       },
@@ -3775,6 +3822,46 @@
         ]
       }
     },
+    "/api/v1/app-conversations/{id}/files/revert-hunks": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevertHunksBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "POST /api/v1/app-conversations/{id:guid}/files/revert-hunks",
+        "tags": [
+          "Git"
+        ]
+      }
+    },
     "/api/v1/app-conversations/{id}/files/search": {
       "get": {
         "parameters": [
@@ -3816,6 +3903,46 @@
         "summary": "GET /api/v1/app-conversations/{id:guid}/files/search",
         "tags": [
           "Git"
+        ]
+      }
+    },
+    "/api/v1/app-conversations/{id}/fork": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForkConversationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "POST /api/v1/app-conversations/{id:guid}/fork",
+        "tags": [
+          "Conversations"
         ]
       }
     },
@@ -4550,6 +4677,36 @@
           }
         },
         "summary": "GET /api/v1/app-conversations/{id:guid}/tools",
+        "tags": [
+          "Conversations"
+        ]
+      }
+    },
+    "/api/v1/app-conversations/{id}/undo": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "POST /api/v1/app-conversations/{id:guid}/undo",
         "tags": [
           "Conversations"
         ]
