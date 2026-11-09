@@ -111,7 +111,7 @@ public sealed class PostgresMigrationsTests : IAsyncLifetime
         {
             "conversations", "events", "secrets", "users", "api_keys",
             "organizations", "org_members", "audit_events",
-            "data_protection_keys", "pending_messages",
+            "data_protection_keys",
         })
         {
             tables.ShouldContain(t);

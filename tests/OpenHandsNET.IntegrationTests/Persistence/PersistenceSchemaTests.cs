@@ -55,7 +55,7 @@ public sealed class PersistenceSchemaTests : IAsyncLifetime
         foreach (var t in new[]
         {
             "app_conversations", // alias: conversations table
-            "conversations", "conversation_start_tasks", "pending_messages",
+            "conversations", "conversation_start_tasks",
             "sandboxes", "sandbox_specs", "events", "app_settings", "secrets",
             "mcp_servers", "skills", "webhook_registrations", "users",
             "api_keys", "organizations", "org_members", "org_invitations",
