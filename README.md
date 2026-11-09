@@ -122,13 +122,21 @@ Guias completos de instalação:
 
 ## Screenshots
 
-| Home | Configurações | Automações |
+| Home | Conversa (run real do agente) | Autenticação |
 |---|---|---|
-| ![home](docs/images/app-home.png) | ![settings](docs/images/app-settings.png) | ![automations](docs/images/app-automations.png) |
+| ![home](docs/images/app-home.png) | ![conversation](docs/images/conversation.png) | ![auth](docs/images/auth.png) |
 
-| Admin | Desktop ao vivo do sandbox (noVNC — SPEC-113) |
-|---|---|
-| ![admin](docs/images/admin-usage.png) | ![desktop](docs/images/desktop-novnc.png) |
+| Configurações | Skills e MCP | Automações |
+|---|---|---|
+| ![settings](docs/images/settings.png) | ![settings-mcp](docs/images/settings-mcp.png) | ![automations](docs/images/app-automations.png) |
+
+| Admin | Usuários | Auditoria | Segurança |
+|---|---|---|---|
+| ![admin](docs/images/admin.png) | ![users](docs/images/admin-users.png) | ![audit](docs/images/admin-audit.png) | ![security](docs/images/admin-security.png) |
+
+| Desktop ao vivo do sandbox (noVNC — SPEC-113) |
+|---|
+| ![desktop](docs/images/desktop-novnc.png) |
 
 ## Layout do repositório
 

@@ -31,7 +31,9 @@ else
             if (_url is { } u)
             {
                 var sep = u.Contains('?') ? "&" : "?";
-                _frameSrc = $"{u}vnc.html{sep}autoconnect=true&resize=scale&reconnect=true";
+                // path=websockify: senza di esso noVNC attacca il path WS
+                // alla query dell'iframe → handshake fallisce (200 vs 101).
+                _frameSrc = $"{u}vnc.html{sep}autoconnect=true&resize=scale&reconnect=true&path={u.Trim('/')}/websockify";
             }
         }
         catch { _url = null; }
