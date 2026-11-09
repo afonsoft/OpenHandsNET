@@ -158,7 +158,7 @@ window.ohn.codeBlocks = (function () {
 			if (navigator.clipboard) {
 				p = navigator.clipboard.writeText(text);
 			}
-			if (p && typeof p.then === 'function') {
+			if (p !== undefined && p !== null && typeof p.then === 'function') {
 				p.then(function () { done(true); }, fallback);
 			} else {
 				fallback();

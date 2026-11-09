@@ -165,7 +165,8 @@ public static class BuiltinFileOps
                 ? Math.Clamp(s.GetInt32(), 0, 8) : 1;
             var reverse = args.TryGetProperty("reverse", out var rv)
                 && rv.ValueKind == JsonValueKind.True;
-            var tmp = $"/tmp/.ohn-patch-{Guid.NewGuid():N}.diff";
+            var tmp = "/home/openhands/.local/state/ohn/patch-"
+                + $"{Guid.NewGuid():N}.diff";
             await ctx.Executor.WriteFileAsync(ctx.Sandbox, tmp, patch, ct);
             var flags = $"-p{strip}{(reverse ? " -R" : "")} --verbose";
             var cmd = $"cd /workspace/repo && "

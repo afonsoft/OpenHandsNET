@@ -65,7 +65,7 @@ ARG PLAYWRIGHT_NPM_VERSION=1.64.1
 ARG CHROME_DEVTOOLS_MCP_VERSION=1.12.0
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ohn/ms-playwright \
     PUPPETEER_SKIP_DOWNLOAD=1
-RUN npm install -g "playwright@${PLAYWRIGHT_NPM_VERSION}" \
+RUN npm install -g --ignore-scripts "playwright@${PLAYWRIGHT_NPM_VERSION}" \
         "chrome-devtools-mcp@${CHROME_DEVTOOLS_MCP_VERSION}" \
     && playwright install --with-deps chromium \
     && chrome_bin="$(find "$PLAYWRIGHT_BROWSERS_PATH" -name chrome -type f | sort | head -1)" \
