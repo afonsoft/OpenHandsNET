@@ -118,7 +118,7 @@ publicada na conversa de origem. SPECs aprovadas 2026-11-08 → issues + impleme
 |---|---|---|---|
 | 132 | beta-auth-ux | Delivered · PR #375 | #366 |
 | 133 | web-search-tool | Delivered · PR #373 | #367 |
-| 134 | beta-byok | Approved | beta audit (core gap #4) |
+| 134 | beta-byok | Delivered · PR #377 | #368 |
 | 135 | beta-conversation-ux | Approved | beta audit (core gaps #2/#5/#3) |
 | 136 | beta-nav-visual-polish | Delivered · PR #374 | #370 |
 | 137 | beta-release-housekeeping | Delivered · PR #372 | #371 |
