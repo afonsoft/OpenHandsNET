@@ -41,6 +41,10 @@ public static class GitEndpoints
         conv.MapPost("/{id:guid}/git/commit", GitCommitAsync);
         conv.MapPost("/{id:guid}/exec", ExecCommandAsync);
 
+        // SPEC-135 RF-005: reverse-apply de hunks do diff por índice —
+        // hunks que falham voltam em conflicts (409) sem abortar os demais.
+        conv.MapPost("/{id:guid}/files/revert-hunks", RevertHunksAsync);
+
         app.MapGet("/api/v1/git/credentials", async (
             OpenHandsNET.Infrastructure.Git.GitCredentialProvider store,
             OpenHandsNET.Application.Identity.ICurrentUserAccessor current,
@@ -696,6 +700,60 @@ public static class GitEndpoints
                 ?? OpenHandsNET.Infrastructure.Git.GitCredentialProvider.SystemOwner,
             ct);
         return Results.NoContent();
+    }
+
+    /// <summary>SPEC-135 RF-005: corpo do revert-hunks.</summary>
+    private sealed record RevertHunksBody(
+        string? Path, IReadOnlyList<int>? HunkIndexes);
+
+    /// <summary>
+    /// SPEC-135 RF-005: <c>files/revert-hunks</c> — delega o reverse-apply
+    /// por hunk ao <see cref="IConversationUxService"/> (guards de
+    /// sandbox/path/tracked internos).
+    /// </summary>
+    private static async Task<IResult> RevertHunksAsync(
+        Guid id, RevertHunksBody body,
+        IAppConversationService svc, IConversationUxService ux,
+        HttpContext http, CancellationToken ct)
+    {
+        var sb = await SandboxOfAsync(id, svc, http, ct);
+        if (sb is null)
+        {
+            return OpenHandsNetProblemFactory.Create(
+                http, 409, OpenHandsNetProblemFactory.SandboxNotRunning);
+        }
+
+        var (result, error) = await ux.RevertHunksAsync(
+            sb.Id, body.Path ?? "", body.HunkIndexes ?? [], ct);
+        if (error is not null)
+        {
+            return error switch
+            {
+                RevertHunksError.NotFound
+                    => OpenHandsNetProblemFactory.Create(
+                        http, 404, "sandbox not found"),
+                RevertHunksError.SandboxNotRunning
+                    => OpenHandsNetProblemFactory.Create(
+                        http, 409, OpenHandsNetProblemFactory.SandboxNotRunning),
+                RevertHunksError.InvalidPath
+                    => OpenHandsNetProblemFactory.Create(
+                        http, 400, PathMustStayUnderWorkspace),
+                RevertHunksError.NotTracked
+                    => OpenHandsNetProblemFactory.Create(
+                        http, 400, "file not tracked by the workdir git"),
+                _ => OpenHandsNetProblemFactory.Create(
+                    http, 502, "sandbox exec failed"),
+            };
+        }
+
+        // 409 com applied+conflicts quando algum hunk falha (spec RF-005).
+        return result!.Conflicts.Count > 0
+            ? Results.Json(new
+            {
+                applied = result.Applied,
+                conflicts = result.Conflicts,
+            }, statusCode: 409)
+            : Results.Ok(new { applied = result.Applied });
     }
 
     private static async Task<Domain.Sandbox.Sandbox?> SandboxOfAsync(

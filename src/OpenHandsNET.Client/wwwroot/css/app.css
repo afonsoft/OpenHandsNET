@@ -200,14 +200,29 @@ pre, code { font-family: var(--ohn-mono); font-size: 12.5px; }
 .badge.error, .badge.stopped { color: var(--ohn-red); border-color: var(--ohn-red); }
 .badge.finished, .badge.ready { color: var(--ohn-green); }
 .badge.paused, .badge.idle { color: var(--ohn-fg-dim); }
+/* SPEC-135: badge de proveniência (fork) na topbar — link para a origem. */
+.badge.fork-badge {
+    color: var(--ohn-accent); border-color: var(--ohn-accent-soft);
+    text-transform: none; letter-spacing: 0; text-decoration: none;
+    max-width: 160px; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; flex: none;
+}
+.badge.fork-badge:hover { border-color: var(--ohn-accent); }
 
 /* ---------- conversation page ---------- */
 .conv-page { display: flex; flex-direction: column; height: 100%; }
 .topbar {
+    position: relative;
     flex: none; display: flex; align-items: center; gap: 14px;
     padding: 8px 16px; background: var(--ohn-bg-alt);
     border-bottom: 1px solid var(--ohn-border); min-height: 46px;
 }
+/* SPEC-135: overflow menu da topbar (Fork / Desfazer turno). */
+.topbar-menu {
+    position: absolute; right: 8px; top: calc(100% + 4px);
+    min-width: 180px; z-index: 41;
+}
+.topbar-menu .menu-item[disabled] { opacity: .45; cursor: default; }
 .topbar .title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .topbar .repo { color: var(--ohn-fg-dim); font-size: 12px; font-family: var(--ohn-mono); }
 .topbar .tokens { color: var(--ohn-fg-dim); font-size: 12px; font-family: var(--ohn-mono); }
@@ -394,6 +409,20 @@ details.ev-details summary { cursor: pointer; color: var(--ohn-fg-dim); font-siz
 .diff-tab-list { display: flex; gap: 4px; padding: 4px 8px; overflow-x: auto; border-bottom: 1px solid var(--ohn-border); flex: none; }
 .diff-tab-list button { font-family: var(--ohn-mono); font-size: 12px; padding: 3px 8px; border-radius: 4px; }
 .diff-tab-list button.sel { outline: 1px solid var(--ohn-accent); color: var(--ohn-fg); }
+/* SPEC-135 RF-006: strip de hunks por arquivo + revert/comment slot. */
+.hunk-strip {
+    display: flex; gap: 6px; padding: 4px 10px; flex-wrap: wrap;
+    align-items: center; border-bottom: 1px solid var(--ohn-border);
+    flex: none;
+}
+.hunk-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-family: var(--ohn-mono); padding: 2px 8px;
+    border-radius: 4px; border: 1px solid var(--ohn-border);
+    color: var(--ohn-fg-dim); cursor: pointer;
+}
+.hunk-btn:not([disabled]):hover { color: var(--ohn-fg); border-color: var(--ohn-accent); }
+.hunk-btn[disabled] { opacity: .5; cursor: default; }
 
 /* ---------- SPEC-26: icon system ---------- */
 .ohn-icon { display: inline-block; vertical-align: -0.15em; flex: none; }

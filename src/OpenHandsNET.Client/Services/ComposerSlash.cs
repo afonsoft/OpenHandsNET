@@ -22,6 +22,8 @@ public static class ComposerSlash
         Compact,
         /// <summary>Nova conversa (navega p/ home).</summary>
         New,
+        /// <summary>SPEC-135 RF-004: desfaz o último turno (POST undo).</summary>
+        Undo,
         /// <summary>Skill: expande o template p/ texto no composer.</summary>
         Skill,
     }
@@ -34,6 +36,7 @@ public static class ComposerSlash
         new("compact", "Compacta o contexto da conversa",
             CommandKind.Compact),
         new("new", "Nova conversa", CommandKind.New),
+        new("undo", "Desfaz o último turno", CommandKind.Undo),
     ];
 
     /// <summary>

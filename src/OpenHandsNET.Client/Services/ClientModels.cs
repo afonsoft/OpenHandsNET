@@ -96,6 +96,8 @@ public sealed class ConversationItem
     public bool ConfirmationMode { get; init; }
     /// <summary>SPEC-44: attention pendente (null|confirmation|question|failed).</summary>
     public string? NeedsAttention { get; init; }
+    /// <summary>SPEC-135: origem do fork (null = conversa raiz).</summary>
+    public string? ParentConversationId { get; init; }
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset UpdatedAt { get; init; }
 }
@@ -189,3 +191,13 @@ public sealed record AutomationRunItem(
     Guid Id, Guid AutomationId, DateTimeOffset StartedAt,
     DateTimeOffset? FinishedAt, string Status, Guid? ConversationId,
     string? Error);
+/// <summary>SPEC-135 RF-001: resultado do POST .../fork.</summary>
+public sealed record ForkConversationResult(string Id, string StartTaskId);
+
+/// <summary>SPEC-135 RF-003: resultado do POST .../undo.</summary>
+public sealed record UndoResult(
+    int TruncatedEvents, IReadOnlyList<string> FilesReverted);
+
+/// <summary>SPEC-135 RF-005: resultado do POST .../files/revert-hunks.</summary>
+public sealed record RevertHunksResult(
+    IReadOnlyList<int> Applied, IReadOnlyList<int> Conflicts);

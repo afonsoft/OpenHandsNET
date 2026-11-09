@@ -289,6 +289,9 @@ public static class DependencyInjection
                 OpenHandsNET.Infrastructure.Conversations.StartTaskService>());
         services.AddScoped<OpenHandsNET.Application.Conversations.IAppConversationService,
             OpenHandsNET.Infrastructure.Conversations.AppConversationService>();
+        // SPEC-135: fork + turn undo + hunk revert.
+        services.AddScoped<OpenHandsNET.Application.Conversations.IConversationUxService,
+            OpenHandsNET.Infrastructure.Conversations.ConversationUxService>();
         services.AddHostedService<
             OpenHandsNET.Infrastructure.Conversations.ConversationStartWorker>();
 
