@@ -2065,6 +2065,44 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                     b.ToTable("usage_tiers", (string)null);
                 });
 
+            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.UserLlmKeyRecord", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasColumnType("text")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("Provider")
+                        .HasColumnType("text")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("BaseUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("base_url");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("KeyCiphertext")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("key_ciphertext");
+
+                    b.Property<string>("Nonce")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("nonce");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("UserId", "Provider")
+                        .HasName("pk_user_llm_keys");
+
+                    b.ToTable("user_llm_keys", (string)null);
+                });
+
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.UserRecord", b =>
                 {
                     b.Property<Guid>("Id")

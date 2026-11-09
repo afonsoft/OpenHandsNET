@@ -1777,6 +1777,25 @@
         ],
         "type": "object"
       },
+      "UserLlmKeyUpsertRequest": {
+        "description": "BYOK upsert body (SPEC-134) \u2014 key \u002B base_url opcional.",
+        "properties": {
+          "base_url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "key": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "base_url"
+        ],
+        "type": "object"
+      },
       "WebhookEventRequest": {
         "description": "Webhook event injection body.",
         "properties": {
@@ -5712,6 +5731,25 @@
         ]
       }
     },
+    "/api/v1/keys/llm": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/keys/llm",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
     "/api/v1/keys/llm/byor": {
       "delete": {
         "responses": {
@@ -5865,6 +5903,120 @@
           }
         },
         "summary": "POST /api/v1/keys/llm/byor/refresh",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/keys/llm/providers": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/keys/llm/providers",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/keys/llm/{provider}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "DELETE /api/v1/keys/llm/{provider}",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      },
+      "put": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserLlmKeyUpsertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "PUT /api/v1/keys/llm/{provider}",
+        "tags": [
+          "OpenHandsNET.Api"
+        ]
+      }
+    },
+    "/api/v1/keys/llm/{provider}/test": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "POST /api/v1/keys/llm/{provider}/test",
         "tags": [
           "OpenHandsNET.Api"
         ]

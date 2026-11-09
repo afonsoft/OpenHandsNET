@@ -303,14 +303,27 @@ public sealed class AgentRunner(
             model = selection.Model;
         }
 
+        // SPEC-134 RF-002: BYOK — resolve primeiro: a key do dono (match
+        // do provider do modelo selecionado) precede BYOR e config
+        // global; key_source vai no ledger llm_route.
+        UserLlmKeyCallContext? userKeyCtx = null;
+        if (conv.CreatedByUserId is { } keyUser
+            && services.GetService<IUserLlmKeyService>() is { } userKeys)
+        {
+            userKeyCtx = await userKeys.ResolveAsync(
+                keyUser, selection?.Provider, ct);
+        }
+
         // SPEC-50 RF-003: BYOR — resolvido uma vez por run (mesmo padrão
         // da security policy). byor=strict exige que o modelo esteja na
         // lista permitted do proxy; violação → diagnostic + run Error
-        // (fail-closed, nunca cai para o provider local).
+        // (fail-closed, nunca cai para o provider local). Com BYOK do
+        // usuário ativo o BYOR nem é consultado (precedência SPEC-134).
         var byor = services.GetService<IByorKeyService>();
         var proxyOpt = services.GetService<IOptions<LlmProxyOptions>>()?.Value;
         ByorCallContext? byorCtx = null;
-        if (byor is { Enabled: true } && conv.CreatedByUserId is { } byorUser)
+        if (userKeyCtx is null && byor is { Enabled: true }
+            && conv.CreatedByUserId is { } byorUser)
         {
             byorCtx = await byor.ResolveCallContextAsync(byorUser, ct);
             var permitted = await byor.PermittedModelsAsync(ct);
@@ -331,6 +344,10 @@ public sealed class AgentRunner(
                 return null;
             }
         }
+
+        var keySource = userKeyCtx is not null
+            ? "user"
+            : byorCtx is not null ? "byor" : "global";
 
         var routeWait = System.Diagnostics.Stopwatch.StartNew();
         return new LoopState
@@ -358,6 +375,8 @@ public sealed class AgentRunner(
             Bus = bus,
             Router = router,
             ByorCtx = byorCtx,
+            UserKeyCtx = userKeyCtx,
+            KeySource = keySource,
             History = history,
             Ids = ids,
             LastEventId = lastEventId,
@@ -446,6 +465,7 @@ public sealed class AgentRunner(
                                 role = "worker",
                                 attempt = st.Selection.Attempt,
                                 fallback_from = st.Selection.FallbackFrom,
+                                key_source = st.KeySource,
                             }, EventJson.Options),
                         }, CancellationToken.None);
                 }
@@ -596,7 +616,8 @@ public sealed class AgentRunner(
             llmSpan?.SetTag("model", st.Model);
             await foreach (var chunk in st.Llm.ChatStreamAsync(
                 request, toolSchemas,
-                new LlmOptions(Model: st.Model, Byor: st.ByorCtx), ct))
+                new LlmOptions(Model: st.Model, Byor: st.ByorCtx,
+                    UserKey: st.UserKeyCtx), ct))
             {
                 switch (chunk)
                 {
@@ -798,6 +819,7 @@ public sealed class AgentRunner(
                     role = "worker",
                     attempt = st.Selection.Attempt,
                     kind = lce.Kind.ToString().ToLowerInvariant(),
+                    key_source = st.KeySource,
                     latency_ms = (int)llmTimer.ElapsedMilliseconds,
                 }, EventJson.Options),
             }, CancellationToken.None);
@@ -1566,6 +1588,8 @@ public sealed class AgentRunner(
         public IAgentActivityBus? Bus { get; init; }
         public IModelRouter? Router { get; init; }
         public ByorCallContext? ByorCtx { get; init; }
+        public UserLlmKeyCallContext? UserKeyCtx { get; init; }
+        public string KeySource { get; init; } = "global";
         public required System.Diagnostics.Stopwatch RouteWait { get; init; }
 
         // Estado mutável carregado entre iterações.

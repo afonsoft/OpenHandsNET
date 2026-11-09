@@ -760,6 +760,65 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
             $"/api/v1/secrets/{Uri.EscapeDataString(name)}", ct))
             .EnsureSuccessStatusCode();
 
+    // ---- BYOK user LLM keys (SPEC-134) ------------------------------------
+
+    public sealed record UserLlmKeyInfoDto(
+        string Provider, string? MaskedKey, string? BaseUrl,
+        string? UpdatedAt);
+
+    public async Task<IReadOnlyList<UserLlmKeyInfoDto>> ListLlmKeysAsync(
+        CancellationToken ct = default)
+    {
+        var list = await http.GetFromJsonAsync<List<JsonElement>>(
+            "/api/v1/keys/llm", Json, ct);
+        return list?.Select(e => new UserLlmKeyInfoDto(
+                e.TryGetProperty("provider", out var p) ? p.GetString() ?? "" : "",
+                e.TryGetProperty("masked_key", out var m) ? m.GetString() : null,
+                e.TryGetProperty("base_url", out var b) ? b.GetString() : null,
+                e.TryGetProperty("updated_at", out var u) ? u.GetString() : null))
+            .ToList() ?? [];
+    }
+
+    public async Task<IReadOnlyList<JsonElement>> ListLlmKeyProvidersAsync(
+        CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<JsonElement>>(
+            "/api/v1/keys/llm/providers", Json, ct) ?? [];
+
+    public async Task<UserLlmKeyInfoDto?> PutLlmKeyAsync(
+        string provider, string key, string? baseUrl,
+        CancellationToken ct = default)
+    {
+        var resp = await http.PutAsJsonAsync(
+            $"/api/v1/keys/llm/{Uri.EscapeDataString(provider)}",
+            new { key, base_url = baseUrl }, Json, ct);
+        resp.EnsureSuccessStatusCode();
+        var e = await resp.Content.ReadFromJsonAsync<JsonElement>(Json, ct);
+        return new UserLlmKeyInfoDto(
+            e.TryGetProperty("provider", out var p) ? p.GetString() ?? "" : "",
+            e.TryGetProperty("masked_key", out var m) ? m.GetString() : null,
+            e.TryGetProperty("base_url", out var b) ? b.GetString() : null,
+            e.TryGetProperty("updated_at", out var u) ? u.GetString() : null);
+    }
+
+    public async Task DeleteLlmKeyAsync(
+        string provider, CancellationToken ct = default) =>
+        (await http.DeleteAsync(
+            $"/api/v1/keys/llm/{Uri.EscapeDataString(provider)}", ct))
+            .EnsureSuccessStatusCode();
+
+    public async Task<(bool Ok, string? Detail)> TestLlmKeyAsync(
+        string provider, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsync(
+            $"/api/v1/keys/llm/{Uri.EscapeDataString(provider)}/test",
+            null, ct);
+        var e = await resp.Content.ReadFromJsonAsync<JsonElement>(Json, ct);
+        var ok = e.TryGetProperty("ok", out var o) && o.GetBoolean();
+        var detail = e.TryGetProperty("detail", out var d)
+            ? d.GetString() : null;
+        return (ok, detail);
+    }
+
     // ---- mcp (SPEC-07) ----------------------------------------------------
 
     public Task<IReadOnlyList<JsonElement>> ListMcpServersAsync(

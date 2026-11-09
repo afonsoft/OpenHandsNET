@@ -499,5 +499,18 @@
   "user_menu.aria": "用户菜单",
   "user_menu.local_user": "本地用户",
   "user_menu.local_mode": "本地模式",
-  "user_menu.sign_out": "退出登录"
+  "user_menu.sign_out": "退出登录",
+  "settings.llmkeys.title": "LLM 密钥 (BYOK)",
+  "settings.llmkeys.hint": "使用您自己的提供商密钥 — 运行会优先于服务器默认值使用它。",
+  "settings.llmkeys.provider": "提供商",
+  "settings.llmkeys.key": "API 密钥",
+  "settings.llmkeys.saved": "密钥已保存。",
+  "settings.llmkeys.err": "操作失败 — 请检查输入值后重试。",
+  "settings.llmkeys.test": "测试 {{provider}} 密钥",
+  "settings.llmkeys.test_short": "测试",
+  "settings.llmkeys.test_ok": "{{provider}}：连接成功",
+  "settings.llmkeys.test_fail": "{{provider}}：{{detail}}",
+  "settings.llmkeys.remove": "删除 {{provider}} 密钥",
+  "settings.llmkeys.base_url": "Base URL",
+  "settings.llmkeys.key_ph": "sk-…"
 }

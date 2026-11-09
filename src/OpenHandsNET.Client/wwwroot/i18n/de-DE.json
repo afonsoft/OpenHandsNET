@@ -499,5 +499,18 @@
   "user_menu.aria": "Benutzermenü",
   "user_menu.local_user": "Lokaler Benutzer",
   "user_menu.local_mode": "Lokaler Modus",
-  "user_menu.sign_out": "Abmelden"
+  "user_menu.sign_out": "Abmelden",
+  "settings.llmkeys.title": "LLM-Schlüssel (BYOK)",
+  "settings.llmkeys.hint": "Eigenen Provider-Schlüssel hinterlegen — Runs nutzen ihn vor dem Server-Default.",
+  "settings.llmkeys.provider": "Provider",
+  "settings.llmkeys.key": "API-Schlüssel",
+  "settings.llmkeys.saved": "Schlüssel gespeichert.",
+  "settings.llmkeys.err": "Vorgang fehlgeschlagen — Werte prüfen und erneut versuchen.",
+  "settings.llmkeys.test": "{{{provider}}}-Schlüssel testen",
+  "settings.llmkeys.test_short": "Testen",
+  "settings.llmkeys.test_ok": "{{{provider}}}: Verbindung OK",
+  "settings.llmkeys.test_fail": "{{{provider}}}: {{{detail}}}",
+  "settings.llmkeys.remove": "{{{provider}}}-Schlüssel entfernen",
+  "settings.llmkeys.base_url": "Basis-URL",
+  "settings.llmkeys.key_ph": "sk-…"
 }

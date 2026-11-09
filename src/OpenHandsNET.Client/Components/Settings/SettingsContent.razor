@@ -103,6 +103,66 @@
                         <option value="readonly">readonly</option>
                     </select>
                 </div>
+                @* SPEC-134 RF-005: BYOK — provider keys do usuário. *@
+                <h4 class="llmkeys-title">@L["settings.llmkeys.title"]</h4>
+                <p class="sub" style="color:var(--ohn-fg-dim)">
+                    @L["settings.llmkeys.hint"]
+                </p>
+                <div class="field">
+                    <label>@L["settings.llmkeys.provider"]</label>
+                    <select aria-label="@L["settings.llmkeys.provider"]"
+                            value="@_lkProvider" @onchange="OnLkProviderChange">
+                        @foreach (var p in _lkProviders)
+                        {
+                            <option value="@p.Id">@p.Label</option>
+                        }
+                    </select>
+                </div>
+                <div class="field">
+                    <label>@L["settings.llmkeys.key"]</label>
+                    <input type="password" autocomplete="off"
+                           aria-label="@L["settings.llmkeys.key"]"
+                           placeholder="@L["settings.llmkeys.key_ph"]"
+                           @bind="_lkKey" @bind:event="oninput" />
+                </div>
+                @if (_lkRequiresBaseUrl)
+                {
+                    <div class="field">
+                        <label>@L["settings.llmkeys.base_url"]</label>
+                        <input aria-label="@L["settings.llmkeys.base_url"]"
+                               placeholder="https://…"
+                               @bind="_lkBaseUrl" @bind:event="oninput" />
+                    </div>
+                }
+                <div class="row" style="display:flex;gap:8px;margin-bottom:12px">
+                    <button class="primary" @onclick="SaveLlmKeyAsync"
+                            disabled="@(_lkBusy || string.IsNullOrWhiteSpace(_lkKey))">
+                        @L["common.save"]
+                    </button>
+                </div>
+                @if (_lkMessage is not null)
+                {
+                    <p class="llmkeys-msg @(_lkMessageOk ? "ok" : "err")">
+                        @_lkMessage
+                    </p>
+                }
+                @foreach (var k in _llmKeys)
+                {
+                    <div class="secret-row">
+                        <span class="name">@k.Provider · @k.MaskedKey</span>
+                        <button @onclick="() => TestLlmKeyAsync(k.Provider)"
+                                disabled="@_lkBusy"
+                                aria-label="@L.T("settings.llmkeys.test", ("provider", k.Provider))">
+                            @L["settings.llmkeys.test_short"]
+                        </button>
+                        <button class="danger"
+                                @onclick="() => DeleteLlmKeyAsync(k.Provider)"
+                                disabled="@_lkBusy"
+                                aria-label="@L.T("settings.llmkeys.remove", ("provider", k.Provider))">
+                            @L["common.delete"]
+                        </button>
+                    </div>
+                }
                 @* RF-004: SettingsSaveBar — sticky, só com dirty-state. *@
                 @if (_dirty)
                 {
@@ -158,6 +218,18 @@
     private string _secretValue = "";
     private bool _notifyBrowser;
     private List<string> _secrets = [];
+    private List<OpenHandsNetApiClient.UserLlmKeyInfoDto> _llmKeys = [];
+    private List<LkProvider> _lkProviders = [];
+    private string _lkProvider = "openai";
+    private string _lkKey = "";
+    private string _lkBaseUrl = "";
+    private bool _lkBusy;
+    private bool _lkRequiresBaseUrl;
+    private string? _lkMessage;
+    private bool _lkMessageOk;
+
+    private sealed record LkProvider(
+        string Id, string Label, bool RequiresBaseUrl);
 
     protected override async Task OnInitializedAsync()
     {
@@ -178,6 +250,99 @@
         catch { /* best-effort — falha tolerada */ }
         try { _secrets = (await Api.ListSecretsAsync()).ToList(); }
         catch { /* best-effort — falha tolerada */ }
+        await LoadLlmKeysAsync();
+    }
+
+    private async Task LoadLlmKeysAsync()
+    {
+        try
+        {
+            var providers = await Api.ListLlmKeyProvidersAsync();
+            _lkProviders = providers.Select(e => new LkProvider(
+                    e.TryGetProperty("id", out var i) ? i.GetString() ?? "" : "",
+                    e.TryGetProperty("label", out var l) ? l.GetString() ?? "" : "",
+                    e.TryGetProperty("requires_base_url", out var r)
+                        && r.GetBoolean()))
+                .Where(p => p.Id.Length > 0).ToList();
+            if (_lkProviders.Count == 0)
+            {
+                _lkProviders = [new LkProvider("openai", "OpenAI", false)];
+            }
+
+            _lkProvider = _lkProviders[0].Id;
+            _lkRequiresBaseUrl = _lkProviders[0].RequiresBaseUrl;
+            _llmKeys = (await Api.ListLlmKeysAsync()).ToList();
+        }
+        catch { /* BYOK opcional — falha tolerada */ }
+    }
+
+    private void OnLkProviderChange(ChangeEventArgs e)
+    {
+        _lkProvider = e.Value?.ToString() ?? "openai";
+        _lkRequiresBaseUrl = _lkProviders
+            .FirstOrDefault(p => p.Id == _lkProvider)?.RequiresBaseUrl
+            ?? false;
+        _lkMessage = null;
+    }
+
+    private async Task SaveLlmKeyAsync()
+    {
+        _lkBusy = true;
+        _lkMessage = null;
+        try
+        {
+            await Api.PutLlmKeyAsync(_lkProvider, _lkKey.Trim(),
+                string.IsNullOrWhiteSpace(_lkBaseUrl) ? null : _lkBaseUrl.Trim());
+            _lkKey = "";
+            _lkBaseUrl = "";
+            _llmKeys = (await Api.ListLlmKeysAsync()).ToList();
+            _lkMessageOk = true;
+            _lkMessage = L["settings.llmkeys.saved"];
+        }
+        catch (HttpRequestException)
+        {
+            _lkMessageOk = false;
+            _lkMessage = L["settings.llmkeys.err"];
+        }
+        finally { _lkBusy = false; }
+    }
+
+    private async Task DeleteLlmKeyAsync(string provider)
+    {
+        _lkBusy = true;
+        _lkMessage = null;
+        try
+        {
+            await Api.DeleteLlmKeyAsync(provider);
+            _llmKeys = _llmKeys.Where(k => k.Provider != provider).ToList();
+        }
+        catch (HttpRequestException)
+        {
+            _lkMessageOk = false;
+            _lkMessage = L["settings.llmkeys.err"];
+        }
+        finally { _lkBusy = false; }
+    }
+
+    private async Task TestLlmKeyAsync(string provider)
+    {
+        _lkBusy = true;
+        _lkMessage = null;
+        try
+        {
+            var (ok, detail) = await Api.TestLlmKeyAsync(provider);
+            _lkMessageOk = ok;
+            _lkMessage = ok
+                ? L.T("settings.llmkeys.test_ok", ("provider", provider))
+                : L.T("settings.llmkeys.test_fail",
+                    ("provider", provider), ("detail", detail ?? "?"));
+        }
+        catch (HttpRequestException)
+        {
+            _lkMessageOk = false;
+            _lkMessage = L["settings.llmkeys.err"];
+        }
+        finally { _lkBusy = false; }
     }
 
     private static string? GetStr(JsonElement el, string name) =>

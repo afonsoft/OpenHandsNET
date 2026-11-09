@@ -613,6 +613,21 @@ public static class DependencyInjection
                     .IDataProtectionProvider>(),
                 sp.GetService<Microsoft.Extensions.Caching.Distributed
                     .IDistributedCache>()));
+        // SPEC-134 RF-002: BYOK por usuário — CRUD + resolve por run
+        // (user → BYOR → global); DataProtection no mesmo padrão BYOR.
+        services.AddScoped<
+            OpenHandsNET.Application.Agent.IUserLlmKeyService>(sp =>
+            new OpenHandsNET.Infrastructure.Agent.Routing.UserLlmKeyService(
+                sp.GetRequiredService<OpenHandsNET.Infrastructure.Persistence
+                    .AppDbContext>(),
+                sp.GetRequiredService<Microsoft.AspNetCore.DataProtection
+                    .IDataProtectionProvider>(),
+                sp.GetRequiredService<System.Net.Http.IHttpClientFactory>(),
+                sp.GetRequiredService<Microsoft.Extensions.Caching.Memory
+                    .IMemoryCache>(),
+                sp.GetRequiredService<Microsoft.Extensions.Logging
+                    .ILogger<OpenHandsNET.Infrastructure.Agent.Routing
+                        .UserLlmKeyService>>()));
         // SPEC-33 RF-003: secret store criptografado (DataProtection) —
         // valores resolvem só na borda do sandbox.
         services.AddScoped<OpenHandsNET.Application.Contracts.ISecretStore,

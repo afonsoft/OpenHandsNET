@@ -1045,3 +1045,7 @@ details.ev-details summary { cursor: pointer; color: var(--ohn-fg-dim); font-siz
 .sidebar.collapsed .usermenu-pop { left: calc(100% + 8px); bottom: 0; }
 .avatar-initials { line-height: 1; letter-spacing: 0.02em; }
 .menu-sep { border-top: 1px solid; }
+.llmkeys-title { margin: 20px 0 4px; font-size: 13px; }
+.llmkeys-msg { font-size: 12px; margin: 4px 0 10px; }
+.llmkeys-msg.ok { color: var(--ohn-accent); }
+.llmkeys-msg.err { color: var(--ohn-danger, #e5534b); }
