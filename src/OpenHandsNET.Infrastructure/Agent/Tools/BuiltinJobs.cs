@@ -7,13 +7,13 @@ namespace OpenHandsNET.Infrastructure.Agent.Tools;
 /// <summary>
 /// SPEC-121: background-job tools dentro do sandbox (port do trio
 /// OWUIC <c>job_list/job_output/job_kill</c> + <c>job_run</c> para
-/// criar). Estado em <c>/tmp/ohn-jobs/{id}.{pid,log,cmd,exit}</c> —
+/// criar). Estado em <c>$HOME/.local/state/ohn/jobs/{id}.{pid,log,cmd,exit}</c> —
 /// nada roda no host, tudo via <see
 /// cref="Application.Sandbox.ISandboxExecutor.ExecAsync"/>.
 /// </summary>
 public static class BuiltinJobs
 {
-    private const string Dir = "/tmp/ohn-jobs";
+    private const string Dir = "/home/openhands/.local/state/ohn/jobs";
     private const int TailBytes = 16 * 1024;
 
     /// <summary>Inicia um comando em background (nohup) no workspace.</summary>
@@ -34,7 +34,7 @@ public static class BuiltinJobs
             var command = args.GetProperty("command").GetString()!;
             var name = Str(args, "name");
             var id = $"{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds():x}-{Guid.NewGuid():N}"[..20];
-            var cmd = $"mkdir -p {Dir} && cd /workspace/repo && "
+            var cmd = $"mkdir -p -m 700 {Dir} && cd /workspace/repo && "
                 + $"echo {Sh(command)} > {Dir}/{id}.cmd && "
                 + (name is not null ? $"echo {Sh(name)} > {Dir}/{id}.name && " : "")
                 + $"nohup bash -c {Sh(command)} > {Dir}/{id}.log 2>&1 & "

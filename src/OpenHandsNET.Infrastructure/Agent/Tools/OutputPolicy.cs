@@ -11,7 +11,7 @@ namespace OpenHandsNET.Infrastructure.Agent.Tools;
 /// SPEC-25 RF-005: central tool-result policy — per-tool output caps
 /// (<c>AgentLlm:ToolOutputCaps</c>), head+tail truncation with marker, and
 /// <c>artifact_ref</c>: truncated payloads land at
-/// <c>/tmp/ohn-artifacts/&lt;action-id&gt;.txt</c> in the workspace so the
+/// <c>$HOME/.local/state/ohn/artifacts/&lt;action-id&gt;.txt</c> in the workspace so the
 /// agent can <c>file_read</c> the rest and compaction can prune losslessly.
 /// </summary>
 public sealed class OutputPolicy(IOptions<AgentLlmOptions> options)
@@ -120,7 +120,8 @@ public sealed class OutputPolicy(IOptions<AgentLlmOptions> options)
         {
             try
             {
-                var artifact = $"/var/lib/ohn-ctx.Artifacts/{actionId}.txt";
+                var artifact = "/home/openhands/.local/state/ohn/artifacts/"
+                    + $"{actionId}.txt";
                 await ctx.Executor.WriteFileAsync(
                     ctx.Sandbox, artifact, full, ct);
                 mutated["artifact_path"] =
