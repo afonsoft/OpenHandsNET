@@ -1,9 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <Nullable>enable</Nullable>
-    <IsPackable>false</IsPackable>
-  </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="../OpenHandsNET.Domain/OpenHandsNET.Domain.csproj" />
-  </ItemGroup>
-</Project>

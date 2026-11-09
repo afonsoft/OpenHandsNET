@@ -1,4 +1,4 @@
-# Risk Assessment — OpenHandsNET
+# Risk Assessment — Sandcastle
 
 ## Riscos de licenciamento (crítico)
 

@@ -15,12 +15,12 @@ extra processes run by default.
   `runtime/Dockerfile`) ships in the image.
 - **code-server**: **outside** the image (+~200MB). When the flag is on
   and the binary is missing, the agent runs
-  `/opt/ohn/sdks/code-server.sh` once (pinned `CODE_SERVER_VERSION`,
-  default 4.141.0) installing to `/opt/ohn/code-server`.
+  `/opt/sc/sdks/code-server.sh` once (pinned `CODE_SERVER_VERSION`,
+  default 4.141.0) installing to `/opt/sc/code-server`.
 - Supervisor: respawn with backoff up to 10 attempts; on/off is logged
   as a `sandbox_surface` event in the agent's `/activity` ring.
 
-In the blueprint (`openhandsnet.yaml` / init env):
+In the blueprint (`sandcastle.yaml` / init env):
 
 ```yaml
 env:

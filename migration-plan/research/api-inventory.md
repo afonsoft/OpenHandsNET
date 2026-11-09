@@ -83,7 +83,7 @@ Routers: `conversation`, `event`, `bash` (tmux), `file`, `git`, `hooks`, `llm`,
 `auth`, `init` (warm-pool deferred init, `X-Init-API-Key`), `server_details`,
 `canvas_extensions`, `openai` (proxy OpenAI-compat), `provider_connections`.
 WS: `sockets.py`/`session_socket.py`/`pub_sub.py`. **Este servidor é o que roda
-dentro do sandbox** — no OpenHandsNET equivale ao agente-worker (ver SPEC 03).
+dentro do sandbox** — no Sandcastle equivale ao agente-worker (ver SPEC 03).
 
 ## 7. SaaS/Enterprise — `enterprise/server/routes/` (conceitos; Polyform — não portar código)
 

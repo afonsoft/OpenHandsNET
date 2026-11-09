@@ -1,27 +1,27 @@
-# OpenHandsNET enterprise deps: PostgreSQL + Keycloak (OIDC broker) + LiteLLM
+# Sandcastle enterprise deps: PostgreSQL + Keycloak (OIDC broker) + LiteLLM
 # (gateway de LLM opcional). Uso:
 #   docker compose -f docker-compose.yaml -f docker-compose.enterprise.yaml up -d --build
 # Keycloak admin: http://localhost:8081 (admin/admin — troque via KEYCLOAK_ADMIN_PASSWORD).
 services:
   app:
     environment:
-      - OPENHANDSNET_Database__Provider=PostgreSql
-      - OPENHANDSNET_Database__ConnectionString=Host=postgres;Database=openhandsnet;Username=openhandsnet;Password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
-      - OPENHANDSNET_DeploymentMode=self_hosted
-      - OPENHANDSNET_Auth__Provider=oidc
-      - OPENHANDSNET_Auth__Authority=http://keycloak:8080/realms/openhandsnet
-      - OPENHANDSNET_AgentLlm__BaseUrl=http://litellm:4000
+      - SANDCASTLE_Database__Provider=PostgreSql
+      - SANDCASTLE_Database__ConnectionString=Host=postgres;Database=sandcastle;Username=sandcastle;Password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      - SANDCASTLE_DeploymentMode=self_hosted
+      - SANDCASTLE_Auth__Provider=oidc
+      - SANDCASTLE_Auth__Authority=http://keycloak:8080/realms/sandcastle
+      - SANDCASTLE_AgentLlm__BaseUrl=http://litellm:4000
       # SPEC-50: BYOR — admin API do LiteLLM. Mode: off|hybrid|byor
       # (hybrid mantém o catálogo OmniRoute local; byor restringe à
       # lista permitted do proxy). MasterKey só por env — nunca commitada.
-      - OPENHANDSNET_LlmProxy__BaseUrl=http://litellm:4000
-      - OPENHANDSNET_LlmProxy__MasterKey=${LITELLM_MASTER_KEY:?set LITELLM_MASTER_KEY}
-      - OPENHANDSNET_LlmProxy__Mode=${LITELLM_MODE:-hybrid}
-      - OPENHANDSNET_LlmProxy__DefaultBudgetUsd=${LITELLM_DEFAULT_BUDGET_USD:-50}
+      - SANDCASTLE_LlmProxy__BaseUrl=http://litellm:4000
+      - SANDCASTLE_LlmProxy__MasterKey=${LITELLM_MASTER_KEY:?set LITELLM_MASTER_KEY}
+      - SANDCASTLE_LlmProxy__Mode=${LITELLM_MODE:-hybrid}
+      - SANDCASTLE_LlmProxy__DefaultBudgetUsd=${LITELLM_DEFAULT_BUDGET_USD:-50}
       # SPEC-36: backplane/coordenação via Valkey (multi-réplica pronto).
-      - OPENHANDSNET_Cache__Provider=redis
-      - OPENHANDSNET_Cache__Redis__ConnectionString=valkey:6379
-      - OPENHANDSNET_Deployment__Replicas=${DEPLOYMENT_REPLICAS:-1}
+      - SANDCASTLE_Cache__Provider=redis
+      - SANDCASTLE_Cache__Redis__ConnectionString=valkey:6379
+      - SANDCASTLE_Deployment__Replicas=${DEPLOYMENT_REPLICAS:-1}
     depends_on:
       postgres:
         condition: service_healthy
@@ -34,17 +34,17 @@ services:
 
   postgres:
     image: postgres:17-alpine
-    container_name: openhandsnet-postgres
+    container_name: sandcastle-postgres
     environment:
-      - POSTGRES_DB=openhandsnet
-      - POSTGRES_USER=openhandsnet
+      - POSTGRES_DB=sandcastle
+      - POSTGRES_USER=sandcastle
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
     volumes:
-      - openhandsnet-pgdata:/var/lib/postgresql/data
+      - sandcastle-pgdata:/var/lib/postgresql/data
       # SPEC-50: cria o db `litellm` para o proxy persistir virtual keys.
       - ./deploy/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U openhandsnet -d openhandsnet"]
+      test: ["CMD-SHELL", "pg_isready -U sandcastle -d sandcastle"]
       interval: 10s
       timeout: 5s
       retries: 6
@@ -52,7 +52,7 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
-    container_name: openhandsnet-keycloak
+    container_name: sandcastle-keycloak
     command: start-dev
     environment:
       - KC_BOOTSTRAP_ADMIN_USERNAME=admin
@@ -62,16 +62,16 @@ services:
     ports:
       - "8081:8080"
     volumes:
-      - openhandsnet-keycloak:/opt/keycloak/data
+      - sandcastle-keycloak:/opt/keycloak/data
     restart: unless-stopped
 
   valkey:
     # SPEC-36: cache/backplane compartilhado (Cache__Provider=redis).
     image: valkey/valkey:8-alpine
-    container_name: openhandsnet-valkey
+    container_name: sandcastle-valkey
     command: ["valkey-server", "--maxmemory-policy", "noeviction"]
     volumes:
-      - openhandsnet-valkey:/data
+      - sandcastle-valkey:/data
     healthcheck:
       test: ["CMD", "valkey-cli", "ping"]
       interval: 10s
@@ -84,13 +84,13 @@ services:
     # /models) consumida pela API; /chat/completions recebe as chamadas
     # do agente com Authorization: Bearer <virtual-key>.
     image: ghcr.io/berriai/litellm:main-v1.55.8
-    container_name: openhandsnet-litellm
+    container_name: sandcastle-litellm
     command: ["--config", "/etc/litellm/config.yaml", "--port", "4000"]
     volumes:
       - ./deploy/litellm.yaml:/etc/litellm/config.yaml:ro
     environment:
       - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:?set LITELLM_MASTER_KEY}
-      - LITELLM_DATABASE_URL=postgresql://openhandsnet:${POSTGRES_PASSWORD}@postgres:5432/litellm
+      - LITELLM_DATABASE_URL=postgresql://sandcastle:${POSTGRES_PASSWORD}@postgres:5432/litellm
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - STORE_MODEL_IN_DB=True
@@ -99,6 +99,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  openhandsnet-valkey:
-  openhandsnet-pgdata:
-  openhandsnet-keycloak:
+  sandcastle-valkey:
+  sandcastle-pgdata:
+  sandcastle-keycloak:

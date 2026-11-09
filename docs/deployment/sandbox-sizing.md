@@ -13,7 +13,7 @@ upper bounds (`HostConfig.Memory`, `NanoCPUs`, `PidsLimit`), not reservations.
 
 1. `sandbox_profile` on `POST /app-conversations` (per conversation)
 2. `{"sandbox_profile": "…"}` in org `settings` (`PATCH /orgs/{id}/settings`)
-3. `OPENHANDSNET_Sandbox__Profile` (global default, `medium`)
+3. `SANDCASTLE_Sandbox__Profile` (global default, `medium`)
 4. Named `SandboxSpec.profile` on custom specs — overrides numbers only when
    set; explicit spec resources otherwise win
 
@@ -26,7 +26,7 @@ sandboxes expose `pool` (`cold`|`warm`).
 - **`small`** — doc edits, read-only questions, CI smoke runs
 - **`medium`** — default; typical feature work (~npm install + tests)
 - **`large`** — monorepo builds, heavy test suites, `npm run build` on large
-  frontends — watch `openhandsnet_sandbox_seconds`/`docker stats` for real
+  frontends — watch `sandcastle_sandbox_seconds`/`docker stats` for real
   headroom before fleet-wide bumps
 
 ## Deployment sizing (SPEC-84)

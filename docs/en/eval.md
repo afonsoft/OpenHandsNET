@@ -1,14 +1,14 @@
 # Eval harness (SPEC-39)
 
-`openhandsnet eval` — headless run of task fixtures against a real
+`sandcastle eval` — headless run of task fixtures against a real
 backend, for prompt/tool regression.
 
 ## Commands
 
 ```bash
-openhandsnet eval run evals/smoke.jsonl --url http://localhost:8080
-openhandsnet eval report <run-id>
-openhandsnet eval list
+sandcastle eval run evals/smoke.jsonl --url http://localhost:8080
+sandcastle eval report <run-id>
+sandcastle eval list
 ```
 
 ## Fixture format (JSONL)

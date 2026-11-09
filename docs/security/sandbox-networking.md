@@ -1,6 +1,6 @@
 # Sandbox networking — modelo de acesso (SPEC-115)
 
-O OpenHandsNET expõe **apenas front + API** para o mundo externo. Tudo que
+O Sandcastle expõe **apenas front + API** para o mundo externo. Tudo que
 roda dentro do sandbox Docker (agente, VNC/noVNC, terminal, serviços de
 usuário) é alcançado exclusivamente **pela API**, que atua como reverse
 proxy. O browser do usuário nunca abre conexão direta com o container.
@@ -20,7 +20,7 @@ browser ──(cookie sessão)──▶ API ──▶ docker network (containerI
 | IDE/VS Code | `/api/v1/sandboxes/{id}/surfaces/{port}/` | HTTP + WebSocket proxy |
 | Service URLs | idem | HTTP proxy |
 
-`SandboxSurfaceProxy` (`src/OpenHandsNET.Api/Routing/SandboxSurfaceProxy.cs`)
+`SandboxSurfaceProxy` (`src/Sandcastle.Api/Routing/SandboxSurfaceProxy.cs`)
 faz o forwarding de HTTP e upgrades de WebSocket para
 `http://{containerId[..12]}:{port}` na rede Docker interna.
 
@@ -49,7 +49,7 @@ recebe **somente** paths relativos — nunca host/porta do container.
   RF-003) — o único caminho suportado para clientes é o proxy da API;
   restrinja a porta no firewall do host.
 
-`docker-compose.yaml` publica apenas `${OPENHANDSNET_PORT:-3032}:8080`;
+`docker-compose.yaml` publica apenas `${SANDCASTLE_PORT:-3032}:8080`;
 o Docker daemon pode viver em outro host, mas as portas dos containers
 nunca precisam ser expostas ao browser.
 
@@ -57,7 +57,7 @@ nunca precisam ser expostas ao browser.
 
 `tools/check-no-direct-sandbox-url.sh` falha o build se o client abrir
 `ws(s)://` literal ou montar URL com `containerId`/host de sandbox.
-Rodar antes de PRs que tocam `src/OpenHandsNET.Client`.
+Rodar antes de PRs que tocam `src/Sandcastle.Client`.
 
 ## Configuração mínima segura
 

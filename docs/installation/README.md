@@ -1,20 +1,20 @@
 # Instalação
 
-Guias de instalação e configuração do OpenHandsNET.
+Guias de instalação e configuração do Sandcastle.
 English: [../en/installation/](../en/installation/).
 
 | Guia | Conteúdo |
 |---|---|
 | [docker.md](docker.md) | Docker / Docker Compose — todos os profiles (OSS, Postgres, runtime-split, observabilidade, enterprise) |
 | [host.md](host.md) | Instalação em host (desenvolvimento e produção systemd, sem container para o app) |
-| [environment-variables.md](environment-variables.md) | Referência completa de variáveis de ambiente `OPENHANDSNET_*` |
+| [environment-variables.md](environment-variables.md) | Referência completa de variáveis de ambiente `SANDCASTLE_*` |
 
 ## Qual caminho escolher
 
 | Cenário | Guia |
 |---|---|
 | Avaliar o produto rápido | [docker.md](docker.md) — `docker compose up -d --build` |
-| Desenvolver no repo | [host.md](host.md) — `dotnet run --project src/OpenHandsNET.Api` |
+| Desenvolver no repo | [host.md](host.md) — `dotnet run --project src/Sandcastle.Api` |
 | Self-host single-node | [docker.md](docker.md) + `docker.sock` montado |
 | Self-host multi-réplica | [docker.md](docker.md#runtime-split) + Postgres + Redis |
 | Servidor sem Docker para o app | [host.md](host.md#producao-systemd) (o Docker ainda é necessário para sandboxes) |

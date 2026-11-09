@@ -1,0 +1,438 @@
+@inherits LayoutComponentBase
+@using Sandcastle.Client.Services
+@using Sandcastle.Client.Components
+@inject AdminState Admin
+@inject SandcastleApiClient Api
+@inject ThemeService Theme
+@inject PaletteService Palette
+@inject AttentionInboxState Inbox
+@inject DialogService Dialogs
+@inject ChatNotificationsService ChatNotify
+@inject LocalizationService L
+@inject AuthStateService Auth
+@inject IJSRuntime JS
+@implements IDisposable
+
+<a class="skip-link" href="#main-content">@L["common.skip_to_content"]</a>
+<div class="shell">
+    @if (_mobileMenu)
+    {
+        <div class="sb-scrim" aria-hidden="true" @onclick="CloseMobile"></div>
+    }
+    <aside class="sidebar @(_collapsed ? "collapsed" : "") @(_mobileMenu ? "mobile-open" : "")"
+           role="@(_mobileMenu ? "dialog" : null)"
+           aria-modal="@(_mobileMenu ? "true" : null)"
+           @onkeydown="OnSidebarKeyDown">
+        <div class="sb-head">
+            <button class="icon-btn" @onclick="ToggleSidebar"
+                    aria-label="@L[_collapsed ? "rail.expand" : "rail.collapse"]"
+                    title="@L[_collapsed ? "rail.expand" : "rail.collapse"]"
+                    aria-expanded="@(!_collapsed)">
+                <Icon Name="menu" Size="16" />
+            </button>
+            <span class="logo">Sandcastle</span>
+            <span class="grow"></span>
+            @* SPEC-118: bell dropdown também no desktop (parity OWUIC) *@
+            <AttentionFeed />
+            <AttentionBadge Active="_attentionOnly"
+                            OnClick="ToggleAttentionFilter" />
+        </div>
+        @if (!_collapsed)
+        {
+            <div class="sb-filter">
+                <input placeholder="@L["sidebar.filter"]" @bind="_filter"
+                       @bind:event="oninput" aria-label="@L["sidebar.filter_aria"]" />
+            </div>
+        }
+        <div class="sb-section">
+            <div class="sb-label">@L["sidebar.conversations"]</div>
+            <a class="sb-item @(IsActive("/") ? "active" : "")" href="/"
+               title="@L["sidebar.conversations"]">
+                <Icon Name="chat" Size="16" />
+                <span class="txt">@L["sidebar.conversations"]</span>
+            </a>
+            <a class="sb-item" href="/" title="@L["sidebar.new_chat"]">
+                <Icon Name="plus" Size="16" />
+                <span class="txt">@L["sidebar.new_chat"]</span>
+            </a>
+            @foreach (var c in FilteredConvs())
+            {
+                @* SPEC-118: item com menu ⋯ (copy link / delete) no hover —
+                   padrão OWUIC. Fecha ao clicar fora (_menuFor scrim). *@
+                <div class="sb-item-wrap">
+                    <a class="sb-item @(IsActive($"/conversations/{c.Id}") ? "active" : "")"
+                       href="/conversations/@c.Id" title="@(c.Title ?? c.Id)">
+                        <span class="dot @DotFor(c)"></span>
+                        @if (_collapsed)
+                        {
+                            <Icon Name="chat" Size="16" />
+                        }
+                        <span class="txt">@(c.Title ?? c.SelectedRepository ?? c.Id[..8])</span>
+                    </a>
+                    @if (!_collapsed)
+                    {
+                        <button class="icon-btn sb-menu-btn"
+                                @onclick="() => ToggleConvMenu(c.Id)"
+                                @onclick:stopPropagation="true"
+                                aria-label="@L["sidebar.conv_menu"]"
+                                aria-expanded="@(_menuFor == c.Id)">
+                            <Icon Name="dots" Size="14" />
+                        </button>
+                        @if (_menuFor == c.Id)
+                        {
+                            <div class="sb-menu-scrim" @onclick="() => _menuFor = null"></div>
+                            <div class="menu sb-menu" role="menu">
+                                <button class="menu-item" role="menuitem"
+                                        @onclick="() => CopyConvLinkAsync(c.Id)">
+                                    <Icon Name="copy" Size="13" /> @L["sidebar.copy_link"]
+                                </button>
+                                <button class="menu-item" role="menuitem"
+                                        @onclick="() => ForkConvAsync(c.Id)">
+                                    <Icon Name="fork" Size="13" /> @L["conv.fork"]
+                                </button>
+                                <button class="menu-item danger" role="menuitem"
+                                        @onclick="() => DeleteConvAsync(c.Id)">
+                                    <Icon Name="trash" Size="13" /> @L["sidebar.delete"]
+                                </button>
+                            </div>
+                        }
+                    }
+                </div>
+            }
+            @* SPEC-136 RF-001: rotas órfãs ganham entrada na shell —
+               Knowledge (/knowledge) e Skills & MCP (/settings/skills). *@
+            <div class="sb-label">@L["sidebar.workspace"]</div>
+            <a class="sb-item @(IsActive("/knowledge") ? "active" : "")"
+               href="/knowledge" title="@L["sidebar.knowledge"]">
+                <Icon Name="book" Size="16" />
+                <span class="txt">@L["sidebar.knowledge"]</span>
+            </a>
+            <div class="sb-label">@L["sidebar.general"]</div>
+            <a class="sb-item @(IsActive("/automations") ? "active" : "")"
+               href="/automations" title="@L["sidebar.automations"]">
+                <Icon Name="clock" Size="16" />
+                <span class="txt">@L["sidebar.automations"]</span>
+            </a>
+            <a class="sb-item @(IsActive("/settings/skills") || IsActive("/settings/mcp") ? "active" : "")"
+               href="/settings/skills" title="@L["sidebar.skills_mcp"]">
+                <Icon Name="sparkles" Size="16" />
+                <span class="txt">@L["sidebar.skills_mcp"]</span>
+            </a>
+            @* SPEC-130 RF-001: engrenagem abre o SettingsModal sobre a
+               conversa; /settings segue como deep-link direto. *@
+            <button type="button" class="sb-item"
+                    title="@L["sidebar.settings"]"
+                    aria-label="@L["sidebar.settings"]"
+                    @onclick="OpenSettingsAsync">
+                <Icon Name="settings" Size="16" />
+                <span class="txt">@L["sidebar.settings"]</span>
+            </button>
+            @if (_isAdmin)
+            {
+                <div class="sb-label">@L["sidebar.admin"]</div>
+                <a class="sb-item @(IsActive("/admin") ? "active" : "")"
+                   href="/admin" title="@L["sidebar.admin"]">
+                    <Icon Name="shield" Size="16" />
+                    <span class="txt">@L["sidebar.administration"]</span>
+                </a>
+            }
+        </div>
+        <div class="sb-foot">
+            @* SPEC-132 RF-004: user menu (avatar + theme + sign-out)
+               substitui o ThemeToggle solto do footer. *@
+            <UserMenu />
+            <span class="grow"></span>
+            @if (_collapsed)
+            {
+                <button class="icon-btn" @onclick="ToggleSidebar"
+                        aria-label="@L["rail.expand"]"
+                        title="@L["rail.expand"]">
+                    <Icon Name="chevron-right" Size="16" />
+                </button>
+            }
+            <a class="icon-btn" href="https://github.com/afonsoft/sandcastle"
+               target="_blank" title="@L["sidebar.repository"]" aria-label="@L["sidebar.repository"]">
+                <Icon Name="code" Size="16" />
+            </a>
+        </div>
+    </aside>
+    <main class="content" id="main-content" tabindex="-1">
+        <div class="mobile-topbar">
+            <button class="icon-btn" @onclick="OpenMobile"
+                    aria-label="@L["sidebar.toggle"]"
+                    aria-expanded="@_mobileMenu">
+                <Icon Name="menu" Size="16" />
+            </button>
+            <span class="logo">Sandcastle</span>
+            <span class="grow"></span>
+            <AttentionFeed />
+        </div>
+        <OfflineBanner />
+        @Body
+    </main>
+</div>
+@* SPEC-119: host dos diálogos in-app (confirm/prompt acessíveis) *@
+<DialogHost />
+
+@code {
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private bool _isAdmin;
+    private bool _collapsed;
+    private bool _mobileMenu;
+    private bool _attentionOnly;
+    private string? _menuFor;
+    private string _filter = "";
+    private IReadOnlyList<ConversationItem> _convs = [];
+
+    private bool _inited;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // SPEC-132 RF-003: subscrições antes do guard — cair direto em
+        // /auth ainda garante eventos de nav e o init adiado pós-login.
+        Inbox.Changed += OnAttentionChanged;
+        L.Changed += OnLocaleChanged;
+        Nav.LocationChanged += OnNav;
+        Palette.Provider = BuildPaletteAsync;
+        if (!GuardCurrentRoute())
+        {
+            return;
+        }
+
+        await InitShellAsync();
+    }
+
+    /// <summary>Trabalho pesado só após passar no guard de auth
+    /// (a página /auth não dispara tempestade de 401).</summary>
+    private async Task InitShellAsync()
+    {
+        if (_inited)
+        {
+            return;
+        }
+
+        _inited = true;
+        _isAdmin = await Admin.EnsureLoadedAsync();
+        await Inbox.EnsureStartedAsync();
+        await ChatNotify.EnsureStartedAsync();
+        try
+        {
+            // SPEC-130 RF-004: chave sc.sidebar.collapsed; sc.sidebar
+            // (SPEC-118) lida como fallback na migração.
+            _collapsed = (await JS.InvokeAsync<string?>(
+                    "localStorage.getItem", "sc.sidebar.collapsed")
+                ?? await JS.InvokeAsync<string?>(
+                    "localStorage.getItem", "sc.sidebar")) == "1";
+            _convs = (await Api.ListConversationsAsync())
+                .OrderByDescending(c => c.UpdatedAt).Take(20).ToList();
+        }
+        catch (Exception) { /* JS indisponível em pré-render / offline */ }
+    }
+
+    private void OnNav(object? s, LocationChangedEventArgs e)
+    {
+        _mobileMenu = false;
+        _menuFor = null;
+        if (GuardCurrentRoute() && !_inited)
+        {
+            _ = InitShellAsync();
+        }
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>SPEC-132: false = navegação interceptada para /auth.
+    /// Rotas públicas (/auth, /share/*, /shared/*) nunca bloqueiam.</summary>
+    private bool GuardCurrentRoute()
+    {
+        var relative = Nav.ToBaseRelativePath(Nav.Uri);
+        if (Auth.RequiresAuth && !Auth.IsAuthenticated
+            && !AuthStateService.IsPublicPath(relative))
+        {
+            Nav.NavigateTo(
+                $"/auth?returnUrl={Uri.EscapeDataString("/" + relative)}");
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>SPEC-118: menu de contexto por conversa (padrão OWUIC).</summary>
+    private void ToggleConvMenu(string id) =>
+        _menuFor = _menuFor == id ? null : id;
+
+    private async Task CopyConvLinkAsync(string id)
+    {
+        _menuFor = null;
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText",
+                $"{Nav.BaseUri.TrimEnd('/')}/conversations/{id}");
+        }
+        catch (Exception) { /* clipboard indisponível */ }
+    }
+
+    /// <summary>SPEC-135 RF-002: fork da conversa pela sidebar —
+    /// navega para a filha (boot via start-task dela).</summary>
+    private async Task ForkConvAsync(string id)
+    {
+        _menuFor = null;
+        try
+        {
+            var fork = await Api.ForkConversationAsync(id);
+            Nav.NavigateTo($"/conversations/{fork.Id}");
+        }
+        catch (Exception) { /* 409 run ativa / offline */ }
+    }
+
+    private async Task DeleteConvAsync(string id)
+    {
+        _menuFor = null;
+        // SPEC-119: dialog in-app acessível substitui window.confirm.
+        if (!await Dialogs.ConfirmAsync(L["sidebar.delete_confirm"], danger: true))
+        {
+            return;
+        }
+
+        try
+        {
+            await Api.DeleteConversationAsync(id);
+            _convs = _convs.Where(c => c.Id != id).ToList();
+        }
+        catch (Exception) { /* offline / erro de API — item permanece */ }
+    }
+
+    /// <summary>SPEC-130 RF-001: SettingsModal via DialogService —
+    /// fluxo não navega para fora do chat.</summary>
+    private async Task OpenSettingsAsync() =>
+        await Dialogs.ShowSettingsAsync();
+
+    private void OpenMobile() => _mobileMenu = true;
+
+    private void CloseMobile() => _mobileMenu = false;
+
+    private void OnSidebarKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            _mobileMenu = false;
+        }
+    }
+
+    /// <summary>SPEC-44: ticks do inbox re-renderizam dots/badge.</summary>
+    private void OnAttentionChanged() => InvokeAsync(StateHasChanged);
+
+    /// <summary>SPEC-46: troca de idioma re-renderiza layout + @Body.</summary>
+    private void OnLocaleChanged() => InvokeAsync(StateHasChanged);
+
+    /// <summary>SPEC-44 RF-003: filtro "Aguardando você".</summary>
+    private void ToggleAttentionFilter() => _attentionOnly = !_attentionOnly;
+
+    /// <summary>Itens da palette: ações fixas + conversas recentes.</summary>
+    private async Task<IEnumerable<PaletteService.Item>> BuildPaletteAsync()
+    {
+        var items = new List<PaletteService.Item>
+        {
+            new("new", L["sidebar.new_chat"], "home", "plus",
+                () => { Nav.NavigateTo("/"); return Task.CompletedTask; }),
+            new("theme", L.T("palette.theme", ("theme", Theme.Theme)),
+                "ui", "sun",
+                async () => await Theme.SetAsync(Theme.Theme switch
+                {
+                    ThemeService.Dark => ThemeService.Light,
+                    ThemeService.Light => ThemeService.System,
+                    _ => ThemeService.Dark,
+                })),
+            new("settings", L["sidebar.settings"], "página", "settings",
+                () => { Nav.NavigateTo("/settings"); return Task.CompletedTask; }),
+        };
+        if (_isAdmin)
+        {
+            items.Add(new("admin", L["sidebar.administration"], "página",
+                "shield",
+                () => { Nav.NavigateTo("/admin"); return Task.CompletedTask; }));
+        }
+
+        try
+        {
+            var convs = _convs.Count > 0 ? _convs
+                : (await Api.ListConversationsAsync())
+                    .OrderByDescending(c => c.UpdatedAt).Take(20).ToList();
+            items.AddRange(convs.Select(c => new PaletteService.Item(
+                c.Id,
+                c.Title ?? c.SelectedRepository ?? L["palette.conversation"],
+                c.ExecutionStatus.ToLowerInvariant(), "chat",
+                () =>
+                {
+                    Nav.NavigateTo($"/conversations/{c.Id}");
+                    return Task.CompletedTask;
+                })));
+        }
+        catch (HttpRequestException) { /* best-effort — falha tolerada */ }
+        return items;
+    }
+
+    private async Task ToggleSidebar()
+    {
+        _collapsed = !_collapsed;
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem",
+                "sc.sidebar.collapsed", _collapsed ? "1" : "0");
+        }
+        catch (JSException) { /* best-effort — falha tolerada */ }
+    }
+
+    private IEnumerable<ConversationItem> FilteredConvs()
+    {
+        var convs = _attentionOnly
+            ? _convs.Where(c => AttentionKindOf(c.Id) is not null)
+            : _convs;
+        return string.IsNullOrWhiteSpace(_filter)
+            ? convs
+            : convs.Where(c =>
+                (c.Title ?? "").Contains(_filter,
+                    StringComparison.OrdinalIgnoreCase)
+                || (c.SelectedRepository ?? "").Contains(_filter,
+                    StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>Kind de attention do inbox (fonte live) para a conversa.</summary>
+    private string? AttentionKindOf(string conversationId) =>
+        Inbox.Items.FirstOrDefault(i =>
+            i.ConversationId.Equals(conversationId,
+                StringComparison.OrdinalIgnoreCase))?.Kind
+        ?? (_convs.FirstOrDefault(c => c.Id == conversationId)
+            ?.NeedsAttention);
+
+    /// <summary>SPEC-44: dot por kind de attention vence o de status.</summary>
+    private string DotFor(ConversationItem c) =>
+        AttentionKindOf(c.Id) is { } kind
+            ? $"attention attention-{kind}"
+            : DotClass(c.ExecutionStatus);
+
+    private static string DotClass(string status) => status.ToUpperInvariant() switch
+    {
+        "RUNNING" => "running",
+        "WORKING" or "SETTING_UP_WORKSPACE" or "SETTING_UP_SKILLS"
+            or "SETTING_UP_GIT" => "working",
+        "WAITING_FOR_CONFIRMATION" => "waiting",
+        "ERROR" or "STOPPED" => "error",
+        _ => "idle",
+    };
+
+    private bool IsActive(string prefix) =>
+        Nav.Uri.Equals(Nav.BaseUri, StringComparison.OrdinalIgnoreCase)
+            ? prefix == "/"
+            : prefix != "/" && Nav.Uri.StartsWith(
+                new Uri(new Uri(Nav.BaseUri), prefix.TrimStart('/')).ToString(),
+                StringComparison.OrdinalIgnoreCase);
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnNav;
+        Inbox.Changed -= OnAttentionChanged;
+        L.Changed -= OnLocaleChanged;
+    }
+}

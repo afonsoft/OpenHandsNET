@@ -6,19 +6,19 @@ Mode `Sandbox:EgressMode=allowlist` releases **only** the domains in
 ## How it works
 
 ```
-bridge default (outbound ok)            openhandsnet-egress-isolated (internal)
+bridge default (outbound ok)            sandcastle-egress-isolated (internal)
 ┌────────────────────────┐              ┌──────────────────────────────┐
-│ openhandsnet-egress-proxy│  connected  │  sandbox A  ──HTTP_PROXY──┐  │
+│ sandcastle-egress-proxy│  connected  │  sandbox A  ──HTTP_PROXY──┐  │
 │  (squid :3128)          │◄───────────►│  sandbox B  ──HTTPS_PROXY─┘  │
 └────────────────────────┘              └──────────────────────────────┘
 ```
 
 - Sandboxes in `allowlist` mode are born on the **internal** network
-  (`openhandsnet-egress-isolated`) — no outbound route.
-- A **shared per-instance** Squid proxy (`openhandsnet-egress-proxy`)
+  (`sandcastle-egress-isolated`) — no outbound route.
+- A **shared per-instance** Squid proxy (`sandcastle-egress-proxy`)
   is attached to both networks: controlled egress for the sandboxes.
 - The sandbox gets `HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY` pointing to
-  `http://openhandsnet-egress-proxy:3128` (resolved via embedded DNS).
+  `http://sandcastle-egress-proxy:3128` (resolved via embedded DNS).
 - `dstdomain` ACL: each entry becomes `.domain.tld` (covers subdomains).
   `CONNECT` is limited to port 443; everything else is `deny`
   (**fail-closed**).
@@ -26,11 +26,11 @@ bridge default (outbound ok)            openhandsnet-egress-isolated (internal)
 ## Configuration
 
 ```bash
-OPENHANDSNET_Sandbox__EgressMode=allowlist
-OPENHANDSNET_Sandbox__EgressAllow="github.com;nuget.org;pypi.org;registry.npmjs.org"
+SANDCASTLE_Sandbox__EgressMode=allowlist
+SANDCASTLE_Sandbox__EgressAllow="github.com;nuget.org;pypi.org;registry.npmjs.org"
 # optional:
-# OPENHANDSNET_Sandbox__EgressProxyImage=ubuntu/squid:6.6-24.04_beta
-# OPENHANDSNET_Sandbox__EgressConfigDir=/var/lib/openhandsnet/egress
+# SANDCASTLE_Sandbox__EgressProxyImage=ubuntu/squid:6.6-24.04_beta
+# SANDCASTLE_Sandbox__EgressConfigDir=/var/lib/sandcastle/egress
 ```
 
 `squid.conf` + `allowlist.txt` are generated in `EgressConfigDir`
@@ -42,7 +42,7 @@ label).
 
 If the proxy cannot be created/started, the sandbox start **fails** —
 `allowlist` mode never degrades to open egress. Readiness exposes
-`checks.egress_proxy` (`openhandsnet doctor` shows the probe).
+`checks.egress_proxy` (`sandcastle doctor` shows the probe).
 
 ## Limitations
 

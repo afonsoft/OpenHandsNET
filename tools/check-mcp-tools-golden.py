@@ -2,8 +2,8 @@
 """Guard: golden snapshot do catálogo `tools/list` do servidor MCP
 (SPEC-129 RF-001).
 
-Executa `openhandsnet-mcp.dll` com um request JSON-RPC `tools/list` no
-stdin (não precisa de OHN_API_KEY — tools/call é quem exige credencial)
+Executa `sandcastle-mcp.dll` com um request JSON-RPC `tools/list` no
+stdin (não precisa de SC_API_KEY — tools/call é quem exige credencial)
 e compara o catálogo normalizado com `tools/drift-baseline/mcp-tools.json`.
 
 - Drift (tool adicionada/removida/renomeada, schema alterado) → exit 1.
@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-DLL = ROOT / "src/OpenHandsNET.Mcp/bin/Release/net10.0/openhandsnet-mcp.dll"
+DLL = ROOT / "src/Sandcastle.Mcp/bin/Release/net10.0/sandcastle-mcp.dll"
 BASELINE = ROOT / "tools/drift-baseline/mcp-tools.json"
 REQUEST = '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 TIMEOUT = 90
@@ -30,11 +30,11 @@ def ensure_built() -> None:
     if DLL.exists():
         return
     build = subprocess.run(
-        ["dotnet", "build", "src/OpenHandsNET.Mcp", "-c", "Release",
+        ["dotnet", "build", "src/Sandcastle.Mcp", "-c", "Release",
          "--nologo", "-v", "q"],
         cwd=ROOT, capture_output=True, text=True, timeout=300)
     if build.returncode != 0 or not DLL.exists():
-        print("FAIL: build do OpenHandsNET.Mcp falhou")
+        print("FAIL: build do Sandcastle.Mcp falhou")
         print(build.stdout[-2000:])
         sys.exit(1)
 

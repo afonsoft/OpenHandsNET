@@ -1,4 +1,4 @@
-# Global Rules — OpenHandsNET
+# Global Rules — Sandcastle
 
 Always-on. Fonte: `CLAUDE.md` (não duplicar detalhes — este arquivo resume).
 
@@ -6,7 +6,7 @@ Always-on. Fonte: `CLAUDE.md` (não duplicar detalhes — este arquivo resume).
 
 1. **Modelo de eventos V1**: discriminador `kind`, `id` ULID/UUID, `source`,
    `parent_id` — nunca o formato V0 (`id` int + `action`/`args`).
-   Evidência: `src/OpenHandsNET.Domain/Events/EventBase.cs`.
+   Evidência: `src/Sandcastle.Domain/Events/EventBase.cs`.
 2. **Start-task assíncrono**: `POST /app-conversations` retorna task
    (`WORKING→…→READY`), nunca `conversation_id` direto; campo é
    `selected_repository`.

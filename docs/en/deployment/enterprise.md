@@ -17,17 +17,17 @@ docker compose -f docker-compose.yaml -f docker-compose.enterprise.yaml up -d --
 
 | Service | Port | Role |
 |---|---|---|
-| app | 3032→8080 | OpenHandsNET (DeploymentMode=self_hosted) |
+| app | 3032→8080 | Sandcastle (DeploymentMode=self_hosted) |
 | postgres | internal | Data (users, orgs, api keys, events) |
 | keycloak | 8081 | OIDC broker — SAML/social behind it |
 | litellm | 4000 | OpenAI-compat gateway (models, rate limit, future BYOK) |
 
 ## Keycloak
 
-1. Create the `openhandsnet` realm (`http://localhost:8081`, admin).
-2. Client `openhandsnet-web` (public, redirect
+1. Create the `sandcastle` realm (`http://localhost:8081`, admin).
+2. Client `sandcastle-web` (public, redirect
    `http://localhost:3032/*`).
-3. `Auth__Authority=http://keycloak:8080/realms/openhandsnet` is already
+3. `Auth__Authority=http://keycloak:8080/realms/sandcastle` is already
    configured.
 
 ## Observability

@@ -1,0 +1,127 @@
+@page "/auth"
+@using Sandcastle.Client.Services
+@inject AuthStateService Auth
+@inject NavigationManager Nav
+@inject LocalizationService L
+
+@* SPEC-132 RF-002: página de auth — rendering por provider.
+   oidc → SSO redirect; none → modo local; local → dev-login e-mail. *@
+
+<div class="authpage">
+    <div class="authcard">
+        <div class="authcard-brand">
+            <Icon Name="sparkles" Size="20" />
+            <span class="logo">Sandcastle</span>
+        </div>
+        <h1 class="authcard-title">@L["auth.title"]</h1>
+        <p class="authcard-sub">@L["auth.subtitle"]</p>
+
+        @if (Auth.Provider.Equals("oidc", StringComparison.OrdinalIgnoreCase))
+        {
+            <button class="auth-submit" @onclick="SignInSso">
+                <Icon Name="user" Size="16" />
+                @L["auth.sso_button"]
+            </button>
+        }
+        else if (Auth.RequiresAuth)
+        {
+            <form class="auth-form" @onsubmit="SignInLocalAsync"
+                  @onsubmit:preventDefault="true">
+                <label class="auth-label" for="auth-email">
+                    @L["auth.email_label"]
+                </label>
+                <input id="auth-email" class="input" type="email" required
+                       autocomplete="email" @bind="_email"
+                       placeholder="@L["auth.email_placeholder"]" />
+                @if (_error)
+                {
+                    <p class="auth-error" role="alert">@L["auth.error"]</p>
+                }
+                <button class="auth-submit" type="submit" disabled="@_busy">
+                    @L["auth.sign_in"]
+                </button>
+            </form>
+        }
+        else
+        {
+            <p class="authcard-note">@L["auth.local_mode"]</p>
+            <button class="auth-submit" @onclick="EnterApp">
+                @L["auth.enter_app"]
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    private string _email = "";
+    private string _returnUrl = "/";
+    private bool _busy;
+    private bool _error;
+
+    protected override void OnInitialized()
+    {
+        var query = new Uri(Nav.Uri).Query;
+        _returnUrl = AuthStateService.SanitizeReturnUrl(
+            QueryParam(query, "returnUrl"));
+
+        // Sessão viva → volta direto para a rota pedida.
+        if (Auth.IsAuthenticated)
+        {
+            Nav.NavigateTo(_returnUrl);
+        }
+    }
+
+    private void SignInSso() => Nav.NavigateTo(
+        $"/oauth/oidc/login?returnTo={Uri.EscapeDataString(_returnUrl)}",
+        forceLoad: true);
+
+    private void EnterApp() => Nav.NavigateTo(_returnUrl);
+
+    private async Task SignInLocalAsync()
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = false;
+        try
+        {
+            if (await Auth.DevLoginAsync(_email.Trim(), null))
+            {
+                Nav.NavigateTo(_returnUrl);
+            }
+            else
+            {
+                _error = true;
+            }
+        }
+        catch (Exception)
+        {
+            _error = true;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Query param simples (?a=b) — sem dep extra.</summary>
+    internal static string? QueryParam(string query, string name)
+    {
+        foreach (var pair in query.TrimStart('?').Split('&',
+            StringSplitOptions.RemoveEmptyEntries))
+        {
+            var eq = pair.IndexOf('=');
+            var key = eq < 0 ? pair : pair[..eq];
+            if (key.Equals(name, StringComparison.OrdinalIgnoreCase))
+            {
+                return eq < 0 ? ""
+                    : Uri.UnescapeDataString(pair[(eq + 1)..]
+                        .Replace('+', ' '));
+            }
+        }
+        return null;
+    }
+}

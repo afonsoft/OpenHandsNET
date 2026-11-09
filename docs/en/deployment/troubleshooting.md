@@ -8,7 +8,7 @@ fixes through configuration — never ad hoc `kubectl edit`/`docker rm`.
 
 `GET /api/v1/support-bundle` (or the link on the `/admin` page) downloads
 a ZIP with: detailed readiness, versions, entity counts, log tail
-(`openhandsnet-*.log`) and the effective configuration with **every
+(`sandcastle-*.log`) and the effective configuration with **every
 sensitive value masked** (redaction is covered by tests).
 
 ```bash
@@ -27,18 +27,18 @@ UI can open a conversation: run the checks in section 4.
 docker compose ps                              # per-service status
 docker compose logs --tail=200 app             # app (API + UI)
 docker compose logs --tail=100 runtime-api     # split mode only (provider=remote)
-docker ps --filter label=openhandsnet.managed  # live sandboxes
+docker ps --filter label=sandcastle.managed  # live sandboxes
 ```
 
 ### Kubernetes
 
 ```bash
-kubectl get pods -n openhandsnet -o wide
-kubectl get pods -n openhandsnet-sandboxes -o wide
-kubectl get events -n openhandsnet --sort-by=.metadata.creationTimestamp
-kubectl describe pod -n openhandsnet <pod>
-kubectl logs -n openhandsnet <pod> --all-containers=true --previous --timestamps
-kubectl top pods -n openhandsnet               # if the Metrics API exists
+kubectl get pods -n sandcastle -o wide
+kubectl get pods -n sandcastle-sandboxes -o wide
+kubectl get events -n sandcastle --sort-by=.metadata.creationTimestamp
+kubectl describe pod -n sandcastle <pod>
+kubectl logs -n sandcastle <pod> --all-containers=true --previous --timestamps
+kubectl top pods -n sandcastle               # if the Metrics API exists
 ```
 
 Start with the `STATUS`/`READY`/`RESTARTS` columns: `Pending` =
@@ -52,7 +52,7 @@ a restart.
 |---|---|
 | `app` (Api/UI) | UI/API errors, conversations, `dotnet` logs, boot migrations |
 | `runtime-api` | sandbox create/pause/cleanup (provider `remote`) |
-| pods `ohn-sandbox-*` / `ohn-pool-*` | a specific conversation does not start; warm pool does not claim |
+| pods `sc-sandbox-*` / `sc-pool-*` | a specific conversation does not start; warm pool does not claim |
 | `litellm` | model rejected, proxy auth (BYOR), budget |
 | `keycloak` | login/SSO, tokens, client redirect |
 | `postgres` | readiness `database` failing, migrations |
@@ -68,7 +68,7 @@ a restart.
 | Egress `deny` breaks clone/LLM | `Sandbox:EgressMode` + `host` clone mode or internal mirror (see `dind.md`) |
 | Warm pool not used | the pool serves the **default spec** only; custom specs cold-start (see `kubernetes.md`/`dind.md`) |
 
-Quick diagnostics: `openhandsnet doctor` (environment), `doctor --preflight`
+Quick diagnostics: `sandcastle doctor` (environment), `doctor --preflight`
 (install gate: DNS/egress/ports/docker socket), `doctor --k8s` (cluster,
 `runtimeclass sysbox-runc`, StorageClass). HTTP probes:
 `/api/v1/health` (liveness) and `/api/v1/readiness` (real dependencies —

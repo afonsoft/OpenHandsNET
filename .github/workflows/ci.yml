@@ -97,22 +97,22 @@ jobs:
       - name: restore (locked-mode)
         # packages.lock.json is committed; locked-mode makes the restore
         # byte-reproducible and fails loudly when the lockfile is stale.
-        run: dotnet restore OpenHandsNET.slnx --locked-mode
+        run: dotnet restore Sandcastle.slnx --locked-mode
 
       - name: lint (dotnet format)
-        run: dotnet format OpenHandsNET.slnx --verify-no-changes
+        run: dotnet format Sandcastle.slnx --verify-no-changes
 
       - name: build (Release)
-        run: dotnet build OpenHandsNET.slnx -c Release --no-restore
+        run: dotnet build Sandcastle.slnx -c Release --no-restore
 
       - name: unit tests (coverage)
-        run: dotnet test tests/OpenHandsNET.UnitTests -c Release --no-build --collect:"XPlat Code Coverage" --results-directory coverage/unit
+        run: dotnet test tests/Sandcastle.UnitTests -c Release --no-build --collect:"XPlat Code Coverage" --results-directory coverage/unit
 
       - name: client tests (coverage)
-        run: dotnet test tests/OpenHandsNET.Client.Tests -c Release --no-build --collect:"XPlat Code Coverage" --results-directory coverage/client
+        run: dotnet test tests/Sandcastle.Client.Tests -c Release --no-build --collect:"XPlat Code Coverage" --results-directory coverage/client
 
       - name: sandbox agent tests (coverage)
-        run: dotnet test tests/OpenHandsNET.SandboxAgent.Tests -c Release --no-build --collect:"XPlat Code Coverage" --results-directory coverage/sandbox
+        run: dotnet test tests/Sandcastle.SandboxAgent.Tests -c Release --no-build --collect:"XPlat Code Coverage" --results-directory coverage/sandbox
 
       # SPEC-78 RF-002/RF-004: deadline maior via env + retry único do
       # step — flake ambiental (timing/pool) passa no re-run; falha real
@@ -121,11 +121,11 @@ jobs:
         env:
           E2E_DEADLINE_MINUTES: "6"
         run: |
-          dotnet test tests/OpenHandsNET.IntegrationTests -c Release \
+          dotnet test tests/Sandcastle.IntegrationTests -c Release \
             --no-build --collect:"XPlat Code Coverage" \
             --results-directory coverage/integration || {
               echo "::warning::integration tests failed — retrying once (SPEC-78 flake quarantine)"
-              dotnet test tests/OpenHandsNET.IntegrationTests -c Release \
+              dotnet test tests/Sandcastle.IntegrationTests -c Release \
                 --no-build --collect:"XPlat Code Coverage" \
                 --results-directory coverage/integration
             }
@@ -173,7 +173,7 @@ jobs:
           dotnet-version: "10.0.x"   # pinned: WASM lockfiles capture SDK-band implicit package versions — bump with lockfile regen
 
       - name: golden event fixtures
-        run: dotnet test tests/OpenHandsNET.UnitTests -c Release --filter "FullyQualifiedName~Golden"
+        run: dotnet test tests/Sandcastle.UnitTests -c Release --filter "FullyQualifiedName~Golden"
 
   docker:
     name: docker image
@@ -197,7 +197,7 @@ jobs:
         with:
           context: .
           push: false
-          tags: openhandsnet:ci
+          tags: sandcastle:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -279,7 +279,7 @@ jobs:
         with:
           script: |
             const fs = require("fs");
-            const marker = "<!-- openhandsnet-coverage-report -->";
+            const marker = "<!-- sandcastle-coverage-report -->";
             let body = marker + "\n## Coverage report\n\n";
             try {
               body += fs.readFileSync("coverage/report/SummaryGithub.md", "utf8");
@@ -357,7 +357,7 @@ jobs:
           /d:sonar.exclusions="**/wwwroot/lib/**,**/wwwroot/css/app.css,**/wwwroot/js/theme.js,**/wwwroot/js/monacoInterop.js,**/wwwroot/index.html,**/Persistence/Migrations/**,**/bin/**,**/obj/**,**/packages.lock.json,**/Golden/**,**/docs/**,**/data/**"
 
       - name: build (Release)
-        run: dotnet build OpenHandsNET.slnx -c Release
+        run: dotnet build Sandcastle.slnx -c Release
 
       - name: sonar end
         run: dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"

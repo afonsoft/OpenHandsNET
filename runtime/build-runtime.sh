@@ -4,11 +4,11 @@
 #
 #   ./runtime/build-runtime.sh [tag]
 #
-# Ex.: ./runtime/build-runtime.sh ghcr.io/openhandsnet/runtime:0.1.0
-#      docker push ghcr.io/openhandsnet/runtime:0.1.0
+# Ex.: ./runtime/build-runtime.sh ghcr.io/sandcastle/runtime:0.1.0
+#      docker push ghcr.io/sandcastle/runtime:0.1.0
 set -euo pipefail
 
-TAG="${1:-ghcr.io/openhandsnet/runtime:latest}"
+TAG="${1:-ghcr.io/sandcastle/runtime:latest}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 docker buildx build \

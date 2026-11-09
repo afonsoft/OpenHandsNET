@@ -1,0 +1,93 @@
+# sandcastle — production-grade defaults (SPEC-37 + SPEC-49).
+# Secrets NUNCA aqui — use secrets.existingSecret / postgres.externalSecret*.
+
+image:
+  repository: sandcastle
+  tag: "1.0"
+  pullPolicy: IfNotPresent
+
+runtimeApi:
+  repository: sandcastle-runtime-api
+  tag: "1.0"
+  # O runtime-api só é deployado em modo split (provider=remote, daemons
+  # Docker externos). Em provider=kubernetes o Api orquestra os pods
+  # in-cluster — runtime-api pode ficar desligado.
+  enabled: false
+
+sandbox:
+  provider: kubernetes          # docker | kubernetes | remote
+  namespace: sandcastle-sandboxes
+  runtimeClassName: sysbox-runc   # Sysbox p/ DinD nos pods-agente
+  workspaceStorageClass: ""       # default do cluster
+  workspacePvcSize: 4Gi
+  warmPoolImages: ""              # "img:2;outra:1" — dormant pods/imagem
+  # SPEC-87: DaemonSet opt-in que pré-puxa imagens de sandbox em todo
+  # node do pool — cold start e imagens custom não pagam o pull no
+  # primeiro uso. Vazio = [image.repository:image.tag].
+  imageLoader:
+    enabled: false
+    images: []
+    nodeSelector: {}              # ex.: label do sandbox pool
+    tolerations: []               # ex.: taint do sandbox pool
+
+cache:
+  provider: memory              # redis quando deployment.replicas > 1
+
+deployment:
+  replicas: 1
+
+# Ingress unificado: app|auth|llm-proxy|runtime.<baseDomain>.
+ingress:
+  enabled: true
+  className: nginx                # nginx | traefik | ...
+  baseDomain: example.com
+  tls: true
+  tlsSecretName: sandcastle-tls # vazio = um secret por host gerado
+                                  # pelo controller/cert-manager
+  certManagerIssuer: ""           # ex.: letsencrypt-prod → annotation
+  annotations: {}                 # annotations extras do controller
+  sessionAffinity: true           # SignalR sticky (cookie affinity)
+
+# HPA do Api por CPU (sessão SignalR é sticky via ingress affinity).
+hpa:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 4
+  targetCpuUtilization: 70
+
+# Postgres: produção = externalSecret (DSN nunca em values);
+# dev = postgres.dev.enabled sobe um pod descartável.
+postgres:
+  enabled: false
+  # Produção: secret existente com a DSN completa.
+  externalSecretName: ""          # ex.: sandcastle-postgres-dsn
+  externalSecretKey: "dsn"
+  dev:
+    enabled: false                # DEV ONLY — sem HA/backup
+    password: ""                  # obrigatório quando dev.enabled=true
+
+# Secrets de aplicação (LLM keys, connection strings…): referência a
+# Secret gerenciado fora do chart — nada de secret em values.
+secrets:
+  existingSecret: ""              # envFrom secretRef quando setado
+
+# Resources por Deployment — override completo via values.
+resources:
+  api:
+    requests: { cpu: 250m, memory: 512Mi, ephemeral-storage: 256Mi }
+    limits:   { cpu: "1",  memory: 1Gi }
+  runtimeApi:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+  valkey:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits:   { cpu: 250m, memory: 256Mi }
+  postgresDev:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 1Gi }
+
+networkPolicy:
+  enabled: true                   # default-deny ingress interno +
+                                  # allowlist api→deps (SPEC-49)
+
+apiEnv: []                        # env extra do Api: [{name, value}]

@@ -6,10 +6,10 @@
       "required": [],
       "type": "object"
     },
-    "name": "ohn_attention_list"
+    "name": "sc_attention_list"
   },
   {
-    "description": "Create a conversation (async start-task): returns a task in WORKING state — poll ohn_get_task_status until READY.",
+    "description": "Create a conversation (async start-task): returns a task in WORKING state — poll sc_get_task_status until READY.",
     "inputSchema": {
       "properties": {
         "confirmation_mode": {
@@ -32,7 +32,7 @@
       "required": [],
       "type": "object"
     },
-    "name": "ohn_create_conversation"
+    "name": "sc_create_conversation"
   },
   {
     "description": "Get one conversation by id (status, model, repository).",
@@ -48,7 +48,7 @@
       ],
       "type": "object"
     },
-    "name": "ohn_get_conversation"
+    "name": "sc_get_conversation"
   },
   {
     "description": "Poll a start-task (conversation create) until READY — returns task.status and conversation_id when done.",
@@ -64,7 +64,7 @@
       ],
       "type": "object"
     },
-    "name": "ohn_get_task_status"
+    "name": "sc_get_task_status"
   },
   {
     "description": "List app conversations (id, title, status, updated_at).",
@@ -78,7 +78,7 @@
       "required": [],
       "type": "object"
     },
-    "name": "ohn_list_conversations"
+    "name": "sc_list_conversations"
   },
   {
     "description": "List durable events of a conversation (paged).",
@@ -98,7 +98,7 @@
       ],
       "type": "object"
     },
-    "name": "ohn_list_events"
+    "name": "sc_list_events"
   },
   {
     "description": "List configured MCP servers (name, transport, status).",
@@ -107,7 +107,7 @@
       "required": [],
       "type": "object"
     },
-    "name": "ohn_list_mcp_servers"
+    "name": "sc_list_mcp_servers"
   },
   {
     "description": "List LLM models advertised by the gateway.",
@@ -116,7 +116,7 @@
       "required": [],
       "type": "object"
     },
-    "name": "ohn_list_models"
+    "name": "sc_list_models"
   },
   {
     "description": "List skills available to agents (repo + user level).",
@@ -125,7 +125,7 @@
       "required": [],
       "type": "object"
     },
-    "name": "ohn_list_skills"
+    "name": "sc_list_skills"
   },
   {
     "description": "Full-text search over a conversation's events.",
@@ -146,7 +146,7 @@
       ],
       "type": "object"
     },
-    "name": "ohn_search_events"
+    "name": "sc_search_events"
   },
   {
     "description": "Send a user message to a conversation (starts a run).",
@@ -167,7 +167,7 @@
       ],
       "type": "object"
     },
-    "name": "ohn_send_message"
+    "name": "sc_send_message"
   },
   {
     "description": "Request cancellation of the current run on a conversation.",
@@ -183,6 +183,6 @@
       ],
       "type": "object"
     },
-    "name": "ohn_stop_run"
+    "name": "sc_stop_run"
   }
 ]

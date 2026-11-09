@@ -5,6 +5,43 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+## [v0.1.0-beta.2] — 2026-11-09
+
+**Rename do produto**: OpenHandsNET → **Sandcastle** (core/OSS) +
+**Sandcastle Cloud** (edição enterprise/hosted). SPEC-138 · issue #395.
+`v0.1.0-beta.1` permanece como a última release com a marca OpenHandsNET.
+
+### Breaking changes
+
+- **Repositório**: `github.com/afonsoft/OpenHandsNET` →
+  `github.com/afonsoft/sandcastle` (redirects preservados; atualizar
+  `git remote set-url origin`).
+- **Env vars**: prefixo `OPENHANDSNET_*` → `SANDCASTLE_*` e `OHN_*` →
+  `SC_*` (hard break, sem dual-read — variáveis antigas são ignoradas).
+- **Imagens Docker**: app `openhandsnet` → `sandcastle`
+  (`ghcr.io/afonsoft/sandcastle`); runtime opt-in `openhandsnet/runtime`
+  → `sandcastle-runtime`.
+- **Dados locais**: `openhandsnet.db` → `sandcastle.db`; volumes,
+  containers, pods (`ohn-pool-*` → `sc-pool-*`) e prefixos de cache/
+  localStorage (`ohn*` → `sc*`) novos — **dados da beta não migram**.
+- **MCP**: tools `ohn_*` → `sc_*` e env `OHN_API_URL`/`OHN_API_KEY` →
+  `SC_API_URL`/`SC_API_KEY`; binário `openhandsnet-mcp` →
+  `sandcastle-mcp`.
+- **CLI**: `openhandsnet` → `sandcastle`
+  (`dotnet tool install Sandcastle.Cli`).
+- **Namespaces/assemblies**: `OpenHandsNET.*`/`OpenHandsNet*` →
+  `Sandcastle.*`; solução `Sandcastle.slnx`.
+
+### Notes
+
+- Convenção `.openhands/` (hooks/skills/microagents) **preservada** —
+  é convenção de ecossistema upstream, não marca do produto.
+- SonarCloud mantém project key `afonsoft_OpenHandsNET` (imutável);
+  display name acompanha o repo.
+- Histórico congelado: `docs/specs/` (SPECs arquivadas), entradas
+  anteriores deste changelog e `.claude/memory/` seguem com o nome antigo.
+- Ícone/logo da marca nova fica para SPEC própria de brand assets.
+
 ## [v0.1.0-beta.1] — 2026-11-08
 
 Primeira tag beta pública (Epic #365 · SPECs 132–137). Highlights do

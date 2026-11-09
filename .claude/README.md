@@ -1,4 +1,4 @@
-# .claude/ — Harness do OpenHandsNET
+# .claude/ — Harness do Sandcastle
 
 Infraestrutura de agente (Claude Code / Devin / afonsoft harness).
 Fonte única de verdade: [`CLAUDE.md`](../CLAUDE.md) — referência fina:

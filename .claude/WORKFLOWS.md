@@ -6,7 +6,7 @@
 |---|---|
 | `build-test` | restore → **lint (`dotnet format --verify-no-changes`)** → build Release → unit+client tests → integration tests → `check-env-drift.sh` |
 | `contracts` | golden event fixtures (`--filter FullyQualifiedName~Golden`) |
-| `docker` | build imagem `openhandsnet:ci` + `docker compose config -q` (2 profiles) |
+| `docker` | build imagem `sandcastle:ci` + `docker compose config -q` (2 profiles) |
 | `sonarcloud` | gated `vars.SONAR_ENABLED == 'true'` — `dotnet-sonarscanner` + secret `SONAR_TOKEN` (org `afonsoft`, projeto `afonsoft_OpenHandsNET`) |
 
 ## Outros workflows

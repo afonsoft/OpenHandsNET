@@ -1,0 +1,78 @@
+@page "/share/{Token}"
+@using Sandcastle.Client.Services
+@using Sandcastle.Client.Components.Conversation
+@using Sandcastle.Client.Components
+@inject SandcastleApiClient Api
+@inject LocalizationService L
+
+<PageTitle>@L["shared.title"] · Sandcastle</PageTitle>
+
+<div class="conv-page">
+    <div class="shared-banner">
+        <Icon Name="external" Size="13" />
+        @L["shared.banner"]
+        @if (_shared?.SelectedRepository is { } repo)
+        {
+            <span class="muted">· @repo</span>
+        }
+    </div>
+    <div class="chat-scroll" style="padding:16px">
+        @if (_shared is null && !_notFound)
+        {
+            <div class="ev-card condense">@L["common.loading"]</div>
+        }
+        else if (_notFound || _shared!.Items.Count == 0)
+        {
+            <div class="empty-state">@L["shared.empty"]</div>
+        }
+        else
+        {
+            @foreach (var e in _shared.Items)
+            {
+                <EventCard Event="e" />
+            }
+            @if (_nextPage is not null)
+            {
+                <button class="btn ghost" @onclick="LoadMoreAsync">
+                    @L["common.load_more"]
+                </button>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>Token público do share link (SPEC-56 RF-002).</summary>
+    [Parameter] public string Token { get; set; } = "";
+
+    private SandcastleApiClient.SharedConversationDto? _shared;
+    private string? _nextPage;
+    private bool _notFound;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _shared = await Api.GetSharedConversationAsync(Token);
+        if (_shared is null)
+        {
+            _notFound = true;
+            return;
+        }
+
+        _nextPage = _shared.NextPageId;
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        if (_nextPage is null || _shared is null)
+        {
+            return;
+        }
+
+        var (items, next) = await Api.GetSharedEventsAsync(Token, _nextPage);
+        _nextPage = next;
+        _shared = _shared with
+        {
+            Items = [.. _shared.Items, .. items],
+        };
+    }
+}

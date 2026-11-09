@@ -13,7 +13,7 @@ docker compose -f docker-compose.yaml -f docker-compose.postgres.yaml up -d --bu
 
 O arquivo `docker-compose.postgres.yaml`:
 
-1. Sobe `postgres:17-alpine` com `POSTGRES_DB=openhandsnet` e healthcheck.
+1. Sobe `postgres:17-alpine` com `POSTGRES_DB=sandcastle` e healthcheck.
 2. Reaponta o app para `Database__Provider=PostgreSql` +
    `Host=postgres` no connection string.
 3. `depends_on: service_healthy` garante PG pronto antes do app.
@@ -22,7 +22,7 @@ O arquivo `docker-compose.postgres.yaml`:
 
 ```bash
 docker compose -f docker-compose.yaml -f docker-compose.postgres.yaml ps
-docker logs openhandsnet | grep -i "migration"
+docker logs sandcastle | grep -i "migration"
 curl -fsS http://localhost:3032/api/v1/readiness | jq .checks.db
 ```
 

@@ -15,7 +15,7 @@ Checklist executável para cortar a primeira tag beta (Epic #365 · SPECs
 ## 2. Qualidade (gates obrigatórios)
 
 - [x] `dotnet format --verify-no-changes` limpo em `main`
-- [x] `dotnet build OpenHandsNET.slnx -c Release` — 0 warnings / 0 errors
+- [x] `dotnet build Sandcastle.slnx -c Release` — 0 warnings / 0 errors
 - [x] `dotnet test` — suítes verdes (Unit 742/742 · Client 133/133;
       integração gate por CI); flakes conhecidos documentados no
       corpo da tag (SPEC-78 quarantine list)
@@ -29,7 +29,7 @@ Checklist executável para cortar a primeira tag beta (Epic #365 · SPECs
 
 Em uma VM/runner sem estado dev (`git clone` fresco):
 
-- [x] `cp .env.exemplo .env` + preencher só `OPENHANDSNET_AgentLlm__*`
+- [x] `cp .env.exemplo .env` + preencher só `SANDCASTLE_AgentLlm__*`
       (provider/model/key) — verificado com gateway OmniRoute (Gemini)
 - [x] `docker compose -f docker-compose.beta.yaml up -d --build` →
       app saudável em `:3032` (`/api/v1/ready` = 200)
@@ -37,7 +37,7 @@ Em uma VM/runner sem estado dev (`git clone` fresco):
       calls → `finish` (verificado: `hello.txt` criado+lido no workspace,
       2 conversas FINISHED com LLM real)
 - [x] Desktop tab abre noVNC (verificado: xterm live no X do sandbox —
-      exige `Sandbox__DefaultImage=openhandsnet/runtime:local`,
+      exige `Sandbox__DefaultImage=sandcastle/runtime:local`,
       `Sandbox__ControlNetwork=<rede do compose>` e `group_add` do gid docker)
 - [ ] `Auth:Provider=none` → boot direto sem login (single-user local);
       quando `oidc` configurado → `/auth` + SSO + sign-out funcionam
@@ -70,9 +70,9 @@ Em uma VM/runner sem estado dev (`git clone` fresco):
       a tag original (26/10) apontava commit anterior às SPECs beta;
       re-apontada para `main` (66d0628) — release.yml disparou no push
 - [x] GitHub Release: notas a partir do CHANGELOG + screenshots +
-      quickstart snippet (compose beta) — [release](https://github.com/afonsoft/OpenHandsNET/releases/tag/v0.1.0-beta.1)
-- [x] Imagem Docker etiquetada `openhandsnet:0.1.0-beta.1` — build+push
-      via CI `release.yml` na tag → `ghcr.io/afonsoft/openhandsnet:0.1.0-beta.1`
+      quickstart snippet (compose beta) — [release](https://github.com/afonsoft/sandcastle/releases/tag/v0.1.0-beta.1)
+- [x] Imagem Docker etiquetada `sandcastle:0.1.0-beta.1` — build+push
+      via CI `release.yml` na tag → `ghcr.io/afonsoft/sandcastle:0.1.0-beta.1`
       (+ `latest`)
 - [x] README: badge de versão/status "beta" no cabeçalho
 

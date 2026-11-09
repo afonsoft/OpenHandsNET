@@ -6,7 +6,7 @@ Caixa de entrada rica compartilhada entre Home e ChatPane.
 
 `@` abre fuzzy picker de arquivos do workspace — a menção injeta o
 path na mensagem. Varredura via `find` no `/exec` (exclui `.git` e
-`.ohn-checkpoints`).
+`.sc-checkpoints`).
 
 ## /slash
 

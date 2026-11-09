@@ -17,7 +17,7 @@ curl -fsSL --proto '=https' --tlsv1.2 "https://go.dev/dl/go${REQUESTED}.linux-${
 $SUDO rm -rf /usr/local/go
 $SUDO tar -C /usr/local -xzf /tmp/go.tgz
 $SUDO ln -sf /usr/local/go/bin/go /usr/local/bin/go
-$SUDO tee /etc/profile.d/ohn-go.sh >/dev/null <<'EOF'
+$SUDO tee /etc/profile.d/sc-go.sh >/dev/null <<'EOF'
 export PATH=/usr/local/go/bin:$HOME/go/bin:$PATH
 EOF
 go version

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <OutputType>Exe</OutputType>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>sandcastle</ToolCommandName>
+    <PackageId>Sandcastle.Cli</PackageId>
+    <Description>Sandcastle command line — device flow login, cloud conversations, headless CI runs, interactive TUI.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Spectre.Console" />
+    <PackageReference Include="Spectre.Console.Cli" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
+    <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Sandcastle.Eval/Sandcastle.Eval.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sandcastle.UnitTests" />
+  </ItemGroup>
+</Project>

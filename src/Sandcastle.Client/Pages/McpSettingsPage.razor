@@ -1,0 +1,237 @@
+@page "/settings/mcp"
+@using Sandcastle.Client.Services
+@using System.Text.Json
+@inject SandcastleApiClient Api
+@inject LocalizationService L
+
+<PageTitle>@L["mcp.title"] · Sandcastle</PageTitle>
+
+<div class="settings-wrap">
+    <h1>@L["mcp.title"]</h1>
+    <p class="sub" style="color:var(--sc-fg-dim)">
+        @L["mcp.subtitle_pre"] <code>mcp__servidor__tool</code>.
+    </p>
+
+    @if (_error is not null)
+    {
+        <p style="color:var(--sc-red)">@_error</p>
+    }
+
+    @if (_servers is null)
+    {
+        <p>@L["common.loading"]</p>
+    }
+    else if (_servers.Count == 0)
+    {
+        <p style="color:var(--sc-fg-dim)">@L["mcp.empty"]</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr><th>@L["mcp.col_name"]</th><th>@L["mcp.col_transport"]</th><th>@L["mcp.col_endpoint"]</th>
+                    <th>@L["mcp.col_status"]</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var s in _servers)
+                {
+                    var cfg = s.GetProperty("config");
+                    var name = cfg.GetProperty("name").GetString() ?? "?";
+                    var transport = cfg.TryGetProperty("transport", out var tr)
+                        ? tr.GetString() : "stdio";
+                    var endpoint = EndpointOf(cfg);
+                    var status = s.TryGetProperty("status", out var st)
+                        ? st.GetString() : "?";
+                    <tr>
+                        <td>@name</td>
+                        <td>@transport</td>
+                        <td><code>@endpoint</code></td>
+                        <td>
+                            <span class="badge">@status</span>
+                            @if (status == "auth_required")
+                            {
+                                <a href="/api/v1/mcp/oauth/authorize?server=@name"
+                                   style="margin-left:8px">@L["mcp.authenticate"]</a>
+                            }
+                        </td>
+                        <td>
+                            <button @onclick="() => ProbeAsync(name)"
+                                    title="@L["mcp.probe_title"]">@L["mcp.probe"]</button>
+                            <button @onclick="() => DeleteAsync(name)">@L["common.delete"]</button>
+                        </td>
+                    </tr>
+                    @if (_probeResults.TryGetValue(name, out var pr))
+                    {
+                        <tr><td colspan="5" style="color:var(--sc-fg-dim);
+                            font-size:12px">@pr</td></tr>
+                    }
+                }
+            </tbody>
+        </table>
+    }
+
+    <h2 style="margin-top:24px">@L["mcp.add_server"]</h2>
+    <div class="field">
+        <label>@L["mcp.col_name"]</label>
+        <input aria-label="@L["mcp.col_name"]" @bind="_newName" />
+    </div>
+    <div class="field">
+        <label>@L["mcp.col_transport"]</label>
+        <select aria-label="@L["mcp.col_transport"]" @bind="_newTransport">
+            <option value="stdio">stdio (no sandbox via docker exec)</option>
+            <option value="http">streamable http</option>
+            <option value="sse">sse (legado)</option>
+        </select>
+    </div>
+    @if (_newTransport == "stdio")
+    {
+        <div class="field">
+            <label>@L["mcp.command_label"]</label>
+            <input aria-label="@L["mcp.command_label"]" @bind="_newCommand" />
+        </div>
+        <div class="field">
+            <label>@L["mcp.args_label"]</label>
+            <textarea aria-label="@L["mcp.args_label"]" @bind="_newArgs" rows="3" style="width:100%"></textarea>
+        </div>
+    }
+    else
+    {
+        <div class="field">
+            <label>@L["mcp.url_label"]</label>
+            <input aria-label="@L["mcp.url_label"]" @bind="_newUrl" />
+        </div>
+        <div class="field">
+            <label>@L["mcp.oauth_auth"]</label>
+            <input aria-label="@L["mcp.oauth_auth"]" @bind="_newOauthAuth" />
+        </div>
+        <div class="field">
+            <label>@L["mcp.oauth_token"]</label>
+            <input aria-label="@L["mcp.oauth_token"]" @bind="_newOauthToken" />
+        </div>
+        <div class="field">
+            <label>@L["mcp.oauth_client"]</label>
+            <input aria-label="@L["mcp.oauth_client"]" @bind="_newOauthClient" />
+        </div>
+    }
+    <label style="display:flex;gap:6px;align-items:center;margin:8px 0">
+        <input type="checkbox" @bind="_newRequireConfirm" />
+        @L["mcp.require_confirm"]
+    </label>
+    <button class="primary" @onclick="SaveAsync"
+            disabled="@string.IsNullOrWhiteSpace(_newName)">@L["mcp.save_server"]</button>
+</div>
+
+@code {
+    private IReadOnlyList<JsonElement>? _servers;
+    private readonly Dictionary<string, string> _probeResults = new();
+    private string? _error;
+    private string? _newName;
+    private string _newTransport = "stdio";
+    private string? _newCommand;
+    private string? _newArgs;
+    private string? _newUrl;
+    private string? _newOauthAuth;
+    private string? _newOauthToken;
+    private string? _newOauthClient;
+    private bool _newRequireConfirm;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _servers = await Api.ListMcpServersAsync();
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private object BuildConfig() => _newTransport == "stdio"
+        ? new
+        {
+            name = _newName, transport = "stdio",
+            command = _newCommand,
+            args = _newArgs?.Split('\n',
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+            require_confirmation = _newRequireConfirm,
+        }
+        : new
+        {
+            name = _newName, transport = _newTransport,
+            url = _newUrl,
+            oauth_authorize_url = EmptyToNull(_newOauthAuth),
+            oauth_token_url = EmptyToNull(_newOauthToken),
+            oauth_client_id = EmptyToNull(_newOauthClient),
+            require_confirmation = _newRequireConfirm,
+        };
+
+    private static string? EmptyToNull(string? s) =>
+        string.IsNullOrWhiteSpace(s) ? null : s;
+
+    private async Task SaveAsync()
+    {
+        try
+        {
+            await Api.SaveMcpServerAsync(BuildConfig());
+            _newName = _newCommand = _newArgs = _newUrl = null;
+            _newOauthAuth = _newOauthToken = _newOauthClient = null;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task DeleteAsync(string name)
+    {
+        try
+        {
+            await Api.DeleteMcpServerAsync(name);
+            _probeResults.Remove(name);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task ProbeAsync(string name)
+    {
+        try
+        {
+            var cfg = _servers!
+                .First(s => s.GetProperty("config")
+                    .GetProperty("name").GetString() == name)
+                .GetProperty("config");
+            var r = await Api.ProbeMcpServerAsync(cfg);
+            var ok = r.GetProperty("ok").GetBoolean();
+            var error = r.TryGetProperty("error", out var e)
+                ? e.GetString() : L["mcp.probe_unknown"];
+            _probeResults[name] = ok
+                ? L.T("mcp.probe_ok", ("count", r.GetProperty("tools_count").GetInt32().ToString()), ("ms", r.GetProperty("latency_ms").GetInt64().ToString()))
+                : $"erro: {error}";
+        }
+        catch (Exception ex)
+        {
+            _probeResults[name] = L.T("mcp.probe_failed", ("error", ex.Message));
+        }
+    }
+
+    private static string EndpointOf(JsonElement cfg)
+    {
+        if (cfg.TryGetProperty("url", out var u)
+            && u.ValueKind == JsonValueKind.String)
+        {
+            return u.GetString() ?? "-";
+        }
+
+        return cfg.TryGetProperty("command", out var c)
+            ? c.GetString() ?? "-" : "-";
+    }
+}

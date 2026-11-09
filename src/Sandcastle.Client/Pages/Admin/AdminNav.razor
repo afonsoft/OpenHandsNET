@@ -1,0 +1,34 @@
+@* SPEC-21: sub-navegação da área admin — visível só para super-admin (gate
+   feito por cada página via AdminPageBase). *@
+@using Sandcastle.Client.Services
+@inject LocalizationService L
+<nav class="admin-nav">
+    <a href="/admin" class="@Active("/admin", exact: true)">@L["admin.nav_overview"]</a>
+    <a href="/admin/users" class="@Active("/admin/users")">@L["admin.nav_users"]</a>
+    <a href="/admin/admins" class="@Active("/admin/admins")">@L["admin.nav_admins"]</a>
+    <a href="/admin/audit" class="@Active("/admin/audit")">@L["admin.nav_audit"]</a>
+    <a href="/admin/flags" class="@Active("/admin/flags")">@L["admin.nav_flags"]</a>
+    <a href="/admin/plans" class="@Active("/admin/plans")">@L["admin.nav_plans"]</a>
+    <a href="/admin/usage" class="@Active("/admin/usage")">@L["admin.nav_usage"]</a>
+    <a href="/admin/orgs" class="@Active("/admin/orgs")">@L["admin.nav_orgs"]</a>
+    <a href="/admin/scm" class="@Active("/admin/scm")">@L["admin.nav_scm"]</a>
+    <a href="/admin/chat" class="@Active("/admin/chat")">@L["admin.nav_chat"]</a>
+    <a href="/admin/tickets" class="@Active("/admin/tickets")">@L["admin.nav_tickets"]</a>
+    <a href="/admin/service-users" class="@Active("/admin/service-users")">@L["admin.nav_service_users"]</a>
+    <a href="/admin/identity" class="@Active("/admin/identity")">@L["admin.nav_identity"]</a>
+    <a href="/admin/security" class="@Active("/admin/security")">@L["admin.nav_security"]</a>
+</nav>
+
+@code {
+    [Inject] private NavigationManager NavMan { get; set; } = default!;
+
+    private string Active(string path, bool exact = false)
+    {
+        var rel = NavMan.ToBaseRelativePath(NavMan.Uri).TrimEnd('/');
+        var p = path.TrimStart('/');
+        var on = exact
+            ? string.Equals(rel, p, StringComparison.OrdinalIgnoreCase)
+            : rel.StartsWith(p, StringComparison.OrdinalIgnoreCase);
+        return on ? "active" : "";
+    }
+}

@@ -24,8 +24,8 @@ import _drift  # noqa: E402
 
 NAME = "check-i18n-placeholders"
 ROOT = Path(__file__).resolve().parent.parent
-I18N = ROOT / "src/OpenHandsNET.Client/wwwroot/i18n"
-CLIENT = ROOT / "src/OpenHandsNET.Client"
+I18N = ROOT / "src/Sandcastle.Client/wwwroot/i18n"
+CLIENT = ROOT / "src/Sandcastle.Client"
 
 SINGLE_BRACE = re.compile(r"(?<!\{)\{(\w+)\}(?!\})")
 BASE_LOCALE = "en-US.json"

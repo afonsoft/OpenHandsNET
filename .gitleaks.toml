@@ -1,4 +1,4 @@
-# .gitleaks.toml — gitleaks config for OpenHandsNET
+# .gitleaks.toml — gitleaks config for Sandcastle
 #
 # Extends the default ruleset with project-level allowlists.
 # INSTRUÇÕES: só adicione uma entrada de allowlist com justificativa real —

@@ -1,13 +1,13 @@
-# `openhandsnet` CLI
+# `sandcastle` CLI
 
-CLI Spectre.Console para operar o OpenHandsNET contra um backend local ou
-remoto. Credenciais salvas em `~/.openhandsnet/` (login/API key); sem
+CLI Spectre.Console para operar o Sandcastle contra um backend local ou
+remoto. Credenciais salvas em `~/.sandcastle/` (login/API key); sem
 argumentos o CLI abre a TUI.
 
 ```bash
-dotnet run --project cli/OpenHandsNET.Cli -- <comando>
+dotnet run --project cli/Sandcastle.Cli -- <comando>
 # ou, após `dotnet tool install`:
-openhandsnet <comando>
+sandcastle <comando>
 ```
 
 ## Autenticação e servidor
@@ -32,7 +32,7 @@ Todos os comandos aceitam `--url <base>` para apontar a outro servidor
 | `conversations status <id>` | Estado da conversa/sandbox. |
 | `conversations resume <id>` | Retoma uma conversa pausada/encerrada. |
 | `conversations delete <id>` | Remove conversa (e artefatos, SPEC-34). |
-| `tui` | UI interativa multi-pane (keymap: `~/.openhandsnet/tui.json`). |
+| `tui` | UI interativa multi-pane (keymap: `~/.sandcastle/tui.json`). |
 
 ## Descoberta e ferramentas
 
@@ -53,13 +53,13 @@ Todos os comandos aceitam `--url <base>` para apontar a outro servidor
 efêmeros de streaming não são exportados; secrets são redigidos. |
 | `doctor` | Diagnóstico do ambiente. |
 | `doctor --preflight` | Gate de instalação enterprise: DNS de
-`OPENHANDSNET_PUBLIC_DOMAIN`, egresso TCP/443 para `registry-1.docker.io` e
+`SANDCASTLE_PUBLIC_DOMAIN`, egresso TCP/443 para `registry-1.docker.io` e
 `ghcr.io`, daemon Docker, cgroup v2, ≥50 GiB livres, portas 8080/30000
 livres. Exit code ≠ 0 se qualquer probe falhar. |
 
 ## Keymap da TUI
 
-`~/.openhandsnet/tui.json` define aliases de slash-commands:
+`~/.sandcastle/tui.json` define aliases de slash-commands:
 
 ```json
 {

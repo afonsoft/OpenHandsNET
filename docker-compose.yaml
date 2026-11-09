@@ -1,19 +1,19 @@
-# OpenHandsNET — OSS single-container (enterprise profile com PG/Keycloak: SPEC-13)
+# Sandcastle — OSS single-container (enterprise profile com PG/Keycloak: SPEC-13)
 services:
   app:
     build: .
-    image: openhandsnet:latest
-    container_name: openhandsnet
+    image: sandcastle:latest
+    container_name: sandcastle
     env_file:
       - path: .env
         required: false
     environment:
-      - OPENHANDSNET_Database__ConnectionString=Data Source=/app/data/openhandsnet.db
+      - SANDCASTLE_Database__ConnectionString=Data Source=/app/data/sandcastle.db
     ports:
-      - "${OPENHANDSNET_PORT:-3032}:8080"
+      - "${SANDCASTLE_PORT:-3032}:8080"
     volumes:
-      - openhandsnet-data:/app/data
-      - openhandsnet-workspace:/workspace
+      - sandcastle-data:/app/data
+      - sandcastle-workspace:/workspace
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/v1/health"]
@@ -23,5 +23,5 @@ services:
       start_period: 20s
 
 volumes:
-  openhandsnet-data:
-  openhandsnet-workspace:
+  sandcastle-data:
+  sandcastle-workspace:

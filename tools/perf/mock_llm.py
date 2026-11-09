@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mock OpenAI-compatible LLM server for OpenHandsNET load/perf tests.
+"""Mock OpenAI-compatible LLM server for Sandcastle load/perf tests.
 
 SPEC-93 RF-001/RF-002/RF-006 — deterministic stdlib+aiohttp server that
 speaks the subset consumed by OpenAiCompatLlmProvider:

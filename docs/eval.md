@@ -1,4 +1,4 @@
-# Eval Harness (`openhandsnet eval`)
+# Eval Harness (`sandcastle eval`)
 
 SPEC-39: runner headless de tasks avaliáveis com fixtures versionadas e
 scoring automático — gate de qualidade para mudanças de prompt/tools/
@@ -7,13 +7,13 @@ routing/contexto.
 ## Comandos
 
 ```bash
-openhandsnet eval list                          # valida evals/tasks + suites
-openhandsnet eval run smoke                     # roda suite evals/suites/smoke.yaml
-openhandsnet eval run create-file               # roda task única
-openhandsnet eval run smoke --parallel 4 --out results/
-openhandsnet eval run smoke --mode recorded     # replay determinístico (sem LLM)
-openhandsnet eval run smoke --record            # grava evidências p/ recorded
-openhandsnet eval report results/smoke-XXXX/ --baseline results/prev/ --gate
+sandcastle eval list                          # valida evals/tasks + suites
+sandcastle eval run smoke                     # roda suite evals/suites/smoke.yaml
+sandcastle eval run create-file               # roda task única
+sandcastle eval run smoke --parallel 4 --out results/
+sandcastle eval run smoke --mode recorded     # replay determinístico (sem LLM)
+sandcastle eval run smoke --record            # grava evidências p/ recorded
+sandcastle eval report results/smoke-XXXX/ --baseline results/prev/ --gate
 ```
 
 ## Formato de task (`evals/tasks/{name}.yaml`)
@@ -66,9 +66,9 @@ e asserts da task: editar a task invalida o recording.
 `llm_judge` chama um endpoint OpenAI-compat configurado por env:
 
 ```bash
-export OPENHANDSNET_EVAL_JUDGE_URL=http://localhost:11434/v1
-export OPENHANDSNET_EVAL_JUDGE_MODEL=qwen2.5:7b
-export OPENHANDSNET_EVAL_JUDGE_KEY=...   # se necessário
+export SANDCASTLE_EVAL_JUDGE_URL=http://localhost:11434/v1
+export SANDCASTLE_EVAL_JUDGE_MODEL=qwen2.5:7b
+export SANDCASTLE_EVAL_JUDGE_KEY=...   # se necessário
 ```
 
 Sem config, o assert é marcado `skipped` — o `--gate` só considera

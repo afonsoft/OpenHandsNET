@@ -30,7 +30,7 @@ general_settings:
   # Persistência de virtual keys/budgets — exige Postgres.
   database_url: os.environ/LITELLM_DATABASE_URL
   # Budget default para virtual keys criadas sem budget explícito —
-  # o OpenHandsNET sempre envia max_budget no /key/generate; isto é o
+  # o Sandcastle sempre envia max_budget no /key/generate; isto é o
   # fallback do próprio proxy.
   default_max_budget: 50.0
 

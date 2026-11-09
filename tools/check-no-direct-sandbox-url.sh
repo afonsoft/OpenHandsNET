@@ -11,7 +11,7 @@ fail=0
 
 # 1) Nenhum ws(s):// literal no código do client (fora libs/obj).
 hits=$(grep -rEn 'wss?://' \
-    src/OpenHandsNET.Client \
+    src/Sandcastle.Client \
     --include='*.razor' --include='*.cs' --include='*.js' \
     --exclude-dir=bin --exclude-dir=obj --exclude-dir=lib || true)
 if [[ -n "$hits" ]]; then
@@ -22,7 +22,7 @@ fi
 
 # 2) Hostname de container Docker não pode ser montado no client.
 hits=$(grep -rEn 'surfaces/[0-9]+\?token=|\.docker\.internal|containerId' \
-    src/OpenHandsNET.Client \
+    src/Sandcastle.Client \
     --include='*.razor' --include='*.cs' \
     --exclude-dir=bin --exclude-dir=obj || true)
 if [[ -n "$hits" ]]; then

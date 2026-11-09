@@ -7,8 +7,8 @@ of the compose container.
 ## Configuration
 
 ```bash
-OPENHANDSNET_Database__Provider=PostgreSql
-OPENHANDSNET_Database__ConnectionString="Host=db.example.com;Port=5432;Database=openhandsnet;Username=openhandsnet;Password=***;SSL Mode=Require"
+SANDCASTLE_Database__Provider=PostgreSql
+SANDCASTLE_Database__ConnectionString="Host=db.example.com;Port=5432;Database=sandcastle;Username=sandcastle;Password=***;SSL Mode=Require"
 ```
 
 ## Behaviour
@@ -29,7 +29,7 @@ OPENHANDSNET_Database__ConnectionString="Host=db.example.com;Port=5432;Database=
 
 ```sql
 SELECT datname, pg_encoding_to_char(encoding) AS encoding FROM pg_database;
-CREATE DATABASE openhandsnet WITH ENCODING 'UTF8';
+CREATE DATABASE sandcastle WITH ENCODING 'UTF8';
 ```
 
 - A dedicated role; DDL rights are needed for migrations.
@@ -39,7 +39,7 @@ CREATE DATABASE openhandsnet WITH ENCODING 'UTF8';
 
 > **Divergence vs upstream**: OpenHands uses 5 databases (`openhands`,
 > `bitnami_keycloak`, `litellm`, `runtime_api_db`, `automations`).
-> OpenHandsNET uses **one** application database plus an optional
+> Sandcastle uses **one** application database plus an optional
 > `litellm` db created by `deploy/postgres-init/00-litellm-db.sh` in the
 > enterprise compose; create it manually on k8s when enabling the proxy.
 

@@ -1,4 +1,4 @@
-# OpenHandsNET — beta deploy (single host, docker.sock mount)
+# Sandcastle — beta deploy (single host, docker.sock mount)
 #
 # O compose base NÃO dá ao app acesso ao daemon Docker — necessário para
 # criar sandboxes. Para beta de testes em host próprio usamos o caminho
@@ -14,27 +14,27 @@
 services:
   app:
     build: .
-    image: openhandsnet:beta
-    container_name: openhandsnet
+    image: sandcastle:beta
+    container_name: sandcastle
     env_file:
       - path: .env
         required: false
     environment:
-      - OPENHANDSNET_Database__ConnectionString=Data Source=/app/data/openhandsnet.db
-      - OPENHANDSNET_Sandbox__DockerSocketMount=true
+      - SANDCASTLE_Database__ConnectionString=Data Source=/app/data/sandcastle.db
+      - SANDCASTLE_Sandbox__DockerSocketMount=true
       # SPEC-36: rate limit ligado por default no beta (single-user local
       # pode ser exposto — IP rules do SPEC-59 já são always-on). Ajuste
       # ou zere via .env se quiser desligar.
-      - OPENHANDSNET_RateLimit__RequestsPerMinute=120
-      - OPENHANDSNET_RateLimit__ReadPerMinute=600
-      - OPENHANDSNET_RateLimit__WritePerMinute=120
+      - SANDCASTLE_RateLimit__RequestsPerMinute=120
+      - SANDCASTLE_RateLimit__ReadPerMinute=600
+      - SANDCASTLE_RateLimit__WritePerMinute=120
     ports:
-      - "${OPENHANDSNET_PORT:-3032}:8080"
+      - "${SANDCASTLE_PORT:-3032}:8080"
     volumes:
-      - openhandsnet-data:/app/data
-      - openhandsnet-workspace:/workspace
+      - sandcastle-data:/app/data
+      - sandcastle-workspace:/workspace
       - /var/run/docker.sock:/var/run/docker.sock
-    # O app roda como uid 999 (openhandsnet) — precisa do gid do grupo
+    # O app roda como uid 999 (sandcastle) — precisa do gid do grupo
     # docker do host para falar no socket montado. Override via
     # `DOCKER_GID=$(stat -c %g /var/run/docker.sock) docker compose ...`.
     group_add:
@@ -48,5 +48,5 @@ services:
       start_period: 20s
 
 volumes:
-  openhandsnet-data:
-  openhandsnet-workspace:
+  sandcastle-data:
+  sandcastle-workspace:

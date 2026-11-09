@@ -1,0 +1,105 @@
+using System.Net.Http.Json;
+using System.Text.Json;
+
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.DependencyInjection;
+
+using Sandcastle.Domain.Events;
+
+namespace Sandcastle.IntegrationTests.Api;
+
+/// <summary>
+/// ConversationHub tests: join streams backlog + live events
+/// (SPEC-04 RF-005).
+/// </summary>
+public sealed class SignalRConversationHubTests : IDisposable
+{
+    private readonly string _dbPath = Path.Combine(
+        Path.GetTempPath(), $"sc-hub-{Guid.NewGuid():N}.db");
+    private readonly WebApplicationFactory<Program> _factory;
+
+    public SignalRConversationHubTests()
+    {
+        _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("Database:Provider", "Sqlite");
+            builder.UseSetting("Database:ConnectionString", $"Data Source={_dbPath};Default Timeout=10");
+            builder.UseSetting("Observability:OtlpEndpoint", string.Empty);
+            builder.UseSetting("Sandbox:DefaultImage", "bash:5");
+            builder.UseSetting("Sandbox:InstanceOwner", $"test-{Guid.NewGuid():N}");
+        });
+    }
+
+    public void Dispose()
+    {
+        _factory.Dispose();
+        if (File.Exists(_dbPath)) File.Delete(_dbPath);
+    }
+
+    // SPEC-97: hub protegido pela FallbackPolicy — dev-login fornece o
+    // cookie que o negotiate/websocket envia.
+    private async Task<HubConnection> ConnectAsync()
+    {
+        using var http = _factory.CreateClient(
+            new WebApplicationFactoryClientOptions { HandleCookies = true });
+        using var res = await http.PostAsJsonAsync(
+            "/api/v1/auth/dev-login",
+            new { email = "hub@local", displayName = "hub" });
+        res.EnsureSuccessStatusCode();
+        var cookie = res.Headers.GetValues("Set-Cookie")
+            .First().Split(';')[0];
+
+        return new HubConnectionBuilder()
+            .WithUrl(new Uri(_factory.Server.BaseAddress, "/hubs/conversations"),
+                o =>
+                {
+                    o.HttpMessageHandlerFactory = _ =>
+                        _factory.Server.CreateHandler();
+                    o.Headers.Add("Cookie", cookie);
+                })
+            .Build();
+    }
+
+    [Fact]
+    public async Task Join_Streams_Live_Events_In_Order()
+    {
+        await using var conn = await ConnectAsync();
+        await conn.StartAsync();
+        var convId = Guid.NewGuid();
+
+        var received = new List<string>();
+        var tcs = new TaskCompletionSource();
+        var stream = conn.StreamAsync<JsonElement>(
+            "JoinConversation", convId, (string?)null);
+        var reader = Task.Run(async () =>
+        {
+            await foreach (var e in stream)
+            {
+                received.Add(e.GetProperty("id").GetString()!);
+                if (received.Count == 2) tcs.TrySetResult();
+            }
+        });
+
+        using var scope = _factory.Services.CreateScope();
+        var events = scope.ServiceProvider
+            .GetRequiredService<Sandcastle.Application.Events.IEventService>();
+        var ids = new List<string>();
+        foreach (var text in new[] { "um", "dois" })
+        {
+            var e = await events.AppendAsync(convId, new MessageEvent
+            {
+                Source = EventSource.User,
+                LlmMessage = JsonSerializer.SerializeToElement(
+                    new { role = "user", content = new[] { new { type = "text", text } } }),
+            }, CancellationToken.None);
+            ids.Add(e.Id);
+        }
+
+        var done = await Task.WhenAny(tcs.Task, Task.Delay(TimeSpan.FromSeconds(10)));
+        done.ShouldBe(tcs.Task, "hub stream timed out");
+        received.ShouldBe(ids);
+        await conn.StopAsync();
+    }
+}

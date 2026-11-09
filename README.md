@@ -1,7 +1,7 @@
-# OpenHandsNET
+# Sandcastle
 
-[![version](https://img.shields.io/badge/version-0.1.0--beta.1-orange)](https://github.com/afonsoft/OpenHandsNET/releases)
-[![ci](https://github.com/afonsoft/OpenHandsNET/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/afonsoft/OpenHandsNET/actions/workflows/ci.yml)
+[![version](https://img.shields.io/badge/version-0.1.0--beta.1-orange)](https://github.com/afonsoft/sandcastle/releases)
+[![ci](https://github.com/afonsoft/sandcastle/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/afonsoft/sandcastle/actions/workflows/ci.yml)
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=afonsoft_OpenHandsNET&metric=alert_status)](https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main)
 [![Maintainability](https://sonarcloud.io/api/project_badges/measure?project=afonsoft_OpenHandsNET&metric=sqale_rating)](https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main)
 [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=afonsoft_OpenHandsNET&metric=code_smells)](https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main)
@@ -46,12 +46,12 @@ executadas por agentes, revisadas por humanos.
   security analyzer, secrets by-reference, S3 artifacts.
 - **Automação**: routines agendadas (interval/daily/weekly/once) + webhook
   triggers anônimos rate-limited + tool `routine` para o agente.
-- **CLI** `openhandsnet`: login device-flow, `run` headless, `serve`,
+- **CLI** `sandcastle`: login device-flow, `run` headless, `serve`,
   `doctor --preflight`, `eval`, TUI.
 
 ## Comparação
 
-| Área | OpenHands (OSS) | OpenHands Cloud/Ent | **OpenHandsNET** | Devin Web |
+| Área | OpenHands (OSS) | OpenHands Cloud/Ent | **Sandcastle** | Devin Web |
 |---|---|---|---|---|
 | Licença | MIT | Polyform (fechado) | **MIT** | Fechado (SaaS) |
 | Stack | Python + React | Python + k8s | **.NET 10 + Blazor WASM** | Proprietária |
@@ -69,11 +69,11 @@ executadas por agentes, revisadas por humanos.
 | Multi-réplica | — | Valkey/Redis backplane | **`IDistributedCache` + backplane SignalR** | Sim |
 | UI | Agent Canvas (React) | Cloud UI | **Devin-like Blazor: chat, IDE, surfaces** | Referência de UX |
 | Live desktop | — | VNC | **tab Desktop noVNC + surface proxy same-origin (SPEC-113)** | Live desktop |
-| CLI | `openhands` TUI | cloud mode | **`openhandsnet` parity + eval + doctor** | `devin` API |
+| CLI | `openhands` TUI | cloud mode | **`sandcastle` parity + eval + doctor** | `devin` API |
 | i18n | en | en | **8 locales (pt-BR default)** | en |
 | Automações | webhooks GitHub | schedules internas | **routines + hook triggers + `routine` tool** | Devin automations |
 | API keys | — | `sk-*` + org binding | **`sk-*` + org binding + BYOR** | Sim |
-| Eval | benchmarks OSS | — | **`openhandsnet eval` + asserts + llm_judge** | — |
+| Eval | benchmarks OSS | — | **`sandcastle eval` + asserts + llm_judge** | — |
 | GitHub App | — | sim | **App + webhooks verificados + workspace PRs (SPEC-52)** | sim |
 | SCM providers | — | GitHub | **GitHub + GitLab + Bitbucket + Azure DevOps (SPEC-53)** | GitHub+ |
 | ChatOps | — | — | **Slack app: menção/slash → sessão, thread sync, auto-triage (SPEC-54)** | sim |
@@ -86,7 +86,7 @@ executadas por agentes, revisadas por humanos.
 | Knowledge | playbooks | playbooks | **suggestion queue + human review + groom (SPEC-63)** | knowledge |
 | Browser profiles | — | — | **storage state criptografado + site cookies + TOTP (SPEC-64)** | sim |
 
-Legenda: **negrito** = estado atual do OpenHandsNET; "em SPEC-N" = aprovado,
+Legenda: **negrito** = estado atual do Sandcastle; "em SPEC-N" = aprovado,
 roadmap imediato.
 
 ## Quickstart
@@ -94,9 +94,9 @@ roadmap imediato.
 Pré-requisito: .NET SDK 10 (`dotnet --version`).
 
 ```bash
-dotnet build OpenHandsNET.slnx          # build (9 projetos)
-dotnet test OpenHandsNET.slnx           # testes
-dotnet run --project src/OpenHandsNET.Api   # app em http://localhost:8080
+dotnet build Sandcastle.slnx          # build (9 projetos)
+dotnet test Sandcastle.slnx           # testes
+dotnet run --project src/Sandcastle.Api   # app em http://localhost:8080
 
 # Docker — para o agente funcionar use o compose beta (monta docker.sock):
 cp .env.exemplo .env                    # configure LLM (AgentLlm__*) antes
@@ -109,9 +109,9 @@ docker compose -f docker-compose.beta.yaml up -d --build   # app em :3032
 > veja [docs/installation/docker.md](docs/installation/docker.md) e
 > [docs/deployment/dind.md](docs/deployment/dind.md).
 
-Configuração por env vars com prefixo `OPENHANDSNET_` (ex.:
-`OPENHANDSNET_Database__Provider=PostgreSql`). Banco default: SQLite em
-`data/openhandsnet.db` (migrado no boot). Endpoints: `GET /api/v1/health`,
+Configuração por env vars com prefixo `SANDCASTLE_` (ex.:
+`SANDCASTLE_Database__Provider=PostgreSql`). Banco default: SQLite em
+`data/sandcastle.db` (migrado no boot). Endpoints: `GET /api/v1/health`,
 `/api/v1/ready`, `/api/v1/config`.
 
 Guias completos de instalação:
@@ -145,11 +145,11 @@ Guias completos de instalação:
 migration-plan/     research (api-inventory, domains, risks) + roadmap
 docs/               guias (deployment, ui, api, features) — índice em docs/README.md
 docs/en/            documentação em inglês
-charts/openhandsnet Helm chart (k8s — SPEC-49)
+charts/sandcastle Helm chart (k8s — SPEC-49)
 deploy/             manifests auxiliares (litellm, otelcol, prometheus)
 src/                Domain · Application · Infrastructure · Api · Client (WASM)
                     · Sandboxing · RuntimeApi · SandboxAgent · Eval
-cli/                OpenHandsNET.Cli (Spectre.Console — SPEC-06/31)
+cli/                Sandcastle.Cli (Spectre.Console — SPEC-06/31)
 tests/              UnitTests · IntegrationTests · Client.Tests (bUnit)
                     · SandboxAgent.Tests
 ```

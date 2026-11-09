@@ -1,4 +1,4 @@
-# CONTEXT.md — OpenHandsNET
+# CONTEXT.md — Sandcastle
 
 Estratégia de carregamento de contexto. Lida no início de cada sessão
 (ver Agent Loop em `CLAUDE.md`).

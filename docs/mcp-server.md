@@ -1,6 +1,6 @@
-# OpenHandsNET.Mcp — servidor MCP stdio
+# Sandcastle.Mcp — servidor MCP stdio
 
-Expõe o OpenHandsNET como ferramenta para agentes externos (SPEC-124):
+Expõe o Sandcastle como ferramenta para agentes externos (SPEC-124):
 Claude Code, OpenCode, Devin ou qualquer cliente MCP dirige conversas,
 runs e skills sem UI — o mesmo papel do `OpenWebUI.Mcp` no fork irmão.
 
@@ -10,41 +10,41 @@ runs e skills sem UI — o mesmo papel do `OpenWebUI.Mcp` no fork irmão.
 // .mcp.json (Claude Code / OpenCode / harness compatível)
 {
   "mcpServers": {
-    "openhandsnet": {
+    "sandcastle": {
       "type": "stdio",
-      "command": "openhandsnet",
+      "command": "sandcastle",
       "args": ["mcp", "serve"],
       "env": {
-        "OHN_API_URL": "http://localhost:8080",
-        "OHN_API_KEY": "sk-..."
+        "SC_API_URL": "http://localhost:8080",
+        "SC_API_KEY": "sk-..."
       }
     }
   }
 }
 ```
 
-`OHN_API_KEY` é uma chave `sk-*` emitida pelo app (Settings → API keys).
+`SC_API_KEY` é uma chave `sk-*` emitida pelo app (Settings → API keys).
 Sem a chave os tools falham fechado com mensagem explícita.
 
 ## Tools expostos
 
 | Tool | Endpoint V1 |
 |---|---|
-| `ohn_list_conversations` | `GET /api/v1/app-conversations/` |
-| `ohn_get_conversation` | `GET /api/v1/app-conversations/{id}` |
-| `ohn_create_conversation` | `POST /api/v1/app-conversations/` (start-task async) |
-| `ohn_send_message` | `POST /api/v1/app-conversations/{id}/send-message` |
-| `ohn_list_events` | `GET /api/v1/conversation/{id}/events` |
-| `ohn_search_events` | `GET /api/v1/conversation/{id}/events/search?q=` |
-| `ohn_get_task_status` | `GET /api/v1/app-conversations/start-tasks/{id}` |
-| `ohn_stop_run` | `POST /api/acp/conversations/{id}/cancel` |
-| `ohn_list_skills` | `GET /api/v1/skills` |
-| `ohn_list_mcp_servers` | `GET /api/v1/mcp/servers` |
-| `ohn_list_models` | `GET /api/v1/models` |
-| `ohn_attention_list` | `GET /api/v1/app-conversations/attention` |
+| `sc_list_conversations` | `GET /api/v1/app-conversations/` |
+| `sc_get_conversation` | `GET /api/v1/app-conversations/{id}` |
+| `sc_create_conversation` | `POST /api/v1/app-conversations/` (start-task async) |
+| `sc_send_message` | `POST /api/v1/app-conversations/{id}/send-message` |
+| `sc_list_events` | `GET /api/v1/conversation/{id}/events` |
+| `sc_search_events` | `GET /api/v1/conversation/{id}/events/search?q=` |
+| `sc_get_task_status` | `GET /api/v1/app-conversations/start-tasks/{id}` |
+| `sc_stop_run` | `POST /api/acp/conversations/{id}/cancel` |
+| `sc_list_skills` | `GET /api/v1/skills` |
+| `sc_list_mcp_servers` | `GET /api/v1/mcp/servers` |
+| `sc_list_models` | `GET /api/v1/models` |
+| `sc_attention_list` | `GET /api/v1/app-conversations/attention` |
 
-Start-task é **assíncrono**: `ohn_create_conversation` retorna uma task
-`WORKING` — faça polling com `ohn_get_task_status` até `READY` e leia o
+Start-task é **assíncrono**: `sc_create_conversation` retorna uma task
+`WORKING` — faça polling com `sc_get_task_status` até `READY` e leia o
 `conversation_id`. Nunca trate o retorno como id síncrono.
 
 ## Bootstrap de contexto
@@ -59,16 +59,16 @@ modelo de runtime (eventos duráveis, sandbox, `*.agent.md`) e o bloco
 Smoke manual do stdio (sem cliente externo):
 
 ```bash
-dotnet build src/OpenHandsNET.Mcp -c Release
+dotnet build src/Sandcastle.Mcp -c Release
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize"}' \
-  | dotnet src/OpenHandsNET.Mcp/bin/Release/net10.0/openhandsnet-mcp.dll
+  | dotnet src/Sandcastle.Mcp/bin/Release/net10.0/sandcastle-mcp.dll
 # → {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05",...}}
 ```
 
 Com cliente real (Claude Code): adicionar o bloco `.mcp.json` acima e
-rodar `claude mcp list` — `openhandsnet` deve aparecer `connected` e os
-12 `ohn_*` listáveis em `/mcp`. Um `ohn_list_conversations` real exige o
-app rodando (`dotnet run --project src/OpenHandsNET.Api`) + `OHN_API_KEY`
+rodar `claude mcp list` — `sandcastle` deve aparecer `connected` e os
+12 `sc_*` listáveis em `/mcp`. Um `sc_list_conversations` real exige o
+app rodando (`dotnet run --project src/Sandcastle.Api`) + `SC_API_KEY`
 válida; sem credencial o tool responde `isError` com a mensagem — nunca
 payload fabricado.
 
@@ -83,7 +83,7 @@ dentro do container.
 
 A imagem `runtime/Dockerfile` instala `playwright@1.64.1` +
 `chrome-devtools-mcp@1.12.0` (pinned) e `playwright install --with-deps
-chromium` em `PLAYWRIGHT_BROWSERS_PATH=/opt/ohn/ms-playwright`, com o
+chromium` em `PLAYWRIGHT_BROWSERS_PATH=/opt/sc/ms-playwright`, com o
 binário linkado em `/usr/local/bin/chromium`. ENV expostos:
 
 | Variável | Valor |

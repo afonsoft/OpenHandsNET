@@ -1,6 +1,6 @@
 # Billing e enforcement de planos (SPEC-20)
 
-OpenHandsNET tem catálogo de planos, subscrições por organização e
+Sandcastle tem catálogo de planos, subscrições por organização e
 metering de uso. **Enforcement vem desligado por default** — num
 self-host OSS nada bloqueia; um operador liga com
 `Billing:EnforcementEnabled=true` quando quiser aplicar cotas.
@@ -81,7 +81,7 @@ Erro 403 (RFC 9457 + extensões):
 
 ```bash
 # .env / docker compose
-OPENHANDSNET_Billing__EnforcementEnabled=true
+SANDCASTLE_Billing__EnforcementEnabled=true
 ```
 
 ```jsonc
@@ -106,10 +106,10 @@ enquanto o metering interno (`usage_records`) continua ativo.
 ### Configuração
 
 ```bash
-OPENHANDSNET_LlmProxy__BaseUrl=http://litellm:4000
-OPENHANDSNET_LlmProxy__MasterKey=<secret — nunca em appsettings>
-OPENHANDSNET_LlmProxy__Mode=hybrid      # off | hybrid | byor
-OPENHANDSNET_LlmProxy__DefaultBudgetUsd=50
+SANDCASTLE_LlmProxy__BaseUrl=http://litellm:4000
+SANDCASTLE_LlmProxy__MasterKey=<secret — nunca em appsettings>
+SANDCASTLE_LlmProxy__Mode=hybrid      # off | hybrid | byor
+SANDCASTLE_LlmProxy__DefaultBudgetUsd=50
 ```
 
 - `off` (default): BYOR desligado — zero mudança de comportamento.

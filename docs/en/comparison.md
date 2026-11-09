@@ -1,4 +1,4 @@
-# Detailed comparison — OpenHandsNET × OpenHands × Devin Web
+# Detailed comparison — Sandcastle × OpenHands × Devin Web
 
 Parity analysis by domain. Sources: `.specs/32` (gap analysis),
 `docs/reference/upstream-baseline.md` (analyzed upstream SHAs),
@@ -6,19 +6,19 @@ Parity analysis by domain. Sources: `.specs/32` (gap analysis),
 
 ## License and distribution
 
-| | OpenHands OSS | OpenHands Cloud/Ent | OpenHandsNET | Devin Web |
+| | OpenHands OSS | OpenHands Cloud/Ent | Sandcastle | Devin Web |
 |---|---|---|---|---|
 | License | MIT | Polyform Trial | **MIT** | Proprietary |
 | Model | self-host | SaaS + self-host | **self-host (+cloud future)** | SaaS |
 | Code | open | closed | **open** | closed |
 
-OpenHandsNET is the only **open-source option with enterprise parity**
+Sandcastle is the only **open-source option with enterprise parity**
 (RBAC, orgs, quotas, audit) in the OpenHands lineage — upstream keeps
 those features behind Polyform.
 
 ## Agent runtime
 
-| Capability | OSS | Cloud/Ent | OpenHandsNET |
+| Capability | OSS | Cloud/Ent | Sandcastle |
 |---|---|---|---|
 | Loop | `AgentBase.step()` | same | `AgentRunner` + `IAgentRunnerHost` |
 | Events | V1 + coalesced deltas | same | full V1 + ephemeral `streaming_delta` (SPEC-34) |
@@ -27,21 +27,21 @@ those features behind Polyform.
 | Sleep/wake | — | yes | yes (SPEC-16); k8s in SPEC-49 |
 | Sandbox-agent | REST agent-server | same | v2 `/exec/stream` + `/activity` ring (SPEC-24) |
 | Surfaces | web terminal | + preview | gateway+terminal+VSCode+preview+ACP (SPEC-40) |
-| Runtime split | — | runtime-api | `openhandsnet-runtime-api` (SPEC-35) |
+| Runtime split | — | runtime-api | `sandcastle-runtime-api` (SPEC-35) |
 
 ## LLM and context
 
-| | OSS | Cloud/Ent | OpenHandsNET |
+| | OSS | Cloud/Ent | Sandcastle |
 |---|---|---|---|
 | Providers | static config | LiteLLM proxy | OmniRoute catalog + roles + fallback (SPEC-23); BYOR LiteLLM in SPEC-50 |
 | Condensing | `condense()` + summarizer | same | meter + condenser + ledger + triggers (SPEC-22) |
 | Subagents | `task` | same | `task`/`task_status`/`task_result` + presets + depth cap (SPEC-28) |
 | Memory | `.openhands/memory/` | same | project + org scopes, `remember/recall/forget/promote` (SPEC-30) |
-| Eval | WebArena/OSWorld | — | `openhandsnet eval` + asserts + `llm_judge` (SPEC-39) |
+| Eval | WebArena/OSWorld | — | `sandcastle eval` + asserts + `llm_judge` (SPEC-39) |
 
 ## Security
 
-| | OSS | Cloud/Ent | OpenHandsNET |
+| | OSS | Cloud/Ent | Sandcastle |
 |---|---|---|---|
 | Analyzer | pattern/LLM/policy | same | pluggable `ISecurityAnalyzer` (SPEC-33); per-org policy in SPEC-48 |
 | Permissions | `allow/deny/ask` | + org policy | `allow/deny/ask` + plan mode (SPEC-29); org in SPEC-48 |
@@ -54,7 +54,7 @@ those features behind Polyform.
 
 ## UI / UX
 
-| | OSS | Cloud/Ent | OpenHandsNET | Devin Web |
+| | OSS | Cloud/Ent | Sandcastle | Devin Web |
 |---|---|---|---|---|
 | Framework | React Canvas | React | **Blazor WASM** | React |
 | Chat | canvas + stream | same | streaming + reasoning + lifecycle + heartbeat (SPEC-41) | reference |
@@ -67,7 +67,7 @@ those features behind Polyform.
 
 ## Enterprise ops
 
-| | Cloud/Ent | OpenHandsNET |
+| | Cloud/Ent | Sandcastle |
 |---|---|---|
 | IdP | Keycloak | generic OIDC (any IdP) |
 | Orgs/RBAC | yes | yes — orgs, roles, `perm:*` policies (SPEC-08) |
@@ -84,7 +84,7 @@ those features behind Polyform.
 
 ## Integrations (wave A)
 
-| | Cloud/Ent | OpenHandsNET |
+| | Cloud/Ent | Sandcastle |
 |---|---|---|
 | SCM | GitHub App | GitHub App + GitLab + Bitbucket + Azure DevOps via `IScmProvider` (SPECs 52–53) |
 | ChatOps | — | Slack app: mention/slash → session, thread sync, `IChatSink` auto-triage (SPEC-54) |
@@ -93,7 +93,7 @@ those features behind Polyform.
 
 ## Identity and edge (wave B)
 
-| | Cloud/Ent | OpenHandsNET |
+| | Cloud/Ent | Sandcastle |
 |---|---|---|
 | Service users | — | scoped `svc_*` identities + `created_as_user_id` impersonation (SPEC-57) |
 | Provisioning | SCIM Keycloak | SCIM 2.0 provider + `scim_*` tokens + IdP groups→role/tier (SPEC-58) |
@@ -101,7 +101,7 @@ those features behind Polyform.
 
 ## Intelligence (wave C)
 
-| | Cloud/Ent | OpenHandsNET |
+| | Cloud/Ent | Sandcastle |
 |---|---|---|
 | Codebase | internal index | repo indexing + read-only Ask with citations (SPEC-60) |
 | Insights | analytics | session insights: cost/latency/tools/errors (SPEC-61) |
@@ -110,10 +110,10 @@ those features behind Polyform.
 
 ## Devin Web and Cursor Cloud (SaaS references)
 
-Comparison with the SaaS products OpenHandsNET emulates — Devin Web
+Comparison with the SaaS products Sandcastle emulates — Devin Web
 (app.devin.ai) and Cursor Background Agents — plus OpenHands Cloud.
 
-| Capability | Devin Web | Cursor Cloud Agents | OpenHands Cloud | OpenHandsNET |
+| Capability | Devin Web | Cursor Cloud Agents | OpenHands Cloud | Sandcastle |
 |---|---|---|---|---|
 | Parallel sessions | yes (list + search) | yes | yes | yes — conversations + sub-sessions (`task`) |
 | VM per session | yes (snapshot/restore) | dedicated VM | pod/sandbox | Docker container per conversation (+k8s in SPEC-49) |
@@ -128,17 +128,17 @@ Comparison with the SaaS products OpenHandsNET emulates — Devin Web
 | PR loop | opens PR + CI watch | opens PR | GitHub App | GitHub App + workspace PRs (SPEC-52) |
 | Billing/quotas | ACU + tags | usage | Stripe | metering + plans CRUD (SPEC-20) |
 | Skills/playbooks | playbooks+skills | rules | microagents | skills settings + `task` presets + knowledge (SPEC-63) |
-| CLI | `devin` CLI | `cursor-agent` | `openhands` | `openhandsnet` CLI (Spectre) |
+| CLI | `devin` CLI | `cursor-agent` | `openhands` | `sandcastle` CLI (Spectre) |
 | Public API | REST v3 | REST | REST V1 | `/api/v1` + golden OpenAPI (SPEC-51) |
 
 ### Structural differences
 
 - **Devin Web** runs a full VM per session (filesystem + processes
-  persist across sleeps via snapshot). OpenHandsNET uses Docker
+  persist across sleeps via snapshot). Sandcastle uses Docker
   containers with bind-mounted workspaces — lighter, no process-memory
   restore; sleep/wake preserves workspace + events, not the heap.
 - **Cursor Cloud Agents** focuses on the task→PR loop (agent runs, opens
-  a PR, exits). No interactive chat or surfaces — OpenHandsNET already
+  a PR, exits). No interactive chat or surfaces — Sandcastle already
   covers that flow via GitHub App + automations.
 - **OpenHands Cloud** is the closest reference (same lineage): parity by
   domain in the tables above; remaining gaps are multi-host hosting
@@ -146,7 +146,7 @@ Comparison with the SaaS products OpenHandsNET emulates — Devin Web
 
 ## Parity roadmap (prioritized)
 
-Items that bring OpenHandsNET closest to Devin Web, by value:
+Items that bring Sandcastle closest to Devin Web, by value:
 
 1. ~~**Sandbox resource clamp**~~ — `NanoCPUs` is now clamped to host
    NCPU (`large` specs work on small hosts). *Done.*
@@ -172,7 +172,7 @@ Items that bring OpenHandsNET closest to Devin Web, by value:
 3. PSP billing (Stripe-like) — metering exists; payment integration out
    of scope.
 
-## What OpenHandsNET has that upstream doesn't
+## What Sandcastle has that upstream doesn't
 
 - **Single .NET stack**: agent, API, UI and CLI in one language/VM.
 - **Full IDE workbench** (Monaco + SCM + search) — upstream shows files;

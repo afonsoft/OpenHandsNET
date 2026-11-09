@@ -43,5 +43,5 @@ services:
 
 | Volume | Conteúdo |
 |---|---|
-| `openhandsnet-data` | SQLite, chaves DataProtection, workspaces |
-| `openhandsnet-workspace` | Bind interno dos workspaces |
+| `sandcastle-data` | SQLite, chaves DataProtection, workspaces |
+| `sandcastle-workspace` | Bind interno dos workspaces |

@@ -73,7 +73,7 @@ Pipeline **offline do CI** — o artefato `wwwroot/tailwind.css` é
 commitado:
 
 ```bash
-cd src/OpenHandsNET.Client
+cd src/Sandcastle.Client
 npm ci
 npm run css        # → wwwroot/tailwind.css (minificado)
 npm run css:watch  # desenvolvimento

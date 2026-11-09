@@ -13,7 +13,7 @@ docker compose -f docker-compose.yaml -f docker-compose.postgres.yaml up -d --bu
 
 `docker-compose.postgres.yaml`:
 
-1. Starts `postgres:17-alpine` with `POSTGRES_DB=openhandsnet` and a
+1. Starts `postgres:17-alpine` with `POSTGRES_DB=sandcastle` and a
    healthcheck.
 2. Repoints the app to `Database__Provider=PostgreSql` +
    `Host=postgres` in the connection string.
@@ -23,7 +23,7 @@ docker compose -f docker-compose.yaml -f docker-compose.postgres.yaml up -d --bu
 
 ```bash
 docker compose -f docker-compose.yaml -f docker-compose.postgres.yaml ps
-docker logs openhandsnet | grep -i "migration"
+docker logs sandcastle | grep -i "migration"
 curl -fsS http://localhost:3032/api/v1/readiness | jq .checks.db
 ```
 

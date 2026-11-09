@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Async load-test client for the OpenHandsNET API (SPEC-93).
+"""Async load-test client for the Sandcastle API (SPEC-93).
 
 Scenarios:
   rps           weighted mix of hot endpoints at --workers concurrency

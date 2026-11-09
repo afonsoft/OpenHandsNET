@@ -1,0 +1,39 @@
+# SPEC-37 + SPEC-49 RBAC mínimo: pods/pvc/exec/configmaps no namespace
+# de sandboxes apenas — o Api (provider=kubernetes) orquestra os pods
+# in-cluster com esta ServiceAccount; o runtime-api (provider=remote)
+# usa a mesma conta quando habilitado.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sandcastle-runtime
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: sandcastle-sandbox-manager
+  namespace: {{ .Values.sandbox.namespace }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/status", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "delete", "patch"]
+  # SPEC-49 RF-002: sleep snapshots (pod.json por sandbox).
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "list", "watch", "create", "delete", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: sandcastle-sandbox-manager
+  namespace: {{ .Values.sandbox.namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: sandcastle-runtime
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: Role
+  name: sandcastle-sandbox-manager
+  apiGroup: rbac.authorization.k8s.io

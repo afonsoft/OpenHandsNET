@@ -1,4 +1,4 @@
-# Domain Candidates — OpenHands → OpenHandsNET
+# Domain Candidates — OpenHands → Sandcastle
 
 Bounded contexts extraídos dos repositórios upstream clonados, mapeados para
 projetos .NET e SPECs. Acoplamento avaliado por direção de dependência (forward-only).
@@ -7,7 +7,7 @@ projetos .NET e SPECs. Acoplamento avaliado por direção de dependência (forwa
 
 | # | Domínio | Fonte upstream (evidência) | Projeto .NET | SPEC | Depende de |
 |---|---|---|---|---|---|
-| D1 | **Fundação / arquitetura** | solução multi-projeto | `OpenHandsNET.*` (5+Cli) | `01_architecture_overview` | — |
+| D1 | **Fundação / arquitetura** | solução multi-projeto | `Sandcastle.*` (5+Cli) | `01_architecture_overview` | — |
 | D2 | **Event Stream** | `software-agent-sdk` event union (19 `kind`s, `id` ULID, `source`, `parent_id`); `enterprise/openhands/app_server/event/` | `Domain` + `Infrastructure` | `02_event_stream_spec` | D1 |
 | D3 | **Sandbox / Runtime** | `app_server/sandbox/` (Docker local, remoto, warm pool no Cloud); `agent_server` (execução in-sandbox) | `Infrastructure` | `03_runtime_sandbox_spec` | D1 |
 | D4 | **API REST + Realtime** | `app_server/v1_router.py` (14 routers `/api/v1`); `agent_server/*_router.py`; WS+SSE upstream | `Api` + `Application` | `04_rest_and_signalr_api_spec` | D2, D3 |
@@ -21,7 +21,7 @@ projetos .NET e SPECs. Acoplamento avaliado por direção de dependência (forwa
 ## Bounded contexts internos do núcleo
 
 ```
-┌─────────────────────────── OpenHandsNET.Api ────────────────────────────┐
+┌─────────────────────────── Sandcastle.Api ────────────────────────────┐
 │ /api/v1/app-conversations │ /api/v1/conversation/{id}/events │ /hubs/*   │
 └───────┬──────────────────────────────┬──────────────────────┬───────────┘
         │ Application                  │                      │

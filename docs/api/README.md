@@ -1,6 +1,6 @@
 # API — contrato público (SPEC-51)
 
-A superfície HTTP pública do OpenHandsNET é documentada por um documento
+A superfície HTTP pública do Sandcastle é documentada por um documento
 OpenAPI **gerado do código vivo** — não existe spec escrita à mão para
 sincronizar.
 
@@ -15,14 +15,14 @@ O explorer Scalar só sobe quando `Api:OpenApiExplorer=true`. Default:
 habilitado em `Development`, **desligado em produção**.
 
 ```bash
-OPENHANDSNET_Api__OpenApiExplorer=true   # habilita /scalar/v1
+SANDCASTLE_Api__OpenApiExplorer=true   # habilita /scalar/v1
 ```
 
 Sem a flag (produção), `/scalar/v1` não é rota — cai no SPA fallback.
 
 ## Drift guard (golden snapshot)
 
-`tests/OpenHandsNET.IntegrationTests/Golden/openapi-v1.json` é o
+`tests/Sandcastle.IntegrationTests/Golden/openapi-v1.json` é o
 contrato congelado: o teste `Spec51OpenApiContractTests` normaliza o
 documento vivo (ordenação recursiva de chaves, sem `servers`) e compara
 byte a byte. Endpoint novo/removido/alterado → **fail com diff**.
@@ -31,8 +31,8 @@ Refresh consciente (revisão humana obrigatória — o snapshot **é** o
 contrato):
 
 ```bash
-OPENHANDSNET_UPDATE_GOLDEN=1 dotnet test \
-    tests/OpenHandsNET.IntegrationTests \
+SANDCASTLE_UPDATE_GOLDEN=1 dotnet test \
+    tests/Sandcastle.IntegrationTests \
     --filter "FullyQualifiedName~Spec51"
 # commite Golden/openapi-v1.json junto com a mudança de endpoint
 ```
@@ -49,7 +49,7 @@ openapi-generator-cli generate \
 
 # Microsoft Kiota
 kiota generate -d http://localhost:8080/openapi/v1.json \
-    -l csharp -o clients/ohn
+    -l csharp -o clients/sc
 ```
 
 ## Escopo do documento

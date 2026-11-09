@@ -7,13 +7,13 @@ English: [../en/installation/docker.md](../en/installation/docker.md).
 
 - Docker Engine 24+ e plugin `docker compose` v2
 - 4 GB RAM livres (app ~0,5 GB + sandboxes conforme o profile)
-- Porta livre: `3032` (configurável via `OPENHANDSNET_PORT`)
+- Porta livre: `3032` (configurável via `SANDCASTLE_PORT`)
 
 ## Início rápido (OSS, SQLite)
 
 ```bash
-git clone https://github.com/afonsoft/OpenHandsNET.git
-cd OpenHandsNET
+git clone https://github.com/afonsoft/sandcastle.git
+cd Sandcastle
 cp .env.exemplo .env          # ajuste se necessário (nunca commite .env)
 # Caminho recomendado (agente funcional — monta docker.sock):
 docker compose -f docker-compose.beta.yaml up -d --build  # app em :3032
@@ -55,7 +55,7 @@ e rode `docker compose up -d` de novo.
 | `docker-compose.yaml` | OSS single-container + SQLite (default; **sem** `docker.sock`) |
 | `docker-compose.beta.yaml` | OSS + `docker.sock` montado — agente funcional de primeira (beta) |
 | `docker-compose.postgres.yaml` | + PostgreSQL 16 |
-| `docker-compose.runtime-split.yaml` | app + `openhandsnet-runtime-api` (sandboxes em processo separado) |
+| `docker-compose.runtime-split.yaml` | app + `sandcastle-runtime-api` (sandboxes em processo separado) |
 | `docker-compose.observability.yaml` | + OTel Collector + Prometheus + Grafana |
 | `docker-compose.enterprise.yaml` | stack completo: Postgres + Keycloak + Valkey + LiteLLM |
 
@@ -77,27 +77,27 @@ docker compose -f docker-compose.yaml -f docker-compose.observability.yaml up -d
 ```bash
 cp .env.exemplo .env
 # ajuste POSTGRES_PASSWORD, KEYCLOAK_ADMIN_PASSWORD, GRAFANA_ADMIN_PASSWORD,
-# OPENHANDSNET_Auth__Authority/ClientId/ClientSecret e OPENAI_API_KEY (LiteLLM)
+# SANDCASTLE_Auth__Authority/ClientId/ClientSecret e OPENAI_API_KEY (LiteLLM)
 docker compose -f docker-compose.enterprise.yaml up -d --build
 ```
 
 Variáveis mínimas no `.env` para o tier enterprise:
 
 ```bash
-OPENHANDSNET_DeploymentMode=self_hosted
-OPENHANDSNET_Database__Provider=PostgreSql
-OPENHANDSNET_Database__ConnectionString=Host=postgres;Database=openhandsnet;Username=openhandsnet;Password=${POSTGRES_PASSWORD}
-OPENHANDSNET_Auth__Provider=oidc
-OPENHANDSNET_Cache__Provider=redis
-OPENHANDSNET_Cache__Redis__ConnectionString=valkey:6379
+SANDCASTLE_DeploymentMode=self_hosted
+SANDCASTLE_Database__Provider=PostgreSql
+SANDCASTLE_Database__ConnectionString=Host=postgres;Database=sandcastle;Username=sandcastle;Password=${POSTGRES_PASSWORD}
+SANDCASTLE_Auth__Provider=oidc
+SANDCASTLE_Cache__Provider=redis
+SANDCASTLE_Cache__Redis__ConnectionString=valkey:6379
 ```
 
 ## Volumes
 
 | Volume | Conteúdo |
 |---|---|
-| `openhandsnet-data` | SQLite/chaves DataProtection/workspaces |
-| `openhandsnet-workspace` | bind dos workspaces de sandbox |
+| `sandcastle-data` | SQLite/chaves DataProtection/workspaces |
+| `sandcastle-workspace` | bind dos workspaces de sandbox |
 
 ## Atualizar
 
@@ -114,6 +114,6 @@ docker image prune -f
 | `docker: unreachable` no readiness | `docker.sock` não montado — veja acima |
 | `range of CPUs is from 0.01 to N` | corrigido pelo clamp de CPU do engine; atualize a imagem |
 | Sandbox não inicia por egress | `EgressMode=allowlist` exige proxy — veja `docs/deployment/egress-allowlist.md` |
-| `X-Runtime-Key` inválido | `OPENHANDSNET_RUNTIME_KEY` diverge de `OPENHANDSNET_Sandbox__RemoteApiKey` |
+| `X-Runtime-Key` inválido | `SANDCASTLE_RUNTIME_KEY` diverge de `SANDCASTLE_Sandbox__RemoteApiKey` |
 
 Mais: [../deployment/troubleshooting.md](../deployment/troubleshooting.md).

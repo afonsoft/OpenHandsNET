@@ -31,8 +31,8 @@ jobs:
       - name: helm lint + template
         uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
       - run: |
-          helm lint charts/openhandsnet
-          helm template ohn charts/openhandsnet \
+          helm lint charts/sandcastle
+          helm template sc charts/sandcastle \
             --set ingress.enabled=false > /tmp/rendered.yaml
           grep -q "kind: HorizontalPodAutoscaler" /tmp/rendered.yaml
           grep -q "kind: Ingress" /tmp/rendered.yaml || true
@@ -56,19 +56,19 @@ jobs:
 
       - name: build + load api image
         run: |
-          docker build -t openhandsnet:e2e .
-          kind load docker-image openhandsnet:e2e
+          docker build -t sandcastle:e2e .
+          kind load docker-image sandcastle:e2e
 
       - name: helm install + smoke
         run: |
-          helm install ohn charts/openhandsnet -n ohn \
+          helm install sc charts/sandcastle -n sc \
             --create-namespace \
             --set image.tag=e2e --set image.pullPolicy=Never \
             --set ingress.enabled=false \
             --set sandbox.provider=kubernetes
-          kubectl -n ohn rollout status deploy/openhandsnet-api \
+          kubectl -n sc rollout status deploy/sandcastle-api \
             --timeout=240s
-          kubectl -n ohn port-forward svc/openhandsnet-api 8080:8080 &
+          kubectl -n sc port-forward svc/sandcastle-api 8080:8080 &
           sleep 5
           curl -sf --retry 10 --retry-delay 5 \
             http://localhost:8080/api/v1/ready
@@ -76,12 +76,12 @@ jobs:
       - name: diagnostics on failure
         if: failure()
         run: |
-          kubectl get pods -n ohn -o wide || true
-          kubectl -n ohn describe deploy/openhandsnet-api || true
-          for p in $(kubectl -n ohn get pods -o name 2>/dev/null); do
+          kubectl get pods -n sc -o wide || true
+          kubectl -n sc describe deploy/sandcastle-api || true
+          for p in $(kubectl -n sc get pods -o name 2>/dev/null); do
             echo "=== $p ==="
-            kubectl -n ohn describe "$p" | tail -30 || true
-            kubectl -n ohn logs "$p" --all-containers --tail=80 || true
+            kubectl -n sc describe "$p" | tail -30 || true
+            kubectl -n sc logs "$p" --all-containers --tail=80 || true
           done
-          kubectl get events -n ohn --sort-by=.lastTimestamp 2>/dev/null | \
+          kubectl get events -n sc --sort-by=.lastTimestamp 2>/dev/null | \
             tail -20 || true

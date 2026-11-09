@@ -1,22 +1,22 @@
-# OpenHandsNET — build multi-stage (app em :8080, compose expoe :3032)
+# Sandcastle — build multi-stage (app em :8080, compose expoe :3032)
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Restore (camada cacheada): props + todos os csproj
 COPY Directory.Build.props Directory.Packages.props global.json nuget.config ./
-COPY src/OpenHandsNET.Domain/OpenHandsNET.Domain.csproj src/OpenHandsNET.Domain/
-COPY src/OpenHandsNET.Application/OpenHandsNET.Application.csproj src/OpenHandsNET.Application/
-COPY src/OpenHandsNET.Infrastructure/OpenHandsNET.Infrastructure.csproj src/OpenHandsNET.Infrastructure/
-COPY src/OpenHandsNET.Sandboxing/OpenHandsNET.Sandboxing.csproj src/OpenHandsNET.Sandboxing/
-COPY src/OpenHandsNET.RuntimeApi/OpenHandsNET.RuntimeApi.csproj src/OpenHandsNET.RuntimeApi/
-COPY src/OpenHandsNET.Client/OpenHandsNET.Client.csproj src/OpenHandsNET.Client/
-COPY src/OpenHandsNET.Api/OpenHandsNET.Api.csproj src/OpenHandsNET.Api/
-COPY cli/OpenHandsNET.Cli/OpenHandsNET.Cli.csproj cli/OpenHandsNET.Cli/
-RUN dotnet restore src/OpenHandsNET.Api/OpenHandsNET.Api.csproj
+COPY src/Sandcastle.Domain/Sandcastle.Domain.csproj src/Sandcastle.Domain/
+COPY src/Sandcastle.Application/Sandcastle.Application.csproj src/Sandcastle.Application/
+COPY src/Sandcastle.Infrastructure/Sandcastle.Infrastructure.csproj src/Sandcastle.Infrastructure/
+COPY src/Sandcastle.Sandboxing/Sandcastle.Sandboxing.csproj src/Sandcastle.Sandboxing/
+COPY src/Sandcastle.RuntimeApi/Sandcastle.RuntimeApi.csproj src/Sandcastle.RuntimeApi/
+COPY src/Sandcastle.Client/Sandcastle.Client.csproj src/Sandcastle.Client/
+COPY src/Sandcastle.Api/Sandcastle.Api.csproj src/Sandcastle.Api/
+COPY cli/Sandcastle.Cli/Sandcastle.Cli.csproj cli/Sandcastle.Cli/
+RUN dotnet restore src/Sandcastle.Api/Sandcastle.Api.csproj
 
 COPY src/ src/
 COPY cli/ cli/
-RUN dotnet publish src/OpenHandsNET.Api/OpenHandsNET.Api.csproj \
+RUN dotnet publish src/Sandcastle.Api/Sandcastle.Api.csproj \
       -c Release -o /app/publish --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
@@ -30,7 +30,7 @@ COPY --from=build /app/publish .
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
     ASPNETCORE_URLS=http://+:8080 \
     ASPNETCORE_ENVIRONMENT=Production \
-    OPENHANDSNET_Database__ConnectionString="Data Source=/app/data/openhandsnet.db"
+    SANDCASTLE_Database__ConnectionString="Data Source=/app/data/sandcastle.db"
 # SPEC-131: servidores MCP stdio rodam via `docker exec -i` no container
 # do sandbox — a imagem do app precisa do cliente docker (só o binário;
 # o engine é acessado pelo socket montado, via Docker.DotNet ou CLI).
@@ -42,9 +42,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl && \
       | tar xz --strip-components=1 -C /usr/local/bin docker/docker && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
     mkdir -p /app/data /workspace && \
-    groupadd -r openhandsnet && useradd -r -g openhandsnet openhandsnet && \
-    chown -R openhandsnet:openhandsnet /app /workspace /ms-playwright
-USER openhandsnet
+    groupadd -r sandcastle && useradd -r -g sandcastle sandcastle && \
+    chown -R sandcastle:sandcastle /app /workspace /ms-playwright
+USER sandcastle
 
 EXPOSE 8080
 VOLUME ["/app/data", "/workspace"]
@@ -52,4 +52,4 @@ VOLUME ["/app/data", "/workspace"]
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD curl -fsS http://localhost:8080/api/v1/ready || exit 1
 
-ENTRYPOINT ["dotnet", "OpenHandsNET.Api.dll"]
+ENTRYPOINT ["dotnet", "Sandcastle.Api.dll"]

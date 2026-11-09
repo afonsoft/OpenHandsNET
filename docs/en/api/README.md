@@ -1,6 +1,6 @@
 # API — public contract (SPEC-51)
 
-The OpenHandsNET public HTTP surface is documented by an OpenAPI
+The Sandcastle public HTTP surface is documented by an OpenAPI
 document **generated from live code** — there is no hand-written spec
 to keep in sync.
 
@@ -15,7 +15,7 @@ The Scalar explorer only runs when `Api:OpenApiExplorer=true`. Default:
 enabled in `Development`, **off in production**.
 
 ```bash
-OPENHANDSNET_Api__OpenApiExplorer=true   # enables /scalar/v1
+SANDCASTLE_Api__OpenApiExplorer=true   # enables /scalar/v1
 ```
 
 Without the flag (production), `/scalar/v1` is not a route — it falls
@@ -23,7 +23,7 @@ through to the SPA fallback.
 
 ## Drift guard (golden snapshot)
 
-`tests/OpenHandsNET.IntegrationTests/Golden/openapi-v1.json` is the
+`tests/Sandcastle.IntegrationTests/Golden/openapi-v1.json` is the
 frozen contract: `Spec51OpenApiContractTests` normalizes the live
 document (recursive key ordering, no `servers`) and compares it byte
 for byte. Any endpoint added/removed/changed → **fail with diff**.
@@ -32,8 +32,8 @@ Conscious refresh (human review required — the snapshot **is** the
 contract):
 
 ```bash
-OPENHANDSNET_UPDATE_GOLDEN=1 dotnet test \
-    tests/OpenHandsNET.IntegrationTests \
+SANDCASTLE_UPDATE_GOLDEN=1 dotnet test \
+    tests/Sandcastle.IntegrationTests \
     --filter "FullyQualifiedName~Spec51"
 # commit Golden/openapi-v1.json together with the endpoint change
 ```
@@ -50,7 +50,7 @@ openapi-generator-cli generate \
 
 # Microsoft Kiota
 kiota generate -d http://localhost:8080/openapi/v1.json \
-    -l csharp -o clients/ohn
+    -l csharp -o clients/sc
 ```
 
 ## Document scope

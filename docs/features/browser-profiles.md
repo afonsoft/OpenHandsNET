@@ -14,7 +14,7 @@ futuras — evita re-login manual a cada sessão.
   Unique index `(owner_id, domain)` — um profile por domínio por dono
   (re-capture atualiza).
 - **Criptografia** — ASP.NET DataProtection, purpose
-  `openhandsnet.browserprofiles.v1` + nonce por registro (mesmo regime
+  `sandcastle.browserprofiles.v1` + nonce por registro (mesmo regime
   do `SecretStore`). O state **nunca** sai pela API — só metadados.
 - **Visibilidade** — dono sempre; `shared=true` expõe à mesma org;
   super-admin vê/deleta qualquer um. Expirado → 410

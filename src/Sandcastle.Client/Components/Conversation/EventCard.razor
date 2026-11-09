@@ -1,0 +1,459 @@
+@using Sandcastle.Client.Services
+@using Sandcastle.Client.Components
+@using System.Text.Json
+@inject IJSRuntime JS
+@inject LocalizationService L
+
+@* Renderiza um evento V1 conforme o kind — paridade visual com o Agent Canvas.
+   SPEC-26: ícones SVG (Icon), markdown sanitizado nas mensagens, cards de
+   tool call colapsáveis. *@
+
+@switch (Event.Kind)
+{
+    case "MessageEvent":
+        <div class="msg @(Event.Role() == "user" ? "user" : "agent")">
+            <div class="md" @ref="_md">@MarkdownService.Render(Event.MessageText())</div>
+            @* SPEC-41 RF-006: copy da saída de texto do agente. *@
+            @if (Event.Role() != "user")
+            {
+                <button class="icon-btn copy-btn"
+                        @onclick="() => CopyAsync(Event.MessageText())"
+                        aria-label="@L["event.copy_message"]" title="@L["common.copy"]">
+                    <Icon Name="@(_copied ? "check" : "copy")" Size="12" />
+                </button>
+            }
+        </div>
+        break;
+
+    case "ActionEvent":
+        @* SPEC-41 RF-003: ToolCallCard rico — nome, status (obs link),
+           duração, args colapsáveis, reasoning persistido colapsável. *@
+        <div class="ev-card tc-card">
+            <div class="ev-head tc-head">
+                <Icon Name="@ToolIcon()" Size="14" />
+                <span class="tool">@Event.ToolName()</span>
+                @* SPEC-120 RF-001: linha de atividade humanizada
+                   (ToolActivityMap + ToolArgsPreview). *@
+                <span class="tc-activity" title="@Event.ToolName()">
+                    @ActivityLabel()
+                </span>
+                @if (LinkedObservation() is { } linked)
+                {
+                    <span class="chip done">@L["event.done"]</span>
+                    <span class="dur">@DurationText(linked)</span>
+                }
+                else
+                {
+                    <span class="chip pending">@L["event.pending"]</span>
+                }
+                <span class="dur">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+                <button class="icon-btn" style="margin-left:auto;width:22px;height:22px"
+                        @onclick="() => _expanded = !_expanded"
+                        aria-label="@L["event.toggle_args"]" aria-expanded="@_expanded">
+                    <Icon Name="@(_expanded ? "chevron-down" : "chevron-right")" Size="13" />
+                </button>
+            </div>
+            @if (Event.Str("reasoning_content") is { Length: > 0 } rc)
+            {
+                <ThinkingSection Reasoning="@rc" />
+            }
+            @if (Event.ToolCommand() is { } cmd)
+            {
+                <pre>$ @cmd</pre>
+            }
+            else if (_expanded)
+            {
+                <pre>@Pretty(Event.Get("tool"))</pre>
+            }
+            else if (ArgsPreview() is { } preview)
+            {
+                <pre class="args-preview">@preview</pre>
+            }
+        </div>
+        break;
+
+    case "ObservationEvent":
+        <div class="ev-card obs">
+            <div class="ev-head">
+                <Icon Name="upload" Size="14" />
+                <span>@L.T("event.observation", ("tool", Event.ToolName()))</span>
+                <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+                <button class="icon-btn"
+                        @onclick="() => CopyAsync(ObsText())"
+                        aria-label="@L["event.copy_output"]" title="@L["common.copy"]">
+                    <Icon Name="@(_copied ? "check" : "copy")" Size="12" />
+                </button>
+                <button class="icon-btn" style="width:22px;height:22px"
+                        @onclick="() => _expanded = !_expanded"
+                        aria-label="@L["event.toggle_output"]" aria-expanded="@_expanded">
+                    <Icon Name="@(_expanded ? "chevron-down" : "chevron-right")" Size="13" />
+                </button>
+            </div>
+            @if (_expanded)
+            {
+                <pre>@ObsText()</pre>
+            }
+        </div>
+        break;
+
+    case "TokenEvent":
+        @* agregado no TopBar — não renderiza no fluxo *@
+        break;
+
+    case "UserRejectObservation":
+        <div class="ev-card error">
+            <div class="ev-head">
+                <Icon Name="x" Size="14" /><span>@L["event.rejected"]</span>
+            </div>
+            @if (Event.Str("reason") is { } reason)
+            {
+                <pre>@reason</pre>
+            }
+        </div>
+        break;
+
+    case "AgentErrorEvent":
+    case "ServerErrorEvent":
+        <div class="ev-card error">
+            <div class="ev-head">
+                <Icon Name="alert" Size="14" /><span>@Event.Kind</span>
+                <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+            </div>
+            <pre>@(Event.Str("error") ?? Event.Str("message") ?? Event.Raw.ToString())</pre>
+        </div>
+        break;
+
+    case "CondensationRequestEvent":
+    case "CondensationEvent":
+    case "CondensationSummaryEvent":
+        <div class="ev-card condense">
+            <div class="ev-head" style="justify-content:center">
+                <Icon Name="refresh" Size="13" /><span>@L["event.condensed"]</span>
+            </div>
+        </div>
+        break;
+
+    case "ConversationStateUpdateEvent":
+        <div class="ev-card condense">
+            — @StateText() —
+        </div>
+        break;
+
+    @* ---- SPEC-24: run-activity kinds (snake_case no contrato V1) ---- *@
+
+    case "command_output":
+        <div class="ev-card cmd">
+            <div class="ev-head">
+                <Icon Name="terminal" Size="14" />
+                <span class="tool">@(Event.Str("channel") ?? "stdout")</span>
+                <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+            </div>
+            <pre class="cmd-out @(Event.Str("channel") == "stderr" ? "err" : "")">@Event.Str("text")</pre>
+        </div>
+        break;
+
+    case "tool_progress":
+        <div class="ev-card">
+            <div class="ev-head">
+                <Icon Name="clock" Size="14" />
+                <span class="tool">@(Event.Str("phase") ?? "…")</span>
+                <span>@(Event.Str("message") ?? "")</span>
+                @if (Event.Get("percent").ValueKind == JsonValueKind.Number)
+                {
+                    <span>@Event.Get("percent").GetInt32()%</span>
+                }
+                <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+            </div>
+        </div>
+        break;
+
+    case "files_changed":
+        <div class="ev-card">
+            <div class="ev-head">
+                <Icon Name="file" Size="14" /><span>@L["event.files_changed"]</span>
+                <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+            </div>
+            <div class="file-chips">
+                @foreach (var f in FileChanges())
+                {
+                    <span class="chip @f.op">@f.op · @f.path</span>
+                }
+            </div>
+        </div>
+        break;
+
+    case "run_progress":
+        @* SPEC-41 RF-004: heartbeat é liveness — não renderiza card. *@
+        @if (Event.Str("phase") != "heartbeat")
+        {
+            <div class="ev-card condense">
+                — @L.T("event.progress",
+                    ("i", Event.Get("iteration").GetInt32().ToString()),
+                    ("max", Event.Get("max_iterations").GetInt32().ToString()),
+                    ("phase", Event.Str("phase") ?? ""),
+                    ("tools", (Event.Get("tools_used").ValueKind == JsonValueKind.Number
+                        ? Event.Get("tools_used").GetInt32() : 0).ToString()),
+                    ("files", (Event.Get("files_touched").ValueKind == JsonValueKind.Number
+                        ? Event.Get("files_touched").GetInt32() : 0).ToString())) —
+            </div>
+        }
+        break;
+
+    case "PauseEvent":
+        <div class="ev-card condense">
+            <div class="ev-head" style="justify-content:center">
+                <Icon Name="pause" Size="13" /><span>@L["event.paused"]</span>
+            </div>
+        </div>
+        break;
+
+    case "InterruptEvent":
+        <div class="ev-card condense">
+            <div class="ev-head" style="justify-content:center">
+                <Icon Name="stop" Size="13" /><span>@L["event.interrupted"]</span>
+            </div>
+        </div>
+        break;
+
+    case "work_summary":
+        <div class="ev-card summary">
+            <div class="ev-head">
+                <Icon Name="check" Size="14" /><span>@L["event.work_summary"]</span>
+                <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+            </div>
+            <div class="md"><p>@Event.Str("summary")</p></div>
+            <div class="file-chips">
+                @foreach (var f in StringList("files_changed"))
+                {
+                    <span class="chip modify">@f</span>
+                }
+            </div>
+        </div>
+        break;
+
+    case "agent_diagnostic":
+        <div class="ev-card diag-@(Event.Str("severity") ?? "info")">
+            <div class="ev-head">
+                <Icon Name="@DiagIcon()" Size="14" /><span>@Event.Str("code")</span>
+                <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+            </div>
+            <p>@Event.Str("message")</p>
+        </div>
+        break;
+
+    case "decision_auto":
+        <div class="ev-card">
+            <div class="ev-head">
+                <Icon Name="zap" Size="14" />
+                <span>@L.T("event.auto", ("chosen", Event.Str("chosen") ?? "approve"))</span>
+                <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+            </div>
+        </div>
+        break;
+
+    case "HookExecutionEvent":
+        <div class="ev-card">
+            <div class="ev-head">
+                <Icon Name="zap" Size="14" />
+                <span class="tool">hook: @(Event.Str("hook") ?? Event.Str("name") ?? "")</span>
+                <span class="ev-time">@Event.Timestamp.LocalDateTime.ToString("HH:mm:ss")</span>
+            </div>
+        </div>
+        break;
+
+    default:
+        <div class="ev-card">
+            <div class="ev-head"><span>@Event.Kind</span></div>
+        </div>
+        break;
+}
+
+@code {
+    [Parameter, EditorRequired] public ClientEvent Event { get; set; } = default!;
+    [Parameter] public bool Expanded { get; set; }
+
+    /// <summary>
+    /// SPEC-41 RF-003: irmãos do stream — usados para linkar a observation
+    /// do action (status done + duração) sem depender de ordem estrita.
+    /// </summary>
+    [Parameter] public IReadOnlyList<ClientEvent>? Siblings { get; set; }
+
+    private bool _expanded;
+    private bool _copied;
+    private ElementReference _md;
+
+    protected override void OnParametersSet() => _expanded = Expanded;
+
+    /// <summary>SPEC-116: toolbar de codeblock + inline copy no markdown.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Event.Kind == "MessageEvent" && _md.Context is not null)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("sc.codeBlocks.enhance", _md);
+            }
+            catch (JSException) { /* SSR/bUnit — sem DOM real */ }
+            catch (InvalidOperationException) { /* idem */ }
+        }
+    }
+
+    /// <summary>ObservationEvent cujo action_id casa com este ActionEvent.</summary>
+    private ClientEvent? LinkedObservation() =>
+        Siblings?.FirstOrDefault(s =>
+            s.Kind == "ObservationEvent" && s.Str("action_id") == Event.Id);
+
+    private string DurationText(ClientEvent obs)
+    {
+        var d = obs.Timestamp - Event.Timestamp;
+        return d.TotalSeconds >= 1
+            ? $"{d.TotalSeconds:F1}s" : $"{d.TotalMilliseconds:F0}ms";
+    }
+
+    /// <summary>Preview one-line dos args (card colapsado, não-bash).</summary>
+    private string? ArgsPreview()
+    {
+        var tool = Event.Get("tool");
+        if (tool.ValueKind != JsonValueKind.Object
+            || !tool.TryGetProperty("arguments", out var args))
+        {
+            return null;
+        }
+
+        var s = args.ValueKind == JsonValueKind.String
+            ? args.GetString() ?? "" : args.ToString();
+        s = s.Replace('\n', ' ').Trim();
+        if (s.Length == 0)
+        {
+            return null;
+        }
+
+        return s.Length > 80 ? s[..80] + "…" : s;
+    }
+
+    /// <summary>SPEC-41 RF-006: copy → clipboard com feedback breve.</summary>
+    private async Task CopyAsync(string text)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            _copied = true;
+            StateHasChanged();
+            await Task.Delay(1500);
+            _copied = false;
+            StateHasChanged();
+        }
+        catch (Exception) { /* clipboard indisponível (bUnit/sem permissão) */ }
+    }
+
+    /// <summary>SPEC-120: "Editing file · src/Foo.cs" — chave i18n +
+    /// alvo curto derivado dos args.</summary>
+    private string ActivityLabel()
+    {
+        var tool = Event.Get("tool");
+        string? argsJson = null;
+        if (tool.ValueKind == JsonValueKind.Object
+            && tool.TryGetProperty("arguments", out var args))
+        {
+            argsJson = args.ValueKind == JsonValueKind.String
+                ? args.GetString() : args.GetRawText();
+        }
+
+        var (key, target) = ToolActivityMap.Map(Event.ToolName() ?? "", argsJson);
+        return target is null ? L[key] : $"{L[key]} · {target}";
+    }
+
+    private string ToolIcon() => Event.ToolName() switch
+    {
+        "bash" or "execute_bash" => "terminal",
+        "file_read" or "read" => "eye",
+        "file_write" or "file_edit" or "write" or "edit" => "file",
+        "search" => "search",
+        "web_fetch" or "browser" => "external",
+        "task" or "task_status" or "task_result" => "cpu",
+        "memory" => "book",
+        "finish" => "check",
+        "invoke_skill" => "zap",
+        "think" => "info",
+        _ => "wrench",
+    };
+
+    private string DiagIcon() => Event.Str("severity") switch
+    {
+        "warn" or "warning" => "alert",
+        "error" => "alert",
+        _ => "info",
+    };
+
+    private string ObsText()
+    {
+        var obs = Event.Get("observation");
+        if (obs.ValueKind == JsonValueKind.String)
+        {
+            return obs.GetString() ?? "";
+        }
+
+        if (obs.ValueKind == JsonValueKind.Object)
+        {
+            if (obs.TryGetProperty("output", out var o)
+                && o.ValueKind == JsonValueKind.String)
+            {
+                return o.GetString() ?? "";
+            }
+
+            if (obs.TryGetProperty("final_message", out var fm))
+            {
+                return fm.GetString() ?? "";
+            }
+
+            return Pretty(obs);
+        }
+
+        return "";
+    }
+
+    private string StateText()
+    {
+        var v = Event.Get("value");
+        return v.ValueKind switch
+        {
+            JsonValueKind.String => v.GetString() ?? L["event.state_update"],
+            JsonValueKind.Object => v.ToString(),
+            _ => L["event.state_update"],
+        };
+    }
+
+    private IEnumerable<(string path, string op)> FileChanges()
+    {
+        if (Event.Get("paths").ValueKind != JsonValueKind.Array)
+        {
+            yield break;
+        }
+
+        foreach (var p in Event.Get("paths").EnumerateArray())
+        {
+            yield return (
+                p.TryGetProperty("path", out var pp) ? pp.GetString() ?? "" : "",
+                p.TryGetProperty("op", out var po) ? po.GetString() ?? "modify" : "modify");
+        }
+    }
+
+    private IEnumerable<string> StringList(string prop)
+    {
+        if (Event.Get(prop).ValueKind != JsonValueKind.Array)
+        {
+            yield break;
+        }
+
+        foreach (var v in Event.Get(prop).EnumerateArray())
+        {
+            if (v.ValueKind == JsonValueKind.String)
+            {
+                yield return v.GetString() ?? "";
+            }
+        }
+    }
+
+    private static string Pretty(JsonElement el) =>
+        JsonSerializer.Serialize(el, new JsonSerializerOptions { WriteIndented = true });
+}

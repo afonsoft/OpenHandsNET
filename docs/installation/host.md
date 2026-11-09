@@ -15,22 +15,22 @@ English: [../en/installation/host.md](../en/installation/host.md).
 ## Desenvolvimento
 
 ```bash
-git clone https://github.com/afonsoft/OpenHandsNET.git
-cd OpenHandsNET
-dotnet restore OpenHandsNET.slnx
-dotnet run --project src/OpenHandsNET.Api    # http://localhost:8080
+git clone https://github.com/afonsoft/sandcastle.git
+cd Sandcastle
+dotnet restore Sandcastle.slnx
+dotnet run --project src/Sandcastle.Api    # http://localhost:8080
 ```
 
 O boot aplica as migrações EF (`DatabaseMigrator`) e semeia dados OSS.
 O Blazor WASM é servido pelo próprio Api — não há front separado.
 
-Config via `OPENHANDSNET_*` (prefixo + `__` para seção):
+Config via `SANDCASTLE_*` (prefixo + `__` para seção):
 
 ```bash
-export OPENHANDSNET_AgentLlm__BaseUrl=https://omniroute.exemplo.com/v1
-export OPENHANDSNET_AgentLlm__ApiKey=sk-...
-export OPENHANDSNET_AgentLlm__Model=meu-modelo
-dotnet run --project src/OpenHandsNET.Api
+export SANDCASTLE_AgentLlm__BaseUrl=https://omniroute.exemplo.com/v1
+export SANDCASTLE_AgentLlm__ApiKey=sk-...
+export SANDCASTLE_AgentLlm__Model=meu-modelo
+dotnet run --project src/Sandcastle.Api
 ```
 
 Sem LLM configurado, conversas funcionam com `AgentLlm:AllowMock=true`
@@ -41,37 +41,37 @@ Sem LLM configurado, conversas funcionam com `AgentLlm:AllowMock=true`
 1. Publique:
 
 ```bash
-dotnet publish src/OpenHandsNET.Api -c Release -o /opt/openhandsnet
+dotnet publish src/Sandcastle.Api -c Release -o /opt/sandcastle
 ```
 
 2. Crie o usuário e diretórios:
 
 ```bash
-sudo useradd -r -s /usr/sbin/nologin openhandsnet
-sudo mkdir -p /var/lib/openhandsnet/data /var/lib/openhandsnet/workspaces
-sudo chown -R openhandsnet:openhandsnet /opt/openhandsnet /var/lib/openhandsnet
+sudo useradd -r -s /usr/sbin/nologin sandcastle
+sudo mkdir -p /var/lib/sandcastle/data /var/lib/sandcastle/workspaces
+sudo chown -R sandcastle:sandcastle /opt/sandcastle /var/lib/sandcastle
 # acesso ao docker.sock para subir sandboxes:
-sudo usermod -aG docker openhandsnet
+sudo usermod -aG docker sandcastle
 ```
 
-3. `/etc/systemd/system/openhandsnet.service`:
+3. `/etc/systemd/system/sandcastle.service`:
 
 ```ini
 [Unit]
-Description=OpenHandsNET
+Description=Sandcastle
 After=network-online.target docker.service
 Requires=docker.service
 
 [Service]
-User=openhandsnet
+User=sandcastle
 Group=docker
-WorkingDirectory=/opt/openhandsnet
+WorkingDirectory=/opt/sandcastle
 Environment=ASPNETCORE_ENVIRONMENT=Production
 Environment=ASPNETCORE_URLS=http://0.0.0.0:8080
-Environment=OPENHANDSNET_Database__ConnectionString=Data Source=/var/lib/openhandsnet/data/openhandsnet.db
-Environment=OPENHANDSNET_Sandbox__WorkspaceRoot=/var/lib/openhandsnet/workspaces
-EnvironmentFile=-/etc/openhandsnet/env
-ExecStart=/opt/openhandsnet/OpenHandsNET.Api
+Environment=SANDCASTLE_Database__ConnectionString=Data Source=/var/lib/sandcastle/data/sandcastle.db
+Environment=SANDCASTLE_Sandbox__WorkspaceRoot=/var/lib/sandcastle/workspaces
+EnvironmentFile=-/etc/sandcastle/env
+ExecStart=/opt/sandcastle/Sandcastle.Api
 Restart=on-failure
 RestartSec=5
 
@@ -79,19 +79,19 @@ RestartSec=5
 WantedBy=multi-user.target
 ```
 
-4. `/etc/openhandsnet/env` (chmod 600) — LLM e demais segredos:
+4. `/etc/sandcastle/env` (chmod 600) — LLM e demais segredos:
 
 ```bash
-OPENHANDSNET_AgentLlm__BaseUrl=https://omniroute.exemplo.com/v1
-OPENHANDSNET_AgentLlm__ApiKey=sk-...
-OPENHANDSNET_AgentLlm__Model=meu-modelo
+SANDCASTLE_AgentLlm__BaseUrl=https://omniroute.exemplo.com/v1
+SANDCASTLE_AgentLlm__ApiKey=sk-...
+SANDCASTLE_AgentLlm__Model=meu-modelo
 ```
 
 5. Ative:
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now openhandsnet
+sudo systemctl enable --now sandcastle
 curl -fsS http://localhost:8080/api/v1/ready
 ```
 
