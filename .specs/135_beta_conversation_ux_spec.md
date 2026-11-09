@@ -9,7 +9,7 @@
 | Stack | `.NET 10 · Blazor WASM` |
 | Repository | `afonsoft/OpenHandsNET` |
 | Status | `Approved` |
-| Ticket | beta-readiness audit 2026-11-08 (core gaps #2, #5, #3) |
+| Ticket | #369 · Epic #365 |
 | Scope | `src/` + `Client/` + `tests/` + golden OpenAPI |
 
 ## 1. User Story

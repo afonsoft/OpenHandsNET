@@ -9,7 +9,7 @@
 | Stack | `.NET 10` |
 | Repository | `afonsoft/OpenHandsNET` |
 | Status | `Approved` |
-| Ticket | beta-readiness audit 2026-11-08 (blocker #3) |
+| Ticket | #371 · Epic #365 |
 | Scope | `.specs/` + `docs/specs/` + `src/` + `docs/` + `tests/` |
 
 ## 1. User Story
