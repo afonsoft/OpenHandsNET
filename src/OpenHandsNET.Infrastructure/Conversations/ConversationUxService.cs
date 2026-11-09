@@ -65,21 +65,60 @@ public sealed class ConversationUxService(
             return (null, ForkError.RunActive);
         }
 
-        EventRecord? cut = null;
-        if (req.AtEventId is { Length: > 0 } eid)
+        var (cut, cutError) = await ResolveForkCutAsync(id, req, ct);
+        if (cutError is not null)
         {
-            cut = await db.Events.FirstOrDefaultAsync(
-                r => r.ConversationId == id && r.Id == eid
-                    && r.TruncatedAtTicks == null, ct);
-            if (cut is null)
-            {
-                return (null, ForkError.EventNotFound);
-            }
+            return (null, cutError);
         }
 
         var now = DateTimeOffset.UtcNow;
         var childId = Guid.NewGuid();
-        var child = new ConversationRecord
+        var child = NewForkChildRecord(
+            src, req, orgId, userId, childId, now);
+        var task = new StartTaskRecord
+        {
+            Id = Guid.NewGuid(),
+            Status = StartTaskStatus.Working.ToString(),
+            AppConversationId = childId,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        db.Conversations.Add(child);
+        db.StartTasks.Add(task);
+        await db.SaveChangesAsync(ct);
+
+        var cloned = await CloneEventsForForkAsync(id, cut, childId, ct);
+        await AppendForkMarkerAsync(childId, src, cut, cloned, ct);
+
+        await tasks.EnqueueAsync(task.Id, ct);
+        return (new ForkResult(childId, task.Id, src.Id), null);
+    }
+
+    /// <summary>
+    /// Valida o <c>at_event_id</c> do fork (quando informado) — deve ser
+    /// um evento não-truncado da conversa de origem.
+    /// </summary>
+    private async Task<(EventRecord? Cut, ForkError? Error)> ResolveForkCutAsync(
+        Guid id, ForkConversationRequest req, CancellationToken ct)
+    {
+        if (req.AtEventId is not { Length: > 0 } eid)
+        {
+            return (null, null);
+        }
+
+        var cut = await db.Events.FirstOrDefaultAsync(
+            r => r.ConversationId == id && r.Id == eid
+                && r.TruncatedAtTicks == null, ct);
+        return cut is null
+            ? (null, ForkError.EventNotFound)
+            : (cut, null);
+    }
+
+    /// <summary>Monta o record da conversa-filha herdando os campos da origem.</summary>
+    private static ConversationRecord NewForkChildRecord(
+        ConversationRecord src, ForkConversationRequest req,
+        Guid? orgId, string? userId, Guid childId, DateTimeOffset now) =>
+        new()
         {
             Id = childId,
             OrgId = orgId ?? src.OrgId,
@@ -101,20 +140,14 @@ public sealed class ConversationUxService(
             CreatedAt = now,
             UpdatedAt = now,
         };
-        var task = new StartTaskRecord
-        {
-            Id = Guid.NewGuid(),
-            Status = StartTaskStatus.Working.ToString(),
-            AppConversationId = childId,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
-        db.Conversations.Add(child);
-        db.StartTasks.Add(task);
-        await db.SaveChangesAsync(ct);
 
-        // Eventos até o corte (ou todos), ordem (ticks,id) — mesma do
-        // EventStore. Payload é re-serializado com id/parent_id novos.
+    /// <summary>
+    /// Clona os eventos até o corte (ou todos), na ordem (ticks,id) do
+    /// EventStore, com ULIDs novos e <c>parent_id</c> remapeado.
+    /// </summary>
+    private async Task<int> CloneEventsForForkAsync(
+        Guid id, EventRecord? cut, Guid childId, CancellationToken ct)
+    {
         var query = db.Events
             .Where(r => r.ConversationId == id && r.TruncatedAtTicks == null);
         if (cut is not null)
@@ -143,9 +176,18 @@ public sealed class ConversationUxService(
             await events.AppendAsync(childId, cloned, ct);
         }
 
-        // Marca a proveniência no stream da filha — o badge do client
-        // lê parent_conversation_id; este evento registra o corte e o
-        // checkpoint mais recente da origem (referência para o usuário).
+        return rows.Count;
+    }
+
+    /// <summary>
+    /// Marca a proveniência no stream da filha — o badge do client lê
+    /// <c>parent_conversation_id</c>; este evento registra o corte e o
+    /// checkpoint mais recente da origem (referência para o usuário).
+    /// </summary>
+    private async Task AppendForkMarkerAsync(
+        Guid childId, ConversationRecord src, EventRecord? cut,
+        int cloned, CancellationToken ct)
+    {
         string? ckptHash = null;
         if (src.SandboxId is { } sid
             && await sandboxes.GetAsync(sid, ct) is { } sb
@@ -163,13 +205,10 @@ public sealed class ConversationUxService(
             {
                 conversation_id = src.Id,
                 at_event_id = cut?.Id,
-                events_cloned = rows.Count,
+                events_cloned = cloned,
                 source_checkpoint = ckptHash,
             }, EventJson.Options),
         }, ct);
-
-        await tasks.EnqueueAsync(task.Id, ct);
-        return (new ForkResult(childId, task.Id, src.Id), null);
     }
 
     /// <inheritdoc />

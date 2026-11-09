@@ -1063,7 +1063,7 @@ public static class AppConversationEndpoints
     /// </summary>
     private static async Task<IResult> ForkAsync(
         Guid id, ForkConversationRequest body,
-        IConversationUxService ux, IAppConversationService svc,
+        IConversationUxService ux,
         ICurrentUserAccessor current, IEffectiveOrgResolver orgs,
         HttpContext http, CancellationToken ct)
     {

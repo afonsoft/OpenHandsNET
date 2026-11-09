@@ -174,16 +174,8 @@
     private int HunkCount()
     {
         var sec = SelectedDiff();
-        var n = 0;
-        foreach (var line in sec.Split('\n'))
-        {
-            if (line.StartsWith("@@ ", StringComparison.Ordinal))
-            {
-                n++;
-            }
-        }
-
-        return n;
+        return sec.Split('\n')
+            .Count(l => l.StartsWith("@@ ", StringComparison.Ordinal));
     }
 
     /// <summary>

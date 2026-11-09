@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 
 using OpenHandsNET.Application.Sharing;
 using OpenHandsNET.Infrastructure.Conversations;
+using OpenHandsNET.Infrastructure.Eventing;
 using OpenHandsNET.Infrastructure.Persistence;
 
 namespace OpenHandsNET.Infrastructure.Sharing;
@@ -178,16 +179,8 @@ public sealed class ShareService(
         // encher a página ou esgotar o stream.
         while (items.Count < take)
         {
-            var batch = await db.Events
-                .Where(e => e.ConversationId == conversationId
-                    && e.TruncatedAtTicks == null)
-                .Where(e => afterTicks == null
-                    || e.TimestampTicks > afterTicks
-                    || (e.TimestampTicks == afterTicks
-                        && string.Compare(e.Id, afterId) > 0))
-                .OrderBy(e => e.TimestampTicks).ThenBy(e => e.Id)
-                .Take(100)
-                .ToListAsync(ct);
+            var batch = await FetchEventBatchAsync(
+                conversationId, afterTicks, afterId, ct);
             if (batch.Count == 0)
             {
                 next = null;
@@ -216,6 +209,24 @@ public sealed class ShareService(
 
         return new SharedEventPage(items, next);
     }
+
+    /// <summary>
+    /// Janela de 100 eventos não-truncados após o cursor (ticks,id) — o
+    /// caller reexecuta até esgotar o stream ou encher a página.
+    /// </summary>
+    private Task<List<EventRecord>> FetchEventBatchAsync(
+        Guid conversationId, long? afterTicks, string? afterId,
+        CancellationToken ct) =>
+        db.Events
+            .Where(e => e.ConversationId == conversationId
+                && e.TruncatedAtTicks == null)
+            .Where(e => afterTicks == null
+                || e.TimestampTicks > afterTicks
+                || (e.TimestampTicks == afterTicks
+                    && string.Compare(e.Id, afterId) > 0))
+            .OrderBy(e => e.TimestampTicks).ThenBy(e => e.Id)
+            .Take(100)
+            .ToListAsync(ct);
 
     private async Task<ConversationRecord> RequireOwnedAsync(
         Guid conversationId, Guid actorUserId, CancellationToken ct)

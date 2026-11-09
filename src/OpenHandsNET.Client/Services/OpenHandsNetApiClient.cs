@@ -146,7 +146,7 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
         string? title = null, CancellationToken ct = default)
     {
         var resp = await http.PostAsJsonAsync(
-            $"/api/v1/app-conversations/{conversationId}/fork",
+            $"/api/v1/app-conversations/{Uri.EscapeDataString(conversationId)}/fork",
             new { at_event_id = atEventId, title }, Json, ct);
         resp.EnsureSuccessStatusCode();
         var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(Json, ct);
@@ -163,7 +163,7 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
         string conversationId, CancellationToken ct = default)
     {
         var resp = await http.PostAsync(
-            $"/api/v1/app-conversations/{conversationId}/undo", null, ct);
+            $"/api/v1/app-conversations/{Uri.EscapeDataString(conversationId)}/undo", null, ct);
         if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
             return null;
@@ -191,7 +191,7 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
         IReadOnlyList<int> hunkIndexes, CancellationToken ct = default)
     {
         var resp = await http.PostAsJsonAsync(
-            $"/api/v1/app-conversations/{conversationId}/files/revert-hunks",
+            $"/api/v1/app-conversations/{Uri.EscapeDataString(conversationId)}/files/revert-hunks",
             new { path, hunk_indexes = hunkIndexes }, Json, ct);
         if (resp.IsSuccessStatusCode)
         {
