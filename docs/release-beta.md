@@ -29,16 +29,20 @@ Checklist executável para cortar a primeira tag beta (Epic #365 · SPECs
 
 Em uma VM/runner sem estado dev (`git clone` fresco):
 
-- [ ] `cp .env.exemplo .env` + preencher só `OPENHANDSNET_AgentLlm__*`
-      (provider/model/key)
-- [ ] `docker compose -f docker-compose.beta.yaml up -d --build` →
+- [x] `cp .env.exemplo .env` + preencher só `OPENHANDSNET_AgentLlm__*`
+      (provider/model/key) — verificado com gateway OmniRoute (Gemini)
+- [x] `docker compose -f docker-compose.beta.yaml up -d --build` →
       app saudável em `:3032` (`/api/v1/ready` = 200)
-- [ ] Primeira conversa: criar → enviar mensagem → agente executa tool
-      calls → `finish` (ou `ask_user`/confirmation conforme config)
-- [ ] Desktop tab abre noVNC (SPEC-113, `SANDBOX_DESKTOP=1` default)
+- [x] Primeira conversa: criar → enviar mensagem → agente executa tool
+      calls → `finish` (verificado: `hello.txt` criado+lido no workspace,
+      2 conversas FINISHED com LLM real)
+- [x] Desktop tab abre noVNC (verificado: xterm live no X do sandbox —
+      exige `Sandbox__DefaultImage=openhandsnet/runtime:local`,
+      `Sandbox__ControlNetwork=<rede do compose>` e `group_add` do gid docker)
 - [ ] `Auth:Provider=none` → boot direto sem login (single-user local);
       quando `oidc` configurado → `/auth` + SSO + sign-out funcionam
-- [ ] PWA instalável (manifest + service worker ativos)
+      (none verificado; OIDC não exercitado — exige IdP)
+- [x] PWA instalável (manifest + service worker ativos — verificado 200)
 
 ## 4. Segurança (defaults auditados)
 

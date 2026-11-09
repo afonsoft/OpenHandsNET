@@ -34,6 +34,11 @@ services:
       - openhandsnet-data:/app/data
       - openhandsnet-workspace:/workspace
       - /var/run/docker.sock:/var/run/docker.sock
+    # O app roda como uid 999 (openhandsnet) — precisa do gid do grupo
+    # docker do host para falar no socket montado. Override via
+    # `DOCKER_GID=$(stat -c %g /var/run/docker.sock) docker compose ...`.
+    group_add:
+      - "${DOCKER_GID:-998}"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/v1/health"]
