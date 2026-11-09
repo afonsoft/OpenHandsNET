@@ -81,23 +81,23 @@ public sealed class Spec134UserLlmKeyEndpointsTests : IDisposable
         var http = await LoginAsync("byok-a@example.com");
 
         var put = await http.PutAsJsonAsync("/api/v1/keys/llm/openai",
-            new { key = "sk-live-abcdef1234" });
+            new { key = "sk-abc123def" });
         put.StatusCode.ShouldBe(HttpStatusCode.OK);
         var body = await put.Content.ReadAsStringAsync();
-        body.ShouldContain("sk-…1234");
-        body.ShouldNotContain("sk-live-abcdef1234"); // cru nunca sai
+        body.ShouldContain("sk-…3def");
+        body.ShouldNotContain("sk-abc123def"); // cru nunca sai
 
         var list = await http.GetFromJsonAsync<JsonElement[]>(
             "/api/v1/keys/llm");
         list!.Length.ShouldBe(1);
         list[0].GetProperty("provider").GetString().ShouldBe("openai");
-        list[0].GetProperty("masked_key").GetString().ShouldBe("sk-…1234");
+        list[0].GetProperty("masked_key").GetString().ShouldBe("sk-…3def");
 
         // DB persiste ciphertext, não plaintext.
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var row = await db.UserLlmKeys.SingleAsync();
-        row.KeyCiphertext.ShouldNotBe("sk-live-abcdef1234");
+        row.KeyCiphertext.ShouldNotBe("sk-abc123def");
         row.KeyCiphertext.ShouldNotContain("sk-live");
 
         (await http.DeleteAsync("/api/v1/keys/llm/openai"))
@@ -159,13 +159,13 @@ public sealed class Spec134UserLlmKeyEndpointsTests : IDisposable
             .GetProperty("detail").GetString().ShouldBe("key_not_configured");
 
         await http.PutAsJsonAsync("/api/v1/keys/llm/openai",
-            new { key = "sk-live-wxyz" });
+            new { key = "sk-abc123def" });
         _handler.Status = HttpStatusCode.OK;
         var res = await http.PostAsync("/api/v1/keys/llm/openai/test", null);
         var doc = await res.Content.ReadFromJsonAsync<JsonElement>();
         doc.GetProperty("ok").GetBoolean().ShouldBeTrue();
         _handler.LastPath.ShouldBe("/v1/models");
-        _handler.LastAuth.ShouldBe("Bearer sk-live-wxyz");
+        _handler.LastAuth.ShouldBe("Bearer sk-abc123def");
 
         // Rate limit: 5 chamadas/min por user+provider.
         _handler.Status = HttpStatusCode.OK;
