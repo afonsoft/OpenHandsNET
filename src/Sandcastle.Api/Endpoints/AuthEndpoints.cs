@@ -27,7 +27,9 @@ public static class AuthEndpoints
         // OIDC broker login — Challenge redirects to the configured authority.
         // SPEC-97 RF-002: provider != oidc → 404 (o scheme 'oidc' não é
         // registrado nesse modo — Challenge lançava InvalidOperation → 500).
-        oauth.MapGet("/oidc/login", OidcLogin).AllowAnonymous();
+        oauth.MapGet("/oidc/login", (
+            HttpContext ctx, string? returnTo, IConfiguration config) =>
+            OidcLogin(ctx, returnTo, config)).AllowAnonymous();
 
         // Silent refresh parity — re-issues session without rewriting the
         // principal cookie upstream-style.
@@ -68,8 +70,11 @@ public static class AuthEndpoints
                 </form></body></html>
                 """, "text/html")).RequireAuthorization();
 
-        oauth.MapPost("/device/verify-authenticated",
-            DeviceVerifyAuthenticatedAsync)
+        oauth.MapPost("/device/verify-authenticated", (
+            [FromForm] string? user_code, [FromForm] string? decision,
+            ICurrentUserAccessor current, IDeviceFlowService devices,
+            CancellationToken ct) =>
+            DeviceVerifyAuthenticatedAsync(user_code, decision, current, devices, ct))
             .RequireAuthorization().DisableAntiforgery();
 
         var auth = app.MapGroup("/api/v1/auth");
@@ -101,7 +106,11 @@ public static class AuthEndpoints
         // OSS local login — Auth:Provider=none (first user bootstrap) ou
         // 'local' (login confiado por e-mail, sem senha — deployment
         // single-tenant de confiança, paridade upstream).
-        auth.MapPost("/dev-login", DevLoginAsync).AllowAnonymous();
+        auth.MapPost("/dev-login", (
+            DevLoginRequest req, HttpContext ctx,
+            IUserService users, IConfiguration config, IAuditService audit,
+            CancellationToken ct) =>
+            DevLoginAsync(req, ctx, users, config, audit, ct)).AllowAnonymous();
 
         auth.MapPost("/accept_tos", async (
             ICurrentUserAccessor current, IUserService users, CancellationToken ct) =>
@@ -199,6 +208,8 @@ public static class AuthEndpoints
 
     private static async Task<IResult> DeviceTokenAsync(
         [FromForm] string? device_code,
+        // NOSONAR S1172 — campo do contrato RFC 8628 (grant_type=device_code)
+        [FromForm] string? grant_type,
         IDeviceFlowService devices, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(device_code))

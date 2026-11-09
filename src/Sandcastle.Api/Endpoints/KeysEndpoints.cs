@@ -17,10 +17,16 @@ public static class KeysEndpoints
             .WithTags(EndpointTags.Api)
             .RequireAuthorization("perm:manage_api_keys");
 
-        g.MapGet("", ListApiKeysAsync)
+        g.MapGet("", (
+            ICurrentUserAccessor current, IApiKeyService keys,
+            CancellationToken ct) =>
+            ListApiKeysAsync(current, keys, ct))
             .RequireAuthorization("perm:manage_api_keys");
 
-        g.MapDelete("/{id:guid}", DeleteApiKeyAsync)
+        g.MapDelete("/{id:guid}", (
+            Guid id, ICurrentUserAccessor current, IApiKeyService keys,
+            IAuditService audit, CancellationToken ct) =>
+            DeleteApiKeyAsync(id, current, keys, audit, ct))
             .RequireAuthorization("perm:manage_api_keys");
 
         // Bearer-only parity: /keys/current rejects cookie sessions (RF-002).
@@ -68,13 +74,25 @@ public static class KeysEndpoints
             IUserLlmKeyService keys) => Results.Ok(keys.Providers))
             .WithTags(EndpointTags.Api).RequireAuthorization();
 
-        g.MapPut("/llm/{provider}", UpsertLlmKeyAsync)
+        g.MapPut("/llm/{provider}", (
+            string provider, [FromBody] UserLlmKeyUpsertRequest req,
+            ICurrentUserAccessor current, IUserLlmKeyService keys,
+            IAuditService audit, CancellationToken ct) =>
+            UpsertLlmKeyAsync(provider, req, current, keys, audit, ct))
             .WithTags(EndpointTags.Api).RequireAuthorization();
 
-        g.MapDelete("/llm/{provider}", DeleteLlmKeyAsync)
+        g.MapDelete("/llm/{provider}", (
+            string provider,
+            ICurrentUserAccessor current, IUserLlmKeyService keys,
+            IAuditService audit, CancellationToken ct) =>
+            DeleteLlmKeyAsync(provider, current, keys, audit, ct))
             .WithTags(EndpointTags.Api).RequireAuthorization();
 
-        g.MapPost("/llm/{provider}/test", TestLlmKeyAsync)
+        g.MapPost("/llm/{provider}/test", (
+            string provider,
+            ICurrentUserAccessor current, IUserLlmKeyService keys,
+            CancellationToken ct) =>
+            TestLlmKeyAsync(provider, current, keys, ct))
             .WithTags(EndpointTags.Api).RequireAuthorization();
 
         return app;
