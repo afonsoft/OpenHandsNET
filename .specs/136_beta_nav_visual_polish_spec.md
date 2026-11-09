@@ -8,7 +8,7 @@
 | Type | `Frontend` |
 | Stack | `Blazor WASM · Tailwind v4` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Draft` |
+| Status | `Approved` |
 | Ticket | beta-readiness audit 2026-11-08 (visual gaps #3, #6) |
 | Scope | `src/OpenHandsNET.Client/` + `tests/` |
 

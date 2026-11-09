@@ -8,7 +8,7 @@
 | Type | `Feature` |
 | Stack | `.NET 10 · Blazor WASM` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Draft` |
+| Status | `Approved` |
 | Ticket | beta-readiness audit 2026-11-08 (core gap #4) |
 | Scope | `src/` + EF migration + `Client/` + `tests/` + `docs/` |
 
