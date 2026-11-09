@@ -8,7 +8,7 @@
 | Type | `Feature` |
 | Stack | `.NET 10 · Blazor WASM` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Completed` |
 | Ticket | #366 · Epic #365 |
 | Scope | `src/OpenHandsNET.Client/` + `tests/` |
 
