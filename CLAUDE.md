@@ -96,28 +96,28 @@ python3 tools/check-mcp-tools-golden.py   # catálogo MCP tools/list vs baseline
 | Componente | Local | Loading |
 |---|---|---|
 | Instruções raiz | `CLAUDE.md` | always-on nativo |
-| Regras globais | `.claude/rules/global-rules.md` | always-on nativo |
-| Regras de domínio | `.claude/rules/{dotnet,workflows}.md` | path-scoped |
-| Sub-agentes | `.claude/agents/{engineer,plan,review,test,architecture}.md` | Task |
-| Contexto/domínio | `.claude/CONTEXT.md` | ritual (Agent Loop) |
-| Guardrails | `.claude/RULES.md` | ritual |
-| Memória state/history | `.claude/memory/{memory,YYYYMMDD}-memory.md` | ritual/on-demand |
-| Protocolo memória | `.claude/MEMORY.md` | on-demand |
-| Tools/MCP · workflows · harness | `.claude/{TOOLS,WORKFLOWS,README}.md` | on-demand |
+| Regras globais | `.agents/rules/global-rules.md` | ritual/AGENTS.md |
+| Regras de domínio | `.agents/rules/{dotnet,workflows}.md` | path-scoped |
+| Sub-agentes | `.agents/agents/{engineer,plan,review,test,architecture}.md` | Task |
+| Contexto/domínio | `.agents/CONTEXT.md` | ritual (Agent Loop) |
+| Guardrails | `.agents/RULES.md` | ritual |
+| Memória state/history | `.agents/memory/{memory,YYYYMMDD}-memory.md` | ritual/on-demand |
+| Protocolo memória | `.agents/MEMORY.md` | on-demand |
+| Tools/MCP · workflows · harness | `.agents/{TOOLS,WORKFLOWS,README}.md` | on-demand |
 | Arquitetura | `docs/architecture/` | on-demand |
 
 ## Context Engineering
 
-Prioridade de leitura e orçamento de tokens: `.claude/CONTEXT.md`.
+Prioridade de leitura e orçamento de tokens: `.agents/CONTEXT.md`.
 Reservar ~20% do contexto para saída; arquivos >500 linhas por seções.
 
 ## Memory Protocol
 
-- **State**: `.claude/memory/memory.md` — sobrescrito a cada sessão (≤100 linhas).
-- **History**: `.claude/memory/{YYYYMMDD}-memory.md` — append-only;
+- **State**: `.agents/memory/memory.md` — sobrescrito a cada sessão (≤100 linhas).
+- **History**: `.agents/memory/{YYYYMMDD}-memory.md` — append-only;
   prompts, decisões, débito, lições.
 - **Orchestrator**: `orchestrator_stats.md` + `orchestrator_sessions.md`.
-- **Knowledge**: `.claude/knowledge/` — fatos duráveis promovidos da memória.
+- **Knowledge**: `.agents/knowledge/` — fatos duráveis promovidos da memória.
 - **Save always**: registrar cada prompt, checkpoint, decisão e erro;
   nada sobrevive só no contexto.
 - **## Prompts**: toda instrução do usuário gera uma linha no arquivo
@@ -130,7 +130,7 @@ Padrão **Plan-and-Execute**:
 
 1. `CLAUDE.md` + `global-rules.md` carregados (always-on nativo).
 2. Ler `memory.md` + 3 `*-memory.md` recentes + `orchestrator_sessions.md`.
-3. Ler `.claude/CONTEXT.md` + `.claude/RULES.md` (ritual).
+3. Ler `.agents/CONTEXT.md` + `.agents/RULES.md` (ritual).
 4. Ler `.specs/` ativas relevantes → plano → implementar em `feature/*`
    → `build → test` → PR. SPECs: `write-specs` → aprovação →
    `create-issues` → `execute-specs`/`tdd-spec` → review → merge →
@@ -141,9 +141,12 @@ Padrão **Plan-and-Execute**:
 
 ## Always-on Connection
 
-Claude Code carrega nativamente só `CLAUDE.md` + `.claude/rules/*.md`
-(sem `paths:`). Os demais documentos always-on (`.claude/CONTEXT.md`,
-`.claude/RULES.md`, `memory.md`) são lidos pelo ritual do Agent Loop.
+`.agents/` é o diretório canônico do harness (convenção AGENTS.md;
+anterior `.claude/`). `.claude/settings.json` permanece como config
+nativa do Claude Code (`permissions.deny` — guardrail computacional).
+As regras em `.agents/rules/` e os demais documentos always-on
+(`.agents/CONTEXT.md`, `.agents/RULES.md`, `memory.md`) são lidos
+pelo ritual do Agent Loop.
 
 ## Autonomia do agente
 
@@ -166,11 +169,11 @@ Claude Code carrega nativamente só `CLAUDE.md` + `.claude/rules/*.md`
 
 ## Referências
 
-- [.claude/rules/](.claude/rules/) — regras always-on e path-scoped
-- [.claude/agents/](.claude/agents/) — sub-agentes do harness
-- [.claude/CONTEXT.md](.claude/CONTEXT.md) · [.claude/RULES.md](.claude/RULES.md)
-- [.claude/MEMORY.md](.claude/MEMORY.md) · [.claude/TOOLS.md](.claude/TOOLS.md) · [.claude/WORKFLOWS.md](.claude/WORKFLOWS.md)
-- [.claude/README.md](.claude/README.md) — infraestrutura do harness
-- [.claude/memory/](.claude/memory/) — estado cross-session
+- [.agents/rules/](.agents/rules/) — regras always-on e path-scoped
+- [.agents/agents/](.agents/agents/) — sub-agentes do harness
+- [.agents/CONTEXT.md](.agents/CONTEXT.md) · [.agents/RULES.md](.agents/RULES.md)
+- [.agents/MEMORY.md](.agents/MEMORY.md) · [.agents/TOOLS.md](.agents/TOOLS.md) · [.agents/WORKFLOWS.md](.agents/WORKFLOWS.md)
+- [.agents/README.md](.agents/README.md) — infraestrutura do harness
+- [.agents/memory/](.agents/memory/) — estado cross-session
 - [docs/architecture/](docs/architecture/) — ADRs e diagramas
 - [.specs/](.specs/) — SPECs ativas · [docs/specs/](docs/specs/) — entregues

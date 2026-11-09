@@ -14,5 +14,6 @@ data/
 migration-plan/
 docs/
 .claude/
+.agents/
 **/*.md
 !README.md

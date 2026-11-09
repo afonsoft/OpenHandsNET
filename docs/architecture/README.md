@@ -20,4 +20,4 @@ artefatos interativos via Archify.
 - Archify: spec `.json` + `.html` gerado por
   `archify deliver architecture <spec>.json <out>.html --repo-root .`.
 - Distinto de `.specs/` (SDD ativo), `docs/specs/` (arquivo) e
-  `.claude/memory/` (histórico de sessões).
+  `.agents/memory/` (histórico de sessões).
