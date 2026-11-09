@@ -108,3 +108,17 @@ deferred-loading, exposição MCP/ACP e assets PWA.
 SPEC-131 entregue via PR #339 e arquivada em `docs/specs/` — Playwright +
 `chrome-devtools-mcp` na imagem de runtime, env pass-through em
 `docker exec` e servidor MCP builtin `chrome-devtools`.
+
+### Leva 2026-11-08 (beta-readiness audit) — em revisão
+
+Auditoria OWUIC-layout + OpenHands/Devin/OpenCode-core; matriz de gaps
+publicada na conversa de origem. SPECs aprovadas 2026-11-08 → issues + implementação:
+
+| SPEC | Título | Status | Ticket |
+|---|---|---|---|
+| 132 | beta-auth-ux | Approved | beta audit (visual gap #1) |
+| 133 | web-search-tool | Approved | beta audit (core gap #1) |
+| 134 | beta-byok | Approved | beta audit (core gap #4) |
+| 135 | beta-conversation-ux | Approved | beta audit (core gaps #2/#5/#3) |
+| 136 | beta-nav-visual-polish | Approved | beta audit (visual #3/#6) |
+| 137 | beta-release-housekeeping | Approved | beta audit (blocker #3) |
