@@ -9,28 +9,28 @@
 ## Contexto
 
 O checklist do orchestrator (Phase 2) e da skill `create-agent-harness`
-espera a estrutura `.claude/` completa (`settings.json`, `rules/`,
+espera a estrutura `.agents/` completa (`settings.json`, `rules/`,
 `agents/`, `CONTEXT.md`, `RULES.md`, `MEMORY.md`, `TOOLS.md`,
 `WORKFLOWS.md`, `README.md`, `memory/`). Até 2026-10-19 o repo tinha
-apenas `CLAUDE.md`, `AGENTS.md` (thin) e `.claude/memory/` — decisão
+apenas `CLAUDE.md`, `AGENTS.md` (thin) e `.agents/memory/` — decisão
 consciente de "thin harness" registrada na sessão 2026-10-15, que
 mostrou-se insuficiente: guardrails dependiam só de prompts e a
 linguagem de domínio não era descobrível fora de `CLAUDE.md`.
 
 ## Decisão
 
-Adotar a estrutura `.claude/` completa do harness afonsoft:
+Adotar a estrutura `.agents/` completa do harness afonsoft:
 
-- `.claude/settings.json` — permissions allow/deny + env (controle
+- `.agents/settings.json` — permissions allow/deny + env (controle
   computacional, não ignorable por prompt).
-- `.claude/rules/` — `global-rules.md` (always-on) + `dotnet.md` e
+- `.agents/rules/` — `global-rules.md` (always-on) + `dotnet.md` e
   `workflows.md` (path-scoped).
-- `.claude/agents/` — 5 sub-agentes mandatórios (engineer, plan,
+- `.agents/agents/` — 5 sub-agentes mandatórios (engineer, plan,
   review, test, architecture) copiados do template da skill.
-- `.claude/CONTEXT.md` — linguagem de domínio + estratégia de contexto.
-- `.claude/RULES.md`, `MEMORY.md`, `TOOLS.md`, `WORKFLOWS.md`,
+- `.agents/CONTEXT.md` — linguagem de domínio + estratégia de contexto.
+- `.agents/RULES.md`, `MEMORY.md`, `TOOLS.md`, `WORKFLOWS.md`,
   `README.md` — referências on-demand/ritual.
-- `.claude/memory/memory.md` + `{YYYYMMDD}-memory.md` — protocolo
+- `.agents/memory/memory.md` + `{YYYYMMDD}-memory.md` — protocolo
   state/history (coexiste com `orchestrator_*.md` e `gap-analysis-*.md`).
 - `docs/architecture/` — este ADR + `overview.md` (diagrama Mermaid).
 
@@ -46,5 +46,5 @@ memória do agente Devin.
   de leitura.
 - (+) `docs/architecture/` passa a existir — Phase 5 do orchestrator
   tem onde publicar ADRs/diagramas.
-- (−) Manter `.claude/*` sincronizado com `CLAUDE.md` é débito
+- (−) Manter `.agents/*` sincronizado com `CLAUDE.md` é débito
   operacional contínuo (mitigado por referências, não duplicação).
