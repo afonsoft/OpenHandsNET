@@ -78,6 +78,8 @@ public sealed record AppConversationDto
     public bool ConfirmationMode { get; init; }
     /// <summary>SPEC-44: kind de attention pendente (null quando nada).</summary>
     public string? NeedsAttention { get; init; }
+    /// <summary>SPEC-135: origem do fork (null = conversa raiz).</summary>
+    public string? ParentConversationId { get; init; }
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset UpdatedAt { get; init; }
 }

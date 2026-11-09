@@ -70,6 +70,14 @@ public static class AppConversationEndpoints
         group.MapPost("/{id:guid}/resume",
             ResumeConversationAsync);
 
+        // SPEC-135 RF-001: fork — clona eventos até o corte numa
+        // conversa-filha (start-task próprio, parent_conversation_id).
+        group.MapPost("/{id:guid}/fork", ForkAsync);
+
+        // SPEC-135 RF-003: turn undo — soft-delete do último turno do
+        // usuário + revert do workdir ao checkpoint do início do turno.
+        group.MapPost("/{id:guid}/undo", UndoAsync);
+
         // SPEC-18 RF-005/006: switch_profile recria o sandbox com o novo
         // profile (start-task); switch_acp_model vale a partir do próximo run.
         group.MapPost("/{id:guid}/switch_profile",
@@ -963,6 +971,7 @@ public static class AppConversationEndpoints
         Pinned = c.Pinned,
         ConfirmationMode = c.ConfirmationMode,
         NeedsAttention = c.NeedsAttentionKind,
+        ParentConversationId = c.ParentConversationId?.ToString(),
         CreatedAt = c.CreatedAt,
         UpdatedAt = c.UpdatedAt,
     };
@@ -1046,6 +1055,58 @@ public static class AppConversationEndpoints
         [FromServices] public Infrastructure.Persistence.AppDbContext Db { get; init; } = null!;
         public HttpContext Http { get; init; } = null!;
         public CancellationToken Ct { get; init; }
+    }
+
+    /// <summary>
+    /// SPEC-135 RF-001: <c>POST .../fork</c> — service checa run ativa e
+    /// validade do <c>at_event_id</c>; retorna a task da conversa-filha.
+    /// </summary>
+    private static async Task<IResult> ForkAsync(
+        Guid id, ForkConversationRequest body,
+        IConversationUxService ux, IAppConversationService svc,
+        ICurrentUserAccessor current, IEffectiveOrgResolver orgs,
+        HttpContext http, CancellationToken ct)
+    {
+        var org = current.User is { } u
+            ? await orgs.ResolveAsync(u, null, ct) : null;
+        var (result, error) = await ux.ForkAsync(
+            id, org?.OrgId, current.User?.UserId.ToString(), body, ct);
+        return error switch
+        {
+            null => Results.Ok(new
+            {
+                id = result!.Id,
+                start_task_id = result.StartTaskId,
+                parent_conversation_id = result.ParentConversationId,
+            }),
+            ForkError.RunActive => OpenHandsNetProblemFactory.Create(
+                http, 409, "conversation has an active run"),
+            ForkError.EventNotFound => OpenHandsNetProblemFactory.Create(
+                http, 404, "at_event_id not found in conversation"),
+            _ => OpenHandsNetProblemFactory.Create(
+                http, 404, $"Conversation {id} not found"),
+        };
+    }
+
+    /// <summary>
+    /// SPEC-135 RF-003: <c>POST .../undo</c> — idempotente; 404 no_turn
+    /// quando não há turno de usuário restante, 409 com run ativa.
+    /// </summary>
+    private static async Task<IResult> UndoAsync(
+        Guid id, IConversationUxService ux,
+        HttpContext http, CancellationToken ct)
+    {
+        var (result, error) = await ux.UndoAsync(id, ct);
+        return error switch
+        {
+            null => Results.Ok(result),
+            UndoError.RunActive => OpenHandsNetProblemFactory.Create(
+                http, 409, "conversation has an active run"),
+            UndoError.NoTurn => OpenHandsNetProblemFactory.Create(
+                http, 404, "no_turn"),
+            _ => OpenHandsNetProblemFactory.Create(
+                http, 404, $"Conversation {id} not found"),
+        };
     }
 
     /// <summary>Binding do POST send-message (SPEC-104 — AsParameters).</summary>

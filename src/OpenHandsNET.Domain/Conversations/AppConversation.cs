@@ -56,4 +56,6 @@ public sealed record AppConversation(
     // SPEC-55: ticket que originou a conversa (Linear/Jira).
     string? TicketKind = null,
     string? TicketId = null,
-    string? TicketUrl = null);
+    string? TicketUrl = null,
+    // SPEC-135: conversa de origem num fork (null = raiz).
+    Guid? ParentConversationId = null);

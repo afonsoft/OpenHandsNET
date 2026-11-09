@@ -41,7 +41,9 @@ public sealed class EventStore(AppDbContext db, IEventBus bus) : IEventService
     public async Task<EventPage> SearchAsync(
         Guid conversationId, EventQuery q, CancellationToken ct)
     {
-        var query = ApplyFilters(db.Events.Where(r => r.ConversationId == conversationId), q);
+        var query = ApplyFilters(
+            db.Events.Where(r => r.ConversationId == conversationId
+                && r.TruncatedAtTicks == null), q);
 
         var desc = q.Sort == EventSortOrder.TimestampDesc;
         if (CursorPaginator.TryDecode(q.PageId, out var curTs, out var curId))
@@ -74,7 +76,8 @@ public sealed class EventStore(AppDbContext db, IEventBus bus) : IEventService
         Guid conversationId, EventQuery q, CancellationToken ct)
     {
         return await ApplyFilters(
-            db.Events.Where(r => r.ConversationId == conversationId), q)
+            db.Events.Where(r => r.ConversationId == conversationId
+                && r.TruncatedAtTicks == null), q)
             .LongCountAsync(ct);
     }
 
@@ -84,7 +87,8 @@ public sealed class EventStore(AppDbContext db, IEventBus bus) : IEventService
     {
         var wanted = ids.ToHashSet(StringComparer.Ordinal);
         var rows = await db.Events
-            .Where(r => r.ConversationId == conversationId && wanted.Contains(r.Id))
+            .Where(r => r.ConversationId == conversationId
+                && r.TruncatedAtTicks == null && wanted.Contains(r.Id))
             .ToListAsync(ct);
         var byId = rows.ToDictionary(r => r.Id, StringComparer.Ordinal);
         return ids

@@ -42,7 +42,8 @@ public sealed class TrajectoryExporter(
 
         var secretValues = await ResolveSecretValuesAsync(conv, ct);
         var records = await db.Events
-            .Where(e => e.ConversationId == conversationId)
+            .Where(e => e.ConversationId == conversationId
+                && e.TruncatedAtTicks == null)
             .OrderBy(e => e.TimestampTicks).ThenBy(e => e.Id)
             .ToListAsync(ct);
 

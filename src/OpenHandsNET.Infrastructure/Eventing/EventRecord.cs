@@ -27,6 +27,12 @@ public sealed class EventRecord
     /// <summary>Parent event id in the conversation tree.</summary>
     public string? ParentId { get; init; }
 
+    /// <summary>
+    /// SPEC-135: soft-delete (UTC ticks) — setado pelo turn-undo; o
+    /// stream ativo filtra, o ledger físico permanece auditável.
+    /// </summary>
+    public long? TruncatedAtTicks { get; set; }
+
     /// <summary>Full serialized event JSON (incl. <c>kind</c>).</summary>
     public required string Payload { get; init; }
 }

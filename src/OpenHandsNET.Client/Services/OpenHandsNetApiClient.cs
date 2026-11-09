@@ -137,6 +137,84 @@ public sealed class OpenHandsNetApiClient(HttpClient http)
         (await http.DeleteAsync($"/api/v1/app-conversations/{id}", ct))
             .EnsureSuccessStatusCode();
 
+    /// <summary>
+    /// SPEC-135 RF-001: POST .../fork → id da conversa-filha.
+    /// <paramref name="atEventId"/> opcional (corte).
+    /// </summary>
+    public async Task<ForkConversationResult> ForkConversationAsync(
+        string conversationId, string? atEventId = null,
+        string? title = null, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync(
+            $"/api/v1/app-conversations/{conversationId}/fork",
+            new { at_event_id = atEventId, title }, Json, ct);
+        resp.EnsureSuccessStatusCode();
+        var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(Json, ct);
+        return new ForkConversationResult(
+            doc.GetProperty("id").GetString()!,
+            doc.GetProperty("start_task_id").GetString()!);
+    }
+
+    /// <summary>
+    /// SPEC-135 RF-003: POST .../undo → resultado; null quando 404
+    /// <c>no_turn</c> (idempotente). 409 (run ativa) propaga.
+    /// </summary>
+    public async Task<UndoResult?> UndoConversationAsync(
+        string conversationId, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsync(
+            $"/api/v1/app-conversations/{conversationId}/undo", null, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        resp.EnsureSuccessStatusCode();
+        var doc = await resp.Content.ReadFromJsonAsync<JsonElement>(Json, ct);
+        var files = new List<string>();
+        if (doc.TryGetProperty("files_reverted", out var f))
+        {
+            files.AddRange(f.EnumerateArray()
+                .Select(e => e.GetString() ?? ""));
+        }
+
+        return new UndoResult(
+            doc.GetProperty("truncated_events").GetInt32(), files);
+    }
+
+    /// <summary>
+    /// SPEC-135 RF-005: POST .../files/revert-hunks → aplicados/conflitos
+    /// (409 entrega conflicts; nunca lança por conflito de hunk).
+    /// </summary>
+    public async Task<RevertHunksResult> RevertHunksAsync(
+        string conversationId, string path,
+        IReadOnlyList<int> hunkIndexes, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync(
+            $"/api/v1/app-conversations/{conversationId}/files/revert-hunks",
+            new { path, hunk_indexes = hunkIndexes }, Json, ct);
+        if (resp.IsSuccessStatusCode)
+        {
+            var ok = await resp.Content.ReadFromJsonAsync<JsonElement>(Json, ct);
+            return new RevertHunksResult(
+                ok.GetProperty("applied").EnumerateArray()
+                    .Select(e => e.GetInt32()).ToList(), []);
+        }
+
+        if (resp.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            var bad = await resp.Content.ReadFromJsonAsync<JsonElement>(Json, ct);
+            return new RevertHunksResult(
+                bad.GetProperty("applied").EnumerateArray()
+                    .Select(e => e.GetInt32()).ToList(),
+                bad.GetProperty("conflicts").EnumerateArray()
+                    .Select(e => e.GetInt32()).ToList());
+        }
+
+        resp.EnsureSuccessStatusCode();
+        return new RevertHunksResult([], []);
+    }
+
     /// <summary>SPEC-26: GET /models → ids disponíveis + default.</summary>
     public async Task<(IReadOnlyList<string> Ids, string? Default)>
         GetModelsAsync(CancellationToken ct = default)

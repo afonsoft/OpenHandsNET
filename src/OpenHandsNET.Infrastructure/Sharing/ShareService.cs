@@ -179,7 +179,8 @@ public sealed class ShareService(
         while (items.Count < take)
         {
             var batch = await db.Events
-                .Where(e => e.ConversationId == conversationId)
+                .Where(e => e.ConversationId == conversationId
+                    && e.TruncatedAtTicks == null)
                 .Where(e => afterTicks == null
                     || e.TimestampTicks > afterTicks
                     || (e.TimestampTicks == afterTicks

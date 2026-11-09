@@ -353,6 +353,23 @@
             case ComposerSlash.CommandKind.New:
                 Nav.NavigateTo("/");
                 break;
+            case ComposerSlash.CommandKind.Undo:
+                // SPEC-135 RF-004: /undo — idempotente (404 no_turn →
+                // toast informativo); o endpoint faz o truncate+revert.
+                if (ConversationId is not null)
+                {
+                    var done = await Api.UndoConversationAsync(ConversationId);
+                    if (done is null)
+                    {
+                        Toasts.Info(L["conv.undo_no_turn"]);
+                    }
+                    else
+                    {
+                        Toasts.Success(L.T("conv.undo_done",
+                            ("n", done.TruncatedEvents.ToString())));
+                    }
+                }
+                break;
             default: // Skill — expande no composer p/ revisão antes do envio.
                 await SetTextAsync(ComposerSlash.Expand(cmd, args));
                 break;

@@ -48,7 +48,8 @@ public sealed class SessionInsightService : ISessionInsightService
 
         // Amostragem de eventos associados para análise heurística
         var events = await _db.Events
-            .Where(e => e.ConversationId == conversationId)
+            .Where(e => e.ConversationId == conversationId
+                && e.TruncatedAtTicks == null)
             .OrderBy(e => e.TimestampTicks)
             .Take(100)
             .ToListAsync(ct);

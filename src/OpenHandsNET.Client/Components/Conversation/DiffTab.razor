@@ -3,6 +3,7 @@
 @implements IAsyncDisposable
 @inject OpenHandsNetApiClient Api
 @inject MonacoInterop Monaco
+@inject ToastService Toasts
 
 <div style="display:flex;flex-direction:column;height:100%">
     <div class="diff-meta">
@@ -19,6 +20,27 @@
                 <button class="@(f == _selected ? "sel" : "")"
                         @onclick="() => SelectAsync(f)">@f</button>
             }
+        </div>
+    }
+    @* SPEC-135 RF-006: strip de hunks do arquivo selecionado — revert
+       por hunk (reverse-apply no servidor) + slot "comentar → agente"
+       desabilitado (fora de escopo da beta). *@
+    @if (_selected is not null)
+    {
+        <div class="hunk-strip">
+            @for (var i = 0; i < HunkCount(); i++)
+            {
+                var idx = i;
+                <button class="hunk-btn" disabled="@_reverting"
+                        title="@L["diff.revert_hunk"]"
+                        @onclick="() => RevertHunkAsync(idx)">
+                    <Icon Name="undo" Size="11" /> @L["diff.hunk"] @(idx + 1)
+                </button>
+            }
+            <button class="hunk-btn" disabled
+                    title="@L["diff.comment_soon"]">
+                <Icon Name="chat" Size="11" /> @L["diff.comment_agent"]
+            </button>
         </div>
     }
     <div style="flex:1;min-height:0;overflow:auto">
@@ -59,6 +81,7 @@
     private bool _monacoFailed;
     private bool _monacoDirty;
     private bool _loading = true;
+    private bool _reverting;
     private string _orig = "";
     private string _mod = "";
 
@@ -146,6 +169,60 @@
         _selected is not null && _sections.TryGetValue(_selected, out var sec)
             ? sec
             : _diff ?? "";
+
+    /// <summary>SPEC-135 RF-006: qtd. de hunks (<c>@@</c>) na seção ativa.</summary>
+    private int HunkCount()
+    {
+        var sec = SelectedDiff();
+        var n = 0;
+        foreach (var line in sec.Split('\n'))
+        {
+            if (line.StartsWith("@@ ", StringComparison.Ordinal))
+            {
+                n++;
+            }
+        }
+
+        return n;
+    }
+
+    /// <summary>
+    /// SPEC-135 RF-006: reverse-apply de um hunk — o servidor devolve
+    /// applied/conflicts por índice; sucesso recarrega o diff.
+    /// </summary>
+    private async Task RevertHunkAsync(int idx)
+    {
+        if (_selected is null || State.Conversation is null)
+        {
+            return;
+        }
+
+        _reverting = true;
+        try
+        {
+            var r = await Api.RevertHunksAsync(
+                State.Conversation.Id, _selected, [idx]);
+            if (r.Applied.Count > 0)
+            {
+                Toasts.Success(L.T("diff.hunk_reverted",
+                    ("n", (idx + 1).ToString())));
+                await LoadAsync();
+            }
+            else
+            {
+                Toasts.Error(L.T("diff.hunk_conflict",
+                    ("n", (idx + 1).ToString())));
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            Toasts.Error(L.T("diff.hunk_failed", ("error", ex.Message)));
+        }
+        finally
+        {
+            _reverting = false;
+        }
+    }
 
     private static string LineClass(string line) =>
         line switch
