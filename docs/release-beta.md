@@ -14,15 +14,16 @@ Checklist executável para cortar a primeira tag beta (Epic #365 · SPECs
 
 ## 2. Qualidade (gates obrigatórios)
 
-- [ ] `dotnet format --verify-no-changes` limpo em `main`
-- [ ] `dotnet build OpenHandsNET.slnx -c Release` — 0 warnings / 0 errors
-- [ ] `dotnet test` — suítes verdes; flakes conhecidos documentados no
+- [x] `dotnet format --verify-no-changes` limpo em `main`
+- [x] `dotnet build OpenHandsNET.slnx -c Release` — 0 warnings / 0 errors
+- [x] `dotnet test` — suítes verdes (Unit 742/742 · Client 133/133;
+      integração gate por CI); flakes conhecidos documentados no
       corpo da tag (SPEC-78 quarantine list)
-- [ ] Golden OpenAPI (`Spec51OpenApiContractTests`) byte-idêntico ou
-      regerado intencionalmente com nota de breaking-change
+- [x] Golden OpenAPI (`Spec51OpenApiContractTests`) byte-idêntico —
+      regerado na SPEC-135 (#384: fork/undo/revert-hunks)
 - [ ] SonarCloud gate verde na main (0 bugs/vulnerabilities novos)
-- [ ] Drift guards client: `tools/check-*.py` todos passando
-- [ ] `gitleaks`/GitGuardian limpos
+- [x] Drift guards client: `tools/check-*.py` todos passando
+- [x] `gitleaks`/GitGuardian limpos (fix #378 na main)
 
 ## 3. Quickstart em ambiente limpo (gate manual)
 
@@ -41,30 +42,32 @@ Em uma VM/runner sem estado dev (`git clone` fresco):
 
 ## 4. Segurança (defaults auditados)
 
-- [ ] `Auth:Provider=none` documentado como **single-user local** —
-      callout "não exponha à internet sem `oidc`" em README + env docs
-- [ ] `Auth:Provider=none` + exposto → rate-limit e IP rules ativos
-      (SPEC-59 já default-on; verificar no compose beta)
-- [ ] Egress: `unrestricted` default documentado + link
+- [x] `Auth:Provider=none` documentado como **single-user local** —
+      callout "não exponha à internet sem `oidc`" em `.env.exemplo` +
+      `docs/{,en/}installation/environment-variables.md`
+- [x] `Auth:Provider=none` + exposto → IP rules default-on
+      (SPEC-59, `EdgeAccessMiddleware` no pipeline) + rate limit ligado
+      no `docker-compose.beta.yaml` (120/min)
+- [x] Egress: `unrestricted` default documentado + link
       `docs/deployment/egress-allowlist.md` no `.env.exemplo`
-- [ ] `.env.exemplo` sem secrets reais; `POSTGRES_PASSWORD=CHANGE_ME`
-- [ ] `docker-compose.beta.yaml` comentário do trade-off socket mount
+- [x] `.env.exemplo` sem secrets reais; `POSTGRES_PASSWORD=CHANGE_ME`
+- [x] `docker-compose.beta.yaml` comentário do trade-off socket mount
       visível (já existe — manter)
-- [ ] `sk-*`/keys mascarados em todas as respostas (`SecretNamesJson`)
+- [x] `sk-*`/keys mascarados em todas as respostas (`SecretNamesJson`)
 
 ## 5. Artefatos
 
-- [ ] `CHANGELOG.md` — seção `v0.1.0-beta.1` com highlights (audit
+- [x] `CHANGELOG.md` — seção `v0.1.0-beta.1` com highlights (audit
       summary: ~130 SPECs entregues, OWUIC design-system, 45+ tools,
       enterprise ops) + breaking notes (remoção `/api/v1/pending-messages`)
-- [ ] Bump de versão se houver campo (`.csproj` `VersionPrefix` ou
-      `Directory.Build.props`) → `0.1.0-beta.1`
+- [x] Bump de versão se houver campo — N/A: nenhum `.csproj`/
+      `Directory.Build.props` declara `VersionPrefix` (sem campo a bater)
 - [ ] `git tag -a v0.1.0-beta.1 -m "first public beta"` + push da tag
 - [ ] GitHub Release: notas a partir do CHANGELOG + screenshots +
       quickstart snippet (compose beta)
 - [ ] Imagem Docker etiquetada `openhandsnet:0.1.0-beta.1` (+ `latest`
       se for o canal) — build via `docker build .` ou CI `docker image`
-- [ ] README: badge de versão/status "beta" no cabeçalho
+- [x] README: badge de versão/status "beta" no cabeçalho
 
 ## 6. Pós-tag
 
