@@ -100,6 +100,8 @@ public sealed class ToolRegistry : IToolRegistry
             // SPEC-25 RF-003: search/web_fetch + file_read/file_edit v2.
             BuiltinTools.Search(bashTimeout),
             BuiltinTools.WebFetch(),
+            // SPEC-133 RF-004: busca web provider-backed (DDG default).
+            BuiltinTools.WebSearch(),
             // SPEC-30 RF-002: memória persistente (project + org).
             BuiltinTools.Memory(),
             // SPEC-47 RF-005: routines do owner da conversa.

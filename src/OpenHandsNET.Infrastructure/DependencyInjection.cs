@@ -331,6 +331,19 @@ public static class DependencyInjection
             c.DefaultRequestHeaders.UserAgent.ParseAdd(
                 "OpenHandsNET/1.0 web_fetch");
         });
+        // SPEC-133 RF-001/RF-002: web_search provider-backed —
+        // duckduckgo default sem key; tavily/brave via WebSearch:ApiKey.
+        services.Configure<OpenHandsNET.Application.Web.WebSearchOptions>(
+            configuration.GetSection(
+                OpenHandsNET.Application.Web.WebSearchOptions.Section));
+        services.AddScoped<OpenHandsNET.Application.Web.IWebSearchService,
+            OpenHandsNET.Infrastructure.Web.WebSearchService>();
+        services.AddHttpClient("web-search", c =>
+        {
+            c.Timeout = TimeSpan.FromSeconds(15);
+            c.DefaultRequestHeaders.UserAgent.ParseAdd(
+                "OpenHandsNET/1.0 web_search");
+        });
         services.AddScoped<OpenHandsNET.Application.Hooks.IHookService,
             OpenHandsNET.Infrastructure.Hooks.HookService>();
         // SPEC-127: hooks de arquivo (.openhands/hooks/*.hook.json) —

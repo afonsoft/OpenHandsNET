@@ -1106,6 +1106,40 @@ public static class BuiltinTools
         });
 
     /// <summary>
+    /// SPEC-133 RF-004: backend-side web search — provider por
+    /// <c>WebSearch:Provider</c> (duckduckgo default; tavily/brave com key).
+    /// Compõe com <c>web_fetch</c> para abrir os resultados.
+    /// </summary>
+    public static AgentTool WebSearch() => new(
+        new ToolSchema("web_search",
+            "Search the web and return the top results "
+            + "(title, url, snippet). Use web_fetch to open a result.",
+            Schema("""
+                {"type":"object","properties":{
+                  "query":{"type":"string","description":"Search query"},
+                  "max_results":{"type":"integer",
+                    "description":"1-10 results (default 5)"}},
+                 "required":["query"]}
+                """)),
+        Risky: false,
+        Handler: async (ctx, args, ct) =>
+        {
+            var query = args.GetProperty("query").GetString()!;
+            var max = args.TryGetProperty("max_results", out var mr)
+                ? mr.GetInt32() : 5;
+            var search = ctx.Services.GetService<Application.Web.IWebSearchService>();
+            if (search is null)
+            {
+                return ToolResult.Error("web_search service unavailable");
+            }
+
+            var res = await search.SearchAsync(query, max, ct);
+            return res.Ok
+                ? ToolResult.Ok(new { results = res.Results })
+                : ToolResult.Error(res.Error ?? "search failed");
+        });
+
+    /// <summary>
     /// SPEC-28 RF-001/RF-003: <c>task</c> — spawns a subagent in the same
     /// sandbox. Sync by default; <c>background:true</c> queues and returns
     /// <c>task_id</c> for <c>task_status</c>/<c>task_result</c>.
