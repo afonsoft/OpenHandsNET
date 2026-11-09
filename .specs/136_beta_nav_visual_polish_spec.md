@@ -8,7 +8,7 @@
 | Type | `Frontend` |
 | Stack | `Blazor WASM · Tailwind v4` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `In implementation` |
 | Ticket | #370 · Epic #365 |
 | Scope | `src/OpenHandsNET.Client/` + `tests/` |
 

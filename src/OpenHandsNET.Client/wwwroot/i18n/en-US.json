@@ -421,6 +421,8 @@
   "palette.placeholder": "search command or conversation…",
   "palette.theme": "Theme: {{theme}} (cycle)",
   "plan.title": "Plan",
+  "rail.collapse": "Collapse sidebar",
+  "rail.expand": "Expand sidebar",
   "settings.agent_llm": "Agent / LLM",
   "settings.agent_type": "agent type",
   "settings.appearance": "Appearance",
@@ -459,10 +461,13 @@
   "sidebar.filter": "Filter…",
   "sidebar.filter_aria": "Filter conversations",
   "sidebar.general": "General",
+  "sidebar.knowledge": "Knowledge",
   "sidebar.new_chat": "New conversation",
   "sidebar.repository": "Repository",
   "sidebar.settings": "Settings",
+  "sidebar.skills_mcp": "Skills & MCP",
   "sidebar.toggle": "Toggle sidebar",
+  "sidebar.workspace": "Workspace",
   "skills.content_placeholder": "markdown content",
   "skills.desc_placeholder": "description",
   "skills.description": "Description",
@@ -481,7 +486,5 @@
   "usage.completion_tokens": "completion tokens",
   "usage.estimated_cost": "estimated cost",
   "usage.events": "events",
-  "usage.prompt_tokens": "prompt tokens",
-  "rail.expand": "Expand sidebar",
-  "rail.collapse": "Collapse sidebar"
+  "usage.prompt_tokens": "prompt tokens"
 }

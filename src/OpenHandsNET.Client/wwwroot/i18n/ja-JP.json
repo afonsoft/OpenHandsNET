@@ -421,6 +421,8 @@
   "palette.placeholder": "コマンドまたは会話を検索…",
   "palette.theme": "テーマ: {{theme}} (切り替え)",
   "plan.title": "プラン",
+  "rail.collapse": "サイドバーを折りたたむ",
+  "rail.expand": "サイドバーを展開",
   "settings.agent_llm": "エージェント / LLM",
   "settings.agent_type": "エージェントタイプ",
   "settings.appearance": "外観",
@@ -459,10 +461,13 @@
   "sidebar.filter": "フィルター…",
   "sidebar.filter_aria": "会話をフィルター",
   "sidebar.general": "一般",
+  "sidebar.knowledge": "ナレッジ",
   "sidebar.new_chat": "新しい会話",
   "sidebar.repository": "リポジトリ",
   "sidebar.settings": "設定",
+  "sidebar.skills_mcp": "Skills と MCP",
   "sidebar.toggle": "サイドバーを切り替え",
+  "sidebar.workspace": "ワークスペース",
   "skills.content_placeholder": "markdown コンテンツ",
   "skills.desc_placeholder": "説明",
   "skills.description": "説明",
@@ -481,7 +486,5 @@
   "usage.completion_tokens": "completion トークン",
   "usage.estimated_cost": "推定コスト",
   "usage.events": "イベント",
-  "usage.prompt_tokens": "prompt トークン",
-  "rail.expand": "サイドバーを展開",
-  "rail.collapse": "サイドバーを折りたたむ"
+  "usage.prompt_tokens": "prompt トークン"
 }

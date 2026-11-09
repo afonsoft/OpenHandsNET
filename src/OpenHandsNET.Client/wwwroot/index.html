@@ -14,6 +14,12 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="preload" id="webassembly" />
+    <!-- SPEC-136 RF-002: preload das 2 fatias Inter — evita FOUT no
+         primeiro paint (espelha OWUIC index.html). -->
+    <link rel="preload" href="fonts/inter-var-latin.woff2" as="font"
+          type="font/woff2" crossorigin />
+    <link rel="preload" href="fonts/inter-var-latin-ext.woff2" as="font"
+          type="font/woff2" crossorigin />
     <!-- SPEC-26: aplica data-theme ANTES do CSS — zero flash de tema errado.
          SPEC-117: <html lang> inicial vem do locale persistido (ohn.locale). -->
     <script>

@@ -62,12 +62,14 @@ public class Spec130UxFollowupsTests : BunitContext
         var cut = Render<DialogHost>();
         _ = _dialogs.ShowSettingsAsync();
 
-        cut.Find("div.settings-modal[role=dialog]").ShouldNotBeNull();
-        cut.Find("nav.settings-rail").ShouldNotBeNull();
-        JSInterop.Invocations["ohn.trapFocus"].ShouldNotBeEmpty();
+        cut.WaitForElement("div.settings-modal[role=dialog]");
+        cut.WaitForElement("nav.settings-rail");
+        cut.WaitForAssertion(() =>
+            JSInterop.Invocations["ohn.trapFocus"].ShouldNotBeEmpty());
 
         _dialogs.Resolve(null);
-        cut.FindAll("div.settings-modal").ShouldBeEmpty();
+        cut.WaitForAssertion(() =>
+            cut.FindAll("div.settings-modal").ShouldBeEmpty());
     }
 
     [Fact]
@@ -75,9 +77,10 @@ public class Spec130UxFollowupsTests : BunitContext
     {
         var cut = Render<DialogHost>();
         _ = _dialogs.ShowSettingsAsync();
-        cut.Find("div.settings-modal[role=dialog]")
+        cut.WaitForElement("div.settings-modal[role=dialog]")
             .KeyDown(new KeyboardEventArgs { Key = "Escape" });
-        cut.FindAll("div.settings-modal").ShouldBeEmpty();
+        cut.WaitForAssertion(() =>
+            cut.FindAll("div.settings-modal").ShouldBeEmpty());
     }
 
     [Fact]
@@ -87,9 +90,9 @@ public class Spec130UxFollowupsTests : BunitContext
         _dialogs.Current.ShouldBeNull();
         var label = Services.GetRequiredService<LocalizationService>()
             ["sidebar.settings"];
-        var gear = cut.FindAll("button.sb-item")
-            .First(b => b.GetAttribute("aria-label") == label);
-        gear.Click();
+        var gear = cut.WaitForElement($"button.sb-item[aria-label]");
+        cut.FindAll("button.sb-item")
+            .First(b => b.GetAttribute("aria-label") == label).Click();
         _dialogs.Current?.Kind.ShouldBe(DialogKind.Settings);
     }
 
@@ -97,10 +100,11 @@ public class Spec130UxFollowupsTests : BunitContext
     public void Rail_Toggle_Persists_Collapsed_State()
     {
         var cut = RenderShell();
-        var toggle = cut.Find("aside.sidebar button[aria-expanded]");
+        var toggle = cut.WaitForElement("aside.sidebar button[aria-expanded]");
         toggle.Click();
-        JSInterop.Invocations["localStorage.setItem"]
-            .ShouldContain(i =>
-                i.Arguments.Contains("ohn.sidebar.collapsed"));
+        cut.WaitForAssertion(() =>
+            JSInterop.Invocations["localStorage.setItem"]
+                .ShouldContain(i =>
+                    i.Arguments.Contains("ohn.sidebar.collapsed")));
     }
 }

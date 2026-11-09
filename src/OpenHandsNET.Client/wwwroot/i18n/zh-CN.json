@@ -421,6 +421,8 @@
   "palette.placeholder": "搜索命令或会话…",
   "palette.theme": "主题：{{theme}}（切换）",
   "plan.title": "方案",
+  "rail.collapse": "收起侧边栏",
+  "rail.expand": "展开侧边栏",
   "settings.agent_llm": "代理 / LLM",
   "settings.agent_type": "代理类型",
   "settings.appearance": "外观",
@@ -459,10 +461,13 @@
   "sidebar.filter": "筛选…",
   "sidebar.filter_aria": "筛选会话",
   "sidebar.general": "常规",
+  "sidebar.knowledge": "知识库",
   "sidebar.new_chat": "新建会话",
   "sidebar.repository": "仓库",
   "sidebar.settings": "设置",
+  "sidebar.skills_mcp": "Skills 与 MCP",
   "sidebar.toggle": "切换侧边栏",
+  "sidebar.workspace": "工作区",
   "skills.content_placeholder": "markdown 内容",
   "skills.desc_placeholder": "描述",
   "skills.description": "描述",
@@ -481,7 +486,5 @@
   "usage.completion_tokens": "completion tokens",
   "usage.estimated_cost": "预估费用",
   "usage.events": "事件",
-  "usage.prompt_tokens": "prompt tokens",
-  "rail.expand": "展开侧边栏",
-  "rail.collapse": "收起侧边栏"
+  "usage.prompt_tokens": "prompt tokens"
 }

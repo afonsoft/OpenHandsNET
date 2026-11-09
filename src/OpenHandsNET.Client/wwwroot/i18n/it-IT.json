@@ -421,6 +421,8 @@
   "palette.placeholder": "cerca comando o conversazione…",
   "palette.theme": "Tema: {{theme}} (cicla)",
   "plan.title": "Piano",
+  "rail.collapse": "Comprimi barra laterale",
+  "rail.expand": "Espandi barra laterale",
   "settings.agent_llm": "Agente / LLM",
   "settings.agent_type": "tipo di agente",
   "settings.appearance": "Aspetto",
@@ -459,10 +461,13 @@
   "sidebar.filter": "Filtra…",
   "sidebar.filter_aria": "Filtra conversazioni",
   "sidebar.general": "Generale",
+  "sidebar.knowledge": "Conoscenza",
   "sidebar.new_chat": "Nuova conversazione",
   "sidebar.repository": "Repository",
   "sidebar.settings": "Impostazioni",
+  "sidebar.skills_mcp": "Skills e MCP",
   "sidebar.toggle": "Attiva/disattiva barra laterale",
+  "sidebar.workspace": "Area di lavoro",
   "skills.content_placeholder": "contenuto markdown",
   "skills.desc_placeholder": "descrizione",
   "skills.description": "Descrizione",
@@ -481,7 +486,5 @@
   "usage.completion_tokens": "completion token",
   "usage.estimated_cost": "costo stimato",
   "usage.events": "eventi",
-  "usage.prompt_tokens": "prompt token",
-  "rail.expand": "Espandi barra laterale",
-  "rail.collapse": "Comprimi barra laterale"
+  "usage.prompt_tokens": "prompt token"
 }

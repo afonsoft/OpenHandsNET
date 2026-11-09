@@ -421,6 +421,8 @@
   "palette.placeholder": "rechercher une commande ou une conversation…",
   "palette.theme": "Thème : {{theme}} (alterner)",
   "plan.title": "Plan",
+  "rail.collapse": "Réduire la barre latérale",
+  "rail.expand": "Développer la barre latérale",
   "settings.agent_llm": "Agent / LLM",
   "settings.agent_type": "type d'agent",
   "settings.appearance": "Apparence",
@@ -459,10 +461,13 @@
   "sidebar.filter": "Filtrer…",
   "sidebar.filter_aria": "Filtrer les conversations",
   "sidebar.general": "Général",
+  "sidebar.knowledge": "Connaissances",
   "sidebar.new_chat": "Nouvelle conversation",
   "sidebar.repository": "Dépôt",
   "sidebar.settings": "Paramètres",
+  "sidebar.skills_mcp": "Skills et MCP",
   "sidebar.toggle": "Basculer la barre latérale",
+  "sidebar.workspace": "Espace de travail",
   "skills.content_placeholder": "contenu markdown",
   "skills.desc_placeholder": "description",
   "skills.description": "Description",
@@ -481,7 +486,5 @@
   "usage.completion_tokens": "completion tokens",
   "usage.estimated_cost": "coût estimé",
   "usage.events": "événements",
-  "usage.prompt_tokens": "prompt tokens",
-  "rail.expand": "Développer la barre latérale",
-  "rail.collapse": "Réduire la barre latérale"
+  "usage.prompt_tokens": "prompt tokens"
 }
