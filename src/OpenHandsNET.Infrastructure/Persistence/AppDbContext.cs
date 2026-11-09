@@ -70,9 +70,6 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<OpenHandsNET.Infrastructure.Sandbox.SandboxSpecRecord> SandboxSpecs =>
         Set<OpenHandsNET.Infrastructure.Sandbox.SandboxSpecRecord>();
 
-    /// <summary>Queued messages while the agent runs.</summary>
-    public DbSet<PendingMessageRecord> PendingMessages => Set<PendingMessageRecord>();
-
     /// <summary>Encrypted secrets (ciphertext at rest).</summary>
     public DbSet<SecretRecord> Secrets => Set<SecretRecord>();
 

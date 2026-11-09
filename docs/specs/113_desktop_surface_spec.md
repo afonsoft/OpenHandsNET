@@ -6,7 +6,7 @@
 |---|---|
 | Feature | `desktop-surface` |
 | Type | `Feature` |
-| Status | `Approved` |
+| Status | `Completed` — entregue via PR #284 (`670282e`); SPEC doc via PR #283 |
 | Ticket | roadmap de paridade Devin Web (docs/comparison.md — item "live desktop/streaming") |
 | Scope | `runtime/ + src/ + tests/ + docs/` |
 

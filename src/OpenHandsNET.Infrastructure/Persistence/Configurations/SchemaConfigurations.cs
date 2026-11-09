@@ -3,19 +3,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace OpenHandsNET.Infrastructure.Persistence.Configurations;
 
-/// <summary>Table/index mappings for the SPEC-10 control entities.</summary>
-public sealed class PendingMessageConfiguration : IEntityTypeConfiguration<PendingMessageRecord>
-{
-    /// <inheritdoc />
-    public void Configure(EntityTypeBuilder<PendingMessageRecord> b)
-    {
-        b.ToTable("pending_messages");
-        b.HasKey(e => e.Id);
-        b.HasIndex(e => new { e.ConversationId, e.CreatedAt });
-    }
-}
-
-/// <inheritdoc />
+/// <summary>Table/index mappings for the control-plane entities.</summary>
 public sealed class SecretConfiguration : IEntityTypeConfiguration<SecretRecord>
 {
     /// <inheritdoc />

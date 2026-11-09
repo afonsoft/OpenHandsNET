@@ -1634,48 +1634,6 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations.Postgres
                     b.ToTable("organizations", (string)null);
                 });
 
-            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.PendingMessageRecord", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("ContentJson")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("content_json");
-
-                    b.Property<Guid>("ConversationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("conversation_id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTimeOffset?>("ProcessedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("processed_at");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("role");
-
-                    b.Property<bool>("Run")
-                        .HasColumnType("boolean")
-                        .HasColumnName("run");
-
-                    b.HasKey("Id")
-                        .HasName("pk_pending_messages");
-
-                    b.HasIndex("ConversationId", "CreatedAt")
-                        .HasDatabaseName("ix_pending_messages_conversation_id_created_at");
-
-                    b.ToTable("pending_messages", (string)null);
-                });
-
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.PlanRecord", b =>
                 {
                     b.Property<Guid>("Id")

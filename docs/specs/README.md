@@ -179,3 +179,4 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | 106 | s1075-s3903-uris-ns — S3903=0 live; último S1075 via char literal | PR #354 · Epic #152 |
 | 104 | s107-many-params — 17 parameter objects + 14 won't-fix justificados | PR #352 · Epic #152 |
 | 103 | s3776-endpoints — ~95 handlers extraídos em 4 PRs; CC<15 em Endpoints/*.cs | PR #357–#362 · Epic #152 |
+| 113 | desktop-surface — live noVNC (Xvfb+x11vnc+:6080) + proxy same-origin `/surfaces/{port}/` | PR #284 · #283 |

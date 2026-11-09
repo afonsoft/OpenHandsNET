@@ -181,12 +181,3 @@ public sealed record WebhookEventRequest
 {
     public required JsonElement Event { get; init; }
 }
-
-/// <summary>Pending message DTO.</summary>
-public sealed record PendingMessageDto
-{
-    public required string Id { get; init; }
-    public required string ConversationId { get; init; }
-    public required string Content { get; init; }
-    public DateTimeOffset CreatedAt { get; init; }
-}

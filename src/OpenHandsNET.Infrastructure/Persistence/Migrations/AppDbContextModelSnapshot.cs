@@ -1625,48 +1625,6 @@ namespace OpenHandsNET.Infrastructure.Persistence.Migrations
                     b.ToTable("organizations", (string)null);
                 });
 
-            modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.PendingMessageRecord", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT")
-                        .HasColumnName("id");
-
-                    b.Property<string>("ContentJson")
-                        .IsRequired()
-                        .HasColumnType("TEXT")
-                        .HasColumnName("content_json");
-
-                    b.Property<Guid>("ConversationId")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("conversation_id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTimeOffset?>("ProcessedAt")
-                        .HasColumnType("TEXT")
-                        .HasColumnName("processed_at");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasColumnType("TEXT")
-                        .HasColumnName("role");
-
-                    b.Property<bool>("Run")
-                        .HasColumnType("INTEGER")
-                        .HasColumnName("run");
-
-                    b.HasKey("Id")
-                        .HasName("pk_pending_messages");
-
-                    b.HasIndex("ConversationId", "CreatedAt")
-                        .HasDatabaseName("ix_pending_messages_conversation_id_created_at");
-
-                    b.ToTable("pending_messages", (string)null);
-                });
-
             modelBuilder.Entity("OpenHandsNET.Infrastructure.Persistence.PlanRecord", b =>
                 {
                     b.Property<Guid>("Id")

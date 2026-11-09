@@ -90,7 +90,7 @@ terminal permanecer aqui (SPEC-82).
 | 104 | s107-many-params | Completed → docs/specs | Epic #152 · PR #352 |
 | 105 | s3218-s127-shadow-loop | Completed → docs/specs | Epic #152 · PR pending |
 | 106 | s1075-s3903-uris-ns | Completed → docs/specs | Epic #152 · PR #354 |
-| 113 | desktop-surface | Approved | roadmap Devin-parity |
+| 113 | desktop-surface | `Completed` → docs/specs | PR #284 · #283 |
 
 ### Leva 2026-10-24 (gap-analysis — Epic #265) — entregue
 
