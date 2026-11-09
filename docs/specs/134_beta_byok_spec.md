@@ -8,7 +8,7 @@
 | Type | `Feature` |
 | Stack | `.NET 10 · Blazor WASM` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Completed` |
 | Ticket | #368 · Epic #365 |
 | Scope | `src/` + EF migration + `Client/` + `tests/` + `docs/` |
 
