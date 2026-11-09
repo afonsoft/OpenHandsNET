@@ -18,7 +18,7 @@ public static class SubagentPresets
 
     private static readonly HashSet<string> Scout = new(
         StringComparer.Ordinal)
-        { "web_fetch", "search", "file_read", "think", "finish" };
+        { "web_search", "web_fetch", "search", "file_read", "think", "finish" };
 
     private static readonly HashSet<string> Plan = new(
         StringComparer.Ordinal)
