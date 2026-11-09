@@ -14,18 +14,6 @@ public interface IOrgScoped
     Guid? OrgId { get; set; }
 }
 
-/// <summary>Queued user message while the agent runs (upstream pending_messages).</summary>
-public sealed class PendingMessageRecord
-{
-    public required Guid Id { get; set; }
-    public required Guid ConversationId { get; set; }
-    public required string Role { get; set; }
-    public required string ContentJson { get; set; }
-    public bool Run { get; set; }
-    public DateTimeOffset? ProcessedAt { get; set; }
-    public DateTimeOffset CreatedAt { get; set; }
-}
-
 /// <summary>Encrypted secret — ciphertext only, never plaintext at rest.</summary>
 public sealed class SecretRecord
 {

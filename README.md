@@ -18,11 +18,12 @@ As SPECs seguem SDD (Spec-Driven Development) como artefato-fonte de
 verdade consumido e executado por agentes: SPECs escritas para agentes,
 executadas por agentes, revisadas por humanos.
 
-> Status: **produto funcional** — SPECs 01–64 + 68/69 entregues e
-> arquivadas em [`docs/specs/`](docs/specs/) (agente, sandbox, API, UI
-> completa, enterprise ops, integrações SCM/ChatOps/ticketing,
-> identidade enterprise, edge security, indexing/insights/knowledge e
-> browser profiles). SPECs ativas em [`.specs/`](.specs/).
+> Status: **beta-readiness** (alvo `v0.1.0-beta.1` — checklist em
+> [`docs/release-beta.md`](docs/release-beta.md), Epic #365) — SPECs
+> 01–131 entregues e arquivadas em [`docs/specs/`](docs/specs/) (agente,
+> sandbox, API, UI completa, enterprise ops, integrações SCM/ChatOps/
+> ticketing, identidade enterprise, edge security, indexing/insights/
+> knowledge e browser profiles). SPECs ativas em [`.specs/`](.specs/).
 > Quality gates: `dotnet format` + testes em CI; análise SonarCloud
 > (badges acima) — ver `ci.yml`.
 > English: [README.en.md](README.en.md).
@@ -95,8 +96,17 @@ Pré-requisito: .NET SDK 10 (`dotnet --version`).
 dotnet build OpenHandsNET.slnx          # build (9 projetos)
 dotnet test OpenHandsNET.slnx           # testes
 dotnet run --project src/OpenHandsNET.Api   # app em http://localhost:8080
-cp .env.exemplo .env && docker compose up -d --build   # container em :3032
+
+# Docker — para o agente funcionar use o compose beta (monta docker.sock):
+cp .env.exemplo .env                    # configure LLM (AgentLlm__*) antes
+docker compose -f docker-compose.beta.yaml up -d --build   # app em :3032
 ```
+
+> O `docker-compose.yaml` base sobe só a shell (sem `docker.sock` as
+> conversas param em `WAITING_FOR_SANDBOX`). Alternativas seguras ao
+> socket direto: `docker-compose.runtime-split.yaml` ou socket proxy —
+> veja [docs/installation/docker.md](docs/installation/docker.md) e
+> [docs/deployment/dind.md](docs/deployment/dind.md).
 
 Configuração por env vars com prefixo `OPENHANDSNET_` (ex.:
 `OPENHANDSNET_Database__Provider=PostgreSql`). Banco default: SQLite em

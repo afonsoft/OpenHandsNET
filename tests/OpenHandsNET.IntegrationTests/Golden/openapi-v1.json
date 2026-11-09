@@ -834,30 +834,6 @@
         },
         "type": "object"
       },
-      "PendingMessageDto": {
-        "description": "Pending message DTO.",
-        "properties": {
-          "content": {
-            "type": "string"
-          },
-          "conversation_id": {
-            "type": "string"
-          },
-          "created_at": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "id": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "conversation_id",
-          "content"
-        ],
-        "type": "object"
-      },
       "PermissionRuleDto": {
         "description": "Uma regra de permiss\u00E3o de tool (SPEC-29): pattern\u002Bdecision.",
         "properties": {
@@ -8386,63 +8362,6 @@
         ]
       }
     },
-    "/api/v1/pending-messages": {
-      "get": {
-        "parameters": [
-          {
-            "in": "query",
-            "name": "conversation_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          }
-        },
-        "summary": "GET /api/v1/pending-messages",
-        "tags": [
-          "Messages"
-        ]
-      },
-      "post": {
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PendingMessageDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          }
-        },
-        "summary": "POST /api/v1/pending-messages",
-        "tags": [
-          "Messages"
-        ]
-      }
-    },
     "/api/v1/sandbox-specs": {
       "post": {
         "requestBody": {
@@ -10444,9 +10363,6 @@
     },
     {
       "name": "User"
-    },
-    {
-      "name": "Messages"
     },
     {
       "name": "Git Credentials"

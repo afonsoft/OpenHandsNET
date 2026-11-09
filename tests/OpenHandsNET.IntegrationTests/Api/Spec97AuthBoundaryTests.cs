@@ -55,7 +55,6 @@ public sealed class Spec97AuthBoundaryTests : IDisposable
     [InlineData("/api/v1/hooks")]
     [InlineData("/api/v1/mcp/servers")]
     [InlineData("/api/v1/models")]
-    [InlineData("/api/v1/pending-messages")]
     [InlineData("/api/v1/sandboxes")]
     [InlineData("/api/v1/settings")]
     [InlineData("/api/v1/skills")]
@@ -123,15 +122,6 @@ public sealed class Spec97AuthBoundaryTests : IDisposable
             .StatusCode.ShouldBe(HttpStatusCode.OK);
         (await http.DeleteAsync("/api/v1/secrets/MY_KEY"))
             .StatusCode.ShouldBe(HttpStatusCode.NoContent);
-    }
-
-    [Fact]
-    public async Task Pending_Messages_Bad_Guid_Is_400_Not_500()
-    {
-        using var http = await TestAuth.LoginAsync(_factory);
-        var res = await http.PostAsJsonAsync("/api/v1/pending-messages",
-            new { conversation_id = "not-a-guid" });
-        res.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     }
 
     [Fact]

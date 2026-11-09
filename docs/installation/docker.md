@@ -15,7 +15,10 @@ English: [../en/installation/docker.md](../en/installation/docker.md).
 git clone https://github.com/afonsoft/OpenHandsNET.git
 cd OpenHandsNET
 cp .env.exemplo .env          # ajuste se necessário (nunca commite .env)
-docker compose up -d --build  # app em http://localhost:3032
+# Caminho recomendado (agente funcional — monta docker.sock):
+docker compose -f docker-compose.beta.yaml up -d --build  # app em :3032
+# Ou a shell mínima (sem docker.sock → sem sandboxes):
+docker compose up -d --build
 ```
 
 Verificação:
@@ -49,7 +52,8 @@ e rode `docker compose up -d` de novo.
 
 | Arquivo | Uso |
 |---|---|
-| `docker-compose.yaml` | OSS single-container + SQLite (default) |
+| `docker-compose.yaml` | OSS single-container + SQLite (default; **sem** `docker.sock`) |
+| `docker-compose.beta.yaml` | OSS + `docker.sock` montado — agente funcional de primeira (beta) |
 | `docker-compose.postgres.yaml` | + PostgreSQL 16 |
 | `docker-compose.runtime-split.yaml` | app + `openhandsnet-runtime-api` (sandboxes em processo separado) |
 | `docker-compose.observability.yaml` | + OTel Collector + Prometheus + Grafana |
