@@ -8,7 +8,7 @@
 | Type | `Docs / Infra / Refactor (leve)` |
 | Stack | `.NET 10` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `Approved` |
+| Status | `Completed` |
 | Ticket | #371 · Epic #365 |
 | Scope | `.specs/` + `docs/specs/` + `src/` + `docs/` + `tests/` |
 

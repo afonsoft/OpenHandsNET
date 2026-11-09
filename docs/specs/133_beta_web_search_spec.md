@@ -8,7 +8,7 @@
 | Type | `Feature` |
 | Stack | `.NET 10` |
 | Repository | `afonsoft/OpenHandsNET` |
-| Status | `In implementation` |
+| Status | `Completed` |
 | Ticket | #367 · Epic #365 |
 | Scope | `src/OpenHandsNET.Application/` + `Infrastructure/` + `Api/` + `tests/` + `docs/` |
 

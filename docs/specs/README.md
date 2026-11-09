@@ -180,3 +180,12 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | 104 | s107-many-params — 17 parameter objects + 14 won't-fix justificados | PR #352 · Epic #152 |
 | 103 | s3776-endpoints — ~95 handlers extraídos em 4 PRs; CC<15 em Endpoints/*.cs | PR #357–#362 · Epic #152 |
 | 113 | desktop-surface — live noVNC (Xvfb+x11vnc+:6080) + proxy same-origin `/surfaces/{port}/` | PR #284 · #283 |
+
+## Entregues em 2026-11-08/09 (beta-readiness audit · Epic #365)
+
+| SPEC | Título | Entrega |
+|---|---|---|
+| 132 | beta-auth-ux — `/auth` page, session probe, UserMenu, 401 guard | PR #375 · #366 |
+| 133 | web-search-tool — `web_search` builtin | PR #373 · #367 |
+| 136 | beta-nav-visual-polish — nav órfã, fontes, ícones | PR #374 · #370 |
+| 137 | beta-release-housekeeping — checklist, dead code, docs | PR #372 · #371 |

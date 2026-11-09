@@ -5,12 +5,12 @@ Checklist executável para cortar a primeira tag beta (Epic #365 · SPECs
 
 ## 1. Pré-requisitos (specs implementadas)
 
-- [ ] SPEC-132 auth-ux (#366) merged — `/auth` + user menu + sign-out
-- [ ] SPEC-133 web-search-tool (#367) merged — `web_search` builtin
+- [x] SPEC-132 auth-ux (#366) merged — `/auth` + user menu + sign-out
+- [x] SPEC-133 web-search-tool (#367) merged — `web_search` builtin
 - [ ] SPEC-134 beta-byok (#368) merged — keys de LLM por usuário
 - [ ] SPEC-135 conversation-ux (#369) merged — fork + undo + hunk revert
-- [ ] SPEC-136 nav-visual-polish (#370) merged — nav órfã + fontes + ícones
-- [ ] SPEC-137 housekeeping (#371) merged — este checklist + dead code + docs
+- [x] SPEC-136 nav-visual-polish (#370) merged — nav órfã + fontes + ícones
+- [x] SPEC-137 housekeeping (#371) merged — este checklist + dead code + docs
 
 ## 2. Qualidade (gates obrigatórios)
 
