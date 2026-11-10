@@ -28,8 +28,8 @@ public static class AuthEndpoints
         // SPEC-97 RF-002: provider != oidc → 404 (o scheme 'oidc' não é
         // registrado nesse modo — Challenge lançava InvalidOperation → 500).
         oauth.MapGet("/oidc/login", (
-            HttpContext ctx, string? returnTo, IConfiguration config) =>
-            OidcLogin(ctx, returnTo, config)).AllowAnonymous();
+            string? returnTo, IConfiguration config) =>
+            OidcLogin(returnTo, config)).AllowAnonymous();
 
         // Silent refresh parity — re-issues session without rewriting the
         // principal cookie upstream-style.
@@ -155,7 +155,7 @@ public static class AuthEndpoints
 
 
     private static IResult OidcLogin(
-        HttpContext ctx, string? returnTo, IConfiguration config) =>
+        string? returnTo, IConfiguration config) =>
         !string.Equals(config["Auth:Provider"], "oidc",
             StringComparison.OrdinalIgnoreCase)
             ? Results.NotFound()
@@ -208,10 +208,14 @@ public static class AuthEndpoints
 
     private static async Task<IResult> DeviceTokenAsync(
         [FromForm] string? device_code,
-        // NOSONAR S1172 — campo do contrato RFC 8628 (grant_type=device_code)
         [FromForm] string? grant_type,
         IDeviceFlowService devices, CancellationToken ct)
     {
+        // RFC 8628: grant_type é obrigatório e deve ser device_code.
+        if (!string.Equals(grant_type,
+                "urn:ietf:params:oauth:grant-type:device_code",
+                StringComparison.Ordinal))
+            return Results.BadRequest(new { error = "unsupported_grant_type" });
         if (string.IsNullOrWhiteSpace(device_code))
             return Results.BadRequest(new { error = "invalid_device_code" });
         var result = await devices.PollAsync(device_code, ct);

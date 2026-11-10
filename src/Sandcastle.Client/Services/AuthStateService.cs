@@ -122,7 +122,8 @@ public sealed class AuthStateService(HttpClient http, NavigationManager nav)
     /// <summary>Rotas que não exigem sessão (path relativo à base).</summary>
     public static bool IsPublicPath(string relativePath)
     {
-        var path = relativePath.Split(new[] { '?', '#' })[0];
+        var cut = relativePath.IndexOfAny(new[] { '?', '#' });
+        var path = cut < 0 ? relativePath : relativePath[..cut];
         return path.Equals("auth", StringComparison.OrdinalIgnoreCase)
             || path.StartsWith("auth/", StringComparison.OrdinalIgnoreCase)
             || path.StartsWith("share/", StringComparison.OrdinalIgnoreCase)
