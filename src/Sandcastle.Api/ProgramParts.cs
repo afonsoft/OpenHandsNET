@@ -355,6 +355,7 @@ internal static class ProgramParts
         app.MapSettingsEndpoints();
         app.MapMiscEndpoints();
         app.MapUserEndpoints();
+        app.MapUsageEndpoints();
         app.MapWebhookEndpoints();
         app.MapGitEndpoints();
         app.MapCheckpointEndpoints();

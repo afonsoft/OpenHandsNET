@@ -248,6 +248,27 @@ public sealed class AdminApiClient(HttpClient http)
             null);
     }
 
+    // ---- org settings (SPEC-147: git authorship + chatops) -----------------
+
+    /// <summary>GET /organizations/{id}/settings — mapa key-value.</summary>
+    public async Task<Dictionary<string, string>> GetOrgSettingsAsync(
+        string orgId, CancellationToken ct = default) =>
+        await GetAsync<Dictionary<string, string>>(
+            $"/api/v1/organizations/{orgId}/settings", ct) ?? [];
+
+    /// <summary>PATCH /organizations/{id}/settings — merge das chaves.</summary>
+    public async Task<(bool Ok, string? Err)> PatchOrgSettingsAsync(
+        string orgId, IReadOnlyDictionary<string, string> settings,
+        CancellationToken ct = default)
+    {
+        var resp = Guard(await http.PatchAsJsonAsync(
+            $"/api/v1/organizations/{orgId}/settings",
+            settings, Json, ct));
+        return resp.IsSuccessStatusCode
+            ? (true, null)
+            : (false, await DetailAsync(resp, ct));
+    }
+
     // ---- scm (SPEC-52) -----------------------------------------------------
 
     /// <summary>Conexões SCM da org.</summary>

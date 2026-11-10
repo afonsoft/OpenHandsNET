@@ -28,6 +28,19 @@
                     @onclick='() => _tab = "secrets"'>
                 @L["settings.secrets"]
             </button>
+            @* SPEC-147 RF-004/RF-005: abas Usage (budget) e Indexing. *@
+            <button type="button" role="tab"
+                    aria-selected="@(_tab == "usage")"
+                    class="settings-tab @(_tab == "usage" ? "active" : "")"
+                    @onclick='() => _tab = "usage"'>
+                @L["settings.usage"]
+            </button>
+            <button type="button" role="tab"
+                    aria-selected="@(_tab == "indexing")"
+                    class="settings-tab @(_tab == "indexing" ? "active" : "")"
+                    @onclick='() => _tab = "indexing"'>
+                @L["settings.indexing"]
+            </button>
             <a class="settings-tab settings-tab-link" href="/settings/skills">
                 @L["skills.title"] →
             </a>
@@ -83,6 +96,37 @@
                            aria-label="@L["settings.notify_browser"]" />
                     @L["settings.notify_browser"]
                 </label>
+                @* SPEC-147 RF-002: autoria de commits do agente —
+                   persiste em /users/me/preferences (user-level da
+                   cadeia user→org→global). *@
+                <h3>@L["settings.git_author"]</h3>
+                <div class="field">
+                    <label>@L["settings.git_author_name"]</label>
+                    <input aria-label="@L["settings.git_author_name"]"
+                           placeholder="sandcastle-agent"
+                           @bind="_gitAuthorName" @bind:event="oninput" />
+                </div>
+                <div class="field">
+                    <label>@L["settings.git_author_email"]</label>
+                    <input aria-label="@L["settings.git_author_email"]"
+                           placeholder="agent@sandcastle.local"
+                           @bind="_gitAuthorEmail" @bind:event="oninput" />
+                </div>
+                <label class="check">
+                    <input type="checkbox" checked="@_gitCoauthor"
+                           @onchange="e => _gitCoauthor = e.Value is true"
+                           aria-label="@L["settings.git_coauthor"]" />
+                    @L["settings.git_coauthor"]
+                </label>
+                <div class="row" style="display:flex;gap:8px;margin-top:8px">
+                    <button @onclick="SaveGitAuthorAsync" disabled="@_gitSaving">
+                        @L["common.save"]
+                    </button>
+                    @if (_gitSaved)
+                    {
+                        <span class="sub">@L["settings.saved"]</span>
+                    }
+                </div>
             }
             else if (_tab == "agent")
             {
@@ -179,6 +223,116 @@
                     </div>
                 }
             }
+            else if (_tab == "usage")
+            {
+                @* SPEC-147 RF-004: "Your Budget" — limite mensal,
+                   consumo do período, restante e breakdown por modelo. *@
+                <h3>@L["usage.budget_title"]</h3>
+                @if (_budget is null)
+                {
+                    <p class="sub">@L["common.loading"]</p>
+                }
+                else
+                {
+                    <p class="sub" style="color:var(--sc-fg-dim)">
+                        @_budget.PeriodStart.ToString("d") – @_budget.PeriodEnd.ToString("d")
+                    </p>
+                    <div class="budget-bar" role="progressbar"
+                         aria-label="@L["usage.consumed"]"
+                         aria-valuemin="0" aria-valuemax="100"
+                         aria-valuenow="@BudgetPct()">
+                        <div class="budget-fill"
+                             style="width:@BudgetPct()%"></div>
+                    </div>
+                    <p>
+                        <strong>@FmtTokens(_budget.Consumed)</strong>
+                        @L["usage.consumed"]
+                        @if (_budget.MonthlyLimit is { } lim)
+                        {
+                            @:/ @FmtTokens(lim) @L["usage.limit"]
+                        }
+                        else
+                        {
+                            @:/ @L["usage.unlimited"]
+                        }
+                    </p>
+                    @if (_budget.Remaining is { } rem)
+                    {
+                        <p>
+                            <strong>@FmtTokens(rem)</strong>
+                            @L["usage.remaining"]
+                        </p>
+                    }
+                    @if (_budget.ByModel.Count > 0)
+                    {
+                        <h4>@L["usage.by_model"]</h4>
+                        <table class="budget-models">
+                            <thead>
+                                <tr><th>@L["usage.model"]</th>
+                                    <th>@L["usage.tokens"]</th>
+                                    <th>@L["usage.cost"]</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var m in _budget.ByModel)
+                                {
+                                    <tr><td>@m.Model</td>
+                                        <td>@FmtTokens(m.Tokens)</td>
+                                        <td>$@m.CostUsd.ToString("0.0000")</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                }
+            }
+            else if (_tab == "indexing")
+            {
+                @* SPEC-147 RF-005: status de indexação + trigger. *@
+                <h3>@L["settings.indexing"]</h3>
+                @if (_indexing is null)
+                {
+                    <p class="sub">@L["common.loading"]</p>
+                }
+                else
+                {
+                    <p>
+                        <strong>@L.T("indexing.repos_indexed",
+                            ("indexed", _indexing.Indexed.ToString()),
+                            ("total", _indexing.TotalConnected.ToString()))</strong>
+                        @if (_indexing.Indexing > 0)
+                        {
+                            <span class="meta">
+                                · @_indexing.Indexing @L["indexing.indexing"]</span>
+                        }
+                        @if (_indexing.Failed > 0)
+                        {
+                            <span class="meta" style="color:var(--sc-red)">
+                                · @_indexing.Failed @L["indexing.failed"]</span>
+                        }
+                    </p>
+                }
+                <div class="field">
+                    <label>@L["indexing.repo"]</label>
+                    <input aria-label="@L["indexing.repo"]"
+                           placeholder="org/repo"
+                           @bind="_idxRepo" @bind:event="oninput" />
+                </div>
+                <div class="field">
+                    <label>@L["indexing.branch"]</label>
+                    <input aria-label="@L["indexing.branch"]"
+                           placeholder="main"
+                           @bind="_idxBranch" @bind:event="oninput" />
+                </div>
+                <div class="row" style="display:flex;gap:8px">
+                    <button @onclick="TriggerIndexAsync"
+                            disabled="@(_idxBusy || string.IsNullOrWhiteSpace(_idxRepo))">
+                        @L["indexing.trigger"]
+                    </button>
+                    @if (_idxTriggered)
+                    {
+                        <span class="sub">@L["indexing.triggered"]</span>
+                    }
+                </div>
+            }
             else
             {
                 <h3>@L["settings.secrets"]</h3>
@@ -206,7 +360,21 @@
         </div>
     </div>
 @code {
+    /// <summary>SPEC-147: aba inicial (deep-link <c>/settings?tab=…</c>).</summary>
+    [Parameter] public string? InitialTab { get; set; }
+
     private string _tab = "general";
+    private string _gitAuthorName = "";
+    private string _gitAuthorEmail = "";
+    private bool _gitCoauthor = true;
+    private bool _gitSaving;
+    private bool _gitSaved;
+    private UsageBudgetDto? _budget;
+    private IndexingStatusDto? _indexing;
+    private string _idxRepo = "";
+    private string _idxBranch = "";
+    private bool _idxBusy;
+    private bool _idxTriggered;
     private string _model = "";
     private string _apiKeySecret = "";
     private string _agentType = "default";
@@ -233,6 +401,12 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (InitialTab is "general" or "agent" or "secrets"
+            or "usage" or "indexing")
+        {
+            _tab = InitialTab;
+        }
+
         await Theme.LoadPalettesAsync();
         _notifyBrowser = await ChatNotify.GetPrefAsync();
         try
@@ -251,6 +425,18 @@
         try { _secrets = (await Api.ListSecretsAsync()).ToList(); }
         catch { /* best-effort — falha tolerada */ }
         await LoadLlmKeysAsync();
+
+        // SPEC-147: budgets/indexing/git-author — cada um best-effort.
+        try { _budget = await Api.GetUsageBudgetAsync(); } catch { }
+        try { _indexing = await Api.GetIndexingStatusAsync(); } catch { }
+        try
+        {
+            var prefs = await Api.GetPreferencesAsync();
+            _gitAuthorName = prefs.GetValueOrDefault("git_author_name") ?? "";
+            _gitAuthorEmail = prefs.GetValueOrDefault("git_author_email") ?? "";
+            _gitCoauthor = prefs.GetValueOrDefault("git_coauthor") is not "false";
+        }
+        catch { /* preferências opcionais */ }
     }
 
     private async Task LoadLlmKeysAsync()
@@ -436,4 +622,67 @@
         }
         catch { /* remoto best-effort — localStorage já persistiu */ }
     }
+
+    // ---- SPEC-147 ---------------------------------------------------------
+
+    /// <summary>RF-002: salva git_author_* em /users/me/preferences.</summary>
+    private async Task SaveGitAuthorAsync()
+    {
+        _gitSaving = true;
+        _gitSaved = false;
+        try
+        {
+            var prefs = new Dictionary<string, string>
+            {
+                ["git_author_name"] = _gitAuthorName.Trim(),
+                ["git_author_email"] = _gitAuthorEmail.Trim(),
+                ["git_coauthor"] = _gitCoauthor ? "true" : "false",
+            };
+            await Api.PutPreferencesAsync(prefs);
+            _gitSaved = true;
+        }
+        catch { _gitSaved = false; }
+        finally { _gitSaving = false; }
+    }
+
+    /// <summary>RF-005: dispara indexação manual do repo informado.</summary>
+    private async Task TriggerIndexAsync()
+    {
+        _idxBusy = true;
+        _idxTriggered = false;
+        try
+        {
+            _idxTriggered = await Api.TriggerRepoIndexAsync(
+                _idxRepo.Trim(),
+                string.IsNullOrWhiteSpace(_idxBranch) ? null : _idxBranch.Trim());
+            if (_idxTriggered)
+            {
+                // Reconta — o agregado passa a refletir "indexing".
+                _indexing = await Api.GetIndexingStatusAsync();
+            }
+        }
+        catch { _idxTriggered = false; }
+        finally { _idxBusy = false; }
+    }
+
+    /// <summary>Percentual consumido do limite (0–100; ilimitado → 0).</summary>
+    private int BudgetPct()
+    {
+        if (_budget is null || _budget.MonthlyLimit is not { } lim
+            || lim <= 0)
+        {
+            return 0;
+        }
+
+        return (int)Math.Min(100,
+            Math.Max(0, _budget.Consumed * 100 / lim));
+    }
+
+    /// <summary>Formata tokens com sufixo k/M para o card.</summary>
+    private static string FmtTokens(long tokens) => tokens switch
+    {
+        >= 1_000_000 => $"{tokens / 1_000_000.0:0.##}M",
+        >= 1_000 => $"{tokens / 1_000.0:0.#}k",
+        _ => tokens.ToString(),
+    };
 }

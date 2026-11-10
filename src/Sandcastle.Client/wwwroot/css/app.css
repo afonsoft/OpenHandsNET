@@ -1078,3 +1078,29 @@ details.ev-details summary { cursor: pointer; color: var(--sc-fg-dim); font-size
 .llmkeys-msg { font-size: 12px; margin: 4px 0 10px; }
 .llmkeys-msg.ok { color: var(--sc-accent); }
 .llmkeys-msg.err { color: var(--sc-danger, #e5534b); }
+
+/* SPEC-147 RF-004: barra de consumo do card "Your Budget". */
+.budget-bar {
+    height: 8px; border-radius: 4px; overflow: hidden;
+    background: var(--sc-bg-alt); border: 1px solid var(--sc-border);
+    margin: 8px 0;
+}
+.budget-fill {
+    height: 100%; background: var(--sc-accent);
+    transition: width .3s ease;
+}
+.budget-models { border-collapse: collapse; margin: 8px 0; font-size: 12.5px; }
+.budget-models th, .budget-models td {
+    border: 1px solid var(--sc-border); padding: 4px 10px; text-align: left;
+}
+.budget-models th { background: var(--sc-bg-alt); }
+
+/* SPEC-147 RF-005: badge "X/Y repos indexed" na Home. */
+.index-badge-row { margin-top: 8px; }
+.index-badge {
+    display: inline-flex; gap: 6px; align-items: center;
+    font-size: 12px; padding: 3px 10px; border-radius: 999px;
+    border: 1px solid var(--sc-border); color: var(--sc-fg-dim);
+    text-decoration: none;
+}
+.index-badge:hover { border-color: var(--sc-accent); color: var(--sc-fg); }

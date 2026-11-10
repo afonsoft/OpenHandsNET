@@ -24,6 +24,25 @@
                 @(_starting ? L["home.starting"] : L["home.run"])
             </button>
         </div>
+        @* SPEC-147 RF-005: badge "X/Y repos indexed" + link p/ gerenciar. *@
+        @if (_indexing is not null)
+        {
+            <div class="row index-badge-row">
+                <a class="index-badge" href="/settings?tab=indexing">
+                    @L.T("indexing.repos_indexed",
+                        ("indexed", _indexing.Indexed.ToString()),
+                        ("total", _indexing.TotalConnected.ToString()))
+                    @if (_indexing.Indexing > 0)
+                    {
+                        <span class="meta">· @_indexing.Indexing @L["indexing.indexing"]</span>
+                    }
+                    @if (_indexing.Failed > 0)
+                    {
+                        <span class="meta" style="color:var(--sc-red)">· @_indexing.Failed @L["indexing.failed"]</span>
+                    }
+                </a>
+            </div>
+        }
         @if (_progress.Count > 0)
         {
             <div class="start-progress">
@@ -69,6 +88,7 @@
 
 @code {
     private IReadOnlyList<ConversationItem>? _conversations;
+    private IndexingStatusDto? _indexing;
     private string _initialMessage = "";
     private string _repository = "";
     private bool _confirmMode;
@@ -83,6 +103,8 @@
     {
         try { _conversations = await Api.ListConversationsAsync(); }
         catch { _conversations = []; }
+        try { _indexing = await Api.GetIndexingStatusAsync(); }
+        catch { /* badge best-effort — sem status, sem badge */ }
     }
 
     private static string BadgeClass(string status) =>

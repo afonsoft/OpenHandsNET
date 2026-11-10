@@ -15,7 +15,10 @@
                     paths: { vs: 'lib/monaco/min/vs' },
                 });
                 window.require(['vs/editor/editor.main'],
-                    () => resolve(window.monaco), reject);
+                    () => {
+                        ensureDiffLanguage(window.monaco);
+                        resolve(window.monaco);
+                    }, reject);
             };
             s.onerror = () => reject(new Error('monaco loader failed'));
             document.head.appendChild(s);
@@ -24,6 +27,28 @@
     }
 
     const theme = 'vs-dark';
+
+    // SPEC-147 RF-003: o bundle vendored não traz a contribuição
+    // `diff` — registra um Monarch mínimo para .patch/.diff.
+    // Tokenização apenas; conteúdo do arquivo nunca é executado.
+    function ensureDiffLanguage(monaco) {
+        if (monaco.languages.getLanguages().some(l => l.id === 'diff')) {
+            return;
+        }
+        monaco.languages.register({ id: 'diff' });
+        monaco.languages.setMonarchTokensProvider('diff', {
+            tokenizer: {
+                root: [
+                    [/^@@.*@@.*/, 'keyword'],
+                    [/^(diff|index|new file|deleted file|old mode|new mode|similarity index|dissimilarity index|rename from|rename to|copy from|copy to|Binary files|GIT binary patch).*$/, 'type'],
+                    [/^(---|\+\+\+).*$/, 'type.identifier'],
+                    [/^\+.*$/, 'string'],
+                    [/^-.*$/, 'regexp'],
+                    [/^!.*$/, 'number'],
+                ],
+            },
+        });
+    }
 
     window.monacoInterop = {
         createEditor: async function (hostId, value, language, readOnly) {

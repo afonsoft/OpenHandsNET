@@ -1071,7 +1071,41 @@ public sealed class SandcastleApiClient(HttpClient http)
 
     public async Task GroomKnowledgeAsync(CancellationToken ct = default)
         => await http.PostAsync("/api/v1/knowledge/groom", null, ct);
+
+    // ---- SPEC-147: usage budget + indexing status -------------------------
+
+    /// <summary>GET /usage/budget — budget do caller (null se 401/erro).</summary>
+    public Task<UsageBudgetDto?> GetUsageBudgetAsync(
+        CancellationToken ct = default) =>
+        GetOrNull<UsageBudgetDto>("/api/v1/usage/budget", ct);
+
+    /// <summary>GET /indexing/status — resumo X/Y (null se 401/erro).</summary>
+    public Task<IndexingStatusDto?> GetIndexingStatusAsync(
+        CancellationToken ct = default) =>
+        GetOrNull<IndexingStatusDto>("/api/v1/indexing/status", ct);
+
+    /// <summary>POST /repos/index — dispara indexação do repo (SPEC-60).</summary>
+    public async Task<bool> TriggerRepoIndexAsync(
+        string repository, string? branch, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync("/api/v1/repos/index",
+            new { repository, branch }, Json, ct);
+        return resp.IsSuccessStatusCode;
+    }
 }
+
+/// <summary>SPEC-147 RF-004: resposta de <c>/usage/budget</c>.</summary>
+public sealed record UsageBudgetDto(
+    long? MonthlyLimit, long Consumed, long? Remaining,
+    DateTimeOffset PeriodStart, DateTimeOffset PeriodEnd,
+    IReadOnlyList<ModelUsageDto> ByModel);
+
+/// <summary>SPEC-147 RF-004: consumo por modelo no período.</summary>
+public sealed record ModelUsageDto(string Model, long Tokens, decimal CostUsd);
+
+/// <summary>SPEC-147 RF-005: resposta de <c>/indexing/status</c>.</summary>
+public sealed record IndexingStatusDto(
+    int TotalConnected, int Indexed, int Indexing, int Failed);
 
 /// <summary>SPEC-63: sugestão de knowledge na fila.</summary>
 public sealed record KnowledgeSuggestionItem(

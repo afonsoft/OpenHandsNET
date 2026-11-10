@@ -6,8 +6,13 @@
 <PageTitle>@L["settings.title"] · Sandcastle</PageTitle>
 
 @* SPEC-130 RF-002: deep-link /settings preservado — renderiza o mesmo
-   SettingsContent do modal (aba via rail interna). *@
+   SettingsContent do modal (aba via rail interna).
+   SPEC-147: ?tab=usage|indexing deep-linka direto na aba. *@
 <div class="settings-wrap">
     <h1>@L["settings.title"]</h1>
-    <SettingsContent />
+    <SettingsContent InitialTab="@Tab" />
 </div>
+
+@code {
+    [SupplyParameterFromQuery] public string? Tab { get; set; }
+}

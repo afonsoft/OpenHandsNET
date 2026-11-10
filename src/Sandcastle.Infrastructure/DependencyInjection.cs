@@ -28,7 +28,7 @@ public static class DependencyInjection
         RegisterEventing(services, configuration);
         RegisterSandboxGit(services, configuration);
         RegisterScmProviders(services);
-        RegisterChatOpsTickets(services);
+        RegisterChatOpsTickets(services, configuration);
         RegisterConversations(services, configuration);
         RegisterIdentity(services, configuration);
         RegisterMcp(services, configuration);
@@ -128,6 +128,9 @@ public static class DependencyInjection
         services.Configure<Sandcastle.Infrastructure.Git.GitOptions>(
             configuration.GetSection("Git"));
         services.AddScoped<Sandcastle.Infrastructure.Git.GitCredentialProvider>();
+        // SPEC-147 RF-002: autoria de commit user→org→global.
+        services.AddScoped<
+            Sandcastle.Infrastructure.Git.GitAuthorResolver>();
         services.AddScoped<Sandcastle.Application.Git.IGitService,
             Sandcastle.Infrastructure.Git.GitService>();
         // SPEC-52: SCM (GitHub App + webhooks + PR).
@@ -207,9 +210,14 @@ public static class DependencyInjection
     }
 
     private static void RegisterChatOpsTickets(
-        IServiceCollection services)
+        IServiceCollection services, IConfiguration configuration)
     {
         // SPEC-54 ChatOps: Slack connections, sink, pipeline e reporter.
+        // SPEC-147 RF-001: ChatOps:AllowGroupMentions (default false).
+        services.Configure<
+            Sandcastle.Infrastructure.ChatOps.ChatOpsOptions>(
+            configuration.GetSection(
+                Sandcastle.Infrastructure.ChatOps.ChatOpsOptions.Section));
         services.AddScoped<
             Sandcastle.Application.ChatOps.IChatConnectionService,
             Sandcastle.Infrastructure.ChatOps.ChatConnectionService>();
@@ -415,6 +423,9 @@ public static class DependencyInjection
             Sandcastle.Infrastructure.Identity.FeatureFlagService>();
         services.AddScoped<Sandcastle.Application.Identity.IUsageService,
             Sandcastle.Infrastructure.Identity.UsageService>();
+        // SPEC-147 RF-004: "Your Budget" — limite/consumo/restante por modelo.
+        services.AddScoped<Sandcastle.Application.Identity.IUsageBudgetService,
+            Sandcastle.Infrastructure.Identity.UsageBudgetService>();
 
         // SPEC-20: billing — enforcement, metering write-path e catálogo.
         services.Configure<Sandcastle.Infrastructure.Identity.BillingOptions>(
