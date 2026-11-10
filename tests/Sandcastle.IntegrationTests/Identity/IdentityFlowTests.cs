@@ -291,6 +291,22 @@ public sealed class IdentityFlowTests : IDisposable
     }
 
     [Fact]
+    public async Task Device_Token_Rejects_Unsupported_Grant_Type()
+    {
+        var http = NewClient();
+        var res = await http.PostAsync("/oauth/device/token",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["device_code"] = "whatever",
+                ["grant_type"] = "client_credentials",
+            }));
+        res.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var body = await res.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("error").GetString()
+            .ShouldBe("unsupported_grant_type");
+    }
+
+    [Fact]
     public async Task Suspended_Org_Blocks_Member_But_SuperAdmin_Passes()
     {
         var (owner, _) = await LoginUserAsync("s@example.com");
