@@ -432,6 +432,10 @@ public sealed class Spec52ScmTests : IAsyncDisposable
             string? ownerId, CancellationToken ct) =>
             Task.FromResult(false);
 
+        public Task<bool> ProvisionTokenAuthAsync(SandboxModel sandbox,
+            string host, string token, CancellationToken ct) =>
+            Task.FromResult(false);
+
         public Task<GitChanges> GetChangesAsync(SandboxModel sandbox,
             CancellationToken ct) => throw new NotImplementedException();
 
@@ -518,6 +522,26 @@ public sealed class Spec52ScmTests : IAsyncDisposable
             IReadOnlyList<ScmReviewComment> comments,
             CancellationToken ct) =>
             Task.FromResult<ScmReviewResult?>(null);
+
+        // SPEC-141: CI autofix members (v1 fake — not used).
+        public Task<IReadOnlyList<ScmCheckRun>> GetCheckRunsAsync(
+            ScmConnection connection, string repository, string reference,
+            CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<ScmCheckRun>>([]);
+
+        public Task<string?> GetCheckRunLogsAsync(
+            ScmConnection connection, string repository, long checkRunId,
+            CancellationToken ct) => Task.FromResult<string?>(null);
+
+        public Task<string?> GetWorkflowRunLogsAsync(
+            ScmConnection connection, string repository, long workflowRunId,
+            CancellationToken ct) => Task.FromResult<string?>(null);
+
+        public Task<IReadOnlyList<ScmCommitPullRequest>>
+            GetPullRequestsForCommitAsync(
+                ScmConnection connection, string repository, string sha,
+                CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<ScmCommitPullRequest>>([]);
     }
 
     private sealed class FakeHttpFactory : IHttpClientFactory

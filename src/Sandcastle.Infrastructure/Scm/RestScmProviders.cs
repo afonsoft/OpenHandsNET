@@ -143,6 +143,38 @@ public abstract class RestScmProvider(
         string headSha, string body,
         IReadOnlyList<ScmReviewComment> comments, CancellationToken ct) =>
         Task.FromResult<ScmReviewResult?>(null);
+
+    /// <summary>
+    /// SPEC-141: providers REST v1 não suportam Checks/Actions API —
+    /// <see cref="NotSupportedException"/> (autofix é GitHub-only em v1).
+    /// </summary>
+    public virtual Task<IReadOnlyList<ScmCheckRun>> GetCheckRunsAsync(
+        ScmConnection connection, string repository, string reference,
+        CancellationToken ct) =>
+        throw new NotSupportedException(
+            $"{Kind.ToWire()} check runs not supported in v1");
+
+    /// <inheritdoc cref="GetCheckRunsAsync"/>
+    public virtual Task<string?> GetCheckRunLogsAsync(
+        ScmConnection connection, string repository, long checkRunId,
+        CancellationToken ct) =>
+        throw new NotSupportedException(
+            $"{Kind.ToWire()} check run logs not supported in v1");
+
+    /// <inheritdoc cref="GetCheckRunsAsync"/>
+    public virtual Task<string?> GetWorkflowRunLogsAsync(
+        ScmConnection connection, string repository, long workflowRunId,
+        CancellationToken ct) =>
+        throw new NotSupportedException(
+            $"{Kind.ToWire()} workflow run logs not supported in v1");
+
+    /// <inheritdoc cref="GetCheckRunsAsync"/>
+    public virtual Task<IReadOnlyList<ScmCommitPullRequest>>
+        GetPullRequestsForCommitAsync(
+            ScmConnection connection, string repository, string sha,
+            CancellationToken ct) =>
+        throw new NotSupportedException(
+            $"{Kind.ToWire()} commit pulls not supported in v1");
 }
 
 /// <summary>GitLab REST v4 (SPEC-53 RF-001; self-managed via <c>ApiUrl</c>).</summary>

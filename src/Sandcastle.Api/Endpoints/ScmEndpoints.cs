@@ -61,6 +61,15 @@ public static class ScmEndpoints
         scm.MapPatch("/reviews/{id:guid}/findings/{fid:guid}",
             PatchFindingAsync).RequireAuthorization();
 
+        // SPEC-141: CI autofix — trigger manual + runs (list/detail/cancel).
+        scm.MapPost("/autofix", PostAutofixAsync).RequireAuthorization();
+        scm.MapGet("/autofix-runs", ListAutofixRunsAsync)
+            .RequireAuthorization();
+        scm.MapGet("/autofix-runs/{id:guid}", GetAutofixRunAsync)
+            .RequireAuthorization();
+        scm.MapPost("/autofix-runs/{id:guid}/cancel", CancelAutofixRunAsync)
+            .RequireAuthorization();
+
         // Webhook público (HMAC + idempotência; sem auth de usuário).
         app.MapPost("/api/v1/webhooks/scm/{kind}",
             HandleScmWebhookAsync).WithTags(EndpointTags.Api);
@@ -274,12 +283,174 @@ public static class ScmEndpoints
                 "review_pass_condition must be "
                 + "completed|no_critical|no_findings");
         }
+        if (req.AutofixMaxAttempts is < 1 or > 10)
+        {
+            return SandcastleProblemFactory.Create(
+                http, 400, "autofix_max_attempts must be 1..10");
+        }
         var conn = await svc.UpdateReviewSettingsAsync(
             org.OrgId, id,
             new ScmConnectionReviewUpdate(
                 req.ReviewEnabled, req.ReviewRepos,
                 req.ReviewTriggerMode, req.ReviewPassCondition), ct);
+        if (conn is null)
+        {
+            return Results.NotFound();
+        }
+        // SPEC-141 RF-005: campos autofix_* na mesma PATCH (qualquer
+        // campo autofix presente → update de settings dedicado).
+        if (req.AutofixEnabled is not null || req.AutofixRepos is not null
+            || req.AutofixCheckPatterns is not null
+            || req.AutofixMaxAttempts is not null)
+        {
+            conn = await svc.UpdateAutofixSettingsAsync(
+                org.OrgId, id,
+                new ScmConnectionAutofixUpdate(
+                    req.AutofixEnabled, req.AutofixRepos,
+                    req.AutofixCheckPatterns, req.AutofixMaxAttempts), ct);
+        }
         return conn is null ? Results.NotFound() : Results.Ok(conn);
+    }
+
+    // ---- SPEC-141: autofix endpoints --------------------------------------
+
+    /// <summary><c>POST /scm/autofix</c> — trigger manual {repository, pr_number}.</summary>
+    private static async Task<IResult> PostAutofixAsync(
+        [FromBody] ScmAutofixRequest req, HttpContext http,
+        ICurrentUserAccessor current, IEffectiveOrgResolver orgs,
+        IScmConnectionService connections, IAutofixService autofix,
+        Microsoft.Extensions.Options.IOptions<
+            Infrastructure.Scm.Autofix.AutofixOptions> autofixOptions,
+        CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+        {
+            return Results.Unauthorized();
+        }
+        if (!autofixOptions.Value.Enabled)
+        {
+            return SandcastleProblemFactory.Create(
+                http, 403, "ci autofix is disabled");
+        }
+        if (string.IsNullOrWhiteSpace(req.Repository) || req.PrNumber <= 0)
+        {
+            return SandcastleProblemFactory.Create(
+                http, 400, "repository and pr_number are required");
+        }
+        var org = await orgs.ResolveAsync(
+            user, http.Request.Headers["X-Org-Id"].ToString(), ct);
+        if (org is null)
+        {
+            return SandcastleProblemFactory.Create(http, 404, "no org");
+        }
+
+        var connection = (await connections.ListAsync(org.OrgId, ct))
+            .FirstOrDefault(c => c.Repos.Count == 0
+                || c.Repos.Contains(req.Repository,
+                    StringComparer.OrdinalIgnoreCase));
+        if (connection is null)
+        {
+            return SandcastleProblemFactory.Create(
+                http, 404, "no scm connection for repository");
+        }
+
+        var result = await autofix.TriggerManualAsync(
+            connection, req.Repository, req.PrNumber,
+            user.UserId.ToString(), ct);
+        return result switch
+        {
+            { RunId: { } id } => Results.Accepted(
+                $"/api/v1/scm/autofix-runs/{id}",
+                new { autofix_run_id = id }),
+            { Error: AutofixTriggerError.NotFound, Detail: var d } =>
+                SandcastleProblemFactory.Create(
+                    http, 404, d ?? "pull request not found"),
+            { Error: AutofixTriggerError.NoConnection, Detail: var d } =>
+                SandcastleProblemFactory.Create(
+                    http, 404, d ?? "no scm connection for repository"),
+            { Error: AutofixTriggerError.Disabled, Detail: var d } =>
+                SandcastleProblemFactory.Create(http, 403,
+                    d ?? "autofix not enabled for this repository"),
+            { Error: AutofixTriggerError.Duplicate, Detail: var d } =>
+                SandcastleProblemFactory.Create(http, 409,
+                    d ?? "autofix run already active for this pr"),
+            _ => SandcastleProblemFactory.Create(
+                http, 409, "autofix could not be started"),
+        };
+    }
+
+    private static async Task<IResult> ListAutofixRunsAsync(
+        HttpContext http, ICurrentUserAccessor current,
+        IEffectiveOrgResolver orgs, IAutofixService autofix,
+        string? repository, int? pr, string? status,
+        string? page_id, int? limit, CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+        {
+            return Results.Unauthorized();
+        }
+        var org = await orgs.ResolveAsync(
+            user, http.Request.Headers["X-Org-Id"].ToString(), ct);
+        if (org is null)
+        {
+            return Results.Ok(new
+            {
+                items = Array.Empty<object>(),
+                next_page_id = (string?)null
+            });
+        }
+        var page = await autofix.SearchAsync(
+            org.OrgId, repository, pr, status, page_id, limit ?? 50, ct);
+        return Results.Ok(new
+        {
+            items = page.Items,
+            next_page_id = page.NextPageId,
+        });
+    }
+
+    private static async Task<IResult> GetAutofixRunAsync(
+        Guid id, HttpContext http, ICurrentUserAccessor current,
+        IEffectiveOrgResolver orgs, IAutofixService autofix,
+        CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+        {
+            return Results.Unauthorized();
+        }
+        var org = await orgs.ResolveAsync(
+            user, http.Request.Headers["X-Org-Id"].ToString(), ct);
+        if (org is null)
+        {
+            return Results.NotFound();
+        }
+        var detail = await autofix.GetAsync(org.OrgId, id, ct);
+        return detail is null
+            ? Results.NotFound()
+            : Results.Ok(new { run = detail.Run, attempts = detail.Attempts });
+    }
+
+    private static async Task<IResult> CancelAutofixRunAsync(
+        Guid id, HttpContext http, ICurrentUserAccessor current,
+        IEffectiveOrgResolver orgs, IAutofixService autofix,
+        CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+        {
+            return Results.Unauthorized();
+        }
+        var org = await orgs.ResolveAsync(
+            user, http.Request.Headers["X-Org-Id"].ToString(), ct);
+        if (org is null)
+        {
+            return Results.NotFound();
+        }
+        return await autofix.CancelAsync(org.OrgId, id, ct)
+            ? Results.Ok(new { status = AutofixRunStatuses.Cancelled })
+            : Results.NotFound();
     }
 
     private static async Task<IResult> CreatePullRequestAsync(
@@ -520,9 +691,18 @@ public sealed record ScmReviewRequest(
 /// <summary>SPEC-140: finding status patch (<c>open|dismissed</c>).</summary>
 public sealed record ScmFindingPatchRequest(string? Status = null);
 
-/// <summary>SPEC-140: review enrollment patch on a connection.</summary>
+/// <summary>SPEC-140/141: review + autofix enrollment patch on a connection.</summary>
 public sealed record ScmConnectionReviewPatch(
     bool? ReviewEnabled = null,
     IReadOnlyList<string>? ReviewRepos = null,
     string? ReviewTriggerMode = null,
-    string? ReviewPassCondition = null);
+    string? ReviewPassCondition = null,
+    bool? AutofixEnabled = null,
+    IReadOnlyList<string>? AutofixRepos = null,
+    IReadOnlyList<string>? AutofixCheckPatterns = null,
+    int? AutofixMaxAttempts = null);
+
+/// <summary>SPEC-141: manual autofix trigger body.</summary>
+public sealed record ScmAutofixRequest(
+    string? Repository = null,
+    int PrNumber = 0);

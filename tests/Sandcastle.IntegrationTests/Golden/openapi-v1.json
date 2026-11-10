@@ -1267,6 +1267,27 @@
         ],
         "type": "object"
       },
+      "ScmAutofixRequest": {
+        "description": "SPEC-141: manual autofix trigger body.",
+        "properties": {
+          "pr_number": {
+            "default": 0,
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "repository": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "type": "object"
+      },
       "ScmConnectionRequest": {
         "description": "Manual connection registration (BYO app; SPEC-53 fields).",
         "properties": {
@@ -1337,8 +1358,41 @@
         "type": "object"
       },
       "ScmConnectionReviewPatch": {
-        "description": "SPEC-140: review enrollment patch on a connection.",
+        "description": "SPEC-140/141: review \u002B autofix enrollment patch on a connection.",
         "properties": {
+          "autofix_check_patterns": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "autofix_enabled": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "autofix_max_attempts": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ]
+          },
+          "autofix_repos": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
           "review_enabled": {
             "type": [
               "null",
@@ -9267,6 +9321,161 @@
         "summary": "GET /api/v1/sandboxes/{id:guid}/surfaces/{port:int}/{**rest}",
         "tags": [
           "Sandboxes"
+        ]
+      }
+    },
+    "/api/v1/scm/autofix": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScmAutofixRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "POST /api/v1/scm/autofix",
+        "tags": [
+          "SCM"
+        ]
+      }
+    },
+    "/api/v1/scm/autofix-runs": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "repository",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pr",
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/scm/autofix-runs",
+        "tags": [
+          "SCM"
+        ]
+      }
+    },
+    "/api/v1/scm/autofix-runs/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/scm/autofix-runs/{id:guid}",
+        "tags": [
+          "SCM"
+        ]
+      }
+    },
+    "/api/v1/scm/autofix-runs/{id}/cancel": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "POST /api/v1/scm/autofix-runs/{id:guid}/cancel",
+        "tags": [
+          "SCM"
         ]
       }
     },

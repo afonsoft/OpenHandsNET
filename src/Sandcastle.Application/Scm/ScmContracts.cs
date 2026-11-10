@@ -65,7 +65,11 @@ public sealed record ScmConnection(
     bool ReviewEnabled = false,
     IReadOnlyList<string>? ReviewRepos = null,
     string? ReviewTriggerMode = null,
-    string? ReviewPassCondition = null)
+    string? ReviewPassCondition = null,
+    bool AutofixEnabled = false,
+    IReadOnlyList<string>? AutofixRepos = null,
+    IReadOnlyList<string>? AutofixCheckPatterns = null,
+    int? AutofixMaxAttempts = null)
 {
     /// <summary>
     /// SPEC-140 RF-001: repos cobertos pelo auto-review — vazio/null =
@@ -88,6 +92,73 @@ public sealed record ScmConnection(
         string.IsNullOrEmpty(ReviewPassCondition)
             ? ReviewDefaults.PassConditionCompleted
             : ReviewPassCondition!;
+
+    /// <summary>
+    /// SPEC-141 RF-001: repos inscritos no CI autofix — vazio/null =
+    /// todos os repos da conexão.
+    /// </summary>
+    public bool AutofixCovers(string repository) =>
+        AutofixEnabled
+        && (AutofixRepos is null || AutofixRepos.Count == 0
+            || AutofixRepos.Contains(repository,
+                StringComparer.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// SPEC-141 RF-002: gate de escopo por check-name — padrões glob
+    /// (<c>*</c> wildcard) da conexão ou, na ausência, os globais
+    /// (<c>Autofix:CheckNamePatterns</c>); default <c>*</c> = tudo.
+    /// </summary>
+    public bool AutofixAllowsCheck(
+        string checkName, IReadOnlyList<string>? globalPatterns)
+    {
+        var patterns = AutofixCheckPatterns is { Count: > 0 } local
+            ? local : globalPatterns;
+        if (patterns is null || patterns.Count == 0)
+        {
+            return true;
+        }
+        return patterns.Any(p => ScmGlob.Match(p, checkName));
+    }
+
+    /// <summary>Cap de tentativas efetivo (conexão → default global).</summary>
+    public int EffectiveAutofixMaxAttempts(int globalDefault) =>
+        Math.Clamp(AutofixMaxAttempts ?? globalDefault, 1, 10);
+}
+
+/// <summary>
+/// Glob mínimo para padrões de check-name/repo (<c>*</c> = qualquer
+/// sequência, incl. vazia; case-insensitive).
+/// </summary>
+public static class ScmGlob
+{
+    /// <summary><c>true</c> quando <paramref name="value"/> casa o padrão.</summary>
+    public static bool Match(string pattern, string value)
+    {
+        if (pattern == "*")
+        {
+            return true;
+        }
+        var parts = pattern.Split('*');
+        var pos = 0;
+        for (var i = 0; i < parts.Length; i++)
+        {
+            var part = parts[i];
+            if (part.Length == 0)
+            {
+                continue;
+            }
+            var idx = value.IndexOf(
+                part, pos, StringComparison.OrdinalIgnoreCase);
+            if (idx < 0 || (i == 0 && !pattern.StartsWith('*') && idx != 0))
+            {
+                return false;
+            }
+            pos = idx + part.Length;
+        }
+        return pattern.EndsWith('*')
+            || parts[^1].Length == 0
+            || pos == value.Length;
+    }
 }
 
 /// <summary>SPEC-140: constantes do auto-review (wire values).</summary>
@@ -257,6 +328,46 @@ public interface IScmProvider
         ScmConnection connection, string repository, int pullRequestNumber,
         string headSha, string body,
         IReadOnlyList<ScmReviewComment> comments, CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-141 RF-001: lista os check runs de um ref (GitHub
+    /// <c>GET /commits/{ref}/check-runs</c>) — poll de resultado pós-push
+    /// e associação check_suite → check_run. Providers sem Checks API
+    /// lançam <see cref="NotSupportedException"/>.
+    /// </summary>
+    Task<IReadOnlyList<ScmCheckRun>> GetCheckRunsAsync(
+        ScmConnection connection, string repository, string reference,
+        CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-141 RF-003: texto de diagnóstico de um check run
+    /// (GitHub: <c>output.title + output.summary + output.text</c> do
+    /// check; pode conter truncamento do provider). Null quando vazio.
+    /// Providers sem Checks API lançam <see cref="NotSupportedException"/>.
+    /// </summary>
+    Task<string?> GetCheckRunLogsAsync(
+        ScmConnection connection, string repository, long checkRunId,
+        CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-141 RF-003: logs de uma workflow run (GitHub Actions
+    /// <c>GET /actions/runs/{id}/logs</c> — zip de job logs concatenado).
+    /// Null quando indisponível. Providers sem Actions API lançam
+    /// <see cref="NotSupportedException"/>.
+    /// </summary>
+    Task<string?> GetWorkflowRunLogsAsync(
+        ScmConnection connection, string repository, long workflowRunId,
+        CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-141 RF-001: PRs associados a um commit (GitHub
+    /// <c>GET /commits/{sha}/pulls</c>) — resolução sha → PR quando o
+    /// payload não traz <c>pull_requests[]</c>.
+    /// Providers sem suporte lançam <see cref="NotSupportedException"/>.
+    /// </summary>
+    Task<IReadOnlyList<ScmCommitPullRequest>> GetPullRequestsForCommitAsync(
+        ScmConnection connection, string repository, string sha,
+        CancellationToken ct);
 }
 
 /// <summary>Saída de <c>POST /scm/connections/{id}/test</c> (SPEC-53).</summary>
@@ -316,6 +427,15 @@ public interface IScmConnectionService
     /// </summary>
     Task<ScmConnection?> UpdateReviewSettingsAsync(
         Guid orgId, Guid id, ScmConnectionReviewUpdate update,
+        CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-141 RF-001: atualiza o enrollment de CI autofix da conexão
+    /// (<c>PATCH /scm/connections/{id}</c> — campos <c>autofix_*</c>;
+    /// null = não altera).
+    /// </summary>
+    Task<ScmConnection?> UpdateAutofixSettingsAsync(
+        Guid orgId, Guid id, ScmConnectionAutofixUpdate update,
         CancellationToken ct);
 
     /// <summary>Deletes a connection (false = not found).</summary>

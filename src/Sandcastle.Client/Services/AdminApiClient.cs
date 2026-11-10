@@ -305,6 +305,22 @@ public sealed class AdminApiClient(HttpClient http)
         return resp.IsSuccessStatusCode;
     }
 
+    /// <summary>SPEC-141: toggle do CI autofix na connection.</summary>
+    public async Task<bool> PatchScmConnectionAutofixAsync(
+        string orgId, string id, bool autofixEnabled,
+        CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(
+            HttpMethod.Patch, $"/api/v1/scm/connections/{id}")
+        {
+            Content = JsonContent.Create(
+                new { autofix_enabled = autofixEnabled }, options: Json),
+            Headers = { { "X-Org-Id", orgId } },
+        };
+        var resp = Guard(await http.SendAsync(req, ct));
+        return resp.IsSuccessStatusCode;
+    }
+
     // ---- chatops (SPEC-54) -------------------------------------------------
 
     /// <summary>Chat connections (Slack) da org.</summary>

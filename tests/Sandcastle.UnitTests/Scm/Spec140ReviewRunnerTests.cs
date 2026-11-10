@@ -488,6 +488,26 @@ public sealed class Spec140ReviewRunnerTests : IAsyncDisposable
         public Task<ScmConnectionDiagnostic> TestConnectionAsync(
             ScmConnection connection, CancellationToken ct) =>
             throw new NotImplementedException();
+
+        // SPEC-141: CI autofix members (v1 fake — not used).
+        public Task<IReadOnlyList<ScmCheckRun>> GetCheckRunsAsync(
+            ScmConnection connection, string repository, string reference,
+            CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<ScmCheckRun>>([]);
+
+        public Task<string?> GetCheckRunLogsAsync(
+            ScmConnection connection, string repository, long checkRunId,
+            CancellationToken ct) => Task.FromResult<string?>(null);
+
+        public Task<string?> GetWorkflowRunLogsAsync(
+            ScmConnection connection, string repository, long workflowRunId,
+            CancellationToken ct) => Task.FromResult<string?>(null);
+
+        public Task<IReadOnlyList<ScmCommitPullRequest>>
+            GetPullRequestsForCommitAsync(
+                ScmConnection connection, string repository, string sha,
+                CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<ScmCommitPullRequest>>([]);
     }
 
     private sealed class FakeRegistry(IScmProvider provider)
