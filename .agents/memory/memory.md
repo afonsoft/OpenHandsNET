@@ -1,5 +1,21 @@
 # memory.md — estado corrente (max 100 linhas)
 
+## Sessão 2026-11-10 (cont. 2) — SPEC-147 product-polish ENTREGUE
+
+- **PR #413 merged** (`5905404`), issue #412 → in_pullrequest.
+- 5 RFs: SlackTextSanitizer (ZWSP) no SlackChatSink + ChatOpsOptions
+  AllowGroupMentions/org `chatops_allow_group_mentions`; GitAuthorResolver
+  user→org→global + Co-authored-by (Git:CoAuthorUser, e-mail verificado);
+  FilesTab .md Rendered/Source + .patch/.diff diff highlight (Monarch
+  mínimo no monacoInterop); GET /usage/budget + card Settings>Usage;
+  GET /indexing/status + badge Home + aba Indexing c/ trigger.
+- Settings stores: `users.preferences_json` e `organizations.settings_json`
+  (key-value, sem migration) — padrão adotado p/ novos settings.
+- Gotchas: golden OpenAPI regen via `SANDCASTLE_UPDATE_GOLDEN=1` (só
+  /usage/budget — grupo ask/indexing é ExcludeFromDescription); suite
+  integration paralela flakea com timeouts HttpClient 100s em dev-login
+  sob carga — rerun serial confirma verde (65/65).
+
 ## Sessão 2026-11-10 (cont.) — Competitive gap analysis → SPECs 140-147 Draft
 
 - Relatório: `docs/research/2026-11-competitive-gap-analysis.md` (recriado;
