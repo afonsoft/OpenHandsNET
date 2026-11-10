@@ -130,7 +130,7 @@ public interface IChatSink
 public interface IChatConnectionService
 {
     /// <summary>Cria connection (bot token + signing secret por-ref).</summary>
-    Task<ChatConnection> CreateAsync(
+    Task<ChatConnection> CreateAsync( // NOSONAR S107 — SPEC-104 (decisão aprovada): contrato público upstream-parity; param object mudaria API
         Guid orgId, string teamId, string botTokenSecretRef,
         string signingSecretRef, string? botUserId,
         string? defaultChannelId, string? createdByUserId,

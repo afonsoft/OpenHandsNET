@@ -120,7 +120,7 @@ public static class TicketEndpoints
             }).RequireAuthorization(PermManageIntegrations);
 
         app.MapPost("/api/v1/tickets/{kind}/{issue_key}/comment",
-            AddCommentAsync).WithTags("Sandcastle.Api")
+            AddCommentAsync).WithTags(EndpointTags.Api)
             .RequireAuthorization(PermManageIntegrations);
     }
 

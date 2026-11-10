@@ -25,10 +25,10 @@ public static class ChatOpsEndpoints
         // ---------- Inbound público ----------
 
         app.MapPost("/api/v1/webhooks/chat/slack/events",
-            SlackEventsAsync).WithTags("Sandcastle.Api");
+            SlackEventsAsync).WithTags(EndpointTags.Api);
 
         app.MapPost("/api/v1/webhooks/chat/slack/commands",
-            SlackCommandsAsync).WithTags("Sandcastle.Api");
+            SlackCommandsAsync).WithTags(EndpointTags.Api);
 
         app.MapPost("/api/v1/webhooks/chat/slack/interactions", async (
             HttpRequest req, IChatOpsService svc, CancellationToken ct) =>

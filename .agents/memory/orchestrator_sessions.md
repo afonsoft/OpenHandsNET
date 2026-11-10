@@ -47,3 +47,11 @@
 - Bookkeeping gaps: `docs/specs/` doesn't exist (delivered SPECs not archived per Phase 5 step 8); numbering collision 52×2 and 53×2; SPEC-53 enterprise missing `Status`; SPECs 27/32/52-nextgen still `Approved` (research/meta, not implementation gaps).
 
 **Remaining**: optional — wire SonarQube to enable sonarqube-autofix gate; run a fresh `/gap-analysis` audit post-wave; archive delivered SPECs to `docs/specs/`.
+
+## 2026-11-10 — orchestrator run (sonar tail session)
+- Phase -1: skills afonsoft/skills instaladas hoje via npx; remoto HEAD b3dd7ad.
+- Phase 0: git clean, gh auth OK, dotnet 10.0.114.
+- Phase 1/2: harness completo (CLAUDE.md+AGENTS.md+.agents/ pós-#400).
+- Reconcile issues: só #393 (pinada) e #152 (aguarda merge #399 + rescan).
+- Exec: PR #400 merged; PR #399 (47 sonar fixes) em CI; SPEC-139 draft criada.
+- Flake fix real: FakeEventService thread-safe (Spec28 race).

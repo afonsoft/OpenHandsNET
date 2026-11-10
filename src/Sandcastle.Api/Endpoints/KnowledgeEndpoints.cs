@@ -15,7 +15,7 @@ public static class KnowledgeEndpoints
         var g = app.MapGroup("/api/v1/knowledge").RequireAuthorization();
 
         g.MapGet("/suggestions", ListSuggestionsAsync)
-            .WithTags("Sandcastle.Api");
+            .WithTags(EndpointTags.Api);
         g.MapPost("/suggestions", async (SuggestRequest body,
             IKnowledgeService svc, CancellationToken ct) =>
         {

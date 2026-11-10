@@ -420,10 +420,11 @@ jobs:
           NEEDS_JSON: ${{ toJSON(needs) }}
         run: |
           status() {
-            case "$1" in
+            local result="$1"
+            case "$result" in
               success) echo "🟢 PASS" ;; failure) echo "🔴 FAIL" ;;
               cancelled) echo "⚫ CANCELLED" ;; skipped) echo "⚪ SKIPPED" ;;
-              *) echo "🟡 $1" ;;
+              *) echo "🟡 $result" ;;
             esac
           }
           {

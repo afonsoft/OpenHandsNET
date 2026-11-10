@@ -551,7 +551,7 @@ namespace Sandcastle.SandboxAgent
     /// <paramref name="installer"/>, roda o instalador uma vez e tenta de
     /// novo; senão a surface fica indisponível sem crash do agente.
     /// </summary>
-    public sealed class SurfaceSupervisor(
+    public sealed class SurfaceSupervisor( // NOSONAR S107 — SPEC-104 (decisão aprovada): contexto de fluxo único; param object só desloca aridade
         AgentState state, string name, string envFlag, int port,
         string protocol, string binary, Func<string, string[]> args,
         string? installer)

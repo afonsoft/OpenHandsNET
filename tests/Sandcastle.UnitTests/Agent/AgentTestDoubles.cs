@@ -24,12 +24,22 @@ internal sealed class FakeEventService : IEventService
     private readonly List<EventBase> _events = [];
     private readonly Channel<EventBase> _live = Channel.CreateUnbounded<EventBase>();
 
-    public IReadOnlyList<EventBase> Events => _events;
+    // Reads snapshot sob lock — o agent loop escreve em thread paralela
+    // (List<T> não é thread-safe; enumeration durante Add lançava
+    // InvalidOperationException no CI).
+    public IReadOnlyList<EventBase> Events
+    {
+        get { lock (_events) { return _events.ToArray(); } }
+    }
 
     public ValueTask<EventBase> AppendAsync(
         Guid conversationId, EventBase e, CancellationToken ct)
     {
-        _events.Add(e);
+        lock (_events)
+        {
+            _events.Add(e);
+        }
+
         _live.Writer.TryWrite(e);
         return ValueTask.FromResult(e);
     }
@@ -37,7 +47,11 @@ internal sealed class FakeEventService : IEventService
     public Task<EventPage> SearchAsync(
         Guid conversationId, EventQuery q, CancellationToken ct)
     {
-        IEnumerable<EventBase> filtered = _events;
+        IEnumerable<EventBase> filtered;
+        lock (_events)
+        {
+            filtered = _events.ToArray();
+        }
         if (q.KindEq is not null)
         {
             filtered = filtered.Where(e => e.EventKind == q.KindEq);
@@ -52,13 +66,23 @@ internal sealed class FakeEventService : IEventService
             start + page.Count < list.Count ? (start + page.Count).ToString() : null));
     }
 
-    public Task<long> CountAsync(Guid conversationId, EventQuery q, CancellationToken ct) =>
-        Task.FromResult((long)_events.Count);
+    public Task<long> CountAsync(Guid conversationId, EventQuery q, CancellationToken ct)
+    {
+        lock (_events)
+        {
+            return Task.FromResult((long)_events.Count);
+        }
+    }
 
     public Task<IReadOnlyList<EventBase>> GetBatchAsync(
-        Guid conversationId, IReadOnlyCollection<string> ids, CancellationToken ct) =>
-        Task.FromResult<IReadOnlyList<EventBase>>(
-            _events.Where(e => ids.Contains(e.Id)).ToList());
+        Guid conversationId, IReadOnlyCollection<string> ids, CancellationToken ct)
+    {
+        lock (_events)
+        {
+            return Task.FromResult<IReadOnlyList<EventBase>>(
+                _events.Where(e => ids.Contains(e.Id)).ToList());
+        }
+    }
 
     public async IAsyncEnumerable<EventBase> SubscribeAsync(
         Guid conversationId, [EnumeratorCancellation] CancellationToken ct)

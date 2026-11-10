@@ -232,3 +232,23 @@ args do CORPO — restringir à signature.
   local: openhandsnet-runtime:spec131.
 - #314: PR #342 mergeado (62bc0ba) — bare-400 rewrite cobre /api/**/oauth/**;
   388 leaks no run; issue aberta até nightly confirmar.
+
+
+## 2026-11-10 — sonar tail + .agents rename (sessão atual)
+
+- **PR #400 merged**: `.claude/` → `.agents/` (skills afonsoft/skills
+  instaladas; `.claude/settings.json` retido p/ permissions.deny;
+  sonar+gitleaks excluem `.agents/**` vendored).
+- **PR #399 (sonar tail)**: 47 issues do epic #152 endereçadas —
+  fixes reais (SCM delete org-scoped/IDOR, WebSearch endpoints via
+  config `WebSearch:Endpoints:*`, EndpointTags.Api, extractions
+  S3776, S1172/3358/1117/6667/2325/3220/108) + NOSONAR justificado
+  (S107×16 SPEC-104, css reduced-motion, js execCommand, k8s SA).
+  Aprendidos: method-group handlers ganham tag auto do tipo (.NET 10)
+  → lambdas 1-linha preservam contrato; multicriteria do
+  `.sonarcloud.properties` NÃO suprime no AutoScan → NOSONAR é o
+  mecanismo real.
+- **SPEC-139 draft** (brand assets) commitada em `.specs/` na branch.
+- Epic #152: atualizar corpo/fechar após merge + rescan zerar.
+- logs/openhandsnet-*.log removidos (local, untracked).
+- SandboxAgentTests.ExecStream_Sse flake SSE-timing conhecido no CI.

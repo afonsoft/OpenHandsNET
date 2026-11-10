@@ -206,10 +206,10 @@ public sealed class ScmConnectionService(
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
+    public async Task<bool> DeleteAsync(Guid orgId, Guid id, CancellationToken ct)
     {
         var record = await db.ScmConnections.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(c => c.Id == id, ct);
+            .FirstOrDefaultAsync(c => c.Id == id && c.OrgId == orgId, ct);
         if (record is null)
             return false;
         db.ScmConnections.Remove(record);

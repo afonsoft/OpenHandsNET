@@ -74,7 +74,7 @@ public sealed class AuthStateService(HttpClient http, NavigationManager nav)
         Changed?.Invoke();
     }
 
-    private SessionUser? ParseUser(JsonElement doc)
+    private static SessionUser? ParseUser(JsonElement doc)
     {
         if (!doc.TryGetProperty("user", out var u)
             || u.ValueKind != JsonValueKind.Object)
@@ -122,7 +122,7 @@ public sealed class AuthStateService(HttpClient http, NavigationManager nav)
     /// <summary>Rotas que não exigem sessão (path relativo à base).</summary>
     public static bool IsPublicPath(string relativePath)
     {
-        var path = relativePath.Split('?', '#')[0];
+        var path = relativePath.Split(new[] { '?', '#' })[0];
         return path.Equals("auth", StringComparison.OrdinalIgnoreCase)
             || path.StartsWith("auth/", StringComparison.OrdinalIgnoreCase)
             || path.StartsWith("share/", StringComparison.OrdinalIgnoreCase)

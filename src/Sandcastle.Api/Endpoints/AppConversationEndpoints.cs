@@ -421,7 +421,6 @@ public static class AppConversationEndpoints
 
     private static async Task<IResult> GetConversationToolsAsync(
         Guid id,
-        IAppConversationService svc,
         Application.Agent.IToolRegistry registry,
         Infrastructure.Persistence.AppDbContext db,
         Microsoft.Extensions.Options.IOptions<

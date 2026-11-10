@@ -210,7 +210,7 @@ public sealed class AgentRunner(
         }
     }
 
-    private async Task LoopAsync(
+    private async Task LoopAsync( // NOSONAR S107 — SPEC-104 (decisão aprovada): contexto de fluxo único; param object só desloca aridade
         IEventService events, AppDbContext db, ConversationRecord conv,
         Domain.Sandbox.Sandbox sandbox, ISandboxExecutor executor,
         IToolRegistry tools, Application.Mcp.IMcpClientService? mcp,
@@ -345,9 +345,15 @@ public sealed class AgentRunner(
             }
         }
 
-        var keySource = userKeyCtx is not null
-            ? "user"
-            : byorCtx is not null ? "byor" : "global";
+        var keySource = "global";
+        if (userKeyCtx is not null)
+        {
+            keySource = "user";
+        }
+        else if (byorCtx is not null)
+        {
+            keySource = "byor";
+        }
 
         var routeWait = System.Diagnostics.Stopwatch.StartNew();
         return new LoopState
@@ -394,9 +400,9 @@ public sealed class AgentRunner(
         LoopState st, Guid conversationId, CancellationToken ct)
     {
         var (events, db, conv, opt, activity, deferred, effectiveTools,
-            mcp, permissions, services, hooks, sandbox) = (st.Events,
+            mcp, permissions, hooks, sandbox) = (st.Events,
             st.Db, st.Conv, st.Opt, st.Activity, st.Deferred,
-            st.EffectiveTools, st.Mcp, st.Permissions, st.Services,
+            st.EffectiveTools, st.Mcp, st.Permissions,
             st.Hooks, st.Sandbox);
         var extraAttempts = 0;
         try
@@ -409,7 +415,7 @@ public sealed class AgentRunner(
                 iterSpan?.SetTag("iteration", iteration);
                 await activity.ProgressAsync(events, conversationId, iteration,
                     opt.MaxIterations, "iteration", ct);
-                if (await CheckSignalsAsync(services, events, db, conv))
+                if (await CheckSignalsAsync(st.Services, events, db, conv))
                 {
                     return;
                 }
@@ -994,22 +1000,14 @@ public sealed class AgentRunner(
         var decision = st.Permissions.Decide(call.Name);
         // SPEC-123: tool deferida ainda não promovida via tool_search —
         // observa o erro e segue (mesmo shape do unknown-tool).
-        if (tool is not null
-            && st.Deferred?.IsDeferredOnly(conversationId, call.Name) == true)
+        if (await TryRejectIneligibleToolAsync(
+                st, conversationId, actionEvent, call, tool, decision, ct)
+            is { } rejected)
         {
-            return await RejectCallAsync(st, conversationId, actionEvent,
-                call,
-                ToolResult.Error(
-                    $"tool '{call.Name}' está deferida — chame tool_search "
-                    + "para carregar o schema antes de usar"),
-                $"{{\"error\":\"tool '{call.Name}' deferred — use tool_search first\"}}",
-                ct);
+            return rejected;
         }
-        if (tool is null)
-        {
-            return await RejectUnknownToolAsync(
-                st, conversationId, actionEvent, call, decision, ct);
-        }
+
+        ArgumentNullException.ThrowIfNull(tool);
 
         if (await RunPreHooksAsync(
                 st, conversationId, call, actionEvent, ct))
@@ -1046,7 +1044,7 @@ public sealed class AgentRunner(
         if (needsConfirm)
         {
             var confirm = await ConfirmOrAbortAsync(
-                st, conversationId, call, actionEvent, ct);
+                st, call, actionEvent, ct);
             if (confirm is not null)
             {
                 return confirm.Value;
@@ -1265,13 +1263,40 @@ public sealed class AgentRunner(
             || (decision is null && tool.Risky && st.Conv.ConfirmationMode);
     }
 
+    /// <summary>Rejeita tool deferida ou desconhecida; null = elegível.</summary>
+    private async Task<ToolCallVerdict?> TryRejectIneligibleToolAsync(
+        LoopState st, Guid conversationId, ActionEvent actionEvent,
+        LlmToolCall call, AgentTool? tool,
+        Application.Agent.PermissionDecision? decision, CancellationToken ct)
+    {
+        if (tool is not null
+            && st.Deferred?.IsDeferredOnly(conversationId, call.Name) == true)
+        {
+            return await RejectCallAsync(st, conversationId, actionEvent,
+                call,
+                ToolResult.Error(
+                    $"tool '{call.Name}' está deferida — chame tool_search "
+                    + "para carregar o schema antes de usar"),
+                $"{{\"error\":\"tool '{call.Name}' deferred — use tool_search first\"}}",
+                ct);
+        }
+
+        if (tool is null)
+        {
+            return await RejectUnknownToolAsync(
+                st, conversationId, actionEvent, call, decision, ct);
+        }
+
+        return null;
+    }
+
     /// <summary>
     /// Espera a confirmação humana. Retorna o veredito quando a call
     /// não deve prosseguir (abort em timeout/interrupt; Next quando o
     /// usuário rejeitou) — <see langword="null"/> = aprovada.
     /// </summary>
     private async Task<ToolCallVerdict?> ConfirmOrAbortAsync(
-        LoopState st, Guid conversationId, LlmToolCall call,
+        LoopState st, LlmToolCall call,
         ActionEvent actionEvent, CancellationToken ct)
     {
         await SetStatusAsync(st.Events, st.Db, st.Conv,
@@ -1435,7 +1460,7 @@ public sealed class AgentRunner(
     /// finish — final_message + summary + postbacks (SPEC-52/54/55,
     /// fire-and-forget), auto-checkpoint (SPEC-43) e OnFinish hooks.
     /// </summary>
-    private async Task<ToolCallVerdict?> HandleFinishAsync(
+    private async Task<ToolCallVerdict?> HandleFinishAsync( // NOSONAR S107 — SPEC-104 (decisão aprovada): contexto de fluxo único; param object só desloca aridade
         LoopState st, Guid conversationId, TurnState turn,
         LlmToolCall call, ActionEvent actionEvent, ToolResult result,
         string observationId, CancellationToken ct)
@@ -1911,7 +1936,7 @@ public sealed class AgentRunner(
     /// <c>failed</c>, demais limpam. Roda mesmo quando
     /// <paramref name="recordStatus"/> é null.
     /// </summary>
-    private async Task SetStatusAsync(
+    private async Task SetStatusAsync( // NOSONAR S107 — SPEC-104 (decisão aprovada): contexto de fluxo único; param object só desloca aridade
         IEventService events, AppDbContext db, ConversationRecord conv,
         string status, ConversationExecutionStatus? recordStatus,
         string? pendingAction = null,

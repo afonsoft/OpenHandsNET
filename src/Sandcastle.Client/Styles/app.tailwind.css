@@ -206,11 +206,11 @@
 		*,
 		::before,
 		::after {
-			animation-duration: 0.01ms !important;
-			animation-iteration-count: 1 !important;
-			transition-duration: 0.01ms !important;
-			transition-delay: 0ms !important;
-			scroll-behavior: auto !important;
+			animation-duration: 0.01ms !important; /* NOSONAR S9423 — reduced-motion exige !important */
+			animation-iteration-count: 1 !important; /* NOSONAR S9423 — reduced-motion exige !important */
+			transition-duration: 0.01ms !important; /* NOSONAR S9423 — reduced-motion exige !important */
+			transition-delay: 0ms !important; /* NOSONAR S9423 — reduced-motion exige !important */
+			scroll-behavior: auto !important; /* NOSONAR S9423 — reduced-motion exige !important */
 		}
 	}
 

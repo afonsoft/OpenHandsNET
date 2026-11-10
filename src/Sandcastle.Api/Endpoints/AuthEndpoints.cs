@@ -29,15 +29,7 @@ public static class AuthEndpoints
         // registrado nesse modo — Challenge lançava InvalidOperation → 500).
         oauth.MapGet("/oidc/login", (
             HttpContext ctx, string? returnTo, IConfiguration config) =>
-            !string.Equals(config["Auth:Provider"], "oidc",
-                StringComparison.OrdinalIgnoreCase)
-                ? Results.NotFound()
-                : Results.Challenge(
-                    new AuthenticationProperties
-                    {
-                        RedirectUri = returnTo ?? "/",
-                    },
-                    ["oidc"])).AllowAnonymous();
+            OidcLogin(ctx, returnTo, config)).AllowAnonymous();
 
         // Silent refresh parity — re-issues session without rewriting the
         // principal cookie upstream-style.
@@ -63,7 +55,7 @@ public static class AuthEndpoints
         }).AllowAnonymous();
 
         oauth.MapPost("/device/token",
-            DeviceTokenAsync).WithTags("Sandcastle.Api")
+            DeviceTokenAsync).WithTags(EndpointTags.Api)
             .AllowAnonymous().DisableAntiforgery();
 
         oauth.MapGet("/device/verify", (string? user_code) =>
@@ -78,21 +70,12 @@ public static class AuthEndpoints
                 </form></body></html>
                 """, "text/html")).RequireAuthorization();
 
-        oauth.MapPost("/device/verify-authenticated", async (
+        oauth.MapPost("/device/verify-authenticated", (
             [FromForm] string? user_code, [FromForm] string? decision,
             ICurrentUserAccessor current, IDeviceFlowService devices,
             CancellationToken ct) =>
-        {
-            var user = current.User;
-            if (user is null || string.IsNullOrWhiteSpace(user_code))
-                return Results.BadRequest(new { error = "invalid_request" });
-            var ok = await devices.VerifyAsync(
-                user, user_code, decision != "deny", ct);
-            return ok
-                ? Results.Content("<html><body>You may close this window.</body></html>",
-                    "text/html")
-                : Results.BadRequest(new { error = "invalid_user_code" });
-        }).RequireAuthorization().DisableAntiforgery();
+            DeviceVerifyAuthenticatedAsync(user_code, decision, current, devices, ct))
+            .RequireAuthorization().DisableAntiforgery();
 
         var auth = app.MapGroup("/api/v1/auth");
 
@@ -116,36 +99,18 @@ public static class AuthEndpoints
                         is_super_admin = user.IsSuperAdmin,
                     },
                 });
-            }).AllowAnonymous().WithTags("Sandcastle.Api")
+            }).AllowAnonymous().WithTags(EndpointTags.Api)
             .Produces<object>()
             .WithSummary("Current auth session + provider");
 
         // OSS local login — Auth:Provider=none (first user bootstrap) ou
         // 'local' (login confiado por e-mail, sem senha — deployment
         // single-tenant de confiança, paridade upstream).
-        auth.MapPost("/dev-login", async (
+        auth.MapPost("/dev-login", (
             DevLoginRequest req, HttpContext ctx,
             IUserService users, IConfiguration config, IAuditService audit,
             CancellationToken ct) =>
-        {
-            var provider = config["Auth:Provider"];
-            if (!string.Equals(provider, "none", StringComparison.Ordinal)
-                && !string.Equals(provider, "local", StringComparison.Ordinal))
-                return Results.NotFound();
-            if (string.IsNullOrWhiteSpace(req.Email))
-                return Results.BadRequest(new { error = "email_required" });
-            var user = await users.GetOrCreateAsync(
-                req.Email, req.DisplayName, "local",
-                multiTenancyEnabled: config.GetValue("MultiTenancy:Enabled", false),
-                cancellationToken: ct);
-            await SignInCookieAsync(ctx, user);
-            await audit.RecordAsync(
-                "auth.login", user.UserId.ToString(), null, "user",
-                user.UserId.ToString(), ctx.Connection.RemoteIpAddress?.ToString(),
-                ctx.Request.Headers.UserAgent.ToString(),
-                metadata: new { provider = "dev" }, cancellationToken: ct);
-            return Results.Ok(new { user_id = user.UserId, email = user.Email });
-        }).AllowAnonymous();
+            DevLoginAsync(req, ctx, users, config, audit, ct)).AllowAnonymous();
 
         auth.MapPost("/accept_tos", async (
             ICurrentUserAccessor current, IUserService users, CancellationToken ct) =>
@@ -182,15 +147,68 @@ public static class AuthEndpoints
 
         // Paridade /api/authenticate: user + orgs + idp_type.
         app.MapPost("/api/v1/authenticate",
-            AuthenticateAsync).WithTags("Sandcastle.Api")
+            AuthenticateAsync).WithTags(EndpointTags.Api)
             .RequireAuthorization();
 
         return app;
     }
 
 
+    private static IResult OidcLogin(
+        HttpContext ctx, string? returnTo, IConfiguration config) =>
+        !string.Equals(config["Auth:Provider"], "oidc",
+            StringComparison.OrdinalIgnoreCase)
+            ? Results.NotFound()
+            : Results.Challenge(
+                new AuthenticationProperties
+                {
+                    RedirectUri = returnTo ?? "/",
+                },
+                ["oidc"]);
+
+    private static async Task<IResult> DeviceVerifyAuthenticatedAsync(
+        [FromForm] string? user_code, [FromForm] string? decision,
+        ICurrentUserAccessor current, IDeviceFlowService devices,
+        CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null || string.IsNullOrWhiteSpace(user_code))
+            return Results.BadRequest(new { error = "invalid_request" });
+        var ok = await devices.VerifyAsync(
+            user, user_code, decision != "deny", ct);
+        return ok
+            ? Results.Content("<html><body>You may close this window.</body></html>",
+                "text/html")
+            : Results.BadRequest(new { error = "invalid_user_code" });
+    }
+
+    private static async Task<IResult> DevLoginAsync(
+        DevLoginRequest req, HttpContext ctx,
+        IUserService users, IConfiguration config, IAuditService audit,
+        CancellationToken ct)
+    {
+        var provider = config["Auth:Provider"];
+        if (!string.Equals(provider, "none", StringComparison.Ordinal)
+            && !string.Equals(provider, "local", StringComparison.Ordinal))
+            return Results.NotFound();
+        if (string.IsNullOrWhiteSpace(req.Email))
+            return Results.BadRequest(new { error = "email_required" });
+        var user = await users.GetOrCreateAsync(
+            req.Email, req.DisplayName, "local",
+            multiTenancyEnabled: config.GetValue("MultiTenancy:Enabled", false),
+            cancellationToken: ct);
+        await SignInCookieAsync(ctx, user);
+        await audit.RecordAsync(
+            "auth.login", user.UserId.ToString(), null, "user",
+            user.UserId.ToString(), ctx.Connection.RemoteIpAddress?.ToString(),
+            ctx.Request.Headers.UserAgent.ToString(),
+            metadata: new { provider = "dev" }, cancellationToken: ct);
+        return Results.Ok(new { user_id = user.UserId, email = user.Email });
+    }
+
     private static async Task<IResult> DeviceTokenAsync(
         [FromForm] string? device_code,
+        // NOSONAR S1172 — campo do contrato RFC 8628 (grant_type=device_code)
         [FromForm] string? grant_type,
         IDeviceFlowService devices, CancellationToken ct)
     {
@@ -216,8 +234,7 @@ public static class AuthEndpoints
 
     private static async Task<IResult> AuthenticateAsync(
         HttpContext ctx, ICurrentUserAccessor current, IOrgService orgs,
-        IIdpSyncService idpSync, IAuditService audit,
-        CancellationToken ct)
+        IIdpSyncService idpSync, CancellationToken ct)
     {
         var user = current.User;
         if (user is null)

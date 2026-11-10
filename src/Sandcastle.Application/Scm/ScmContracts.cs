@@ -125,7 +125,7 @@ public interface IScmProvider
         long inReplyToCommentId, string body, CancellationToken ct);
 
     /// <summary>Posts a commit status (<paramref name="state"/>: success|failure|pending|error).</summary>
-    Task SetCommitStatusAsync(
+    Task SetCommitStatusAsync( // NOSONAR S107 — SPEC-104 (decisão aprovada): contrato público upstream-parity; param object mudaria API
         ScmConnection connection, string repository, string sha,
         string state, string context, string? targetUrl,
         string? description, CancellationToken ct);
@@ -168,7 +168,7 @@ public interface IScmConnectionService
         Guid orgId, string code, string? createdByUserId, CancellationToken ct);
 
     /// <summary>Registers a connection manually (BYO app credentials).</summary>
-    Task<ScmConnection> CreateAsync(
+    Task<ScmConnection> CreateAsync( // NOSONAR S107 — SPEC-104 (decisão aprovada): contrato público upstream-parity; param object mudaria API
         Guid orgId, ScmKind kind, string? installationId,
         string? pemSecretRef, string? webhookSecretRef,
         IReadOnlyList<string>? repos, string? appId, string? appSlug,
@@ -190,7 +190,7 @@ public interface IScmConnectionService
         Guid orgId, ScmKind kind, string repository, CancellationToken ct);
 
     /// <summary>Deletes a connection (false = not found).</summary>
-    Task<bool> DeleteAsync(Guid id, CancellationToken ct);
+    Task<bool> DeleteAsync(Guid orgId, Guid id, CancellationToken ct);
 }
 
 /// <summary>Result of a webhook delivery.</summary>

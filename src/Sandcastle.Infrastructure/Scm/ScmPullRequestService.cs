@@ -17,7 +17,7 @@ namespace Sandcastle.Infrastructure.Scm;
 /// persiste <c>pull_request_*</c> na conversa + evento
 /// <c>pull_request_created</c> no stream.
 /// </summary>
-public sealed class ScmPullRequestService(
+public sealed class ScmPullRequestService( // NOSONAR S107 — SPEC-104 (decisão aprovada): DI ctor — aridade = lista de dependências (bundle = service locator)
     AppDbContext db,
     IScmConnectionService connections,
     IScmProviderRegistry providers,
