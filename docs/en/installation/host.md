@@ -36,7 +36,48 @@ dotnet run --project src/Sandcastle.Api
 With no LLM configured, conversations work with
 `AgentLlm:AllowMock=true` (mock mode — dev/tests only).
 
-## Production (systemd) {#producao-systemd}
+## Installer (`install.sh`) {#installer}
+
+`install.sh` at the repo root automates the production path documented
+below: it validates/installs **.NET SDK 10** and **Docker Engine**, publishes
+the app, creates the user/directories, installs Playwright Chromium (browser
+tool), ensures the sandbox runtime image
+(`ghcr.io/sandcastle/runtime:latest` — pull, with local `runtime/` build as
+fallback), writes the systemd unit and runs a health check.
+
+```bash
+git clone https://github.com/afonsoft/sandcastle.git
+cd sandcastle
+sudo ./install.sh            # installs and starts the service (app on :8080)
+```
+
+Modes:
+
+| Command | What it does |
+|---|---|
+| `sudo ./install.sh` | Full install/reinstall |
+| `sudo ./install.sh update` | `git fetch`+`pull` of `main`; on changes, republishes app, Chromium, runtime image and restarts the service. No changes → no-op |
+| `sudo ./install.sh update --force` | Redeploy even without new commits |
+| `sudo ./install.sh uninstall` | Removes service + binaries (keeps data and secrets) |
+| `sudo ./install.sh uninstall --purge` | Also removes `/var/lib/sandcastle`, `/etc/sandcastle` and the user |
+
+Flags: `--prefix DIR` (`/opt/sandcastle`), `--data-dir DIR`
+(`/var/lib/sandcastle`), `--port N` (8080), `--branch NAME` (`main`),
+`--no-start` (writes everything but does not start the service).
+
+After install: configure the LLM in `/etc/sandcastle/env` and restart:
+
+```bash
+sudo systemctl restart sandcastle
+journalctl -u sandcastle -f          # logs
+curl -fsS http://localhost:8080/api/v1/ready
+```
+
+Managing sandbox containers is the app's job — the Docker daemon just
+needs to be running; the `sandcastle` user is added to the `docker` group
+during installation.
+
+## Production — manual (systemd) {#producao-systemd}
 
 1. Publish:
 
