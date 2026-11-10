@@ -18,6 +18,9 @@ public enum ModelRole
 
     /// <summary>Subagent loops (SPEC-28) — may route to a cheaper model.</summary>
     Subagent,
+
+    /// <summary>PR auto-review pipeline (SPEC-140) — dedicated review model.</summary>
+    Reviewer,
 }
 
 /// <summary>

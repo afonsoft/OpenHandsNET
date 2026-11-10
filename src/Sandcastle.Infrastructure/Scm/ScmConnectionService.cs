@@ -206,6 +206,49 @@ public sealed class ScmConnectionService(
     }
 
     /// <inheritdoc />
+    public async Task<ScmConnection?> UpdateReviewSettingsAsync(
+        Guid orgId, Guid id, ScmConnectionReviewUpdate update,
+        CancellationToken ct)
+    {
+        var record = await db.ScmConnections.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.Id == id && c.OrgId == orgId, ct);
+        if (record is null)
+        {
+            return null;
+        }
+
+        if (update.ReviewEnabled is { } enabled)
+        {
+            record.ReviewEnabled = enabled;
+        }
+        if (update.ReviewRepos is { } repos)
+        {
+            record.ReviewReposJson = repos.Count == 0
+                ? null : JsonSerializer.Serialize(repos);
+        }
+        if (update.ReviewTriggerMode is { } mode)
+        {
+            record.ReviewTriggerMode = mode;
+        }
+        if (update.ReviewPassCondition is { } pass)
+        {
+            record.ReviewPassCondition = pass;
+        }
+
+        await db.SaveChangesAsync(ct);
+        await audit.RecordAsync("scm.connection_review_updated",
+            orgId: orgId, targetType: "scm_connection",
+            targetId: id.ToString(),
+            metadata: new
+            {
+                review_enabled = record.ReviewEnabled,
+                trigger_mode = record.ReviewTriggerMode,
+            },
+            cancellationToken: ct);
+        return ToModel(record);
+    }
+
+    /// <inheritdoc />
     public async Task<bool> DeleteAsync(Guid orgId, Guid id, CancellationToken ct)
     {
         var record = await db.ScmConnections.IgnoreQueryFilters()
@@ -225,5 +268,10 @@ public sealed class ScmConnectionService(
                 ? []
                 : JsonSerializer.Deserialize<List<string>>(r.ReposJson) ?? [],
             r.AppId, r.AppSlug, r.CreatedByUserId, r.CreatedAt,
-            r.ApiUrl, r.AuthKind, r.MetaJson);
+            r.ApiUrl, r.AuthKind, r.MetaJson,
+            r.ReviewEnabled,
+            r.ReviewReposJson is null
+                ? null
+                : JsonSerializer.Deserialize<List<string>>(r.ReviewReposJson),
+            r.ReviewTriggerMode, r.ReviewPassCondition);
 }

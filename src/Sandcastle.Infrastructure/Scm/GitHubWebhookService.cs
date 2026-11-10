@@ -25,7 +25,9 @@ public sealed class GitHubWebhookService(
     ISecretStore secrets,
     Sandcastle.Application.Conversations.IAppConversationService conversations,
     IAuditService audit,
-    ILogger<GitHubWebhookService> logger) : IScmWebhookService
+    ILogger<GitHubWebhookService> logger,
+    IReviewService? reviews = null,
+    Microsoft.Extensions.Options.IOptions<Review.ReviewOptions>? reviewOptions = null) : IScmWebhookService
 {
     private const string Repository = "repository";
     private const string Comment = "comment";
@@ -80,8 +82,16 @@ public sealed class GitHubWebhookService(
                 return ScmWebhookResult.Duplicate;
             }
 
+            // SPEC-140 RF-001: pull_request events → auto-review pipeline
+            // (enrollment + trigger rules + dedup), independente de menção.
+            if (eventType == "pull_request")
+            {
+                return await HandlePullRequestEventAsync(
+                    root, connection, ct);
+            }
+
             var mention = ParseMention(eventType, root, installationId);
-            if (mention is null)
+            if (mention is null || IsOwnBot(mention.CommentAuthor, connection))
             {
                 return ScmWebhookResult.Ignored;
             }
@@ -118,6 +128,225 @@ public sealed class GitHubWebhookService(
                 cancellationToken: ct);
             return ScmWebhookResult.Processed;
         }
+    }
+
+    /// <summary>
+    /// SPEC-140 RF-001/RF-005 — roteamento de <c>pull_request</c>:
+    /// actions disparadoras {opened, synchronize, ready_for_review,
+    /// labeled, unlabeled, review_requested} → enrollment
+    /// (<see cref="ScmConnection.ReviewCovers"/>) → regras de disparo
+    /// (não-draft, modo label_only, reviewer request do nosso bot) →
+    /// <see cref="IReviewService.TriggerAsync"/> (dedup por head).
+    /// </summary>
+    private async Task<ScmWebhookResult> HandlePullRequestEventAsync(
+        JsonElement root, ScmConnection connection, CancellationToken ct)
+    {
+        if (reviews is null || reviewOptions?.Value.Enabled == false)
+        {
+            return ScmWebhookResult.Ignored;
+        }
+        if (!root.TryGetProperty("pull_request", out var pr)
+            || !root.TryGetProperty("action", out var act))
+        {
+            return ScmWebhookResult.Ignored;
+        }
+        var action = act.GetString();
+        var repository = root.TryGetProperty(Repository, out var repo)
+            && repo.TryGetProperty("full_name", out var fn)
+                ? fn.GetString() : null;
+        if (repository is null || !connection.ReviewCovers(repository))
+        {
+            return ScmWebhookResult.Ignored;
+        }
+
+        var draft = pr.TryGetProperty("draft", out var d)
+            && d.GetBoolean();
+        var labels = LabelsOf(pr);
+        var mode = connection.EffectiveTriggerMode;
+        var botLogin = BotLogin(connection);
+
+        var fire = action switch
+        {
+            "opened" or "synchronize" or "ready_for_review" or "reopened"
+                => !draft && (mode != ReviewDefaults.TriggerModeLabelOnly
+                    || labels.Contains(ReviewDefaults.GateLabel)),
+            "labeled"
+                => !draft && (mode != ReviewDefaults.TriggerModeLabelOnly
+                    || LabelOf(root) == ReviewDefaults.GateLabel
+                    || labels.Contains(ReviewDefaults.GateLabel)),
+            "unlabeled" => false,
+            "review_requested"
+                => !draft && botLogin is not null
+                    && RequestedReviewerOf(root) is { } rr
+                    && string.Equals(rr, botLogin,
+                        StringComparison.OrdinalIgnoreCase),
+            _ => false,
+        };
+        if (!fire)
+        {
+            return ScmWebhookResult.Ignored;
+        }
+
+        var prNumber = pr.TryGetProperty("number", out var n)
+            ? n.GetInt32() : 0;
+        var headSha = pr.TryGetProperty("head", out var h)
+            && h.TryGetProperty("sha", out var hs)
+                ? hs.GetString() : null;
+        if (prNumber <= 0 || string.IsNullOrEmpty(headSha))
+        {
+            return ScmWebhookResult.Ignored;
+        }
+
+        var trigger = action == "review_requested"
+            ? "reviewer_request" : "webhook";
+        var result = await reviews.TriggerAsync(
+            connection, repository, prNumber, headSha, trigger, null, ct);
+        if (result.Error is not null and not ReviewTriggerError.Duplicate)
+        {
+            logger.LogWarning(
+                "review trigger failed ({Repo}#{Pr}): {Err} {Detail}",
+                repository, prNumber, result.Error, result.Detail);
+            return ScmWebhookResult.Ignored;
+        }
+        if (result.ReviewRunId is { } runId)
+        {
+            await audit.RecordAsync("scm.review_triggered",
+                orgId: connection.OrgId,
+                targetType: "review_run", targetId: runId.ToString(),
+                metadata: new
+                {
+                    repository,
+                    pr = prNumber,
+                    head_sha = headSha,
+                    action,
+                },
+                cancellationToken: ct);
+        }
+        return result.ReviewRunId is null
+            ? ScmWebhookResult.Ignored
+            : ScmWebhookResult.Processed;
+    }
+
+    /// <summary>Login do bot da App ("{slug}[bot]") — null quando desconhecido.</summary>
+    private static string? BotLogin(ScmConnection c) =>
+        string.IsNullOrEmpty(c.AppSlug) ? null : $"{c.AppSlug}[bot]";
+
+    /// <summary>
+    /// SPEC-140 RF-005: anti-loop — comentários/reviews do próprio bot
+    /// nunca disparam menção nem automations.
+    /// </summary>
+    private static bool IsOwnBot(string? author, ScmConnection c) =>
+        author is not null && BotLogin(c) is { } bot
+            && string.Equals(author, bot,
+                StringComparison.OrdinalIgnoreCase);
+
+    private static IReadOnlySet<string> LabelsOf(JsonElement pr)
+    {
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (pr.TryGetProperty("labels", out var arr)
+            && arr.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var l in arr.EnumerateArray())
+            {
+                if (l.TryGetProperty("name", out var n)
+                    && n.GetString() is { } name)
+                {
+                    set.Add(name);
+                }
+            }
+        }
+        return set;
+    }
+
+    private static string? LabelOf(JsonElement root) =>
+        root.TryGetProperty("label", out var l)
+            && l.TryGetProperty("name", out var n)
+                ? n.GetString() : null;
+
+    private static string? RequestedReviewerOf(JsonElement root) =>
+        root.TryGetProperty("requested_reviewer", out var r)
+            && r.TryGetProperty("login", out var l)
+                ? l.GetString() : null;
+
+    /// <summary>
+    /// SPEC-140 RF-001 — GitLab <c>Merge Request Hook</c>: actions
+    /// {open, update, reopen, ready_for_review} → mesmas regras do
+    /// GitHub (não-draft = <c>work_in_progress==false</c>; label gate).
+    /// </summary>
+    private async Task<ScmWebhookResult> HandleGitLabMergeRequestAsync(
+        JsonElement root, ScmConnection connection, CancellationToken ct)
+    {
+        if (reviews is null || reviewOptions?.Value.Enabled == false)
+        {
+            return ScmWebhookResult.Ignored;
+        }
+        var repository = ExtractRepository(ScmKind.GitLab, root);
+        if (repository is null || !connection.ReviewCovers(repository))
+        {
+            return ScmWebhookResult.Ignored;
+        }
+        if (!root.TryGetProperty("object_attributes", out var oa))
+        {
+            return ScmWebhookResult.Ignored;
+        }
+        var action = oa.TryGetProperty("action", out var a)
+            ? a.GetString() : null;
+        var draft = oa.TryGetProperty("work_in_progress", out var w)
+            && w.GetBoolean();
+        var labels = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (root.TryGetProperty("labels", out var la)
+            && la.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var l in la.EnumerateArray())
+            {
+                if (l.TryGetProperty("name", out var n)
+                    && n.GetString() is { } name)
+                {
+                    labels.Add(name);
+                }
+            }
+        }
+        var mode = connection.EffectiveTriggerMode;
+        var fire = action is "open" or "update" or "reopen"
+                or "ready_for_review"
+            && !draft
+            && (mode != ReviewDefaults.TriggerModeLabelOnly
+                || labels.Contains(ReviewDefaults.GateLabel));
+        if (!fire)
+        {
+            return ScmWebhookResult.Ignored;
+        }
+
+        var prNumber = oa.TryGetProperty("iid", out var ii)
+            ? ii.GetInt32() : 0;
+        var headSha = oa.TryGetProperty("last_commit", out var lc)
+            && lc.TryGetProperty("id", out var id)
+                ? id.GetString() : null;
+        if (prNumber <= 0 || string.IsNullOrEmpty(headSha))
+        {
+            return ScmWebhookResult.Ignored;
+        }
+
+        var result = await reviews.TriggerAsync(
+            connection, repository, prNumber, headSha, "webhook",
+            null, ct);
+        if (result.ReviewRunId is { } runId)
+        {
+            await audit.RecordAsync("scm.review_triggered",
+                orgId: connection.OrgId,
+                targetType: "review_run", targetId: runId.ToString(),
+                metadata: new
+                {
+                    kind = "gitlab",
+                    repository,
+                    pr = prNumber,
+                    head_sha = headSha,
+                    action,
+                },
+                cancellationToken: ct);
+            return ScmWebhookResult.Processed;
+        }
+        return ScmWebhookResult.Ignored;
     }
 
     private async Task<ScmConnection?> FindConnectionAsync(
@@ -374,8 +603,17 @@ public sealed class GitHubWebhookService(
                 return ScmWebhookResult.Duplicate;
             }
 
+            // SPEC-140 RF-001: GitLab Merge Request Hook — equivalente do
+            // pull_request (open|update|reopen|ready_for_review).
+            if (kind == ScmKind.GitLab
+                && eventType == "Merge Request Hook")
+            {
+                return await HandleGitLabMergeRequestAsync(
+                    root, connection, ct);
+            }
+
             var mention = ParseMentionByKind(kind, eventType, root);
-            if (mention is null)
+            if (mention is null || IsOwnBot(mention.CommentAuthor, connection))
             {
                 return ScmWebhookResult.Ignored;
             }

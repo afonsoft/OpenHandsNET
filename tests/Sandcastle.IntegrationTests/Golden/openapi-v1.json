@@ -1336,6 +1336,51 @@
         ],
         "type": "object"
       },
+      "ScmConnectionReviewPatch": {
+        "description": "SPEC-140: review enrollment patch on a connection.",
+        "properties": {
+          "review_enabled": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "review_pass_condition": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "review_repos": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "review_trigger_mode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "ScmFindingPatchRequest": {
+        "description": "SPEC-140: finding status patch (\u0060open|dismissed\u0060).",
+        "properties": {
+          "status": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "type": "object"
+      },
       "ScmManifestRequest": {
         "description": "Manifest-flow request.",
         "properties": {
@@ -1396,6 +1441,27 @@
           "title",
           "body"
         ],
+        "type": "object"
+      },
+      "ScmReviewRequest": {
+        "description": "SPEC-140: manual review trigger body.",
+        "properties": {
+          "pr_number": {
+            "default": 0,
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "repository": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
         "type": "object"
       },
       "SecretSetRequest": {
@@ -9204,6 +9270,46 @@
         ]
       }
     },
+    "/api/v1/scm/connections/{id}": {
+      "patch": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScmConnectionReviewPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "PATCH /api/v1/scm/connections/{id:guid}",
+        "tags": [
+          "SCM"
+        ]
+      }
+    },
     "/api/v1/scm/connections/{id}/test": {
       "post": {
         "parameters": [
@@ -9296,6 +9402,178 @@
           }
         },
         "summary": "POST /api/v1/scm/github/manifest",
+        "tags": [
+          "SCM"
+        ]
+      }
+    },
+    "/api/v1/scm/reviews": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "repository",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pr",
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/scm/reviews",
+        "tags": [
+          "SCM"
+        ]
+      },
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScmReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "POST /api/v1/scm/reviews",
+        "tags": [
+          "SCM"
+        ]
+      }
+    },
+    "/api/v1/scm/reviews/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/scm/reviews/{id:guid}",
+        "tags": [
+          "SCM"
+        ]
+      }
+    },
+    "/api/v1/scm/reviews/{id}/findings/{fid}": {
+      "patch": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "fid",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScmFindingPatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "PATCH /api/v1/scm/reviews/{id:guid}/findings/{fid:guid}",
         "tags": [
           "SCM"
         ]

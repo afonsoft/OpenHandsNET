@@ -45,6 +45,7 @@ public static class ScmKindExtensions
 /// SPEC-53: ApiUrl = base do provider (self-managed/gitlab.com, bitbucket
 /// cloud|DC, dev.azure.com/{org}); AuthKind = pat|app|oauth|entra_sp;
 /// MetaJson = project keys/workspace/collection extras.
+/// SPEC-140: campos <c>Review*</c> = enrollment do auto-review de PR.
 /// </summary>
 public sealed record ScmConnection(
     Guid Id,
@@ -60,7 +61,59 @@ public sealed record ScmConnection(
     DateTimeOffset CreatedAt,
     string? ApiUrl = null,
     string? AuthKind = null,
-    string? MetaJson = null);
+    string? MetaJson = null,
+    bool ReviewEnabled = false,
+    IReadOnlyList<string>? ReviewRepos = null,
+    string? ReviewTriggerMode = null,
+    string? ReviewPassCondition = null)
+{
+    /// <summary>
+    /// SPEC-140 RF-001: repos cobertos pelo auto-review — vazio/null =
+    /// todos os repos da conexão.
+    /// </summary>
+    public bool ReviewCovers(string repository) =>
+        ReviewEnabled
+        && (ReviewRepos is null || ReviewRepos.Count == 0
+            || ReviewRepos.Contains(repository,
+                StringComparer.OrdinalIgnoreCase));
+
+    /// <summary><c>all_prs</c> (default) | <c>label_only</c>.</summary>
+    public string EffectiveTriggerMode =>
+        string.IsNullOrEmpty(ReviewTriggerMode)
+            ? ReviewDefaults.TriggerModeAll
+            : ReviewTriggerMode!;
+
+    /// <summary><c>completed</c> (default) | <c>no_critical</c> | <c>no_findings</c>.</summary>
+    public string EffectivePassCondition =>
+        string.IsNullOrEmpty(ReviewPassCondition)
+            ? ReviewDefaults.PassConditionCompleted
+            : ReviewPassCondition!;
+}
+
+/// <summary>SPEC-140: constantes do auto-review (wire values).</summary>
+public static class ReviewDefaults
+{
+    /// <summary>Revisa todo PR não-draft.</summary>
+    public const string TriggerModeAll = "all_prs";
+
+    /// <summary>Só revisa PR com a label <see cref="GateLabel"/>.</summary>
+    public const string TriggerModeLabelOnly = "label_only";
+
+    /// <summary>Label que destrava o review no modo <c>label_only</c>.</summary>
+    public const string GateLabel = "sandcastle-review";
+
+    /// <summary>Status sempre <c>success</c> — review advisory (default).</summary>
+    public const string PassConditionCompleted = "completed";
+
+    /// <summary><c>failure</c> quando há finding <c>critical</c>.</summary>
+    public const string PassConditionNoCritical = "no_critical";
+
+    /// <summary><c>failure</c> quando há qualquer finding.</summary>
+    public const string PassConditionNoFindings = "no_findings";
+
+    /// <summary>Commit-status context publicado pelo review.</summary>
+    public const string StatusContext = "sandcastle/review";
+}
 
 /// <summary>PR metadata returned by providers.</summary>
 public sealed record ScmPullRequest(
@@ -69,6 +122,35 @@ public sealed record ScmPullRequest(
     string State,
     string HeadSha,
     string Title);
+
+/// <summary>
+/// SPEC-140 RF-002: um arquivo do diff de um PR (forma unificada).
+/// <see cref="Patch"/> é o patch unificado do arquivo (pode ser null em
+/// arquivos grandes/binários — provider pode omitir).
+/// </summary>
+public sealed record ScmPullRequestFile(
+    string Path,
+    string? PreviousPath,
+    string Status,
+    int Additions,
+    int Deletions,
+    string? Patch);
+
+/// <summary>
+/// SPEC-140 RF-003: comentário inline ancorado numa linha do lado novo
+/// (<c>RIGHT</c>) do diff — <see cref="Line"/> é o número de linha do
+/// arquivo NOVO (não posição de diff).
+/// </summary>
+public sealed record ScmReviewComment(
+    string Path,
+    int Line,
+    string Body);
+
+/// <summary>Resultado do posting de uma review no provider.</summary>
+public sealed record ScmReviewResult(
+    long? ReviewId,
+    string? Url,
+    int PostedComments);
 
 /// <summary>Parameters for creating a pull request.</summary>
 public sealed record ScmPrCreateRequest(
@@ -137,6 +219,44 @@ public interface IScmProvider
     /// </summary>
     Task<ScmConnectionDiagnostic> TestConnectionAsync(
         ScmConnection connection, CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-140 RF-002: lista os arquivos alterados no PR com patch
+    /// unificado (GitHub <c>GET /pulls/{n}/files</c>). Providers sem suporte
+    /// lançam <see cref="NotSupportedException"/>.
+    /// </summary>
+    Task<IReadOnlyList<ScmPullRequestFile>> GetPullRequestFilesAsync(
+        ScmConnection connection, string repository, int pullRequestNumber,
+        CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-140 RF-002: lê um arquivo do repo num ref (regras do repo —
+    /// AGENTS.md, CLAUDE.md, .sandcastle/review.md). Null = não existe.
+    /// Providers sem contents API lançam <see cref="NotSupportedException"/>.
+    /// </summary>
+    Task<string?> GetFileContentAsync(
+        ScmConnection connection, string repository, string path,
+        string? reference, CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-140 RF-002: lista os paths (relativos ao repo) de um diretório
+    /// num ref — usado p/ <c>.sandcastle/rules/</c>. Vazio = dir inexistente.
+    /// Providers sem contents API lançam <see cref="NotSupportedException"/>.
+    /// </summary>
+    Task<IReadOnlyList<string>> ListDirectoryAsync(
+        ScmConnection connection, string repository, string directoryPath,
+        string? reference, CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-140 RF-003: cria uma review no PR com comentários inline
+    /// ancorados em linhas do diff (GitHub <c>POST /pulls/{n}/reviews</c>,
+    /// event=<c>COMMENT</c>). Retorna null quando o provider não suporta
+    /// reviews ancoradas — o caller faz fallback para comentário único.
+    /// </summary>
+    Task<ScmReviewResult?> CreateReviewAsync(
+        ScmConnection connection, string repository, int pullRequestNumber,
+        string headSha, string body,
+        IReadOnlyList<ScmReviewComment> comments, CancellationToken ct);
 }
 
 /// <summary>Saída de <c>POST /scm/connections/{id}/test</c> (SPEC-53).</summary>
@@ -189,9 +309,29 @@ public interface IScmConnectionService
     Task<ScmConnection?> FindForRepositoryAsync(
         Guid orgId, ScmKind kind, string repository, CancellationToken ct);
 
+    /// <summary>
+    /// SPEC-140 RF-001: atualiza o enrollment de auto-review da conexão
+    /// (<c>PATCH /scm/connections/{id}</c> — campos <c>review_*</c>;
+    /// null = não altera).
+    /// </summary>
+    Task<ScmConnection?> UpdateReviewSettingsAsync(
+        Guid orgId, Guid id, ScmConnectionReviewUpdate update,
+        CancellationToken ct);
+
     /// <summary>Deletes a connection (false = not found).</summary>
     Task<bool> DeleteAsync(Guid orgId, Guid id, CancellationToken ct);
 }
+
+/// <summary>
+/// SPEC-140: patch dos campos de auto-review da conexão — qualquer campo
+/// null significa "não alterar" (<paramref name="ReviewRepos"/> lista
+/// vazia = todos os repos da conexão).
+/// </summary>
+public sealed record ScmConnectionReviewUpdate(
+    bool? ReviewEnabled,
+    IReadOnlyList<string>? ReviewRepos,
+    string? ReviewTriggerMode,
+    string? ReviewPassCondition);
 
 /// <summary>Result of a webhook delivery.</summary>
 public enum ScmWebhookResult
