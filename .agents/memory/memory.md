@@ -252,3 +252,9 @@ args do CORPO — restringir à signature.
 - Epic #152: atualizar corpo/fechar após merge + rescan zerar.
 - logs/openhandsnet-*.log removidos (local, untracked).
 - SandboxAgentTests.ExecStream_Sse flake SSE-timing conhecido no CI.
+
+## 2026-11-10 — session close
+- PRs merged: #400 (.agents rename+skills), #399 (sonar tail 47), #401 (residual 5).
+- Sonar main: 1 issue = k8s S6865 FP (SA bound via rbac.yaml). Pendente humano: wont-fix na UI (sem SONAR_TOKEN local).
+- Epic #152: comentário com balanço postado; mantido aberto até o wont-fix.
+- Lições: multicriteria .sonarcloud.properties NÃO suprime no AutoScan (só NOSONAR linha); method-group handlers criam tag auto do tipo (.NET 10) → lambdas 1-linha preservam OpenAPI; PR test policy exige tests/ junto de prod .cs.
