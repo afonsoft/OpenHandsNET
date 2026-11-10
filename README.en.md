@@ -105,6 +105,10 @@ Configuration via `SANDCASTLE_`-prefixed env vars (e.g.
 `data/sandcastle.db` (migrated on boot). Endpoints: `GET /api/v1/health`,
 `/api/v1/ready`, `/api/v1/config`.
 
+Bare-metal (systemd): `sudo ./install.sh` installs the SDK/Docker if
+missing, publishes the app, creates an autostart service, and handles
+updates via `sudo ./install.sh update` (fetch/pull `main` + redeploy).
+
 Full installation guides:
 [Docker](docs/en/installation/docker.md) ·
 [Host](docs/en/installation/host.md) ·

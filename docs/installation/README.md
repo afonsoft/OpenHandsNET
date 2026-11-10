@@ -16,6 +16,7 @@ English: [../en/installation/](../en/installation/).
 | Avaliar o produto rápido | [docker.md](docker.md) — `docker compose up -d --build` |
 | Desenvolver no repo | [host.md](host.md) — `dotnet run --project src/Sandcastle.Api` |
 | Self-host single-node | [docker.md](docker.md) + `docker.sock` montado |
+| Self-host bare-metal (systemd) | [host.md](host.md#instalador) — `sudo ./install.sh` |
 | Self-host multi-réplica | [docker.md](docker.md#runtime-split) + Postgres + Redis |
 | Servidor sem Docker para o app | [host.md](host.md#producao-systemd) (o Docker ainda é necessário para sandboxes) |
 
