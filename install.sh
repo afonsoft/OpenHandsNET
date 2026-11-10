@@ -41,13 +41,13 @@ die()  { printf '\033[1;31mERROR:\033[0m %s\n' "$*" >&2; exit 1; }
 usage() { sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
 
 # ---- arg parsing ------------------------------------------------------------
-while [ $# -gt 0 ]; do
+while [[ $# -gt 0 ]]; do
   case "$1" in
     install|update|uninstall) MODE="$1" ;;
-    --prefix)    PREFIX="${2:?--prefix needs a value}"; shift ;;
-    --data-dir)  DATA_DIR="${2:?--data-dir needs a value}"; shift ;;
-    --port)      PORT="${2:?--port needs a value}"; shift ;;
-    --branch)    BRANCH="${2:?--branch needs a value}"; shift ;;
+    --prefix)    arg="${2:?--prefix needs a value}"; PREFIX="$arg"; shift ;;
+    --data-dir)  arg="${2:?--data-dir needs a value}"; DATA_DIR="$arg"; shift ;;
+    --port)      arg="${2:?--port needs a value}"; PORT="$arg"; shift ;;
+    --branch)    arg="${2:?--branch needs a value}"; BRANCH="$arg"; shift ;;
     --force)     FORCE=1 ;;
     --no-start)  NO_START=1 ;;
     --purge)     PURGE=1 ;;
@@ -59,8 +59,8 @@ done
 
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-[ "$(id -u)" -eq 0 ] || die "run as root: sudo $0 $MODE"
-[ -f "$SRC_DIR/Sandcastle.slnx" ] || die "$0 must live in the repo root (Sandcastle.slnx not found)"
+[[ "$(id -u)" -eq 0 ]] || die "run as root: sudo $0 $MODE"
+[[ -f "$SRC_DIR/Sandcastle.slnx" ]] || die "$0 must live in the repo root (Sandcastle.slnx not found)"
 
 # ---- helpers ----------------------------------------------------------------
 have() { command -v "$1" >/dev/null 2>&1; }
@@ -87,8 +87,8 @@ ensure_prereqs() {
   local missing=()
   have curl || missing+=(curl)
   have git  || missing+=(git)
-  [ -d /etc/ssl/certs ] || missing+=(ca-certificates)
-  if [ "${#missing[@]}" -gt 0 ]; then
+  [[ -d /etc/ssl/certs ]] || missing+=(ca-certificates)
+  if [[ "${#missing[@]}" -gt 0 ]]; then
     log "Installing prerequisites: ${missing[*]}"
     pkg_update; pkg_install "${missing[@]}"
   fi
@@ -101,7 +101,7 @@ ensure_dotnet() {
   fi
   log "Installing .NET SDK $DOTNET_CHANNEL (dotnet-install script -> $DOTNET_DIR)"
   local tmp; tmp="$(mktemp)"
-  curl -fsSL https://dot.net/v1/dotnet-install.sh -o "$tmp"
+  curl -fsSL --proto '=https' --tlsv1.2 https://dot.net/v1/dotnet-install.sh -o "$tmp"
   bash "$tmp" --channel "$DOTNET_CHANNEL" --install-dir "$DOTNET_DIR"
   rm -f "$tmp"
   ln -sf "$DOTNET_DIR/dotnet" /usr/local/bin/dotnet
@@ -125,7 +125,7 @@ ensure_docker() {
     elif have zypper;  then pkg_install docker
     else
       warn "no distro package matched; using get.docker.com convenience script"
-      curl -fsSL https://get.docker.com | sh
+      curl -fsSL --proto '=https' --tlsv1.2 https://get.docker.com | sh
     fi
   fi
   if have systemctl; then
@@ -165,7 +165,7 @@ install_playwright() {
   local cli node
   cli="$(find "$PREFIX/.playwright/package" -name cli.js -print -quit 2>/dev/null || true)"
   node="$(find "$PREFIX/.playwright/node" -name node -type f -print -quit 2>/dev/null || true)"
-  if [ -z "$cli" ] || [ -z "$node" ]; then
+  if [[ -z "$cli" ]] || [[ -z "$node" ]]; then
     warn "playwright driver not found in publish output — browser tool may not work"
     return
   fi
@@ -176,7 +176,7 @@ install_playwright() {
 }
 
 write_env() {
-  if [ -f "$ENV_FILE" ]; then
+  if [[ -f "$ENV_FILE" ]]; then
     log "Keeping existing $ENV_FILE"
     return
   fi
@@ -232,7 +232,7 @@ ensure_runtime_image() {
 }
 
 health_check() {
-  [ "$NO_START" -eq 0 ] || return 0
+  [[ "$NO_START" -eq 0 ]] || return 0
   log "Waiting for http://127.0.0.1:$PORT/api/v1/ready"
   local i
   for i in $(seq 1 30); do
@@ -248,7 +248,7 @@ health_check() {
 
 enable_start() {
   systemctl daemon-reload
-  if [ "$NO_START" -eq 1 ]; then
+  if [[ "$NO_START" -eq 1 ]]; then
     log "--no-start: unit written, not started"
     return
   fi
@@ -283,7 +283,7 @@ EOF
 
 do_update() {
   have git || die "git is required for update mode"
-  if [ ! -f "$UNIT_FILE" ]; then
+  if [[ ! -f "$UNIT_FILE" ]]; then
     warn "no existing install found ($UNIT_FILE missing) — running full install"
     do_install
     return
@@ -296,14 +296,14 @@ do_update() {
   remote_rev="$(git -C "$SRC_DIR" rev-parse FETCH_HEAD)"
   local current_branch
   current_branch="$(git -C "$SRC_DIR" rev-parse --abbrev-ref HEAD)"
-  if [ "$local_rev" = "$remote_rev" ] && [ "$current_branch" = "$BRANCH" ] && [ "$FORCE" -eq 0 ]; then
+  if [[ "$local_rev" = "$remote_rev" ]] && [[ "$current_branch" = "$BRANCH" ]] && [[ "$FORCE" -eq 0 ]]; then
     log "Already up to date ($(git -C "$SRC_DIR" rev-parse --short HEAD)) — nothing to redeploy"
     return 0
   fi
-  if [ -n "$(git -C "$SRC_DIR" status --porcelain)" ]; then
+  if [[ -n "$(git -C "$SRC_DIR" status --porcelain)" ]]; then
     die "working tree has uncommitted changes — commit/stash them before updating"
   fi
-  if [ "$current_branch" != "$BRANCH" ]; then
+  if [[ "$current_branch" != "$BRANCH" ]]; then
     log "Switching deployment checkout $current_branch -> $BRANCH"
     git -C "$SRC_DIR" checkout "$BRANCH"
   fi
@@ -314,7 +314,7 @@ do_update() {
   publish_app
   install_playwright
   ensure_runtime_image
-  if [ "$NO_START" -eq 0 ]; then
+  if [[ "$NO_START" -eq 0 ]]; then
     systemctl restart "$SERVICE_NAME"
     health_check
   fi
@@ -322,14 +322,14 @@ do_update() {
 }
 
 do_uninstall() {
-  if [ -f "$UNIT_FILE" ] || systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
+  if [[ -f "$UNIT_FILE" ]] || systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
     log "Stopping and disabling $SERVICE_NAME"
     systemctl disable --now "$SERVICE_NAME" 2>/dev/null || true
   fi
   rm -f "$UNIT_FILE"
   systemctl daemon-reload 2>/dev/null || true
   rm -rf "$PREFIX"
-  if [ "$PURGE" -eq 1 ]; then
+  if [[ "$PURGE" -eq 1 ]]; then
     warn "purging $DATA_DIR, $ENV_FILE and user '$SERVICE_USER'"
     rm -rf "$DATA_DIR" "$(dirname "$ENV_FILE")"
     userdel "$SERVICE_USER" 2>/dev/null || true
@@ -347,4 +347,5 @@ case "$MODE" in
   install)   do_install ;;
   update)    do_update ;;
   uninstall) do_uninstall ;;
+  *)         die "unknown mode: $MODE" ;;
 esac
