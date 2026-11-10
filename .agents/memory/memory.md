@@ -258,3 +258,11 @@ args do CORPO — restringir à signature.
 - Sonar main: 1 issue = k8s S6865 FP (SA bound via rbac.yaml). Pendente humano: wont-fix na UI (sem SONAR_TOKEN local).
 - Epic #152: comentário com balanço postado; mantido aberto até o wont-fix.
 - Lições: multicriteria .sonarcloud.properties NÃO suprime no AutoScan (só NOSONAR linha); method-group handlers criam tag auto do tipo (.NET 10) → lambdas 1-linha preservam OpenAPI; PR test policy exige tests/ junto de prod .cs.
+
+## feat/host-installer (merged #402)
+- `install.sh` na raiz: install/update/uninstall, valida+instala .NET SDK 10 e Docker,
+  publish /opt/sandcastle, user+dirs, Playwright chromium, runtime image (pull||build),
+  /etc/sandcastle/env, systemd unit autostart, health check /api/v1/ready.
+- `update`: fetch+pull main → redeploy só se mudou (--force força); sem install → full install.
+- Docs: seção Installer em host.md pt+en, index rows, README.md/en one-liner.
+- Sonar pegou 23 issues shell → fix: [[ ]], --proto=https curl, args nomeados, case default.
