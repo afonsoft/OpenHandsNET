@@ -27,6 +27,17 @@ public interface IGitService
     Task<bool> ProvisionGhAuthAsync(
         DomainSandbox sandbox, string? ownerId, CancellationToken ct);
 
+    /// <summary>
+    /// SPEC-141 RF-003: provisiona autenticação git/gh no sandbox a partir
+    /// de um token JÁ resolvido (ex.: installation token da GitHub App da
+    /// conexão SCM) — mesmo layout de <see cref="ProvisionGhAuthAsync"/>,
+    /// sem consultar o store de credenciais do usuário. O token nunca é
+    /// logado nem persistido.
+    /// </summary>
+    Task<bool> ProvisionTokenAuthAsync(
+        DomainSandbox sandbox, string host, string token,
+        CancellationToken ct);
+
     /// <summary>Structured status buckets (porcelain v2).</summary>
     Task<GitChanges> GetChangesAsync(DomainSandbox sandbox, CancellationToken ct);
 

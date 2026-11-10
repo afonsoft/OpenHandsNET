@@ -195,6 +195,16 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
         ReviewFindings =>
             Set<Sandcastle.Infrastructure.Scm.ReviewFindingRecord>();
 
+    /// <summary>CI autofix — runs (SPEC-141).</summary>
+    public DbSet<Sandcastle.Infrastructure.Scm.AutofixRunRecord>
+        AutofixRuns =>
+            Set<Sandcastle.Infrastructure.Scm.AutofixRunRecord>();
+
+    /// <summary>CI autofix — tentativas por run (SPEC-141).</summary>
+    public DbSet<Sandcastle.Infrastructure.Scm.AutofixAttemptRecord>
+        AutofixAttempts =>
+            Set<Sandcastle.Infrastructure.Scm.AutofixAttemptRecord>();
+
     /// <summary>Slack workspaces conectados — secrets by-ref (SPEC-54).</summary>
     public DbSet<Sandcastle.Infrastructure.ChatOps.ChatConnectionRecord>
         ChatConnections =>
@@ -287,6 +297,9 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
                 case Sandcastle.Infrastructure.Scm.ReviewRunRecord r:
                     r.CreatedAtTicks = r.CreatedAt.UtcTicks;
                     break;
+                case Sandcastle.Infrastructure.Scm.AutofixRunRecord a:
+                    a.CreatedAtTicks = a.CreatedAt.UtcTicks;
+                    break;
             }
         }
         return base.SaveChangesAsync(cancellationToken);
@@ -314,6 +327,12 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
             .HasQueryFilter(r =>
                 !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
         modelBuilder.Entity<Sandcastle.Infrastructure.Scm.ReviewFindingRecord>()
+            .HasQueryFilter(r =>
+                !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
+        modelBuilder.Entity<Sandcastle.Infrastructure.Scm.AutofixRunRecord>()
+            .HasQueryFilter(r =>
+                !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
+        modelBuilder.Entity<Sandcastle.Infrastructure.Scm.AutofixAttemptRecord>()
             .HasQueryFilter(r =>
                 !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
         modelBuilder.Entity<Sandcastle.Infrastructure.ChatOps.ChatConnectionRecord>()

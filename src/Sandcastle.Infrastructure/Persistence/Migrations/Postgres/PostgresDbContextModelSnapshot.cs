@@ -2410,6 +2410,205 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations.Postgres
                     b.ToTable("sandbox_specs", (string)null);
                 });
 
+            modelBuilder.Entity("Sandcastle.Infrastructure.Scm.AutofixAttemptRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("FailedChecksJson")
+                        .HasColumnType("text")
+                        .HasColumnName("failed_checks_json");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finished_at");
+
+                    b.Property<string>("HeadShaIn")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("head_sha_in");
+
+                    b.Property<string>("HeadShaOut")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("head_sha_out");
+
+                    b.Property<string>("LogDigest")
+                        .HasColumnType("text")
+                        .HasColumnName("log_digest");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer")
+                        .HasColumnName("number");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Outcome")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("outcome");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("run_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_autofix_attempts");
+
+                    b.HasIndex("HeadShaOut")
+                        .HasDatabaseName("ix_autofix_attempts_head_sha_out");
+
+                    b.HasIndex("RunId")
+                        .HasDatabaseName("ix_autofix_attempts_run_id");
+
+                    b.HasIndex("RunId", "Number")
+                        .HasDatabaseName("ix_autofix_attempts_run_id_number");
+
+                    b.ToTable("autofix_attempts", (string)null);
+                });
+
+            modelBuilder.Entity("Sandcastle.Infrastructure.Scm.AutofixRunRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempt_count");
+
+                    b.Property<string>("CheckKind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("check_kind");
+
+                    b.Property<string>("CheckName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("check_name");
+
+                    b.Property<long?>("CheckRunId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("check_run_id");
+
+                    b.Property<string>("CheckUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("check_url");
+
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("connection_id");
+
+                    b.Property<Guid?>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("CreatedAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_at_ticks");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("error");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finished_at");
+
+                    b.Property<string>("HeadBranch")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("head_branch");
+
+                    b.Property<string>("HeadSha")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("head_sha");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<int>("PrNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("pr_number");
+
+                    b.Property<string>("Repository")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("repository");
+
+                    b.Property<string>("RequestedByUserId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("requested_by_user_id");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("StatsJson")
+                        .HasColumnType("text")
+                        .HasColumnName("stats_json");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Trigger")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("trigger");
+
+                    b.Property<long?>("WorkflowRunId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("workflow_run_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_autofix_runs");
+
+                    b.HasIndex("ConnectionId")
+                        .HasDatabaseName("ix_autofix_runs_connection_id");
+
+                    b.HasIndex("CreatedAtTicks")
+                        .IsDescending()
+                        .HasDatabaseName("ix_autofix_runs_created_at_ticks");
+
+                    b.HasIndex("OrgId", "Status")
+                        .HasDatabaseName("ix_autofix_runs_org_id_status");
+
+                    b.HasIndex("Repository", "PrNumber", "HeadSha")
+                        .HasDatabaseName("ix_autofix_runs_repository_pr_number_head_sha");
+
+                    b.ToTable("autofix_runs", (string)null);
+                });
+
             modelBuilder.Entity("Sandcastle.Infrastructure.Scm.ReviewFindingRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2636,6 +2835,22 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations.Postgres
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("auth_kind");
+
+                    b.Property<string>("AutofixCheckPatternsJson")
+                        .HasColumnType("text")
+                        .HasColumnName("autofix_check_patterns_json");
+
+                    b.Property<bool>("AutofixEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("autofix_enabled");
+
+                    b.Property<int?>("AutofixMaxAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("autofix_max_attempts");
+
+                    b.Property<string>("AutofixReposJson")
+                        .HasColumnType("text")
+                        .HasColumnName("autofix_repos_json");
 
                     b.Property<string>("ClientSecretRef")
                         .HasMaxLength(200)

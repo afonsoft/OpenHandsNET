@@ -62,6 +62,9 @@ public sealed class Spec43CheckpointServiceTests
             string? o, CancellationToken ct) => Task.CompletedTask;
         public Task<bool> ProvisionGhAuthAsync(DomainSandbox s, string? o,
             CancellationToken ct) => Task.FromResult(false);
+        public Task<bool> ProvisionTokenAuthAsync(DomainSandbox s,
+            string h, string t, CancellationToken ct) =>
+            Task.FromResult(false);
         public Task<GitChanges> GetChangesAsync(DomainSandbox s,
             CancellationToken ct) => throw new NotSupportedException();
         public Task<GitDiffReport?> GetDiffAsync(DomainSandbox s, string? p,

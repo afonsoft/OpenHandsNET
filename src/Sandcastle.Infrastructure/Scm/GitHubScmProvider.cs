@@ -23,6 +23,14 @@ public interface IGitHubClientFactory
     /// <summary>Client autenticado como instalação da conexão.</summary>
     Task<IGitHubClient> ForConnectionAsync(
         ScmConnection connection, CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-141 RF-003: installation access token cru (mesmo cache de
+    /// ~50 min) — usado p/ provisionar git over https no sandbox do fix;
+    /// nunca logado/persistido.
+    /// </summary>
+    Task<string> GetInstallationTokenAsync(
+        ScmConnection connection, CancellationToken ct);
 }
 
 /// <summary>
@@ -276,6 +284,101 @@ public sealed class GitHubScmProvider(
             "application/json", (string?)null, ct);
         return (resp.Body.Id, resp.Body.HtmlUrl);
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ScmCheckRun>> GetCheckRunsAsync(
+        ScmConnection connection, string repository, string reference,
+        CancellationToken ct)
+    {
+        var (owner, name) = SplitRepo(repository);
+        var client = await clients.ForConnectionAsync(connection, ct);
+        var resp = await client.Check.Run.GetAllForReference(
+            owner, name, reference);
+        return resp.CheckRuns.Select(c => new ScmCheckRun(
+            c.Id, c.Name, c.Status.StringValue,
+            c.Conclusion?.StringValue, c.HeadSha, c.DetailsUrl)).ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<string?> GetCheckRunLogsAsync(
+        ScmConnection connection, string repository, long checkRunId,
+        CancellationToken ct)
+    {
+        var (owner, name) = SplitRepo(repository);
+        var client = await clients.ForConnectionAsync(connection, ct);
+        var run = await client.Check.Run.Get(owner, name, checkRunId);
+        var parts = new[] {
+            run.Output?.Title, run.Output?.Summary, run.Output?.Text }
+            .Where(s => !string.IsNullOrEmpty(s));
+        var joined = string.Join("\n", parts!);
+        return joined.Length == 0 ? null : joined;
+    }
+
+    /// <inheritdoc />
+    public async Task<string?> GetWorkflowRunLogsAsync(
+        ScmConnection connection, string repository, long workflowRunId,
+        CancellationToken ct)
+    {
+        var (owner, name) = SplitRepo(repository);
+        var client = await clients.ForConnectionAsync(connection, ct);
+        byte[] zip;
+        try
+        {
+            zip = await client.Actions.Workflows.Runs.GetLogs(
+                owner, name, workflowRunId);
+        }
+        catch (NotFoundException)
+        {
+            return null;
+        }
+        if (zip is null || zip.Length == 0)
+        {
+            return null;
+        }
+        return ExtractZipText(zip);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ScmCommitPullRequest>>
+        GetPullRequestsForCommitAsync(
+            ScmConnection connection, string repository, string sha,
+            CancellationToken ct)
+    {
+        var (owner, name) = SplitRepo(repository);
+        var client = await clients.ForConnectionAsync(connection, ct);
+        // Octokit não expõe commits/{sha}/pulls — chamada direta.
+        var resp = await client.Connection.Get<List<PullRequest>>(
+            new Uri($"repos/{owner}/{name}/commits/{sha}/pulls",
+                UriKind.Relative),
+            null, "application/vnd.github+json");
+        return resp.Body.Select(p => new ScmCommitPullRequest(
+            p.Number, p.State.StringValue, p.Head.Sha, p.Head.Ref,
+            p.Head.Repository?.FullName ?? repository)).ToList();
+    }
+
+    /// <summary>Extrai e concatena os .txt do zip de logs do Actions.</summary>
+    private static string? ExtractZipText(byte[] zip)
+    {
+        try
+        {
+            using var archive = new System.IO.Compression.ZipArchive(
+                new MemoryStream(zip), System.IO.Compression.ZipArchiveMode.Read);
+            var sb = new StringBuilder();
+            foreach (var entry in archive.Entries
+                .Where(e => e.Name.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(e => e.FullName, StringComparer.Ordinal))
+            {
+                sb.Append("\n==== ").Append(entry.FullName).Append(" ====\n");
+                using var reader = new StreamReader(entry.Open());
+                sb.Append(reader.ReadToEnd());
+            }
+            return sb.Length == 0 ? null : sb.ToString();
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
 }
 
 /// <summary>
@@ -293,16 +396,22 @@ public sealed class GitHubAppClientFactory(
 
     /// <inheritdoc />
     public async Task<IGitHubClient> ForConnectionAsync(
+        ScmConnection connection, CancellationToken ct) =>
+        new GitHubClient(ProductHeader)
+        {
+            Credentials = new Credentials(
+                await GetInstallationTokenAsync(connection, ct)),
+        };
+
+    /// <inheritdoc />
+    public async Task<string> GetInstallationTokenAsync(
         ScmConnection connection, CancellationToken ct)
     {
         var cacheKey = $"scm:gh:install-token:{connection.InstallationId}";
         var cached = await cache.GetStringAsync(cacheKey, ct);
         if (!string.IsNullOrEmpty(cached))
         {
-            return new GitHubClient(ProductHeader)
-            {
-                Credentials = new Credentials(cached),
-            };
+            return cached;
         }
 
         if (connection.AppId is null || connection.PemSecretRef is null
@@ -333,10 +442,7 @@ public sealed class GitHubAppClientFactory(
             }, ct);
         logger.LogDebug("github installation token minted (conn {Id})",
             connection.Id);
-        return new GitHubClient(ProductHeader)
-        {
-            Credentials = new Credentials(token.Token),
-        };
+        return token.Token;
     }
 
     /// <summary>

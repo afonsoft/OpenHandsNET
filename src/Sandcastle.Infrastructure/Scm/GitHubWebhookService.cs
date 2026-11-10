@@ -27,7 +27,9 @@ public sealed class GitHubWebhookService(
     IAuditService audit,
     ILogger<GitHubWebhookService> logger,
     IReviewService? reviews = null,
-    Microsoft.Extensions.Options.IOptions<Review.ReviewOptions>? reviewOptions = null) : IScmWebhookService
+    Microsoft.Extensions.Options.IOptions<Review.ReviewOptions>? reviewOptions = null,
+    IAutofixService? autofix = null,
+    Microsoft.Extensions.Options.IOptions<Autofix.AutofixOptions>? autofixOptions = null) : IScmWebhookService
 {
     private const string Repository = "repository";
     private const string Comment = "comment";
@@ -88,6 +90,16 @@ public sealed class GitHubWebhookService(
             {
                 return await HandlePullRequestEventAsync(
                     root, connection, ct);
+            }
+
+            // SPEC-141 RF-001: check_run|check_suite|workflow_run|status
+            // com conclusão de falha → CI autofix pipeline (normaliza o
+            // evento, resolve o PR, aplica política e enfileira o run).
+            if (eventType is "check_run" or "check_suite"
+                or "workflow_run" or "status")
+            {
+                return await HandleCiEventAsync(
+                    eventType, root, connection, ct);
             }
 
             var mention = ParseMention(eventType, root, installationId);
@@ -225,6 +237,55 @@ public sealed class GitHubWebhookService(
         return result.ReviewRunId is null
             ? ScmWebhookResult.Ignored
             : ScmWebhookResult.Processed;
+    }
+
+    /// <summary>
+    /// SPEC-141 RF-001 — roteamento dos eventos de CI: normaliza o
+    /// payload (<see cref="Autofix.CiCheckEventParser"/>) e dispara
+    /// <see cref="IAutofixService.TriggerCiEventAsync"/>. Skips de
+    /// política (não-falha, não inscrito, anti-loop, dedup) →
+    /// <see cref="ScmWebhookResult.Ignored"/>.
+    /// </summary>
+    private async Task<ScmWebhookResult> HandleCiEventAsync(
+        string eventType, JsonElement root, ScmConnection connection,
+        CancellationToken ct)
+    {
+        if (autofix is null || autofixOptions?.Value.Enabled == false)
+        {
+            return ScmWebhookResult.Ignored;
+        }
+        var ev = Autofix.CiCheckEventParser.Parse(eventType, root);
+        if (ev is null
+            || !Autofix.CiCheckEventParser.FailureConclusions
+                .Contains(ev.Conclusion))
+        {
+            return ScmWebhookResult.Ignored;
+        }
+
+        var result = await autofix.TriggerCiEventAsync(connection, ev, ct);
+        if (result.RunId is { } runId)
+        {
+            await audit.RecordAsync("scm.autofix_triggered",
+                orgId: connection.OrgId,
+                targetType: "autofix_run", targetId: runId.ToString(),
+                metadata: new
+                {
+                    repository = ev.Repository,
+                    pr = ev.PrNumber,
+                    head_sha = ev.HeadSha,
+                    check = ev.CheckName,
+                    check_kind = ev.Kind,
+                },
+                cancellationToken: ct);
+            return ScmWebhookResult.Processed;
+        }
+        if (result.Error is AutofixTriggerError.NoConnection)
+        {
+            logger.LogWarning(
+                "autofix trigger failed ({Repo} {Check}): {Err} {Detail}",
+                ev.Repository, ev.CheckName, result.Error, result.Detail);
+        }
+        return ScmWebhookResult.Ignored;
     }
 
     /// <summary>Login do bot da App ("{slug}[bot]") — null quando desconhecido.</summary>

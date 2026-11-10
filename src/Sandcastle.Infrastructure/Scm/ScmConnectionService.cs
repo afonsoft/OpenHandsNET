@@ -249,6 +249,50 @@ public sealed class ScmConnectionService(
     }
 
     /// <inheritdoc />
+    public async Task<ScmConnection?> UpdateAutofixSettingsAsync(
+        Guid orgId, Guid id, ScmConnectionAutofixUpdate update,
+        CancellationToken ct)
+    {
+        var record = await db.ScmConnections.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.Id == id && c.OrgId == orgId, ct);
+        if (record is null)
+        {
+            return null;
+        }
+
+        if (update.AutofixEnabled is { } enabled)
+        {
+            record.AutofixEnabled = enabled;
+        }
+        if (update.AutofixRepos is { } repos)
+        {
+            record.AutofixReposJson = repos.Count == 0
+                ? null : JsonSerializer.Serialize(repos);
+        }
+        if (update.AutofixCheckPatterns is { } patterns)
+        {
+            record.AutofixCheckPatternsJson = patterns.Count == 0
+                ? null : JsonSerializer.Serialize(patterns);
+        }
+        if (update.AutofixMaxAttempts is { } max)
+        {
+            record.AutofixMaxAttempts = Math.Clamp(max, 1, 10);
+        }
+
+        await db.SaveChangesAsync(ct);
+        await audit.RecordAsync("scm.connection_autofix_updated",
+            orgId: orgId, targetType: "scm_connection",
+            targetId: id.ToString(),
+            metadata: new
+            {
+                autofix_enabled = record.AutofixEnabled,
+                autofix_max_attempts = record.AutofixMaxAttempts,
+            },
+            cancellationToken: ct);
+        return ToModel(record);
+    }
+
+    /// <inheritdoc />
     public async Task<bool> DeleteAsync(Guid orgId, Guid id, CancellationToken ct)
     {
         var record = await db.ScmConnections.IgnoreQueryFilters()
@@ -273,5 +317,13 @@ public sealed class ScmConnectionService(
             r.ReviewReposJson is null
                 ? null
                 : JsonSerializer.Deserialize<List<string>>(r.ReviewReposJson),
-            r.ReviewTriggerMode, r.ReviewPassCondition);
+            r.ReviewTriggerMode, r.ReviewPassCondition,
+            r.AutofixEnabled,
+            r.AutofixReposJson is null
+                ? null
+                : JsonSerializer.Deserialize<List<string>>(r.AutofixReposJson),
+            r.AutofixCheckPatternsJson is null
+                ? null
+                : JsonSerializer.Deserialize<List<string>>(r.AutofixCheckPatternsJson),
+            r.AutofixMaxAttempts);
 }

@@ -60,6 +60,18 @@ public sealed class ScmConnectionRecord : IOrgScoped
     /// <summary>SPEC-140 RF-003: <c>completed</c> (default) | <c>no_critical</c> | <c>no_findings</c>.</summary>
     public string? ReviewPassCondition { get; set; }
 
+    /// <summary>SPEC-141 RF-001: CI autofix habilitado na conexão.</summary>
+    public bool AutofixEnabled { get; set; }
+
+    /// <summary>SPEC-141 RF-001: JSON array de repos inscritos (vazio/null = todos da conexão).</summary>
+    public string? AutofixReposJson { get; set; }
+
+    /// <summary>SPEC-141 RF-002: JSON array de globs de check-name elegíveis (vazio/null = global).</summary>
+    public string? AutofixCheckPatternsJson { get; set; }
+
+    /// <summary>SPEC-141 RF-002: cap de tentativas por PR (null = <c>Autofix:MaxAttempts</c>).</summary>
+    public int? AutofixMaxAttempts { get; set; }
+
     /// <summary>Usuário que registrou a conexão (atribuição de triggers).</summary>
     public string? CreatedByUserId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
@@ -148,6 +160,109 @@ public sealed class ReviewFindingRecord : IOrgScoped
 }
 
 /// <summary>
+/// SPEC-141 RF-004: um run de CI autofix — loop
+/// (logs → classificação → conversa de fix → push → poll) até verde,
+/// cap, blocked ou cancel. Dedup por <c>(Repository, PrNumber, HeadSha,
+/// CheckName)</c>; um run ativo por PR. <see cref="AttemptCount"/> é o
+/// cap efetivo consumido (máx <c>AutofixMaxAttempts</c>).
+/// </summary>
+public sealed class AutofixRunRecord : IOrgScoped
+{
+    public required Guid Id { get; set; }
+    public Guid? OrgId { get; set; }
+
+    /// <summary>Conexão SCM dona do repo.</summary>
+    public required Guid ConnectionId { get; set; }
+
+    /// <summary><c>owner/repo</c> (repo base do PR).</summary>
+    public required string Repository { get; set; }
+    public int PrNumber { get; set; }
+
+    /// <summary>Head SHA do check que disparou (atualizado a cada ciclo red).</summary>
+    public required string HeadSha { get; set; }
+
+    /// <summary>Branch head do PR (alvo do push do fix).</summary>
+    public string? HeadBranch { get; set; }
+
+    /// <summary>Nome do check em falha (atualizado a cada ciclo red).</summary>
+    public required string CheckName { get; set; }
+
+    /// <summary><c>check_run|check_suite|workflow_run|status|manual</c>.</summary>
+    public required string CheckKind { get; set; }
+
+    /// <summary>Check run id (logs via Checks API).</summary>
+    public long? CheckRunId { get; set; }
+
+    /// <summary>Workflow run id (logs via Actions API).</summary>
+    public long? WorkflowRunId { get; set; }
+
+    /// <summary>URL do check no provider (details/html/target).</summary>
+    public string? CheckUrl { get; set; }
+
+    /// <summary><c>queued|running|waiting_check|completed|failed|blocked|cancelled</c>.</summary>
+    public required string Status { get; set; }
+
+    /// <summary>Tentativas consumidas (1..cap).</summary>
+    public int AttemptCount { get; set; }
+
+    /// <summary>Conversa de fix mais recente (agent_type=autofix).</summary>
+    public Guid? ConversationId { get; set; }
+
+    /// <summary><c>webhook|manual</c>.</summary>
+    public required string Trigger { get; set; }
+
+    /// <summary>Usuário que disparou (manual) — null = webhook.</summary>
+    public string? RequestedByUserId { get; set; }
+
+    /// <summary>Detalhe do erro/outcome quando terminal.</summary>
+    public string? Error { get; set; }
+
+    /// <summary>Stats do run (modelo, attempts, outcome, shas).</summary>
+    public string? StatsJson { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>Ticks de <see cref="CreatedAt"/> — cursor pagination.</summary>
+    public long CreatedAtTicks { get; set; }
+    public DateTimeOffset? StartedAt { get; set; }
+    public DateTimeOffset? FinishedAt { get; set; }
+}
+
+/// <summary>
+/// SPEC-141 RF-004: uma tentativa de fix dentro de um run —
+/// <c>head_sha_in</c> (falha) → conversa de fix →
+/// <c>head_sha_out</c> (push detectado) → outcome.
+/// </summary>
+public sealed class AutofixAttemptRecord : IOrgScoped
+{
+    public required Guid Id { get; set; }
+    public Guid? OrgId { get; set; }
+    public required Guid RunId { get; set; }
+
+    /// <summary>Nº da tentativa (1..cap).</summary>
+    public int Number { get; set; }
+
+    /// <summary>Head que falhou (entrada do fix).</summary>
+    public required string HeadShaIn { get; set; }
+
+    /// <summary>Head empurrado pelo fix (detectado no poll).</summary>
+    public string? HeadShaOut { get; set; }
+
+    /// <summary>JSON dos checks em falha observados [{name,kind,id,conclusion}].</summary>
+    public string? FailedChecksJson { get; set; }
+
+    /// <summary><c>fixed|still_failing|blocked|error|cancelled</c>.</summary>
+    public string? Outcome { get; set; }
+
+    /// <summary>Trecho redigido do log de falha (diagnóstico persistido).</summary>
+    public string? LogDigest { get; set; }
+
+    /// <summary>Conversa de fix da tentativa.</summary>
+    public Guid? ConversationId { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? FinishedAt { get; set; }
+}
+
+/// <summary>
 /// Entrega de webhook já processada — idempotência por
 /// <see cref="DeliveryId"/> único (SPEC-52 RF-004).
 /// </summary>
@@ -233,6 +348,49 @@ public sealed class ReviewFindingRecordConfiguration
         builder.HasIndex(e => new { e.Repository, e.PrNumber });
         builder.HasIndex(e => e.ReviewRunId);
         builder.HasIndex(e => e.Status);
+    }
+}
+
+/// <summary>EF config for <see cref="AutofixRunRecord"/>.</summary>
+public sealed class AutofixRunRecordConfiguration
+    : IEntityTypeConfiguration<AutofixRunRecord>
+{
+    /// <inheritdoc />
+    public void Configure(EntityTypeBuilder<AutofixRunRecord> builder)
+    {
+        builder.ToTable("autofix_runs");
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Repository).HasMaxLength(300).IsRequired();
+        builder.Property(e => e.HeadSha).HasMaxLength(80).IsRequired();
+        builder.Property(e => e.HeadBranch).HasMaxLength(300);
+        builder.Property(e => e.CheckName).HasMaxLength(300).IsRequired();
+        builder.Property(e => e.CheckKind).HasMaxLength(20).IsRequired();
+        builder.Property(e => e.Status).HasMaxLength(20).IsRequired();
+        builder.Property(e => e.Trigger).HasMaxLength(20).IsRequired();
+        builder.Property(e => e.RequestedByUserId).HasMaxLength(200);
+        builder.Property(e => e.Error).HasMaxLength(2000);
+        builder.HasIndex(e => new { e.Repository, e.PrNumber, e.HeadSha });
+        builder.HasIndex(e => new { e.OrgId, e.Status });
+        builder.HasIndex(e => e.ConnectionId);
+        builder.HasIndex(e => e.CreatedAtTicks).IsDescending();
+    }
+}
+
+/// <summary>EF config for <see cref="AutofixAttemptRecord"/>.</summary>
+public sealed class AutofixAttemptRecordConfiguration
+    : IEntityTypeConfiguration<AutofixAttemptRecord>
+{
+    /// <inheritdoc />
+    public void Configure(EntityTypeBuilder<AutofixAttemptRecord> builder)
+    {
+        builder.ToTable("autofix_attempts");
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.HeadShaIn).HasMaxLength(80).IsRequired();
+        builder.Property(e => e.HeadShaOut).HasMaxLength(80);
+        builder.Property(e => e.Outcome).HasMaxLength(20);
+        builder.HasIndex(e => e.RunId);
+        builder.HasIndex(e => new { e.RunId, e.Number });
+        builder.HasIndex(e => e.HeadShaOut);
     }
 }
 

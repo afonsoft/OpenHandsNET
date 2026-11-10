@@ -116,9 +116,17 @@ public sealed class GitService(
             return false;
         }
 
+        return await ProvisionTokenAuthAsync(sandbox, "github.com", token, ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> ProvisionTokenAuthAsync(
+        DomainSandbox sandbox, string host, string token,
+        CancellationToken ct)
+    {
         var hostsB64 = Convert.ToBase64String(
             System.Text.Encoding.UTF8.GetBytes(
-                GitCredentialProvider.GhHostsFile("github.com", token)));
+                GitCredentialProvider.GhHostsFile(host, token)));
         // hosts.yml autentica gh mesmo sem GH_TOKEN no env (ex.: warm pool);
         // credential.helper faz git https usar o gh como askpass.
         var r = await executor.ExecAsync(sandbox,
@@ -135,7 +143,8 @@ public sealed class GitService(
         }
 
         logger.LogInformation(
-            "gh/git credentials provisioned in sandbox {Id}", sandbox.Id);
+            "gh/git credentials provisioned in sandbox {Id} (host {Host})",
+            sandbox.Id, host);
         return true;
     }
 

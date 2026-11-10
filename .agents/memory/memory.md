@@ -1,5 +1,34 @@
 # memory.md — estado corrente (max 100 linhas)
 
+## Sessão 2026-11-10 (cont. 3) — SPEC-141 CI autofix loop IMPLEMENTADO
+
+- Branch `feature/spec-141-ci-autofix` (issue #406) — pipeline
+  completa: webhook `check_run|check_suite|workflow_run|status` →
+  `CiCheckEventParser` → `AutofixService` (política: falha, escopo repo,
+  check-name glob, anti-loop app/ator/head_sha_out, fork, dedup
+  head+check + 1 ativo/PR, quota diária) → `AutofixRunWorker` paralelo →
+  `AutofixRunner` (log bounded+redacted → `CiFailureClassifier`
+  lint|type|test|build fixáveis vs infra|timeout|flaky|permissão|segredo
+  blocked → conversa `agent_type: autofix` → poll checks → verde/cap).
+- Novos: `IScmProvider` +4 métodos (check runs/logs, workflow logs zip,
+  commits/{sha}/pulls); `IGitService.ProvisionTokenAuthAsync` +
+  `IGitHubClientFactory.GetInstallationTokenAsync` (push c/ credencial
+  da conexão); `scm_connections.autofix_*` + tabelas
+  `autofix_runs|autofix_attempts` (migrations SQLite+Postgres);
+  endpoints `POST /scm/autofix`, `GET /scm/autofix-runs[/{id}]`,
+  `POST …/cancel`, PATCH connections `autofix_*`; toggle admin + 8
+  locales; `AutofixOptions` (MaxAttempts=3, MaxLogKb=256,
+  PollSeconds=60, RunTimeoutMinutes=45).
+- Gotchas: EF não traduz `IReadOnlySet.Contains` → `string[]`;
+  `dotnet ef` precisa `--startup-project src/Sandcastle.Api`; Octokit
+  `client.Connection.Get<T>` retorna `IApiResponse<T>` (usar `.Body`);
+  `UntrustedInput` vive em `Infrastructure.Security`, `SecretRedactor`
+  em `Infrastructure.Agent`.
+- 40 testes novos `Spec141AutofixTests` (parser, webhook, política,
+  classificador, runner green/red/cap/blocked/cancel) — 855 unit OK;
+  integration: 4 flakes ambientais (timeout 100s dev-login sob carga)
+  passam no rerun.
+
 ## Sessão 2026-11-10 (cont. 2) — SPEC-147 product-polish ENTREGUE
 
 - **PR #413 merged** (`5905404`), issue #412 → in_pullrequest.

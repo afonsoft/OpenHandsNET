@@ -186,6 +186,28 @@ public static class DependencyInjection
             Sandcastle.Application.Scm.IReviewRunner,
             Sandcastle.Infrastructure.Scm.Review.ReviewRunner>();
 
+        // SPEC-141: CI autofix loop — options, fila in-process + worker
+        // (runs paralelos — um run pode pollar por até RunTimeoutMinutes),
+        // trigger/policy service e runner (logs → fix → push → poll).
+        services.Configure<
+            Sandcastle.Infrastructure.Scm.Autofix.AutofixOptions>(
+            configuration.GetSection(
+                Sandcastle.Infrastructure.Scm.Autofix
+                    .AutofixOptions.Section));
+        services.AddSingleton<
+            Sandcastle.Infrastructure.Scm.Autofix.AutofixDispatcher>();
+        services.AddSingleton<
+            Sandcastle.Application.Scm.IAutofixDispatcher>(sp =>
+            sp.GetRequiredService<
+                Sandcastle.Infrastructure.Scm.Autofix.AutofixDispatcher>());
+        services.AddHostedService<
+            Sandcastle.Infrastructure.Scm.Autofix.AutofixRunWorker>();
+        services.AddScoped<
+            Sandcastle.Application.Scm.IAutofixService,
+            Sandcastle.Infrastructure.Scm.Autofix.AutofixService>();
+        services.AddScoped<
+            Sandcastle.Application.Scm.IAutofixRunner,
+            Sandcastle.Infrastructure.Scm.Autofix.AutofixRunner>();
     }
 
     private static void RegisterScmProviders(

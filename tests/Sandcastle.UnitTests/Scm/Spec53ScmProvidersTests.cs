@@ -261,6 +261,20 @@ public sealed class Spec53ScmProvidersTests : IAsyncDisposable
             string r, int n, string h, string b,
             IReadOnlyList<ScmReviewComment> cs, CancellationToken ct) =>
             Task.FromResult<ScmReviewResult?>(null);
+        // SPEC-141: CI autofix members (v1 stub — not used).
+        public Task<IReadOnlyList<ScmCheckRun>> GetCheckRunsAsync(
+            ScmConnection c, string r, string rf, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<ScmCheckRun>>([]);
+        public Task<string?> GetCheckRunLogsAsync(ScmConnection c,
+            string r, long i, CancellationToken ct) =>
+            Task.FromResult<string?>(null);
+        public Task<string?> GetWorkflowRunLogsAsync(ScmConnection c,
+            string r, long i, CancellationToken ct) =>
+            Task.FromResult<string?>(null);
+        public Task<IReadOnlyList<ScmCommitPullRequest>>
+            GetPullRequestsForCommitAsync(ScmConnection c, string r,
+                string s, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<ScmCommitPullRequest>>([]);
     }
 
     private sealed class FakeRegistry : IScmProviderRegistry
