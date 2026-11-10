@@ -2401,6 +2401,206 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations
                     b.ToTable("sandbox_specs", (string)null);
                 });
 
+            modelBuilder.Entity("Sandcastle.Infrastructure.Scm.ReviewFindingRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("body");
+
+                    b.Property<string>("CommentUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("comment_url");
+
+                    b.Property<double?>("Confidence")
+                        .HasColumnType("REAL")
+                        .HasColumnName("confidence");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("kind");
+
+                    b.Property<int?>("Line")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("line");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("path");
+
+                    b.Property<int>("PrNumber")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("pr_number");
+
+                    b.Property<string>("Repository")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("repository");
+
+                    b.Property<Guid>("ReviewRunId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("review_run_id");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("severity");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("status");
+
+                    b.Property<string>("SuggestedPatch")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("suggested_patch");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("title");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_review_findings");
+
+                    b.HasIndex("ReviewRunId")
+                        .HasDatabaseName("ix_review_findings_review_run_id");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_review_findings_status");
+
+                    b.HasIndex("Repository", "PrNumber")
+                        .HasDatabaseName("ix_review_findings_repository_pr_number");
+
+                    b.ToTable("review_findings", (string)null);
+                });
+
+            modelBuilder.Entity("Sandcastle.Infrastructure.Scm.ReviewRunRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("connection_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("CreatedAtTicks")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("created_at_ticks");
+
+                    b.Property<string>("DiffHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("diff_hash");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("error");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("finished_at");
+
+                    b.Property<string>("HeadSha")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("head_sha");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("org_id");
+
+                    b.Property<bool>("Partial")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("partial");
+
+                    b.Property<int>("PrNumber")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("pr_number");
+
+                    b.Property<string>("Repository")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("repository");
+
+                    b.Property<string>("RequestedByUserId")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("requested_by_user_id");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("StatsJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("stats_json");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Trigger")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("trigger");
+
+                    b.HasKey("Id")
+                        .HasName("pk_review_runs");
+
+                    b.HasIndex("ConnectionId")
+                        .HasDatabaseName("ix_review_runs_connection_id");
+
+                    b.HasIndex("CreatedAtTicks")
+                        .IsDescending()
+                        .HasDatabaseName("ix_review_runs_created_at_ticks");
+
+                    b.HasIndex("OrgId", "Status")
+                        .HasDatabaseName("ix_review_runs_org_id_status");
+
+                    b.HasIndex("Repository", "PrNumber", "HeadSha")
+                        .HasDatabaseName("ix_review_runs_repository_pr_number_head_sha");
+
+                    b.ToTable("review_runs", (string)null);
+                });
+
             modelBuilder.Entity("Sandcastle.Infrastructure.Scm.ScmConnectionRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2469,6 +2669,24 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations
                     b.Property<string>("ReposJson")
                         .HasColumnType("TEXT")
                         .HasColumnName("repos_json");
+
+                    b.Property<bool>("ReviewEnabled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("review_enabled");
+
+                    b.Property<string>("ReviewPassCondition")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("review_pass_condition");
+
+                    b.Property<string>("ReviewReposJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("review_repos_json");
+
+                    b.Property<string>("ReviewTriggerMode")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("review_trigger_mode");
 
                     b.Property<string>("WebhookSecretRef")
                         .HasMaxLength(200)

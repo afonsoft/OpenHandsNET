@@ -164,6 +164,28 @@ public static class DependencyInjection
                 f, log);
         });
 
+        // SPEC-140: auto-review de PR — options, fila in-process + worker,
+        // trigger service e runner (job próprio, não-conversa).
+        services.Configure<
+            Sandcastle.Infrastructure.Scm.Review.ReviewOptions>(
+            configuration.GetSection(
+                Sandcastle.Infrastructure.Scm.Review
+                    .ReviewOptions.Section));
+        services.AddSingleton<
+            Sandcastle.Infrastructure.Scm.Review.ReviewDispatcher>();
+        services.AddSingleton<
+            Sandcastle.Application.Scm.IReviewDispatcher>(sp =>
+            sp.GetRequiredService<
+                Sandcastle.Infrastructure.Scm.Review.ReviewDispatcher>());
+        services.AddHostedService<
+            Sandcastle.Infrastructure.Scm.Review.ReviewRunWorker>();
+        services.AddScoped<
+            Sandcastle.Application.Scm.IReviewService,
+            Sandcastle.Infrastructure.Scm.Review.ReviewService>();
+        services.AddScoped<
+            Sandcastle.Application.Scm.IReviewRunner,
+            Sandcastle.Infrastructure.Scm.Review.ReviewRunner>();
+
     }
 
     private static void RegisterScmProviders(

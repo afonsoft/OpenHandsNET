@@ -246,6 +246,21 @@ public sealed class Spec53ScmProvidersTests : IAsyncDisposable
             ScmConnection c, CancellationToken ct) =>
             Task.FromResult(new ScmConnectionDiagnostic(
                 true, "fake-user", null, null, "ok"));
+        // SPEC-140: review pipeline members (v1 stub — not used).
+        public Task<IReadOnlyList<ScmPullRequestFile>> GetPullRequestFilesAsync(
+            ScmConnection c, string r, int n, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<ScmPullRequestFile>>([]);
+        public Task<string?> GetFileContentAsync(ScmConnection c, string r,
+            string p, string? rf, CancellationToken ct) =>
+            Task.FromResult<string?>(null);
+        public Task<IReadOnlyList<string>> ListDirectoryAsync(
+            ScmConnection c, string r, string p, string? rf,
+            CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<string>>([]);
+        public Task<ScmReviewResult?> CreateReviewAsync(ScmConnection c,
+            string r, int n, string h, string b,
+            IReadOnlyList<ScmReviewComment> cs, CancellationToken ct) =>
+            Task.FromResult<ScmReviewResult?>(null);
     }
 
     private sealed class FakeRegistry : IScmProviderRegistry

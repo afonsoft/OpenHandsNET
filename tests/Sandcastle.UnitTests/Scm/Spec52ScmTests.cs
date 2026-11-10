@@ -495,6 +495,29 @@ public sealed class Spec52ScmTests : IAsyncDisposable
             string repository, string sha, string state, string context,
             string? targetUrl, string? description,
             CancellationToken ct) => Task.CompletedTask;
+
+        // SPEC-140: review pipeline members (v1 fake — not used).
+        public Task<IReadOnlyList<ScmPullRequestFile>> GetPullRequestFilesAsync(
+            ScmConnection connection, string repository,
+            int pullRequestNumber, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<ScmPullRequestFile>>([]);
+
+        public Task<string?> GetFileContentAsync(ScmConnection connection,
+            string repository, string path, string? reference,
+            CancellationToken ct) => Task.FromResult<string?>(null);
+
+        public Task<IReadOnlyList<string>> ListDirectoryAsync(
+            ScmConnection connection, string repository,
+            string directoryPath, string? reference,
+            CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<string>>([]);
+
+        public Task<ScmReviewResult?> CreateReviewAsync(
+            ScmConnection connection, string repository,
+            int pullRequestNumber, string headSha, string body,
+            IReadOnlyList<ScmReviewComment> comments,
+            CancellationToken ct) =>
+            Task.FromResult<ScmReviewResult?>(null);
     }
 
     private sealed class FakeHttpFactory : IHttpClientFactory

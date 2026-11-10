@@ -286,6 +286,25 @@ public sealed class AdminApiClient(HttpClient http)
         return resp.IsSuccessStatusCode;
     }
 
+    /// <summary>
+    /// SPEC-140 RF-001: PATCH /scm/connections/{id} — toggle do
+    /// auto-review de PR na conexão (X-Org-Id = org selecionada).
+    /// </summary>
+    public async Task<bool> PatchScmConnectionReviewAsync(
+        string orgId, string id, bool reviewEnabled,
+        CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(
+            HttpMethod.Patch, $"/api/v1/scm/connections/{id}")
+        {
+            Content = JsonContent.Create(
+                new { review_enabled = reviewEnabled }, options: Json),
+            Headers = { { "X-Org-Id", orgId } },
+        };
+        var resp = Guard(await http.SendAsync(req, ct));
+        return resp.IsSuccessStatusCode;
+    }
+
     // ---- chatops (SPEC-54) -------------------------------------------------
 
     /// <summary>Chat connections (Slack) da org.</summary>

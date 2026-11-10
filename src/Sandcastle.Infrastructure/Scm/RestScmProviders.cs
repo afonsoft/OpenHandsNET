@@ -107,6 +107,42 @@ public abstract class RestScmProvider(
     /// <inheritdoc />
     public abstract Task<ScmConnectionDiagnostic> TestConnectionAsync(
         ScmConnection connection, CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-140: default dos providers REST sem diff API implementada —
+    /// <see cref="NotSupportedException"/> (v1: GitHub e GitLab apenas;
+    /// Bitbucket/AzDO ganham suporte em SPEC futura).
+    /// </summary>
+    public virtual Task<IReadOnlyList<ScmPullRequestFile>> GetPullRequestFilesAsync(
+        ScmConnection connection, string repository, int pullRequestNumber,
+        CancellationToken ct) =>
+        throw new NotSupportedException(
+            $"{Kind.ToWire()} pull request files not supported in v1");
+
+    /// <inheritdoc cref="IScmProvider.GetFileContentAsync"/>
+    public virtual Task<string?> GetFileContentAsync(
+        ScmConnection connection, string repository, string path,
+        string? reference, CancellationToken ct) =>
+        throw new NotSupportedException(
+            $"{Kind.ToWire()} file content not supported in v1");
+
+    /// <inheritdoc cref="IScmProvider.ListDirectoryAsync"/>
+    public virtual Task<IReadOnlyList<string>> ListDirectoryAsync(
+        ScmConnection connection, string repository, string directoryPath,
+        string? reference, CancellationToken ct) =>
+        throw new NotSupportedException(
+            $"{Kind.ToWire()} directory listing not supported in v1");
+
+    /// <summary>
+    /// SPEC-140 RF-003: providers REST v1 não suportam review ancorada —
+    /// retorna null e o caller faz fallback p/ comentário único
+    /// (<see cref="IScmProvider.CreateIssueCommentAsync"/>).
+    /// </summary>
+    public virtual Task<ScmReviewResult?> CreateReviewAsync(
+        ScmConnection connection, string repository, int pullRequestNumber,
+        string headSha, string body,
+        IReadOnlyList<ScmReviewComment> comments, CancellationToken ct) =>
+        Task.FromResult<ScmReviewResult?>(null);
 }
 
 /// <summary>GitLab REST v4 (SPEC-53 RF-001; self-managed via <c>ApiUrl</c>).</summary>
@@ -260,6 +296,88 @@ public sealed class GitLabScmProvider(
                 ? v.GetString() : null,
             projects?.GetArrayLength() ?? 0,
             "ok");
+    }
+
+    /// <summary>
+    /// SPEC-140: <c>GET /projects/:id/merge_requests/:iid/diffs</c> — cada
+    /// entrada traz <c>new_path</c>/<c>old_path</c>/<c>diff</c> unificado.
+    /// </summary>
+    public override async Task<IReadOnlyList<ScmPullRequestFile>>
+        GetPullRequestFilesAsync(
+            ScmConnection connection, string repository,
+            int pullRequestNumber, CancellationToken ct)
+    {
+        var diffs = await GetJsonAsync(connection,
+            $"/projects/{Enc(repository)}/merge_requests/" +
+            $"{pullRequestNumber}/diffs", ct);
+        if (diffs is null || diffs.Value.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+        var files = new List<ScmPullRequestFile>();
+        foreach (var d in diffs.Value.EnumerateArray())
+        {
+            var newPath = d.TryGetProperty("new_path", out var np)
+                ? np.GetString() ?? "" : "";
+            var oldPath = d.TryGetProperty("old_path", out var op)
+                ? op.GetString() : null;
+            var status = d.TryGetProperty("new_file", out var nf)
+                && nf.GetBoolean() ? "added"
+                : d.TryGetProperty("deleted_file", out var df)
+                    && df.GetBoolean() ? "removed"
+                : d.TryGetProperty("renamed_file", out var rf)
+                    && rf.GetBoolean() ? "renamed" : "modified";
+            files.Add(new ScmPullRequestFile(
+                newPath,
+                string.Equals(oldPath, newPath, StringComparison.Ordinal)
+                    ? null : oldPath,
+                status, 0, 0,
+                d.TryGetProperty("diff", out var pd)
+                    ? pd.GetString() : null));
+        }
+        return files;
+    }
+
+    /// <summary>
+    /// SPEC-140: <c>GET /projects/:id/repository/files/:path/raw?ref=</c> —
+    /// null em 404 (arquivo de regras inexistente).
+    /// </summary>
+    public override async Task<string?> GetFileContentAsync(
+        ScmConnection connection, string repository, string path,
+        string? reference, CancellationToken ct)
+    {
+        var url = $"/projects/{Enc(repository)}/repository/files/" +
+            $"{Enc(path)}/raw?ref={Enc(reference ?? "HEAD")}";
+        using var resp = await SendAsync(
+            connection, HttpMethod.Get, url, null, ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            return null;
+        }
+        return await resp.Content.ReadAsStringAsync(ct);
+    }
+
+    /// <summary>
+    /// SPEC-140: <c>GET /projects/:id/repository/tree?path=…&amp;ref=…</c> —
+    /// paths relativos ao repo; vazio em dir inexistente.
+    /// </summary>
+    public override async Task<IReadOnlyList<string>> ListDirectoryAsync(
+        ScmConnection connection, string repository, string directoryPath,
+        string? reference, CancellationToken ct)
+    {
+        var tree = await GetJsonAsync(connection,
+            $"/projects/{Enc(repository)}/repository/tree" +
+            $"?path={Enc(directoryPath)}&ref={Enc(reference ?? "HEAD")}", ct);
+        if (tree is null || tree.Value.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+        return tree.Value.EnumerateArray()
+            .Where(e => e.TryGetProperty("type", out var t)
+                && t.GetString() == "blob")
+            .Select(e => e.TryGetProperty("path", out var p)
+                ? p.GetString() ?? "" : "")
+            .Where(p => p.Length > 0).ToList();
     }
 }
 

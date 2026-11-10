@@ -164,6 +164,118 @@ public sealed class GitHubScmProvider(
                 false, null, null, null, e.Message);
         }
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ScmPullRequestFile>> GetPullRequestFilesAsync(
+        ScmConnection connection, string repository, int pullRequestNumber,
+        CancellationToken ct)
+    {
+        var (owner, name) = SplitRepo(repository);
+        var client = await clients.ForConnectionAsync(connection, ct);
+        var files = await client.PullRequest.Files(
+            owner, name, pullRequestNumber);
+        return files.Select(f => new ScmPullRequestFile(
+            f.FileName, f.PreviousFileName, f.Status,
+            f.Additions, f.Deletions, f.Patch)).ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<string?> GetFileContentAsync(
+        ScmConnection connection, string repository, string path,
+        string? reference, CancellationToken ct)
+    {
+        var (owner, name) = SplitRepo(repository);
+        var client = await clients.ForConnectionAsync(connection, ct);
+        try
+        {
+            var raw = await client.Repository.Content.GetRawContentByRef(
+                owner, name, path, reference);
+            return Encoding.UTF8.GetString(raw);
+        }
+        catch (NotFoundException)
+        {
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<string>> ListDirectoryAsync(
+        ScmConnection connection, string repository, string directoryPath,
+        string? reference, CancellationToken ct)
+    {
+        var (owner, name) = SplitRepo(repository);
+        var client = await clients.ForConnectionAsync(connection, ct);
+        try
+        {
+            var entries = await client.Repository.Content
+                .GetAllContentsByRef(owner, name, directoryPath, reference);
+            return entries
+                .Where(e => e.Type == ContentType.File)
+                .Select(e => e.Path).ToList();
+        }
+        catch (NotFoundException)
+        {
+            return [];
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<ScmReviewResult?> CreateReviewAsync(
+        ScmConnection connection, string repository, int pullRequestNumber,
+        string headSha, string body,
+        IReadOnlyList<ScmReviewComment> comments, CancellationToken ct)
+    {
+        var (owner, name) = SplitRepo(repository);
+        var client = await clients.ForConnectionAsync(connection, ct);
+
+        // Octokit 14 só expõe DraftPullRequestReviewComment por *position*
+        // (deprecado) — chamamos o endpoint direto com line+side ("RIGHT"),
+        // que é o ancoramento atual do GitHub.
+        var uri = ApiUrls.PullRequestReviews(owner, name, pullRequestNumber);
+        object Payload(IReadOnlyList<ScmReviewComment> cs) => new
+        {
+            commit_id = headSha,
+            body,
+            @event = "COMMENT",
+            comments = cs.Select(c => new
+            {
+                path = c.Path,
+                line = c.Line,
+                side = "RIGHT",
+                body = c.Body,
+            }).ToArray(),
+        };
+
+        try
+        {
+            var review = await PostReviewAsync(
+                client, uri, Payload(comments), ct);
+            return new ScmReviewResult(
+                review.ReviewId, review.Url, comments.Count);
+        }
+        catch (ApiException e) when (comments.Count > 0)
+        {
+            // Âncora inválida (linha fora do diff, path renomeado…) — retenta
+            // sem inline comments: o summary já traz os findings agrupados.
+            logger.LogWarning(e,
+                "github review com {Count} comments falhou ({Code}) — "
+                + "retentando só com body (pr {Pr} {Repo})",
+                comments.Count, (int)e.StatusCode, pullRequestNumber,
+                repository);
+            var review = await PostReviewAsync(
+                client, uri, Payload([]), ct);
+            return new ScmReviewResult(review.ReviewId, review.Url, 0);
+        }
+    }
+
+    private static async Task<(long? ReviewId, string? Url)> PostReviewAsync(
+        IGitHubClient client, Uri uri, object payload, CancellationToken ct)
+    {
+        var resp = await client.Connection.Post<PullRequestReview>(
+            uri, payload, "application/vnd.github+json",
+            "application/json", (string?)null, ct);
+        return (resp.Body.Id, resp.Body.HtmlUrl);
+    }
 }
 
 /// <summary>

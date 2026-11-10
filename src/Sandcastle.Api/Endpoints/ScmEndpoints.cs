@@ -48,13 +48,238 @@ public static class ScmEndpoints
         // SPEC-53 RF-004: diagnóstico da connection (token + escopo).
         scm.MapPost("/connections/{id:guid}/test", PostConnectionsIdGuidTestAsync).RequireAuthorization(PermManageIntegrations);
 
+        // SPEC-140 RF-001: enrollment de auto-review na connection.
+        scm.MapPatch("/connections/{id:guid}", PatchConnectionReviewAsync)
+            .RequireAuthorization(PermManageIntegrations);
+
         conns.MapDelete("/{id:guid}", DeleteIdGuidAsync).RequireAuthorization(PermManageIntegrations);
+
+        // SPEC-140: auto-review — trigger manual + listagem/detalle/PATCH.
+        scm.MapPost("/reviews", PostReviewAsync).RequireAuthorization();
+        scm.MapGet("/reviews", ListReviewsAsync).RequireAuthorization();
+        scm.MapGet("/reviews/{id:guid}", GetReviewAsync).RequireAuthorization();
+        scm.MapPatch("/reviews/{id:guid}/findings/{fid:guid}",
+            PatchFindingAsync).RequireAuthorization();
 
         // Webhook público (HMAC + idempotência; sem auth de usuário).
         app.MapPost("/api/v1/webhooks/scm/{kind}",
             HandleScmWebhookAsync).WithTags(EndpointTags.Api);
 
         return app;
+    }
+
+    // ---- SPEC-140: review endpoints ---------------------------------------
+
+    private static async Task<IResult> PostReviewAsync(
+        [FromBody] ScmReviewRequest req, HttpContext http,
+        ICurrentUserAccessor current, IEffectiveOrgResolver orgs,
+        IScmConnectionService connections, IScmProviderRegistry providers,
+        IReviewService reviews,
+        Microsoft.Extensions.Options.IOptions<
+            Infrastructure.Scm.Review.ReviewOptions> reviewOptions,
+        CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+        {
+            return Results.Unauthorized();
+        }
+        if (!reviewOptions.Value.Enabled)
+        {
+            return SandcastleProblemFactory.Create(
+                http, 403, "auto-review is disabled");
+        }
+        if (string.IsNullOrWhiteSpace(req.Repository) || req.PrNumber <= 0)
+        {
+            return SandcastleProblemFactory.Create(
+                http, 400, "repository and pr_number are required");
+        }
+        var org = await orgs.ResolveAsync(
+            user, http.Request.Headers["X-Org-Id"].ToString(), ct);
+        if (org is null)
+        {
+            return SandcastleProblemFactory.Create(http, 404, "no org");
+        }
+
+        // Opt-in por conexão/repo também no trigger manual (RF-001 —
+        // Disabled = 403); connection do repo = primeiro match.
+        var connection = (await connections.ListAsync(org.OrgId, ct))
+            .FirstOrDefault(c => c.Repos.Count == 0
+                || c.Repos.Contains(req.Repository,
+                    StringComparer.OrdinalIgnoreCase));
+        if (connection is null)
+        {
+            return SandcastleProblemFactory.Create(
+                http, 404, "no scm connection for repository");
+        }
+        if (!connection.ReviewCovers(req.Repository))
+        {
+            return SandcastleProblemFactory.Create(http, 403,
+                "auto-review not enabled for this repository");
+        }
+        var provider = providers.Get(connection.Kind);
+        if (provider is null)
+        {
+            return SandcastleProblemFactory.Create(
+                http, 502, "scm provider not registered");
+        }
+
+        ScmPullRequest? pr;
+        try
+        {
+            pr = await provider.GetPullRequestAsync(
+                connection, req.Repository, req.PrNumber, ct);
+        }
+        catch (Exception)
+        {
+            pr = null;
+        }
+        if (pr is null)
+        {
+            return SandcastleProblemFactory.Create(
+                http, 404, "pull request not found");
+        }
+
+        var result = await reviews.TriggerAsync(
+            connection, req.Repository, req.PrNumber, pr.HeadSha,
+            "manual", user.UserId.ToString(), ct);
+        return result switch
+        {
+            { ReviewRunId: { } id } => Results.Accepted(
+                $"/api/v1/scm/reviews/{id}", new { review_run_id = id }),
+            { Error: ReviewTriggerError.Duplicate, Detail: var d } =>
+                SandcastleProblemFactory.Create(http, 409,
+                    d ?? "review already in progress for this head"),
+            { Error: ReviewTriggerError.QuotaExceeded, Detail: var d } =>
+                SandcastleProblemFactory.Create(http, 403,
+                    d ?? "daily review quota reached"),
+            _ => SandcastleProblemFactory.Create(
+                http, 409, "review could not be started"),
+        };
+    }
+
+    private static async Task<IResult> ListReviewsAsync(
+        HttpContext http, ICurrentUserAccessor current,
+        IEffectiveOrgResolver orgs, IReviewService reviews,
+        string? repository, int? pr, string? status,
+        string? page_id, int? limit, CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+        {
+            return Results.Unauthorized();
+        }
+        var org = await orgs.ResolveAsync(
+            user, http.Request.Headers["X-Org-Id"].ToString(), ct);
+        if (org is null)
+        {
+            return Results.Ok(new
+            {
+                items = Array.Empty<object>(),
+                next_page_id = (string?)null
+            });
+        }
+        var page = await reviews.SearchAsync(
+            org.OrgId, repository, pr, status, page_id, limit ?? 50, ct);
+        return Results.Ok(new
+        {
+            items = page.Items,
+            next_page_id = page.NextPageId,
+        });
+    }
+
+    private static async Task<IResult> GetReviewAsync(
+        Guid id, HttpContext http, ICurrentUserAccessor current,
+        IEffectiveOrgResolver orgs, IReviewService reviews,
+        CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+        {
+            return Results.Unauthorized();
+        }
+        var org = await orgs.ResolveAsync(
+            user, http.Request.Headers["X-Org-Id"].ToString(), ct);
+        if (org is null)
+        {
+            return Results.NotFound();
+        }
+        var detail = await reviews.GetAsync(org.OrgId, id, ct);
+        return detail is null
+            ? Results.NotFound()
+            : Results.Ok(new { run = detail.Run, findings = detail.Findings });
+    }
+
+    private static async Task<IResult> PatchFindingAsync(
+        Guid id, Guid fid, [FromBody] ScmFindingPatchRequest req,
+        HttpContext http, ICurrentUserAccessor current,
+        IEffectiveOrgResolver orgs, IReviewService reviews,
+        CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+        {
+            return Results.Unauthorized();
+        }
+        var org = await orgs.ResolveAsync(
+            user, http.Request.Headers["X-Org-Id"].ToString(), ct);
+        if (org is null)
+        {
+            return Results.NotFound();
+        }
+        if (req.Status is null
+            || !ReviewFindingStatuses.Updatable.Contains(req.Status))
+        {
+            return SandcastleProblemFactory.Create(
+                http, 400, "status must be open|dismissed");
+        }
+        var finding = await reviews.UpdateFindingStatusAsync(
+            org.OrgId, id, fid, req.Status, ct);
+        return finding is null
+            ? Results.NotFound()
+            : Results.Ok(finding);
+    }
+
+    private static async Task<IResult> PatchConnectionReviewAsync(
+        Guid id, [FromBody] ScmConnectionReviewPatch req, HttpContext http,
+        ICurrentUserAccessor current, IEffectiveOrgResolver orgs,
+        IScmConnectionService svc, CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+        {
+            return Results.Unauthorized();
+        }
+        // Effective org (X-Org-Id membership-checked → bound → default) —
+        // UpdateReviewSettings valida que a connection pertence à org.
+        var org = await orgs.ResolveAsync(
+            user, http.Request.Headers["X-Org-Id"].ToString(), ct);
+        if (org is null)
+        {
+            return Results.NotFound();
+        }
+        if (req.ReviewTriggerMode is { } m
+            && m is not (ReviewDefaults.TriggerModeAll
+                or ReviewDefaults.TriggerModeLabelOnly))
+        {
+            return SandcastleProblemFactory.Create(
+                http, 400, "review_trigger_mode must be all_prs|label_only");
+        }
+        if (req.ReviewPassCondition is { } p
+            && p is not (ReviewDefaults.PassConditionCompleted
+                or ReviewDefaults.PassConditionNoCritical
+                or ReviewDefaults.PassConditionNoFindings))
+        {
+            return SandcastleProblemFactory.Create(http, 400,
+                "review_pass_condition must be "
+                + "completed|no_critical|no_findings");
+        }
+        var conn = await svc.UpdateReviewSettingsAsync(
+            org.OrgId, id,
+            new ScmConnectionReviewUpdate(
+                req.ReviewEnabled, req.ReviewRepos,
+                req.ReviewTriggerMode, req.ReviewPassCondition), ct);
+        return conn is null ? Results.NotFound() : Results.Ok(conn);
     }
 
     private static async Task<IResult> CreatePullRequestAsync(
@@ -286,3 +511,18 @@ public sealed record ScmConnectionRequest(
     string? ApiUrl = null,
     string? AuthKind = null,
     string? MetaJson = null);
+
+/// <summary>SPEC-140: manual review trigger body.</summary>
+public sealed record ScmReviewRequest(
+    string? Repository = null,
+    int PrNumber = 0);
+
+/// <summary>SPEC-140: finding status patch (<c>open|dismissed</c>).</summary>
+public sealed record ScmFindingPatchRequest(string? Status = null);
+
+/// <summary>SPEC-140: review enrollment patch on a connection.</summary>
+public sealed record ScmConnectionReviewPatch(
+    bool? ReviewEnabled = null,
+    IReadOnlyList<string>? ReviewRepos = null,
+    string? ReviewTriggerMode = null,
+    string? ReviewPassCondition = null);

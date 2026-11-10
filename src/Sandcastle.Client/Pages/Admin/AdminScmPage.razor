@@ -44,6 +44,7 @@ else
                             <th>@L["admin.scm_app"]</th>
                             <th>@L["admin.scm_installation"]</th>
                             <th>@L["admin.scm_repos"]</th>
+                            <th>@L["admin.scm_review"]</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -55,6 +56,12 @@ else
                                 <td>@Str(c, "app_slug")</td>
                                 <td>@Str(c, "installation_id")</td>
                                 <td>@ReposOf(c)</td>
+                                <td>
+                                    <input type="checkbox"
+                                        aria-label="@L["admin.scm_review"]"
+                                        checked="@BoolOf(c, "review_enabled")"
+                                        @onchange="e => ToggleReviewAsync(c, e)" />
+                                </td>
                                 <td>
                                     <button class="btn danger"
                                         @onclick="() => DeleteAsync(c)">
@@ -105,6 +112,26 @@ else
         Toasts.Success(L["admin.scm_deleted"]);
         await LoadConnectionsAsync();
     }
+
+    private async Task ToggleReviewAsync(JsonElement c, ChangeEventArgs e)
+    {
+        var enabled = e.Value is bool b && b;
+        var ok = await Api.PatchScmConnectionReviewAsync(
+            _orgId, Str(c, "id")!, enabled);
+        if (ok)
+        {
+            Toasts.Success(L["admin.scm_review_updated"]);
+        }
+        else
+        {
+            Toasts.Error(L["admin.scm_review_failed"]);
+        }
+        await LoadConnectionsAsync();
+    }
+
+    private static bool BoolOf(JsonElement c, string prop) =>
+        c.TryGetProperty(prop, out var v)
+            && v.ValueKind == JsonValueKind.True;
 
     private static string ReposOf(JsonElement c) =>
         c.TryGetProperty("repos", out var r)
