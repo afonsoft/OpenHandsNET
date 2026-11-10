@@ -2,10 +2,13 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 using Sandcastle.Application.ChatOps;
 using Sandcastle.Application.Contracts;
+using Sandcastle.Infrastructure.Persistence;
 
 namespace Sandcastle.Infrastructure.ChatOps;
 
@@ -13,12 +16,70 @@ namespace Sandcastle.Infrastructure.ChatOps;
 /// Slack Web API <see cref="IChatSink"/> (SPEC-54 RF-003): bot token
 /// por-referência, Bearer auth, nunca loga token. Falhas viram warn +
 /// null — postback nunca derruba o pipeline.
+/// SPEC-147 RF-001: todo texto outbound passa por
+/// <see cref="SlackTextSanitizer"/> neste único ponto de saída —
+/// pings de grupo só escapam quando a org opta in
+/// (<c>chatops_allow_group_mentions</c>) ou a instância habilita
+/// <c>ChatOps:AllowGroupMentions</c>.
 /// </summary>
 public sealed class SlackChatSink(
     IHttpClientFactory httpFactory, ISecretStore secrets,
+    AppDbContext db, IOptions<ChatOpsOptions> options,
     ILogger<SlackChatSink> logger) : IChatSink
 {
     private const string ApiBase = "https://slack.com/api/";
+
+    /// <summary>
+    /// Org setting (<c>organizations.settings_json</c>) que permite
+    /// pings de grupo explicitamente (SPEC-147 RF-001).
+    /// </summary>
+    public const string OrgSettingAllowGroupMentions =
+        "chatops_allow_group_mentions";
+
+    private async Task<string> SanitizeAsync(
+        ChatConnection c, string text, CancellationToken ct)
+    {
+        if (options.Value.AllowGroupMentions
+            || await OrgAllowsGroupMentionsAsync(c.OrgId, ct))
+        {
+            return text;
+        }
+
+        return SlackTextSanitizer.NeutralizePings(text);
+    }
+
+    /// <summary>Org opt-in via settings dict (default false).</summary>
+    private async Task<bool> OrgAllowsGroupMentionsAsync(
+        Guid? orgId, CancellationToken ct)
+    {
+        if (orgId is not { } id)
+        {
+            return false;
+        }
+
+        var json = await db.Organizations.AsNoTracking()
+            .Where(o => o.Id == id)
+            .Select(o => o.SettingsJson)
+            .FirstOrDefaultAsync(ct);
+        if (json is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.TryGetProperty(
+                    OrgSettingAllowGroupMentions, out var v)
+                && v.ValueKind == JsonValueKind.String
+                && bool.TryParse(v.GetString(), out var allow)
+                && allow;
+        }
+        catch (JsonException)
+        {
+            return false; // fail-closed: settings inválidas não liberam ping
+        }
+    }
 
     private async Task<HttpRequestMessage> ReqAsync(
         ChatConnection c, string method, CancellationToken ct)
@@ -73,7 +134,7 @@ public sealed class SlackChatSink(
         {
             channel = channelId,
             thread_ts = threadTs,
-            text,
+            text = await SanitizeAsync(connection, text, ct),
         }, ct);
         return root?.TryGetProperty("ts", out var ts) == true
             ? ts.GetString() : null;
@@ -87,7 +148,7 @@ public sealed class SlackChatSink(
         {
             channel = channelId,
             ts,
-            text,
+            text = await SanitizeAsync(connection, text, ct),
         }, ct);
 
     /// <inheritdoc />

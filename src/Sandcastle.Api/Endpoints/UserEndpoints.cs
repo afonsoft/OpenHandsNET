@@ -66,10 +66,24 @@ public static class UserEndpoints
             foreach (var prop in body.EnumerateObject())
             {
                 // whitelist — preferências nunca carregam payload arbitrário.
-                if (prop.Name is "theme" or "sidebar_collapsed"
-                    && prop.Value.ValueKind == JsonValueKind.String)
+                // SPEC-147 RF-002: git_author_name/git_author_email/git_coauthor
+                // alimentam a cadeia user→org→global de autoria de commit.
+                if (prop.Name is not ("theme" or "sidebar_collapsed"
+                    or "git_author_name" or "git_author_email" or "git_coauthor"))
+                {
+                    continue;
+                }
+
+                if (prop.Value.ValueKind == JsonValueKind.String)
                 {
                     merged[prop.Name] = prop.Value.GetString()!;
+                }
+                else if (prop.Name == "git_coauthor"
+                    && prop.Value.ValueKind
+                        is JsonValueKind.True or JsonValueKind.False)
+                {
+                    merged[prop.Name] = prop.Value.GetBoolean()
+                        ? "true" : "false";
                 }
             }
 

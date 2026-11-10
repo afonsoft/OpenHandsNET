@@ -34,6 +34,7 @@ public sealed class GitFileAtRefTests : IAsyncDisposable
                 new EphemeralDataProtectionProvider(),
                 NullLogger<GitCredentialProvider>.Instance),
             Options.Create(new GitOptions()),
+            new GitAuthorResolver(_db, Options.Create(new GitOptions())),
             NullLogger<GitService>.Instance);
     }
 

@@ -17,4 +17,13 @@ public sealed class GitOptions
 
     /// <summary>Agent commit author email.</summary>
     public string AuthorEmail { get; set; } = "agent@sandcastle.local";
+
+    /// <summary>
+    /// SPEC-147 RF-002: <c>Git:CoAuthorUser</c> — quando true (default),
+    /// commits do agente carregam trailer
+    /// <c>Co-authored-by: {user} &lt;{email}&gt;</c> do dono da conversa
+    /// (só com e-mail verificado; usuário/org podem desligar via
+    /// settings — precedência user→org→global).
+    /// </summary>
+    public bool CoAuthorUser { get; set; } = true;
 }

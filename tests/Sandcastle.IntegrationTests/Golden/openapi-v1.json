@@ -9778,6 +9778,34 @@
         ]
       }
     },
+    "/api/v1/usage/budget": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "org",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/usage/budget",
+        "tags": [
+          "Sandcastle.Api"
+        ]
+      }
+    },
     "/api/v1/user": {
       "get": {
         "responses": {

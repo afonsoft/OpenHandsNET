@@ -77,6 +77,7 @@ public sealed class GitServiceTests : IAsyncLifetime
             new GitCredentialProvider(_db, dp,
                 NullLogger<GitCredentialProvider>.Instance),
             Options.Create(new GitOptions()),
+            new GitAuthorResolver(_db, Options.Create(new GitOptions())),
             NullLogger<GitService>.Instance);
     }
 

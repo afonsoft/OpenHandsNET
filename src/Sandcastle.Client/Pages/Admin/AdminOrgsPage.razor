@@ -88,6 +88,44 @@ else
                     @L["admin.reset"]
                 </button>
             </div>
+
+            @* SPEC-147 RF-001/RF-002: settings da org — autoria de
+               commit e opt-in de pings de grupo no Slack. *@
+            <h3>@L["admin.git_chatops_title"]</h3>
+            <p class="muted">@L["admin.git_chatops_hint"]</p>
+
+            <div class="field">
+                <label for="os-gitname">@L["admin.git_author_name"]</label>
+                <input id="os-gitname" @bind="_osGitName"
+                       placeholder="sandcastle-agent" />
+            </div>
+            <div class="field">
+                <label for="os-gitemail">@L["admin.git_author_email"]</label>
+                <input id="os-gitemail" @bind="_osGitEmail"
+                       placeholder="agent@sandcastle.local" />
+            </div>
+            <div class="field">
+                <label for="os-coauthor">@L["admin.coauthor"]</label>
+                <select id="os-coauthor" @bind="_osCoauthor">
+                    <option value="">@L["admin.inherit"]</option>
+                    <option value="true">@L["admin.yes"]</option>
+                    <option value="false">@L["admin.no"]</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="os-slackping">@L["admin.slack_group_mentions"]</label>
+                <select id="os-slackping" @bind="_osSlackPing">
+                    <option value="">@L["admin.inherit"]</option>
+                    <option value="true">@L["admin.yes"]</option>
+                    <option value="false">@L["admin.no"]</option>
+                </select>
+            </div>
+            <div class="composer-actions">
+                <button class="btn btn-primary" @onclick="SaveOrgSettingsAsync"
+                        disabled="@_saving">
+                    @L["admin.save"]
+                </button>
+            </div>
         }
     </div>
 }
@@ -102,6 +140,11 @@ else
     private string _askMcp = "";
     private string _minRisk = "";
     private string _resume = "";
+    // SPEC-147: org settings (autoria + pings de grupo).
+    private string _osGitName = "";
+    private string _osGitEmail = "";
+    private string _osCoauthor = "";
+    private string _osSlackPing = "";
 
     protected override async Task LoadAsync() =>
         _orgs = await Api.ListOrgsAsync();
@@ -116,6 +159,13 @@ else
         _askMcp = BoolStr(p, "ask_mcp_tools");
         _minRisk = Str(p, "min_confirm_risk") ?? "";
         _resume = Str(p, "resume_strict") ?? "";
+
+        var st = await Api.GetOrgSettingsAsync(_orgId);
+        _osGitName = st.GetValueOrDefault("git_author_name") ?? "";
+        _osGitEmail = st.GetValueOrDefault("git_author_email") ?? "";
+        _osCoauthor = st.GetValueOrDefault("coauthor_enabled") ?? "";
+        _osSlackPing = st.GetValueOrDefault(
+            "chatops_allow_group_mentions") ?? "";
         _loaded = true;
     }
 
@@ -142,6 +192,33 @@ else
             {
                 Toasts.Success(L["admin.saved"]);
                 await LoadPolicyAsync();
+            }
+            else
+            {
+                Error = err;
+            }
+        }
+        finally { _saving = false; }
+    }
+
+    /// <summary>SPEC-147: salva as chaves de settings da org.</summary>
+    private async Task SaveOrgSettingsAsync()
+    {
+        if (string.IsNullOrEmpty(_orgId)) { return; }
+        _saving = true;
+        try
+        {
+            var patch = new Dictionary<string, string>
+            {
+                ["git_author_name"] = _osGitName.Trim(),
+                ["git_author_email"] = _osGitEmail.Trim(),
+                ["coauthor_enabled"] = _osCoauthor,
+                ["chatops_allow_group_mentions"] = _osSlackPing,
+            };
+            var (ok, err) = await Api.PatchOrgSettingsAsync(_orgId, patch);
+            if (ok)
+            {
+                Toasts.Success(L["admin.saved"]);
             }
             else
             {

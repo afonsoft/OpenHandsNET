@@ -23,9 +23,41 @@
         }
         else
         {
-            <div class="diff-meta">@_filePath</div>
-            @* SPEC-21 RF-004: Monaco readonly; fallback <pre> sem JS. *@
-            @if (_monacoFailed)
+            <div class="diff-meta">
+                @_filePath
+                @* SPEC-147 RF-003: .md/.markdown ganham toggle
+                   Rendered/Source (render sanitizado por MarkdownService). *@
+                @if (IsMarkdown(_filePath))
+                {
+                    <span class="mode-toggle" style="float:right">
+                        <button type="button" class="@(_rendered ? "sel" : "")"
+                                @onclick="() => SetRenderedAsync(true)">
+                            @L["files.rendered"]
+                        </button>
+                        <button type="button" class="@(!_rendered ? "sel" : "")"
+                                @onclick="() => SetRenderedAsync(false)">
+                            @L["files.source"]
+                        </button>
+                    </span>
+                }
+            </div>
+            @* SPEC-21 RF-004: Monaco readonly; fallback <pre> sem JS.
+               SPEC-147 RF-003: markdown renderizado e highlight de
+               patch/diff nunca dependem do Monaco. *@
+            @if (IsMarkdown(_filePath) && _rendered)
+            {
+                <div class="md">@MarkdownService.Render(_fileContent)</div>
+            }
+            else if (IsPatch(_filePath))
+            {
+                @* .patch/.diff com highlight de diff (mesmas classes
+                   .diff-line do DiffTab — sem execução). *@
+                <pre>@foreach (var line in DiffLines())
+                {
+                    <span class="diff-line @GitDiffRender.LineClass(line)">@line</span>
+                }</pre>
+            }
+            else if (_monacoFailed)
             {
                 <pre>@_fileContent</pre>
             }
@@ -46,12 +78,51 @@
     private string? _fileContent;
     private bool _monacoFailed;
     private bool _monacoDirty;
+    private bool _rendered = true;
+
+    /// <summary>SPEC-147 RF-003: .md/.markdown renderizam no viewer.</summary>
+    internal static bool IsMarkdown(string path) =>
+        Path.GetExtension(path).ToLowerInvariant()
+            is ".md" or ".markdown";
+
+    /// <summary>SPEC-147 RF-003: .patch/.diff ganham highlight de diff.</summary>
+    internal static bool IsPatch(string path) =>
+        Path.GetExtension(path).ToLowerInvariant()
+            is ".patch" or ".diff";
+
+    /// <summary>Monaco só monta quando o host está na árvore.</summary>
+    private bool ShowMonaco => _filePath is not null && !_monacoFailed
+        && !(IsMarkdown(_filePath) && _rendered)
+        && !IsPatch(_filePath);
+
+    private IEnumerable<string> DiffLines() =>
+        (_fileContent ?? "").Split('\n');
+
+    private async Task SetRenderedAsync(bool rendered)
+    {
+        if (_rendered == rendered)
+        {
+            return;
+        }
+
+        _rendered = rendered;
+        if (rendered)
+        {
+            try { await Monaco.DisposeAsync("file-monaco"); }
+            catch (JSException) { /* best-effort — falha tolerada */ }
+        }
+        else
+        {
+            _monacoDirty = true;
+        }
+    }
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_monacoDirty && _filePath is not null && !_monacoFailed)
+        if (_monacoDirty && _filePath is not null && !_monacoFailed
+            && ShowMonaco)
         {
             _monacoDirty = false;
             try
@@ -110,6 +181,7 @@
         else
         {
             _filePath = entry.Path;
+            _rendered = true;
             _fileContent = "loading…";
             _monacoDirty = true;
             _fileContent = await Api.ReadFileAsync(

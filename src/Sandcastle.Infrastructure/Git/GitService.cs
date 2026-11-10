@@ -18,6 +18,7 @@ public sealed class GitService(
     ISandboxExecutor executor,
     GitCredentialProvider credentials,
     IOptions<GitOptions> options,
+    GitAuthorResolver authors,
     ILogger<GitService> logger) : IGitService
 {
     /// <inheritdoc />
@@ -194,12 +195,20 @@ public sealed class GitService(
         var add = files is { Count: > 0 }
             ? string.Join(' ', files.Select(f => $"'{Escape(f)}'"))
             : "-A";
+        // SPEC-147 RF-002: autoria resolvida user→org→global +
+        // trailer Co-authored-by do dono da conversa.
+        var identity = await authors.ResolveForConversationAsync(
+            sandbox.ConversationId, ct);
+        var fullMessage = identity.CoAuthorTrailer is { } trailer
+            && !message.Contains("Co-authored-by:", StringComparison.Ordinal)
+            ? $"{message}\n\n{trailer}"
+            : message;
         var msgB64 = Convert.ToBase64String(
-            System.Text.Encoding.UTF8.GetBytes(message));
+            System.Text.Encoding.UTF8.GetBytes(fullMessage));
         var r = await executor.ExecAsync(sandbox,
             $"cd '{Repo}' && git add {add} && " +
-            $"git -c user.name='{options.Value.AuthorName}' " +
-            $"-c user.email='{options.Value.AuthorEmail}' " +
+            $"git -c user.name='{Escape(identity.AuthorName)}' " +
+            $"-c user.email='{Escape(identity.AuthorEmail)}' " +
             $"commit -m \"$(echo '{msgB64}' | base64 -d)\" && git rev-parse HEAD",
             TimeSpan.FromSeconds(60), ct);
         var hash = r.StdOut.Trim().Split('\n').LastOrDefault();
