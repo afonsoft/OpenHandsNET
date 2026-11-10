@@ -8,7 +8,7 @@
 | Type | `Feature / SCM + Agent + Automations` |
 | Stack | `.NET 10 · webhook check_run/check_suite/workflow_run · start-task` |
 | Repository | `afonsoft/sandcastle` |
-| Status | `Approved` |
+| Status | `Delivered` |
 | Ticket | `GAP-SCM-CI-AUTOFIX` (docs/research/2026-11-competitive-gap-analysis.md §G2) |
 | Depends on | `52`/`53` (SCM), `09` (runner), `140` (review findings como entrada opcional) |
 | Reference | Devin "Fix CI Failures" automation + Auto-Fix; OH `iterate` skill (conceitos apenas) |

@@ -134,7 +134,7 @@ Aprovadas em 2026-11-10 pelo usuário — Epic acompanha no GitHub.
 |---|---|---|---|
 | 139 | brand-assets | Draft | — |
 | 140 | pr-review-agent | Delivered · PR #414 | #405 |
-| 141 | ci-autofix-loop | Approved | GAP-SCM-CI-AUTOFIX |
+| 141 | ci-autofix-loop | Delivered · PR #416 | #406 |
 | 142 | qa-agent-evidence | Approved | GAP-AGENT-QA-EVIDENCE |
 | 143 | code-scans | Approved | GAP-SCAN-FINDINGS |
 | 144 | batch-refactor | Approved | GAP-REFACTOR-BATCH |
