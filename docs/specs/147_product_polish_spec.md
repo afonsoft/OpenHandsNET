@@ -8,7 +8,7 @@
 | Type | `Feature / Security-hardening + UX (bundle)` |
 | Stack | `.NET 10 · ChatOps Slack · Git · Client · Usage` |
 | Repository | `afonsoft/sandcastle` |
-| Status | `Approved` |
+| Status | `Done` |
 | Ticket | `GAP-POLISH-QW` (docs/research/2026-11-competitive-gap-analysis.md §G8) |
 | Depends on | `54` (Slack), `12`/`52` (git/SCM), `20` (usage/quotas), `60` (indexing) |
 | Reference | Devin bot-comment settings; OH 0.70 "Your Budget" — conceitos apenas |

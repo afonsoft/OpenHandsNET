@@ -8,7 +8,7 @@
 | Type | `Feature / SCM + Agent` |
 | Stack | `.NET 10 · GitHub/GitLab webhook · start-task · commit status` |
 | Repository | `afonsoft/sandcastle` |
-| Status | `Approved` |
+| Status | `Done` |
 | Ticket | `GAP-SCM-PR-REVIEW` (docs/research/2026-11-competitive-gap-analysis.md §G1) |
 | Depends on | `52` (GitHub App), `53` (providers), `09` (agent runner), `47` (automations) |
 | Reference | OH Verification Stack L2 (`/codereview` + `/github-pr-review`); Devin Review (commit status + findings + re-review skip) — conceitos apenas |
