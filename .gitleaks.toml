@@ -16,9 +16,11 @@
 # Allowlist global — aplica-se a todas as regras.
 # ---------------------------------------------------------------------------
 [allowlist]
-  description = "Vendored third-party frontend bundles — minified JS trips entropy rules (a mesma árvore já é excluída do Sonar)"
+  description = "Vendored third-party content — minified JS e docs de referência das agent skills tripam entropy/auth rules (a mesma árvore já é excluída do Sonar)"
   paths = [
     '''wwwroot/lib''',
+    '''.agents/skills''',
+    '''.claude/skills''',
   ]
 
 # ---------------------------------------------------------------------------

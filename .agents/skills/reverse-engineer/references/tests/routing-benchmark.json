@@ -1,0 +1,900 @@
+{
+  "meta": {
+    "description": "reverse-skill 路由回归基准。每条用例 = (hint, expect)。修改路由规则后必须保持此基准全绿；新增路由场景请同步添加用例。",
+    "runner": "references/scripts/test-routing.ps1",
+    "generated": "2026-08-02",
+    "quickNote": "quick=true 的用例是每个路由的最小回归集（smoke 快速模式使用）"
+  },
+  "cases": [
+    {
+      "hint": "decompile APK with jadx apktool smali",
+      "expect": "R1",
+      "quick": true
+    },
+    {
+      "hint": "Android APK Hardening and Reverse Engineering",
+      "expect": "R1",
+      "quick": false
+    },
+    {
+      "hint": "Repackaging APK to modify smali",
+      "expect": "R1",
+      "quick": false
+    },
+    {
+      "hint": "frida hook android app",
+      "expect": "R1",
+      "quick": false
+    },
+    {
+      "hint": "Bypass root detection and certificate verification",
+      "expect": "R1",
+      "quick": false
+    },
+    {
+      "hint": "apk certificate pinning bypass",
+      "expect": "R1",
+      "quick": false
+    },
+    {
+      "hint": "ios reverse objection mobsf",
+      "expect": "R2",
+      "quick": true
+    },
+    {
+      "hint": "IPA Reverse",
+      "expect": "R2",
+      "quick": false
+    },
+    {
+      "hint": "iphone jailbreak detection bypass",
+      "expect": "R2",
+      "quick": false
+    },
+    {
+      "hint": "iOS jailbreak detection bypass",
+      "expect": "R2",
+      "quick": false
+    },
+    {
+      "hint": "js reverse webpack encrypted param",
+      "expect": "R3",
+      "quick": true
+    },
+    {
+      "hint": "Frontend signature encryption parameters JS reverse engineering",
+      "expect": "R3",
+      "quick": false
+    },
+    {
+      "hint": "jshookmcp cdp hook",
+      "expect": "R3",
+      "quick": false
+    },
+    {
+      "hint": "Packet capture Analyze request Replay",
+      "expect": "R3",
+      "quick": false
+    },
+    {
+      "hint": "dsl vm reverse fireye",
+      "expect": "R4",
+      "quick": true
+    },
+    {
+      "hint": "Custom Virtual Machine Instruction Set Reverse Engineering",
+      "expect": "R4",
+      "quick": false
+    },
+    {
+      "hint": "opcode vm reverse",
+      "expect": "R4",
+      "quick": false
+    },
+    {
+      "hint": ".net reverse dnspy de4dot",
+      "expect": "R5",
+      "quick": true
+    },
+    {
+      "hint": "C# reverse confuserex unpacking",
+      "expect": "R5",
+      "quick": false
+    },
+    {
+      "hint": "dotnet deobfuscation",
+      "expect": "R5",
+      "quick": false
+    },
+    {
+      "hint": "IDA decompile PE",
+      "expect": "R6",
+      "quick": true
+    },
+    {
+      "hint": "Disassembly Static Analysis Binary",
+      "expect": "R6",
+      "quick": false
+    },
+    {
+      "hint": "r2 disassemble",
+      "expect": "R6",
+      "quick": false
+    },
+    {
+      "hint": "radare2 analyze binary",
+      "expect": "R7",
+      "quick": true
+    },
+    {
+      "hint": "r2xsql query imports",
+      "expect": "R7",
+      "quick": false
+    },
+    {
+      "hint": "radius2 solve crackme",
+      "expect": "R7",
+      "quick": false
+    },
+    {
+      "hint": "r2mcp analyze binary",
+      "expect": "R7",
+      "quick": false
+    },
+    {
+      "hint": "firmware binwalk iot",
+      "expect": "R8",
+      "quick": true
+    },
+    {
+      "hint": "Firmware reverse engineering router",
+      "expect": "R8",
+      "quick": false
+    },
+    {
+      "hint": "malware analysis yara",
+      "expect": "R9",
+      "quick": true
+    },
+    {
+      "hint": "Malware Sample Analysis Sandbox",
+      "expect": "R9",
+      "quick": false
+    },
+    {
+      "hint": "sandbox malware sample",
+      "expect": "R9",
+      "quick": false
+    },
+    {
+      "hint": "Ransomware Analysis",
+      "expect": "R9",
+      "quick": false
+    },
+    {
+      "hint": "full pentest attack chain",
+      "expect": "R10",
+      "quick": true
+    },
+    {
+      "hint": "Red Team lateral-movement internal network penetration",
+      "expect": "R10",
+      "quick": false
+    },
+    {
+      "hint": "Accessing the domain controller from the external network",
+      "expect": "R10",
+      "quick": false
+    },
+    {
+      "hint": "nmap nuclei sqlmap",
+      "expect": "R11",
+      "quick": true
+    },
+    {
+      "hint": "Penetration testing, port scanning, SQL injection",
+      "expect": "R11",
+      "quick": false
+    },
+    {
+      "hint": "bug bounty source vulnerability hunting",
+      "expect": "R11",
+      "quick": false
+    },
+    {
+      "hint": "burpsuite intruder brute force",
+      "expect": "R11",
+      "quick": false
+    },
+    {
+      "hint": "api security graphql bola",
+      "expect": "R12",
+      "quick": true
+    },
+    {
+      "hint": "Exceeding authority Unauthorized access Interface security",
+      "expect": "R12",
+      "quick": false
+    },
+    {
+      "hint": "oauth attack",
+      "expect": "R12",
+      "quick": false
+    },
+    {
+      "hint": "sbom trivy supply chain",
+      "expect": "R13",
+      "quick": true
+    },
+    {
+      "hint": "Supply chain relies on scanning gitleaks",
+      "expect": "R13",
+      "quick": false
+    },
+    {
+      "hint": "llm prompt injection",
+      "expect": "R14",
+      "quick": true
+    },
+    {
+      "hint": "Prompt injection model jailbreak",
+      "expect": "R14",
+      "quick": false
+    },
+    {
+      "hint": "agent security garak",
+      "expect": "R14",
+      "quick": false
+    },
+    {
+      "hint": "bindiff symbol migration",
+      "expect": "R15",
+      "quick": true
+    },
+    {
+      "hint": "Symbol migration PDB missing",
+      "expect": "R15",
+      "quick": false
+    },
+    {
+      "hint": "n-day patch diff",
+      "expect": "R16",
+      "quick": true
+    },
+    {
+      "hint": "Patch difference CVE reproduction",
+      "expect": "R16",
+      "quick": false
+    },
+    {
+      "hint": "pwn rop ret2libc",
+      "expect": "R17",
+      "quick": true
+    },
+    {
+      "hint": "Stack overflow Heap overflow exploit",
+      "expect": "R17",
+      "quick": false
+    },
+    {
+      "hint": "buffer overflow kernel pwn",
+      "expect": "R17",
+      "quick": false
+    },
+    {
+      "hint": "edr bypass syscall",
+      "expect": "R18",
+      "quick": true
+    },
+    {
+      "hint": "AMSI bypass patch",
+      "expect": "R18",
+      "quick": false
+    },
+    {
+      "hint": "playwright browser automation",
+      "expect": "R19",
+      "quick": true
+    },
+    {
+      "hint": "Browser Automation Form Filling",
+      "expect": "R19",
+      "quick": false
+    },
+    {
+      "hint": "write pentest report",
+      "expect": "R11",
+      "quick": false
+    },
+    {
+      "hint": "Penetration Testing Report Write Report",
+      "expect": "R11",
+      "quick": false
+    },
+    {
+      "hint": "draw attack path diagram",
+      "expect": "R39",
+      "quick": true
+    },
+    {
+      "hint": "Flowchart Architecture Diagram mermaid",
+      "expect": "R39",
+      "quick": false
+    },
+    {
+      "hint": "protobuf custom protocol reverse",
+      "expect": "R21",
+      "quick": true
+    },
+    {
+      "hint": "protocol reverse engineering pcap wireshark",
+      "expect": "R21",
+      "quick": false
+    },
+    {
+      "hint": "ghidra headless decompile",
+      "expect": "R22",
+      "quick": true
+    },
+    {
+      "hint": "Decompile with Ghidra without IDA",
+      "expect": "R22",
+      "quick": false
+    },
+    {
+      "hint": "kubernetes container escape",
+      "expect": "R23",
+      "quick": true
+    },
+    {
+      "hint": "Container Escape k8s Cloud Security",
+      "expect": "R23",
+      "quick": false
+    },
+    {
+      "hint": "bloodhound kerberoast active directory",
+      "expect": "R24",
+      "quick": true
+    },
+    {
+      "hint": "domain-penetration Kerberos attack",
+      "expect": "R24",
+      "quick": false
+    },
+    {
+      "hint": "AD CS certipy impacket",
+      "expect": "R24",
+      "quick": false
+    },
+    {
+      "hint": "volatility memory dump forensics",
+      "expect": "R25",
+      "quick": true
+    },
+    {
+      "hint": "Memory Forensics Emergency Response",
+      "expect": "R25",
+      "quick": false
+    },
+    {
+      "hint": "Mobile Forensics Disk Forensics",
+      "expect": "R25",
+      "quick": false
+    },
+    {
+      "hint": "semgrep code audit",
+      "expect": "R26",
+      "quick": true
+    },
+    {
+      "hint": "White-box code audit SAST",
+      "expect": "R26",
+      "quick": false
+    },
+    {
+      "hint": "threat hunting sigma",
+      "expect": "R27",
+      "quick": true
+    },
+    {
+      "hint": "Threat Hunting Detection Project",
+      "expect": "R27",
+      "quick": false
+    },
+    {
+      "hint": "scada plc modbus",
+      "expect": "R28",
+      "quick": true
+    },
+    {
+      "hint": "Industrial Control OT ICS Security",
+      "expect": "R28",
+      "quick": false
+    },
+    {
+      "hint": "wifi aircrack wireless",
+      "expect": "R29",
+      "quick": true
+    },
+    {
+      "hint": "Wireless Penetration WiFi Attack",
+      "expect": "R29",
+      "quick": false
+    },
+    {
+      "hint": "chrome extension reverse",
+      "expect": "R30",
+      "quick": true
+    },
+    {
+      "hint": "Browser extension reverse engineering crx",
+      "expect": "R30",
+      "quick": false
+    },
+    {
+      "hint": "macos mach-o reverse",
+      "expect": "R31",
+      "quick": true
+    },
+    {
+      "hint": "Mac reverse engineering Mach-O",
+      "expect": "R31",
+      "quick": false
+    },
+    {
+      "hint": "thick client electron app",
+      "expect": "R32",
+      "quick": true
+    },
+    {
+      "hint": "Thick Client Security Testing",
+      "expect": "R32",
+      "quick": false
+    },
+    {
+      "hint": "golang binary reverse",
+      "expect": "R33",
+      "quick": true
+    },
+    {
+      "hint": "go binary reverse stripped",
+      "expect": "R33",
+      "quick": false
+    },
+    {
+      "hint": "uart jtag hardware debug",
+      "expect": "R34",
+      "quick": true
+    },
+    {
+      "hint": "Hardware Debugging UART Serial Port",
+      "expect": "R34",
+      "quick": false
+    },
+    {
+      "hint": "database security mysql",
+      "expect": "R35",
+      "quick": true
+    },
+    {
+      "hint": "Database security mongodb redis",
+      "expect": "R35",
+      "quick": false
+    },
+    {
+      "hint": "phishing email analysis spf dmarc",
+      "expect": "R36",
+      "quick": true
+    },
+    {
+      "hint": "Phishing Email Analysis",
+      "expect": "R36",
+      "quick": false
+    },
+    {
+      "hint": "saml oidc sso",
+      "expect": "R37",
+      "quick": true
+    },
+    {
+      "hint": "Federated Identity Single Sign-On",
+      "expect": "R37",
+      "quick": false
+    },
+    {
+      "hint": "sdr hackrf gnu radio",
+      "expect": "R38",
+      "quick": true
+    },
+    {
+      "hint": "RF SDR Signal Analysis",
+      "expect": "R38",
+      "quick": false
+    },
+    {
+      "hint": "reverse engineering binary",
+      "expect": "R0",
+      "quick": true
+    },
+    {
+      "hint": "Reverse engineering anti-debugging ollvm",
+      "expect": "R0",
+      "quick": false
+    },
+    {
+      "hint": "gdb angr unicorn symbolic execution",
+      "expect": "R0",
+      "quick": false
+    },
+    {
+      "hint": "Jailbreak prompt red team AI",
+      "expect": "R10",
+      "quick": false
+    },
+    {
+      "hint": "jailbreak iphone",
+      "expect": "R2",
+      "quick": false
+    },
+    {
+      "hint": "LLM jailbreak",
+      "expect": "R14",
+      "quick": false
+    },
+    {
+      "hint": "iOS jailbreak detection bypass",
+      "expect": "R2",
+      "quick": false
+    },
+    {
+      "hint": "domain-penetration full penetration attack chain",
+      "expect": "R10",
+      "quick": false
+    },
+    {
+      "hint": "Attack the domain controller",
+      "expect": "R10",
+      "quick": false
+    },
+    {
+      "hint": "frida hook native so",
+      "expect": "R0",
+      "quick": false
+    },
+    {
+      "hint": "frida hook apk",
+      "expect": "R1",
+      "quick": false
+    },
+    {
+      "hint": "oauth2 oidc sso federation",
+      "expect": "R37",
+      "quick": false
+    },
+    {
+      "hint": "stack overflow",
+      "expect": "R17",
+      "quick": false
+    },
+    {
+      "hint": "radio signal",
+      "expect": "R0",
+      "quick": false
+    },
+    {
+      "hint": "sdr",
+      "expect": "R38",
+      "quick": false
+    },
+    {
+      "hint": "git repository",
+      "expect": "R0",
+      "quick": false
+    },
+    {
+      "hint": "docker escape",
+      "expect": "R23",
+      "quick": false
+    },
+    {
+      "hint": "k8s penetration",
+      "expect": "R23",
+      "quick": false
+    },
+    {
+      "hint": "wpa handshake",
+      "expect": "R29",
+      "quick": false
+    },
+    {
+      "hint": "macOS reverse engineering",
+      "expect": "R31",
+      "quick": false
+    },
+    {
+      "hint": "electron app reverse engineering",
+      "expect": "R32",
+      "quick": false
+    },
+    {
+      "hint": "rust binary",
+      "expect": "R33",
+      "quick": false
+    },
+    {
+      "hint": "go malware",
+      "expect": "R33",
+      "quick": false
+    },
+    {
+      "hint": "Windows AD domain-penetration kerberos",
+      "expect": "R24",
+      "quick": false
+    },
+    {
+      "hint": "AD domain controller attack",
+      "expect": "R24",
+      "quick": false
+    },
+    {
+      "hint": "pdf",
+      "expect": "R0",
+      "quick": false
+    },
+    {
+      "hint": "writeup",
+      "expect": "R20",
+      "quick": true
+    },
+    {
+      "hint": "report",
+      "expect": "R20",
+      "quick": false
+    },
+    {
+      "hint": "metasploit msf",
+      "expect": "R11",
+      "quick": false
+    },
+    {
+      "hint": "SQL Injection Database",
+      "expect": "R11",
+      "quick": false
+    },
+    {
+      "hint": "IoT devices",
+      "expect": "R8",
+      "quick": false
+    },
+    {
+      "hint": "OT Security Assessment",
+      "expect": "R28",
+      "quick": false
+    },
+    {
+      "hint": "forensics evidence collection",
+      "expect": "R25",
+      "quick": false
+    },
+    {
+      "hint": "Burp Suite packet capture and replay",
+      "expect": "R3",
+      "quick": false
+    },
+    {
+      "hint": "CTF reverse engineering challenge",
+      "expect": "R41",
+      "quick": false
+    },
+    {
+      "hint": "awd shooting range",
+      "expect": "R41",
+      "quick": true
+    },
+    {
+      "hint": "CTF pwn stack overflow",
+      "expect": "R17",
+      "quick": false
+    },
+    {
+      "hint": "Symbolic execution angr",
+      "expect": "R0",
+      "quick": false
+    },
+    {
+      "hint": "mermaid sequence diagram",
+      "expect": "R39",
+      "quick": false
+    },
+    {
+      "hint": "Attack Path Map",
+      "expect": "R39",
+      "quick": false
+    },
+    {
+      "hint": "Threat Hunting Detection Rules sigma",
+      "expect": "R27",
+      "quick": false
+    },
+    {
+      "hint": "Bluetooth BLE Analysis",
+      "expect": "R38",
+      "quick": false
+    },
+    {
+      "hint": "WiFi password cracking",
+      "expect": "R29",
+      "quick": false
+    },
+    {
+      "hint": "USB device reverse engineering",
+      "expect": "R34",
+      "quick": false
+    },
+    {
+      "hint": "so file native analysis",
+      "expect": "R6",
+      "quick": false
+    },
+    {
+      "hint": "Unity game reverse engineering",
+      "expect": "R0",
+      "quick": false
+    },
+    {
+      "hint": "dump memory analysis",
+      "expect": "R25",
+      "quick": false
+    },
+    {
+      "hint": "JS encryption decryption reverse engineering",
+      "expect": "R3",
+      "quick": false
+    },
+    {
+      "hint": "Interface Privilege Escalation IDOR",
+      "expect": "R12",
+      "quick": false
+    },
+    {
+      "hint": "Penetration Report Output",
+      "expect": "R20",
+      "quick": false
+    },
+    {
+      "hint": "mimikatz credential harvesting",
+      "expect": "R24",
+      "quick": false
+    },
+    {
+      "hint": "Wireshark traffic analysis",
+      "expect": "R21",
+      "quick": false
+    },
+    {
+      "hint": "Linux privilege escalation",
+      "expect": "R11",
+      "quick": false
+    },
+    {
+      "hint": "Linux privilege escalation",
+      "expect": "R11",
+      "quick": false
+    },
+    {
+      "hint": "Cloud Security Bucket Leak",
+      "expect": "R23",
+      "quick": false
+    },
+    {
+      "hint": "s3 bucket permissions",
+      "expect": "R23",
+      "quick": false
+    },
+    {
+      "hint": "frida dynamic debugging so",
+      "expect": "R0",
+      "quick": false
+    },
+    {
+      "hint": "Android Dynamic Debugging",
+      "expect": "R1",
+      "quick": false
+    },
+    {
+      "hint": "app packet capture https",
+      "expect": "R3",
+      "quick": false
+    },
+    {
+      "hint": "sqlmap injection",
+      "expect": "R11",
+      "quick": false
+    },
+    {
+      "hint": "hashcat crack",
+      "expect": "R11",
+      "quick": false
+    },
+    {
+      "hint": "webshell detection",
+      "expect": "R9",
+      "quick": false
+    },
+    {
+      "hint": "webshell",
+      "expect": "R9",
+      "quick": false
+    },
+    {
+      "hint": "Emergency response",
+      "expect": "R25",
+      "quick": false
+    },
+    {
+      "hint": "Safety Assessment Report",
+      "expect": "R11",
+      "quick": false
+    },
+    {
+      "hint": "Risk Assessment",
+      "expect": "R11",
+      "quick": false
+    },
+    {
+      "hint": "case review evidence chain traceability",
+      "expect": "R40",
+      "quick": true
+    },
+    {
+      "hint": "Case review, evidence chain, traceability",
+      "expect": "R40",
+      "quick": false
+    },
+    {
+      "hint": "Case Audit Evidence Diagram Traceability Fixity Verification",
+      "expect": "R40",
+      "quick": false
+    },
+    {
+      "hint": "evidence graph fixity check for the case audit",
+      "expect": "R40",
+      "quick": false
+    },
+    {
+      "hint": "Collect public X and Twitter posts about this IOC for OSINT threat intelligence",
+      "expect": "R44",
+      "quick": true
+    },
+    {
+      "hint": "Publicly X tweet to supplement threat intelligence on this malicious domain",
+      "expect": "R44",
+      "quick": false
+    },
+    {
+      "hint": "CTI indicator enrichment for this phishing campaign",
+      "expect": "R44",
+      "quick": false
+    },
+    {
+      "hint": "track an impersonation scam from public Twitter posts",
+      "expect": "R44",
+      "quick": false
+    },
+    {
+      "hint": "analyze this binary with Binary Ninja MCP and HLIL",
+      "expect": "R45",
+      "quick": true
+    },
+    {
+      "hint": "Using Binja to view MLIL and function cross-references",
+      "expect": "R45",
+      "quick": false
+    },
+    {
+      "hint": "Twitter marketing sentiment for our product",
+      "expect": "R0",
+      "quick": false
+    }
+  ]
+}
