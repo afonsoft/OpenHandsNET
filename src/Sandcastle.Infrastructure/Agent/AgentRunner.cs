@@ -237,7 +237,7 @@ public sealed class AgentRunner(
     /// o run deve abortar (contract emit falhou / BYOR rejeitou — o
     /// evento terminal já foi emitido e o status marcado).
     /// </summary>
-    private async Task<LoopState?> InitLoopAsync(
+    private async Task<LoopState?> InitLoopAsync( // NOSONAR S107 — SPEC-104 (decisão aprovada): contexto de fluxo único; param object só desloca aridade
         IEventService events, AppDbContext db, ConversationRecord conv,
         Domain.Sandbox.Sandbox sandbox, ISandboxExecutor executor,
         IToolRegistry tools, Application.Mcp.IMcpClientService? mcp,
