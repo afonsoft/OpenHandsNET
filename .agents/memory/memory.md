@@ -1,5 +1,26 @@
 # memory.md — estado corrente (max 100 linhas)
 
+## Sessão 2026-11-10 (cont.) — Competitive gap analysis → SPECs 140-147 Draft
+
+- Relatório: `docs/research/2026-11-competitive-gap-analysis.md` (recriado;
+  versão anterior nunca foi commitada).
+- Pesquisa web 2026-11: OH Ent 0.70–0.103 (multi-repo conversations,
+  Model Router, super-admin, Your Budget, automation git sync, service
+  accounts, Bitbucket DC); Verification Stack (critic→review→QA+iterate);
+  Devin (Review+AutoFix checks, Code Scans/Security 2.0 findings,
+  stacked PRs, vídeo, handoff/plugins, DeepWiki+MCP, Outposts/RBAC).
+- 8 SPECs Draft em `.specs/` (índice atualizado):
+  140 pr-review-agent · 141 ci-autofix-loop · 142 qa-agent-evidence ·
+  143 code-scans · 144 batch-refactor · 145 repo-wiki-mcp ·
+  146 multi-repo-conversations · 147 product-polish (5 quick wins).
+- Evidências código: `GitHubWebhookService` só @mention;
+  `IScmProvider` sem CreateReview/logs; `SwarmOrchestrator`=stub;
+  `RepoIndexer` lê cwd da API; `Sandcastle.Mcp` stdio-only 12 tools;
+  `ChatOpsReporter` sem sanitize pings; `GitOptions` author só global.
+- Decisões conservadoras: review comment-only, autofix cap 3,
+  A2A fora da v1.0, stacked opcional GitHub-only (144).
+- Gate: aguardando aprovação das SPECs → depois create-issues (Epic).
+
 ## Sessão 2026-11-06 — Epic #152 Sonar debt (tail)
 
 - **SPEC-103 closed**: PRs #357/#358/#359/#360 merged (~95 handlers

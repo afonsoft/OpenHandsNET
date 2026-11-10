@@ -122,3 +122,22 @@ publicada na conversa de origem. SPECs aprovadas 2026-11-08 → issues + impleme
 | 135 | beta-conversation-ux | Delivered · PR #384 | #369 |
 | 136 | beta-nav-visual-polish | Delivered · PR #374 | #370 |
 | 137 | beta-release-housekeeping | Delivered · PR #372 | #371 |
+
+### Leva 2026-11-10 (competitive gap analysis — PR loop) — Approved
+
+Análise: `docs/research/2026-11-competitive-gap-analysis.md`. Onda A
+(review → autofix → QA) fecha o loop do PR que OpenHands (Verification
+Stack) e Devin (Review+Autofix) vendem como diferencial #1.
+Aprovadas em 2026-11-10 pelo usuário — Epic acompanha no GitHub.
+
+| SPEC | Título | Status | Ticket |
+|---|---|---|---|
+| 139 | brand-assets | Draft | — |
+| 140 | pr-review-agent | Approved | GAP-SCM-PR-REVIEW |
+| 141 | ci-autofix-loop | Approved | GAP-SCM-CI-AUTOFIX |
+| 142 | qa-agent-evidence | Approved | GAP-AGENT-QA-EVIDENCE |
+| 143 | code-scans | Approved | GAP-SCAN-FINDINGS |
+| 144 | batch-refactor | Approved | GAP-REFACTOR-BATCH |
+| 145 | repo-wiki-mcp | Approved | GAP-WIKI-MCP |
+| 146 | multi-repo-conversations | Approved | GAP-MULTI-REPO |
+| 147 | product-polish | Approved | GAP-POLISH-QW |
