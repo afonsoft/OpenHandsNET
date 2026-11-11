@@ -71,9 +71,17 @@ public static class GitEndpoints
     }
 
     private static async Task<IResult> GitChangesAsync(
-        Guid id, IAppConversationService svc, IGitService git,
+        Guid id, string? repo,
+        IAppConversationService svc, IGitService git,
         HttpContext http, CancellationToken ct)
     {
+        var (repoPath, repoErr) = await ResolveRepoArgAsync(
+            id, repo, svc, http, ct);
+        if (repoErr is not null)
+        {
+            return repoErr;
+        }
+
         var sb = await SandboxOfAsync(id, svc, http, ct);
         if (sb is null)
         {
@@ -81,19 +89,26 @@ public static class GitEndpoints
                 http, 409, SandcastleProblemFactory.SandboxNotRunning);
         }
 
-        if (!await git.HasRepositoryAsync(sb, ct))
+        if (!await git.HasRepositoryAsync(sb, ct, repoPath))
         {
             return SandcastleProblemFactory.Create(http, 404, NoRepository);
         }
 
-        return Results.Ok(await git.GetChangesAsync(sb, ct));
+        return Results.Ok(await git.GetChangesAsync(sb, ct, repoPath));
     }
 
     private static async Task<IResult> GitDiffAsync(
-        Guid id, string? path, string? format,
+        Guid id, string? path, string? format, string? repo,
         IAppConversationService svc, IGitService git,
         HttpContext http, CancellationToken ct)
     {
+        var (repoPath, repoErr) = await ResolveRepoArgAsync(
+            id, repo, svc, http, ct);
+        if (repoErr is not null)
+        {
+            return repoErr;
+        }
+
         var sb = await SandboxOfAsync(id, svc, http, ct);
         if (sb is null)
         {
@@ -101,7 +116,7 @@ public static class GitEndpoints
                 http, 409, SandcastleProblemFactory.SandboxNotRunning);
         }
 
-        if (!await git.HasRepositoryAsync(sb, ct))
+        if (!await git.HasRepositoryAsync(sb, ct, repoPath))
         {
             return SandcastleProblemFactory.Create(http, 404, NoRepository);
         }
@@ -109,10 +124,11 @@ public static class GitEndpoints
         if (string.Equals(format, "raw", StringComparison.OrdinalIgnoreCase))
         {
             return Results.Text(
-                await git.GetRawDiffAsync(sb, path, ct) ?? "", "text/plain");
+                await git.GetRawDiffAsync(sb, path, ct, repoPath) ?? "",
+                "text/plain");
         }
 
-        var report = await git.GetDiffAsync(sb, path, ct);
+        var report = await git.GetDiffAsync(sb, path, ct, repoPath);
         return Results.Ok(report);
     }
 
@@ -122,7 +138,7 @@ public static class GitEndpoints
     /// absoluto (<c>/workspace/…</c>) ou relativo ao repo; <c>..</c> → 400.
     /// </summary>
     private static async Task<IResult> GitFileAtRefAsync(
-        Guid id, string? path, string? @ref,
+        Guid id, string? path, string? @ref, string? repo,
         IAppConversationService svc, IGitService git,
         HttpContext http, CancellationToken ct)
     {
@@ -133,6 +149,13 @@ public static class GitEndpoints
                 http, 400, "path required and must not contain '..'");
         }
 
+        var (repoPath, repoErr) = await ResolveRepoArgAsync(
+            id, repo, svc, http, ct);
+        if (repoErr is not null)
+        {
+            return repoErr;
+        }
+
         var sb = await SandboxOfAsync(id, svc, http, ct);
         if (sb is null)
         {
@@ -140,12 +163,13 @@ public static class GitEndpoints
                 http, 409, SandcastleProblemFactory.SandboxNotRunning);
         }
 
-        if (!await git.HasRepositoryAsync(sb, ct))
+        if (!await git.HasRepositoryAsync(sb, ct, repoPath))
         {
             return SandcastleProblemFactory.Create(http, 404, NoRepository);
         }
 
-        var content = await git.GetFileAtRefAsync(sb, path, @ref ?? "HEAD", ct);
+        var content = await git.GetFileAtRefAsync(
+            sb, path, @ref ?? "HEAD", ct, repoPath);
         return content is null
             ? SandcastleProblemFactory.Create(
                 http, 404, $"file not found at ref: {path}")
@@ -153,10 +177,17 @@ public static class GitEndpoints
     }
 
     private static async Task<IResult> GitLogAsync(
-        Guid id, int? limit,
+        Guid id, int? limit, string? repo,
         IAppConversationService svc, IGitService git,
         HttpContext http, CancellationToken ct)
     {
+        var (repoPath, repoErr) = await ResolveRepoArgAsync(
+            id, repo, svc, http, ct);
+        if (repoErr is not null)
+        {
+            return repoErr;
+        }
+
         var sb = await SandboxOfAsync(id, svc, http, ct);
         if (sb is null)
         {
@@ -164,12 +195,12 @@ public static class GitEndpoints
                 http, 409, SandcastleProblemFactory.SandboxNotRunning);
         }
 
-        if (!await git.HasRepositoryAsync(sb, ct))
+        if (!await git.HasRepositoryAsync(sb, ct, repoPath))
         {
             return SandcastleProblemFactory.Create(http, 404, NoRepository);
         }
 
-        return Results.Ok(await git.GetLogAsync(sb, limit ?? 50, ct));
+        return Results.Ok(await git.GetLogAsync(sb, limit ?? 50, ct, repoPath));
     }
 
     private static async Task<IResult> ListFilesAsync(
@@ -517,6 +548,13 @@ public static class GitEndpoints
                 http, 400, "invalid file path");
         }
 
+        var (repoPath, repoErr) = await ResolveRepoArgAsync(
+            id, body.Repo, svc, http, ct);
+        if (repoErr is not null)
+        {
+            return repoErr;
+        }
+
         var sb = await SandboxOfAsync(id, svc, http, ct);
         if (sb is null)
         {
@@ -524,12 +562,13 @@ public static class GitEndpoints
                 http, 409, SandcastleProblemFactory.SandboxNotRunning);
         }
 
-        if (!await git.HasRepositoryAsync(sb, ct))
+        if (!await git.HasRepositoryAsync(sb, ct, repoPath))
         {
             return SandcastleProblemFactory.Create(http, 404, NoRepository);
         }
 
-        var r = await git.CommitAsync(sb, body.Message, body.Files, ct);
+        var r = await git.CommitAsync(
+            sb, body.Message, body.Files, ct, repoPath);
         return r.Success
             ? Results.Ok(new { sha = r.Hash })
             : SandcastleProblemFactory.Create(
@@ -607,7 +646,30 @@ public static class GitEndpoints
     private sealed record FilePathRequest(string? Path);
     private sealed record RenameRequest(string? From, string? To);
     private sealed record GitCommitRequest(
-        string? Message, IReadOnlyList<string>? Files);
+        string? Message, IReadOnlyList<string>? Files, string? Repo);
+
+    /// <summary>
+    /// SPEC-146: resolve o query/body arg <c>repo</c> — nome completo ou
+    /// short-name dentro da seleção da conversa → path in-sandbox
+    /// (null = primário/legado). Inválido → 400.
+    /// </summary>
+    private static async Task<(string? RepoPath, IResult? Error)>
+        ResolveRepoArgAsync(Guid id, string? repoArg,
+            IAppConversationService svc, HttpContext http,
+            CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(repoArg))
+        {
+            return (null, null);
+        }
+
+        var repos = (await svc.GetAsync(id, ct))?.EffectiveRepositories ?? [];
+        var canonical = MultiRepoLayout.ResolveRepo(repos, repoArg);
+        return canonical is null
+            ? (null, SandcastleProblemFactory.Create(http, 400,
+                $"unknown repo '{repoArg}'"))
+            : (MultiRepoLayout.PathFor(repos, canonical), null);
+    }
 
     /// <summary>
     /// SPEC-39 RF-001: exec one-shot pós-run para asserts do eval harness

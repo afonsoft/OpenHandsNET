@@ -142,7 +142,7 @@ public sealed class ConversationStartWorker(
         }
     }
 
-    private static async Task CloneRepositoryAsync(
+    private async Task CloneRepositoryAsync(
         IServiceScope scope, Sandcastle.Sandboxing.WorkspaceProvisioner workspaces,
         Domain.Sandbox.Sandbox? sbForProvision, Domain.Sandbox.Sandbox sandbox,
         ConversationRecord conv, CancellationToken ct)
@@ -151,7 +151,10 @@ public sealed class ConversationStartWorker(
             .GetRequiredService<ISandboxService>();
         var gitService = scope.ServiceProvider
             .GetRequiredService<Application.Git.IGitService>();
-        if (string.IsNullOrEmpty(conv.SelectedRepository))
+        // SPEC-146: lista ordenada (primário no índice 0) — RepositoriesJson
+        // com fallback pro legado SelectedRepository.
+        var repos = conv.GetRepositories();
+        if (repos.Count == 0 || string.IsNullOrEmpty(conv.SelectedRepository))
         {
             return;
         }
@@ -160,27 +163,102 @@ public sealed class ConversationStartWorker(
         var branch = gitOpt.WorkBranch
             .Replace("{id}", conv.Id.ToString("N")[..8],
                 StringComparison.Ordinal);
-        if (gitOpt.CloneMode.Equals("host", StringComparison.OrdinalIgnoreCase))
+
+        if (repos.Count == 1)
         {
-            // Host mode: token do dono (ou system) via http.extraHeader.
-            var creds = scope.ServiceProvider.GetRequiredService<
-                Git.GitCredentialProvider>();
-            var host = TryRepoHost(conv.SelectedRepository);
-            var token = host is null ? null
-                : await creds.ResolveTokenAsync(host, conv.CreatedByUserId, ct);
-            await workspaces.CloneRepositoryAsync(
-                conv.Id, conv.SelectedRepository, branch, token, ct);
+            // Single-repo — fluxo legado inalterado (clone em /workspace/repo).
+            if (gitOpt.CloneMode.Equals("host", StringComparison.OrdinalIgnoreCase))
+            {
+                // Host mode: token do dono (ou system) via http.extraHeader.
+                var creds = scope.ServiceProvider.GetRequiredService<
+                    Git.GitCredentialProvider>();
+                var host = TryRepoHost(conv.SelectedRepository);
+                var token = host is null ? null
+                    : await creds.ResolveTokenAsync(host, conv.CreatedByUserId, ct);
+                await workspaces.CloneRepositoryAsync(
+                    conv.Id, conv.SelectedRepository, branch, token, ct);
+                return;
+            }
+            // Default: clone dentro do container (isolado; token via askpass).
+            var sbSingle = sbForProvision
+                ?? await sandboxService.GetAsync(sandbox.Id, ct);
+            if (sbSingle is not null)
+            {
+                await gitService.CloneAsync(
+                    sbSingle, conv.SelectedRepository, branch,
+                    conv.CreatedByUserId, ct);
+            }
             return;
         }
-        // Default: clone dentro do container (isolado; token via askpass).
-        var sbDomain = sbForProvision
-            ?? await sandboxService.GetAsync(sandbox.Id, ct);
-        if (sbDomain is not null)
+
+        // SPEC-146 RF-002: multi-repo — clone paralelo em
+        // /workspace/repos/{short}, /workspace/repo → symlink do primário;
+        // credencial resolvida por repo (conexão SCM → fallback user cred).
+        var credResolver = scope.ServiceProvider
+            .GetRequiredService<Scm.RepoCloneCredentialResolver>();
+        IReadOnlyList<MultiRepoCloner.RepoCloneOutcome> outcomes;
+        var hostMode = gitOpt.CloneMode.Equals(
+            "host", StringComparison.OrdinalIgnoreCase);
+        var dirs = Application.Conversations.MultiRepoLayout.DirNames(repos);
+        if (hostMode)
         {
-            await gitService.CloneAsync(
-                sbDomain, conv.SelectedRepository, branch,
-                conv.CreatedByUserId, ct);
+            outcomes = await MultiRepoCloner.CloneAsync(repos,
+                async (repo, path, c) =>
+                {
+                    var token = await credResolver.ResolveAsync(
+                        repo, conv.OrgId, conv.CreatedByUserId, c);
+                    // "/workspace/repos/{dir}" → "repos/{dir}" no host.
+                    await workspaces.CloneRepositoryToAsync(
+                        conv.Id,
+                        path["/workspace/".Length..], repo, branch,
+                        token, c);
+                }, logger, ct);
+            workspaces.TryCreatePrimaryLink(conv.Id, $"repos/{dirs[0]}");
         }
+        else
+        {
+            var sbDomain = sbForProvision
+                ?? await sandboxService.GetAsync(sandbox.Id, ct);
+            if (sbDomain is null)
+            {
+                return;
+            }
+            outcomes = await MultiRepoCloner.CloneAsync(repos,
+                async (repo, path, c) =>
+                {
+                    var token = await credResolver.ResolveAsync(
+                        repo, conv.OrgId, conv.CreatedByUserId, c);
+                    await gitService.CloneAsync(
+                        sbDomain, repo, branch, conv.CreatedByUserId, c,
+                        repoPath: path, credentialToken: token);
+                }, logger, ct);
+            // /workspace/repo → primário (compat de tools/scripts legados).
+            var executor = scope.ServiceProvider
+                .GetRequiredService<ISandboxExecutor>();
+            var link = await executor.ExecAsync(sbDomain,
+                $"ln -sfnT '{outcomes[0].Path}' " +
+                $"'{Application.Conversations.MultiRepoLayout.LegacyRepoPath}'",
+                TimeSpan.FromSeconds(15), ct);
+            if (link.ExitCode != 0)
+            {
+                logger.LogWarning(
+                    "legacy /workspace/repo symlink failed: {Err}",
+                    link.StdErr.Trim());
+            }
+        }
+
+        // Reporta o resultado dos clones (secundários falhos incluídos) no
+        // stream — visível no setup da conversa e no system prompt.
+        var eventSvc = scope.ServiceProvider
+            .GetRequiredService<Application.Events.IEventService>();
+        await eventSvc.AppendAsync(conv.Id,
+            new Domain.Events.ConversationStateUpdateEvent
+            {
+                Key = "repositories",
+                Value = System.Text.Json.JsonSerializer.SerializeToElement(
+                    MultiRepoCloner.ToStateValue(outcomes),
+                    Domain.Events.EventJson.Options),
+            }, ct);
     }
 
     // SPEC-11 RF-005: resolve + persiste skills da conversa antes de READY.

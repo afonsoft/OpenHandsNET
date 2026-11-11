@@ -17,11 +17,14 @@ namespace Sandcastle.Infrastructure.Skills;
 /// </summary>
 public sealed class RepoSkillProvider(ILogger<RepoSkillProvider> logger)
 {
-    /// <summary>Conventional repo skill dirs (repo-root relative).</summary>
+    /// <summary>
+    /// Conventional repo skill dirs (repo-root relative) — SPEC-146:
+    /// <c>.sandcastle/skills</c> também conta como contexto por repo.
+    /// </summary>
     public static readonly string[] SkillDirs =
     [
         ".openhands/skills", ".devin/skills",
-        ".agents/skills", ".claude/skills",
+        ".agents/skills", ".claude/skills", ".sandcastle/skills",
     ];
 
     private const string RepoRoot = "/workspace/repo";
@@ -33,17 +36,20 @@ public sealed class RepoSkillProvider(ILogger<RepoSkillProvider> logger)
     /// <summary>
     /// All repo skills of the sandbox (cached). <paramref name="executor"/>
     /// é parâmetro (scoped) — o provider é singleton pelo cache por sandbox.
+    /// SPEC-146: <paramref name="repoRoots"/> lista os mounts
+    /// (<c>/workspace/repos/{short}</c>) — null = só o legado
+    /// <c>/workspace/repo</c>.
     /// </summary>
     public async Task<IReadOnlyList<Skill>> LoadAsync(
         RuntimeSandbox sandbox, ISandboxExecutor executor,
-        CancellationToken ct)
+        CancellationToken ct, IReadOnlyList<string>? repoRoots = null)
     {
         if (_cache.TryGetValue(sandbox.Id, out var cached))
         {
             return cached;
         }
 
-        cached = await ScanAsync(sandbox, executor, ct);
+        cached = await ScanAsync(sandbox, executor, ct, repoRoots);
         _cache[sandbox.Id] = cached;
         return cached;
     }
@@ -53,57 +59,59 @@ public sealed class RepoSkillProvider(ILogger<RepoSkillProvider> logger)
 
     private async Task<IReadOnlyList<Skill>> ScanAsync(
         RuntimeSandbox sandbox, ISandboxExecutor executor,
-        CancellationToken ct)
+        CancellationToken ct, IReadOnlyList<string>? repoRoots = null)
     {
         var skills = new List<Skill>();
-        foreach (var dir in SkillDirs)
-        {
-            IReadOnlyList<FileEntry> entries;
-            try
+        var roots = repoRoots is { Count: > 0 } ? repoRoots : [RepoRoot];
+        foreach (var root in roots)
+            foreach (var dir in SkillDirs)
             {
-                entries = await executor.ListFilesAsync(
-                    sandbox, $"{RepoRoot}/{dir}", ct);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                continue; // dir ausente — normal.
-            }
-
-            foreach (var skillPath in entries
-                .Where(e => e.IsDirectory)
-                .Select(e => $"{RepoRoot}/{dir}/{e.Path.TrimEnd('/')}/SKILL.md"))
-            {
+                IReadOnlyList<FileEntry> entries;
                 try
                 {
-                    var md = await executor.ReadFileAsync(
-                        sandbox, skillPath, ct);
-                    if (md.Length > MaxSkillBytes
-                        || string.IsNullOrWhiteSpace(md))
-                    {
-                        continue;
-                    }
-
-                    var (name, desc, body) = ParseSkillMd(md);
-                    skills.Add(new Skill
-                    {
-                        Id = Guid.NewGuid(),
-                        Name = name ?? Path.GetFileName(
-                            skillPath.TrimEnd('/')),
-                        Description = desc,
-                        ContentMd = body,
-                        Source = SkillSource.Repo,
-                        RepoPath = skillPath,
-                        CreatedAt = DateTimeOffset.UtcNow,
-                    });
+                    entries = await executor.ListFilesAsync(
+                        sandbox, $"{root}/{dir}", ct);
                 }
-                catch (Exception ex2)
-                    when (ex2 is not OperationCanceledException)
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    logger.LogDebug(ex2, "repo skill {Path} ilegível",
-                        skillPath);
+                    continue; // dir ausente — normal.
+                }
+
+                foreach (var skillPath in entries
+                    .Where(e => e.IsDirectory)
+                    .Select(e => $"{root}/{dir}/{e.Path.TrimEnd('/')}/SKILL.md"))
+                {
+                    try
+                    {
+                        var md = await executor.ReadFileAsync(
+                            sandbox, skillPath, ct);
+                        if (md.Length > MaxSkillBytes
+                            || string.IsNullOrWhiteSpace(md))
+                        {
+                            continue;
+                        }
+
+                        var (name, desc, body) = ParseSkillMd(md);
+                        skills.Add(new Skill
+                        {
+                            Id = Guid.NewGuid(),
+                            Name = name ?? Path.GetFileName(
+                                skillPath.TrimEnd('/')),
+                            Description = desc,
+                            ContentMd = body,
+                            Source = SkillSource.Repo,
+                            RepoPath = skillPath,
+                            CreatedAt = DateTimeOffset.UtcNow,
+                        });
+                    }
+                    catch (Exception ex2)
+                        when (ex2 is not OperationCanceledException)
+                    {
+                        logger.LogDebug(ex2, "repo skill {Path} ilegível",
+                            skillPath);
+                    }
                 }
             }
-        }
 
         logger.LogInformation(
             "repo skills no sandbox {Id}: {Count}", sandbox.Id, skills.Count);

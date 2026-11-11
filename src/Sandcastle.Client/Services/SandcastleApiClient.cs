@@ -22,10 +22,16 @@ public sealed class SandcastleApiClient(HttpClient http)
 
     // ---- conversations ------------------------------------------------
 
-    /// <summary>POST /app-conversations → start-task (async).</summary>
+    /// <summary>
+    /// POST /app-conversations → start-task (async). SPEC-146:
+    /// <paramref name="repositories"/> ordenado (índice 0 = primário,
+    /// max 4) → <c>selected_repositories</c>; o legado
+    /// <c>selected_repository</c> continua espelhando o primário.
+    /// </summary>
     public async Task<StartTaskItem> CreateConversationAsync(
         string? initialMessage, string? selectedRepository,
         bool run = true, bool confirmationMode = false,
+        IReadOnlyList<string>? repositories = null,
         CancellationToken ct = default)
     {
         object? initial = initialMessage is null ? null : new
@@ -38,6 +44,7 @@ public sealed class SandcastleApiClient(HttpClient http)
         {
             initial_message = initial,
             selected_repository = selectedRepository,
+            selected_repositories = repositories,
             confirmation_mode = confirmationMode,
         }, Json, ct);
         resp.EnsureSuccessStatusCode();

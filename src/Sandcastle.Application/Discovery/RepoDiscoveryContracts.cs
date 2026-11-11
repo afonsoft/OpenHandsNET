@@ -23,8 +23,13 @@ public sealed record RepoSkillRef(
 /// </summary>
 public interface IRepoDiscoveryService
 {
-    /// <summary>Scans conventional paths under <c>/workspace/repo</c>.</summary>
+    /// <summary>
+    /// Scans conventional paths under <paramref name="repoRoot"/>
+    /// (default <c>/workspace/repo</c>; SPEC-146: cada repo montado em
+    /// <c>/workspace/repos/{short}</c> recebe o próprio probe).
+    /// </summary>
     Task<RepoContextManifest> DiscoverAsync(
         ISandboxExecutor executor,
-        Domain.Sandbox.Sandbox sandbox, CancellationToken ct);
+        Domain.Sandbox.Sandbox sandbox, CancellationToken ct,
+        string? repoRoot = null);
 }

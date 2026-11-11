@@ -25,7 +25,9 @@ public sealed class ScmPullRequestService( // NOSONAR S107 — SPEC-104 (decisã
     IGitService git,
     IEventService events,
     IAuditService audit,
-    ILogger<ScmPullRequestService> logger) : IScmPullRequestService
+    ILogger<ScmPullRequestService> logger,
+    RepoCloneCredentialResolver? cloneCreds = null)
+    : IScmPullRequestService
 {
     /// <inheritdoc />
     public async Task<ScmPrResult> CreateAsync(
@@ -38,9 +40,18 @@ public sealed class ScmPullRequestService( // NOSONAR S107 — SPEC-104 (decisã
         {
             return ScmPrResult.Fail(ScmPrError.NotFound);
         }
-        if (conv.PullRequestNumber is not null)
+
+        // SPEC-146 RF-003/004: repo alvo — default primário; nome completo
+        // ou short-name resolvem dentro da seleção da conversa.
+        var repos = conv.GetRepositories();
+        var repository = Application.Conversations.MultiRepoLayout
+            .ResolveRepo(repos, request.Repository);
+        var isPrimary = repository is not null && repos.Count > 0
+            && string.Equals(repository, repos[0],
+                StringComparison.OrdinalIgnoreCase);
+        if (repository is null)
         {
-            return ScmPrResult.Fail(ScmPrError.AlreadyExists);
+            return ScmPrResult.Fail(ScmPrError.InvalidRepository);
         }
         if (conv.OrgId is null || conv.SelectedRepository is null
             || conv.SandboxId is null)
@@ -48,12 +59,23 @@ public sealed class ScmPullRequestService( // NOSONAR S107 — SPEC-104 (decisã
             return ScmPrResult.Fail(ScmPrError.NoConnection);
         }
 
-        var repository = conv.SelectedRepository;
+        // Duplicata por repo — pull_requests_json agrega (legado espelha
+        // o primário via pull_request_*).
+        if (conv.GetPullRequests().Any(p =>
+                p.Repository.Equals(repository,
+                    StringComparison.OrdinalIgnoreCase)))
+        {
+            return ScmPrResult.Fail(ScmPrError.AlreadyExists);
+        }
+
         var connection = await connections.FindForRepositoryAsync(
             conv.OrgId.Value, ScmKind.GitHub, repository, ct);
         if (connection is null)
         {
-            return ScmPrResult.Fail(ScmPrError.NoConnection);
+            // secundário sem conexão = sem acesso (403); primário mantém
+            // o 404 legado (NoConnection).
+            return ScmPrResult.Fail(isPrimary
+                ? ScmPrError.NoConnection : ScmPrError.Forbidden);
         }
         var provider = providers.Get(connection.Kind);
         if (provider is null)
@@ -67,18 +89,37 @@ public sealed class ScmPullRequestService( // NOSONAR S107 — SPEC-104 (decisã
             return ScmPrResult.Fail(ScmPrError.ProviderError);
         }
 
+        // Multi-repo: cada repo vive em /workspace/repos/{short}; single
+        // mantém o path legado (null → /workspace/repo).
+        var repoPath = repos.Count > 1
+            ? Application.Conversations.MultiRepoLayout
+                .PathFor(repos, repository)
+            : null;
+
         try
         {
+            // SPEC-146: credencial da conexão do repo alvo provisiona
+            // git/gh para o push (secundários podem estar noutro host).
+            if (cloneCreds is not null
+                && await cloneCreds.ConnectionTokenAsync(connection, ct)
+                    is { } connToken)
+            {
+                await git.ProvisionTokenAuthAsync(sandbox,
+                    Application.Conversations.MultiRepoLayout
+                        .TryRepoHost(repository) ?? "github.com",
+                    connToken, ct);
+            }
+
             var head = request.Head;
             if (string.IsNullOrWhiteSpace(head))
             {
-                head = await git.GetCurrentBranchAsync(sandbox, ct)
+                head = await git.GetCurrentBranchAsync(sandbox, ct, repoPath)
                     ?? "HEAD";
             }
 
             var push = await git.PushAsync(
                 sandbox, head, head, forceWithLease: false,
-                conv.CreatedByUserId, ct);
+                conv.CreatedByUserId, ct, repoPath);
             if (!push.Success)
             {
                 logger.LogWarning("scm pr push failed (conv {Id}): {Err}",
@@ -90,10 +131,20 @@ public sealed class ScmPullRequestService( // NOSONAR S107 — SPEC-104 (decisã
                 connection, repository,
                 request with { Head = head }, ct);
 
-            conv.PullRequestUrl = pr.Url;
-            conv.PullRequestNumber = pr.Number;
-            conv.PullRequestState = pr.State;
-            conv.PullRequestHeadSha = push.HeadSha ?? pr.HeadSha;
+            var headSha = push.HeadSha ?? pr.HeadSha;
+            var prs = conv.GetPullRequests().ToList();
+            prs.Add(new Domain.Conversations.ConversationPullRequest(
+                repository, pr.Url, pr.Number, pr.State, headSha));
+            conv.PullRequestsJson = Conversations.ConversationRecord
+                .PullRequestsToJson(prs);
+            if (isPrimary)
+            {
+                // espelho legado do PR do primário.
+                conv.PullRequestUrl = pr.Url;
+                conv.PullRequestNumber = pr.Number;
+                conv.PullRequestState = pr.State;
+                conv.PullRequestHeadSha = headSha;
+            }
             conv.UpdatedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(ct);
 

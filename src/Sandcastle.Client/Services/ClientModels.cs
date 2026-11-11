@@ -98,8 +98,25 @@ public sealed class ConversationItem
     public string? NeedsAttention { get; init; }
     /// <summary>SPEC-135: origem do fork (null = conversa raiz).</summary>
     public string? ParentConversationId { get; init; }
+    /// <summary>
+    /// SPEC-146: repos selecionados (índice 0 = primário). Vazio em
+    /// rows legadas → UI deriva de <see cref="SelectedRepository"/>.
+    /// </summary>
+    public IReadOnlyList<string> Repositories { get; init; } = [];
+    /// <summary>SPEC-146: PRs por repo (null/empty = nenhum).</summary>
+    public IReadOnlyList<PullRequestItem> PullRequests { get; init; } = [];
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset UpdatedAt { get; init; }
+}
+
+/// <summary>SPEC-146: PR criado num repo da conversa (agregado).</summary>
+public sealed class PullRequestItem
+{
+    public required string Repository { get; init; }
+    public required string Url { get; init; }
+    public int Number { get; init; }
+    public string? State { get; init; }
+    public string? HeadSha { get; init; }
 }
 
 /// <summary>SPEC-44: item do inbox de attention.</summary>

@@ -106,7 +106,15 @@ public sealed class McpServer
                     ["initial_prompt"] = Prop(StringType,
                         "User message to seed and run."),
                     ["selected_repository"] = Prop(StringType,
-                        "org/repo to bind."),
+                        "org/repo to bind (primary)."),
+                    ["selected_repositories"] = new JsonObject
+                    {
+                        ["type"] = "array",
+                        ["items"] = new JsonObject { ["type"] = StringType },
+                        ["description"] =
+                            "Ordered org/repo list (max 4; index 0 = "
+                            + "primary) — overrides selected_repository.",
+                    },
                     ["llm_model"] = Prop(StringType, "Model id override."),
                     ["confirmation_mode"] = Prop("boolean",
                         "Require approval before the run starts."),
@@ -257,6 +265,8 @@ public sealed class McpServer
                         }
                         : null,
                     selected_repository = Str(args, "selected_repository"),
+                    selected_repositories = StrList(args,
+                        "selected_repositories"),
                     llm_model = Str(args, "llm_model"),
                     confirmation_mode =
                         args?["confirmation_mode"]?.GetValue<bool>() ?? false,
@@ -391,6 +401,15 @@ public sealed class McpServer
 
     private static string? Str(JsonNode? args, string key) =>
         args?[key]?.GetValue<string>();
+
+    /// <summary>SPEC-146: arg array de strings (null quando ausente).</summary>
+    private static IReadOnlyList<string>? StrList(
+        JsonNode? args, string key) =>
+        args?[key] is JsonArray arr
+            ? [.. arr.Select(v => v?.GetValue<string>())
+                .Where(v => !string.IsNullOrWhiteSpace(v))
+                .Cast<string>()]
+            : null;
 
     /// <summary>Arg obrigatório — devolve marcador inválido quando
     /// ausente (a API responde 404/400 e o texto vai na resposta).</summary>

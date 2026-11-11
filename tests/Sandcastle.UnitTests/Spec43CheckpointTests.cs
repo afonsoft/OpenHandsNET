@@ -57,34 +57,40 @@ public sealed class Spec43CheckpointServiceTests
     {
         public bool HasRepo { get; set; } = true;
         public Task<bool> HasRepositoryAsync(DomainSandbox s,
-            CancellationToken ct) => Task.FromResult(HasRepo);
+            CancellationToken ct, string? rp = null) =>
+            Task.FromResult(HasRepo);
         public Task CloneAsync(DomainSandbox s, string u, string b,
-            string? o, CancellationToken ct) => Task.CompletedTask;
+            string? o, CancellationToken ct, string? rp = null,
+            string? cred = null) => Task.CompletedTask;
         public Task<bool> ProvisionGhAuthAsync(DomainSandbox s, string? o,
             CancellationToken ct) => Task.FromResult(false);
         public Task<bool> ProvisionTokenAuthAsync(DomainSandbox s,
             string h, string t, CancellationToken ct) =>
             Task.FromResult(false);
         public Task<GitChanges> GetChangesAsync(DomainSandbox s,
-            CancellationToken ct) => throw new NotSupportedException();
+            CancellationToken ct, string? rp = null) =>
+            throw new NotSupportedException();
         public Task<GitDiffReport?> GetDiffAsync(DomainSandbox s, string? p,
-            CancellationToken ct) => throw new NotSupportedException();
+            CancellationToken ct, string? rp = null) =>
+            throw new NotSupportedException();
         public Task<string?> GetRawDiffAsync(DomainSandbox s, string? p,
-            CancellationToken ct) => throw new NotSupportedException();
+            CancellationToken ct, string? rp = null) =>
+            throw new NotSupportedException();
         public Task<IReadOnlyList<GitLogEntry>> GetLogAsync(DomainSandbox s,
-            int l, CancellationToken ct) =>
+            int l, CancellationToken ct, string? rp = null) =>
             throw new NotSupportedException();
         public Task<string?> GetFileAtRefAsync(DomainSandbox s, string p,
-            string r, CancellationToken ct) =>
+            string r, CancellationToken ct, string? rp = null) =>
             throw new NotSupportedException();
         public Task<GitCommitResult> CommitAsync(DomainSandbox s, string m,
-            IReadOnlyList<string>? f, CancellationToken ct) =>
-            throw new NotSupportedException();
+            IReadOnlyList<string>? f, CancellationToken ct,
+            string? rp = null) => throw new NotSupportedException();
         public Task<GitPushResult> PushAsync(DomainSandbox s, string h,
-            string? rb, bool fwl, string? o, CancellationToken ct) =>
-            throw new NotSupportedException();
+            string? rb, bool fwl, string? o, CancellationToken ct,
+            string? rp = null) => throw new NotSupportedException();
         public Task<string?> GetCurrentBranchAsync(DomainSandbox s,
-            CancellationToken ct) => throw new NotSupportedException();
+            CancellationToken ct, string? rp = null) =>
+            throw new NotSupportedException();
     }
 
     private static CheckpointService New(ScriptExecutor exec,

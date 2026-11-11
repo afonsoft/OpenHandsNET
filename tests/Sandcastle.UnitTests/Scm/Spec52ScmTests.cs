@@ -414,18 +414,21 @@ public sealed class Spec52ScmTests : IAsyncDisposable
     {
         public Task<GitPushResult> PushAsync(SandboxModel sandbox,
             string head, string? remoteBranch, bool forceWithLease,
-            string? ownerId, CancellationToken ct) =>
+            string? ownerId, CancellationToken ct,
+            string? repoPath = null) =>
             Task.FromResult(new GitPushResult(true, "sha-head", null));
 
         public Task<string?> GetCurrentBranchAsync(SandboxModel sandbox,
-            CancellationToken ct) =>
+            CancellationToken ct, string? repoPath = null) =>
             Task.FromResult<string?>("devin/work");
 
         public Task<bool> HasRepositoryAsync(SandboxModel sandbox,
-            CancellationToken ct) => Task.FromResult(true);
+            CancellationToken ct, string? repoPath = null) =>
+            Task.FromResult(true);
 
         public Task CloneAsync(SandboxModel sandbox, string url,
-            string branch, string? owner, CancellationToken ct) =>
+            string branch, string? owner, CancellationToken ct,
+            string? repoPath = null, string? credentialToken = null) =>
             Task.CompletedTask;
 
         public Task<bool> ProvisionGhAuthAsync(SandboxModel sandbox,
@@ -437,27 +440,31 @@ public sealed class Spec52ScmTests : IAsyncDisposable
             Task.FromResult(false);
 
         public Task<GitChanges> GetChangesAsync(SandboxModel sandbox,
-            CancellationToken ct) => throw new NotImplementedException();
+            CancellationToken ct, string? repoPath = null) =>
+            throw new NotImplementedException();
 
         public Task<GitDiffReport?> GetDiffAsync(SandboxModel sandbox,
-            string? path, CancellationToken ct) =>
+            string? path, CancellationToken ct, string? repoPath = null) =>
             throw new NotImplementedException();
 
         public Task<string?> GetRawDiffAsync(SandboxModel sandbox,
-            string? path, CancellationToken ct) =>
+            string? path, CancellationToken ct, string? repoPath = null) =>
             throw new NotImplementedException();
 
         public Task<IReadOnlyList<GitLogEntry>> GetLogAsync(
-            SandboxModel sandbox, int limit, CancellationToken ct) =>
+            SandboxModel sandbox, int limit, CancellationToken ct,
+            string? repoPath = null) =>
             throw new NotImplementedException();
 
         public Task<string?> GetFileAtRefAsync(SandboxModel sandbox,
-            string path, string reference, CancellationToken ct) =>
+            string path, string reference, CancellationToken ct,
+            string? repoPath = null) =>
             throw new NotImplementedException();
 
         public Task<GitCommitResult> CommitAsync(SandboxModel sandbox,
             string message, IReadOnlyList<string>? files,
-            CancellationToken ct) => throw new NotImplementedException();
+            CancellationToken ct, string? repoPath = null) =>
+            throw new NotImplementedException();
     }
 
     private sealed class FakeRegistry : IScmProviderRegistry

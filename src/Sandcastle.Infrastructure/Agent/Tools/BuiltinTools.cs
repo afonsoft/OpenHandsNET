@@ -274,15 +274,21 @@ public static class BuiltinTools
             return ToolResult.Ok(new { ok = true, count = items.Count });
         });
 
-    /// <summary>Commits the workspace repo via <c>IGitService</c> (SPEC-12).</summary>
+    /// <summary>
+    /// Commits a workspace repo via <c>IGitService</c> (SPEC-12). SPEC-146:
+    /// arg opcional <c>repo</c> (nome completo ou short-name) roteia para
+    /// <c>/workspace/repos/{short}</c>; omitido = primário.
+    /// </summary>
     public static AgentTool GitCommit(TimeSpan timeout) => new(
         new ToolSchema("git_commit",
-            "Stage changes in /workspace/repo and create a git commit as the agent author.",
+            "Stage changes in a workspace repository and create a git commit as the agent author.",
             Schema("""
                 {"type":"object","properties":{
                   "message":{"type":"string","description":"Commit message"},
                   "files":{"type":"array","items":{"type":"string"},
-                    "description":"Optional explicit file list (default: all)"}},
+                    "description":"Optional explicit file list (default: all)"},
+                  "repo":{"type":"string",
+                    "description":"Target repository (full name or directory name; default: primary)"}},
                  "required":["message"]}
                 """)),
         Risky: true,
@@ -293,8 +299,17 @@ public static class BuiltinTools
             var files = args.TryGetProperty("files", out var f)
                 ? f.EnumerateArray().Select(e => e.GetString()!).ToList()
                 : null;
+            var repoArg = args.TryGetProperty("repo", out var ra)
+                ? ra.GetString() : null;
+            var (repoPath, resolveError) = await ResolveRepoPathAsync(
+                ctx.Services, ctx.ConversationId, repoArg, ct);
+            if (resolveError is not null)
+            {
+                return ToolResult.Error(resolveError);
+            }
             var result = await git.CommitAsync(ctx.Sandbox,
-                args.GetProperty("message").GetString()!, files, ct);
+                args.GetProperty("message").GetString()!, files, ct,
+                repoPath: repoPath);
             return result.Success
                 ? ToolResult.Ok(new
                 {
@@ -304,6 +319,52 @@ public static class BuiltinTools
                 })
                 : ToolResult.Error(result.Error ?? result.Output);
         });
+
+    /// <summary>
+    /// SPEC-146: resolve o arg <c>repo</c> das tools git — nome completo ou
+    /// short-name case-insensitive → path in-sandbox. Conversa sem
+    /// seleção/db indisponível → null (default primário/legado).
+    /// </summary>
+    internal static async Task<(string? RepoPath, string? Error)>
+        ResolveRepoPathAsync(IServiceProvider services, Guid conversationId,
+            string? repoArg, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(repoArg))
+        {
+            return (null, null); // primário default — sem lookup
+        }
+
+        var db = services.GetService<Persistence.AppDbContext>();
+        if (db is null)
+        {
+            return (null, null);
+        }
+
+        var row = await db.Conversations.AsNoTracking()
+            .Where(c => c.Id == conversationId)
+            .Select(c => new { c.RepositoriesJson, c.SelectedRepository })
+            .FirstOrDefaultAsync(ct);
+        if (row is null)
+        {
+            return (null, null);
+        }
+
+        var repos = row.RepositoriesJson is not null
+            ? JsonSerializer.Deserialize<List<string>>(row.RepositoriesJson)
+                ?? []
+            : row.SelectedRepository is { Length: > 0 } s ? [s] : [];
+        var canonical = Application.Conversations.MultiRepoLayout
+            .ResolveRepo(repos, repoArg);
+        if (canonical is null)
+        {
+            return (null,
+                $"unknown repo '{repoArg}' — mounted repositories: "
+                + (repos.Count > 0 ? string.Join(", ", repos) : "(none)"));
+        }
+
+        return (Application.Conversations.MultiRepoLayout
+            .PathFor(repos, canonical), null);
+    }
 
     /// <summary>
     /// SPEC-44 RF-001: <c>ask_user</c> — faz uma pergunta ao usuário e
@@ -330,11 +391,14 @@ public static class BuiltinTools
     /// <summary>
     /// SPEC-52 RF-003: <c>create_pull_request</c> — push do work branch +
     /// PR no provider SCM da org (GitHub App). Falha limpa sem conexão.
+    /// SPEC-146 RF-003: arg <c>repository</c> abre o PR num repo
+    /// secundário (default: primário).
     /// </summary>
     public static AgentTool CreatePullRequest() => new(
         new ToolSchema("create_pull_request",
-            "Push the workspace work branch and open a pull request in the " +
-            "repository's SCM provider (requires an org scm connection).",
+            "Push the work branch of a workspace repository and open a pull " +
+            "request in its SCM provider (requires an org scm connection). " +
+            "Multi-repo conversations: pass `repository` for a non-primary repo.",
             Schema("""
                 {"type":"object","properties":{
                   "title":{"type":"string","description":"PR title"},
@@ -342,7 +406,9 @@ public static class BuiltinTools
                   "base":{"type":"string",
                     "description":"Base branch (default: repo default)"},
                   "draft":{"type":"boolean",
-                    "description":"Open as draft (default false)"}},
+                    "description":"Open as draft (default false)"},
+                  "repository":{"type":"string",
+                    "description":"Target repository (full name or directory name; default: primary)"}},
                  "required":["title"]}
                 """)),
         Risky: true,
@@ -366,7 +432,9 @@ public static class BuiltinTools
                     Head: "",
                     args.TryGetProperty("draft", out var d)
                         && d.GetBoolean(),
-                    Reviewers: null),
+                    Reviewers: null,
+                    Repository: args.TryGetProperty("repository", out var r)
+                        ? r.GetString() : null),
                 actorUserId: null, ct);
             return result.PullRequest is { } pr
                 ? ToolResult.Ok(new

@@ -127,6 +127,12 @@ public static class DependencyInjection
         // Git/SCM (SPEC-12): git CLI no container, credenciais via secrets+askpass.
         services.Configure<Sandcastle.Infrastructure.Git.GitOptions>(
             configuration.GetSection("Git"));
+        // SPEC-146: multi-repo — MaxRepos hard-cap 4.
+        services.Configure<
+            Sandcastle.Application.Conversations.MultiRepoOptions>(
+            configuration.GetSection("MultiRepo"));
+        services.AddScoped<
+            Sandcastle.Infrastructure.Scm.RepoCloneCredentialResolver>();
         services.AddScoped<Sandcastle.Infrastructure.Git.GitCredentialProvider>();
         // SPEC-147 RF-002: autoria de commit user→org→global.
         services.AddScoped<

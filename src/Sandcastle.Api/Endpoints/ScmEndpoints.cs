@@ -679,7 +679,8 @@ public static class ScmEndpoints
         var result = await svc.CreateAsync(id,
             new ScmPrCreateRequest(
                 req.Title, req.Body, req.Base,
-                req.Head ?? "", req.Draft ?? false, req.Reviewers),
+                req.Head ?? "", req.Draft ?? false, req.Reviewers,
+                req.Repository),
             user.UserId.ToString(), ct);
         return (result.Error, result.PullRequest) switch
         {
@@ -689,9 +690,15 @@ public static class ScmEndpoints
             (ScmPrError.NoConnection, _) =>
                 SandcastleProblemFactory.Create(
                     http, 404, "no scm connection for repository"),
+            (ScmPrError.InvalidRepository, _) =>
+                SandcastleProblemFactory.Create(
+                    http, 400, "repository is not in the conversation's selection"),
+            (ScmPrError.Forbidden, _) =>
+                SandcastleProblemFactory.Create(
+                    http, 403, "no access to that repository"),
             (ScmPrError.AlreadyExists, _) =>
                 SandcastleProblemFactory.Create(
-                    http, 409, "pull request already exists"),
+                    http, 409, "pull request already exists for repository"),
             (ScmPrError.ProviderError, _) =>
                 SandcastleProblemFactory.Create(
                     http, 502, "scm provider error"),
@@ -876,14 +883,18 @@ public static class ScmEndpoints
 public sealed record ScmManifestRequest(
     string RedirectUri, string? AppName);
 
-/// <summary>Pull-request request body.</summary>
+/// <summary>
+/// Pull-request request body. SPEC-146: <c>Repository</c> target —
+/// null = primário da conversa.
+/// </summary>
 public sealed record ScmPrRequest(
     string Title,
     string Body,
     string? Base = null,
     string? Head = null,
     bool? Draft = null,
-    IReadOnlyList<string>? Reviewers = null);
+    IReadOnlyList<string>? Reviewers = null,
+    string? Repository = null);
 
 /// <summary>Manual connection registration (BYO app; SPEC-53 fields).</summary>
 public sealed record ScmConnectionRequest(

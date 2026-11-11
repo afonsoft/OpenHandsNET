@@ -218,12 +218,24 @@ public sealed class WorkspaceProvisioner(
     /// SPEC-15 RF-004: <paramref name="token"/> autentica via
     /// <c>http.extraHeader</c> em <c>GIT_CONFIG_*</c> env — nunca em argv/ps.
     /// </summary>
-    public async Task CloneRepositoryAsync(
+    public Task CloneRepositoryAsync(
         Guid conversationId, string repoUrl, string workBranch,
-        string? token, CancellationToken ct)
+        string? token, CancellationToken ct) =>
+        CloneRepositoryToAsync(
+            conversationId, "repo", repoUrl, workBranch, token, ct);
+
+    /// <summary>
+    /// SPEC-146 RF-002: clona <paramref name="repoUrl"/> em
+    /// <c>{workspace}/{relativeDir}</c> (ex.: <c>repos/{short-name}</c>) e
+    /// cria o work branch — idempotente (dir não-vazio = skip, nunca
+    /// sobrescreve trabalho existente).
+    /// </summary>
+    public async Task CloneRepositoryToAsync(
+        Guid conversationId, string relativeDir, string repoUrl,
+        string workBranch, string? token, CancellationToken ct)
     {
         var workspace = await PrepareAsync(conversationId, ct);
-        var repoDir = Path.Combine(workspace, "repo");
+        var repoDir = Path.Combine(workspace, relativeDir);
         if (Directory.Exists(repoDir) &&
             Directory.EnumerateFileSystemEntries(repoDir).Any())
         {
@@ -234,6 +246,38 @@ public sealed class WorkspaceProvisioner(
             repoUrl, repoDir);
         await RunGitAsync(workspace, token, ct, "clone", repoUrl, repoDir);
         await RunGitAsync(repoDir, token, ct, "checkout", "-b", workBranch);
+    }
+
+    /// <summary>
+    /// SPEC-146 RF-002: cria <c>{workspace}/repo</c> como symlink relativo
+    /// para o primário (<c>repos/{short}</c>) — legado que assume o path
+    /// único continua funcionando. No-op quando <c>repo</c> já existe.
+    /// Retorna false quando o FS não suporta symlink (fallback bind fica
+    /// com o caller in-sandbox).
+    /// </summary>
+    public bool TryCreatePrimaryLink(
+        Guid conversationId, string primaryRelativeDir)
+    {
+        var workspace = PreparePath(conversationId);
+        var link = Path.Combine(workspace, "repo");
+        if (Path.Exists(link) || File.Exists(link))
+        {
+            return true; // já existe (clone legado ou link anterior)
+        }
+
+        try
+        {
+            Directory.CreateSymbolicLink(link, primaryRelativeDir);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException
+            or UnauthorizedAccessException or PlatformNotSupportedException)
+        {
+            logger.LogWarning(ex,
+                "symlink {Link} → {Target} falhou (fs sem suporte?)",
+                link, primaryRelativeDir);
+            return false;
+        }
     }
 
 

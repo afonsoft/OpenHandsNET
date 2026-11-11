@@ -13,6 +13,12 @@ public sealed class AgentPromptContext
     /// <summary>Repo cloned into the workspace, when selected.</summary>
     public string? SelectedRepository { get; init; }
 
+    /// <summary>
+    /// SPEC-146: repos montados (ordenados, primário no índice 0) — só os
+    /// efetivamente clonados; null/≤1 = single-repo legado.
+    /// </summary>
+    public IReadOnlyList<string>? SelectedRepositories { get; init; }
+
     /// <summary>Tool schemas enabled for this run.</summary>
     public required IReadOnlyList<ToolSchema> Tools { get; init; }
 

@@ -9,13 +9,25 @@ namespace Sandcastle.Application.Git;
 /// </summary>
 public interface IGitService
 {
-    /// <summary>Whether <c>/workspace/repo</c> contains a git repository.</summary>
-    Task<bool> HasRepositoryAsync(DomainSandbox sandbox, CancellationToken ct);
+    /// <summary>
+    /// Whether <paramref name="repoPath"/> (default <c>/workspace/repo</c>)
+    /// contains a git repository.
+    /// </summary>
+    Task<bool> HasRepositoryAsync(
+        DomainSandbox sandbox, CancellationToken ct,
+        string? repoPath = null);
 
-    /// <summary>Clones <paramref name="repoUrl"/> into <c>/workspace/repo</c> and creates the work branch.</summary>
+    /// <summary>
+    /// Clones <paramref name="repoUrl"/> into <paramref name="repoPath"/>
+    /// (default <c>/workspace/repo</c>) and creates the work branch.
+    /// SPEC-146: <paramref name="credentialToken"/> é o token resolvido da
+    /// conexão SCM/credencial do repo — quando null, resolve via
+    /// <c>GitCredentialProvider</c> do <paramref name="ownerId"/>.
+    /// </summary>
     Task CloneAsync(
         DomainSandbox sandbox, string repoUrl, string workBranch,
-        string? ownerId, CancellationToken ct);
+        string? ownerId, CancellationToken ct,
+        string? repoPath = null, string? credentialToken = null);
 
     /// <summary>
     /// SPEC-15 RF-004: provisiona autenticação git/gh persistente no sandbox do
@@ -39,19 +51,23 @@ public interface IGitService
         CancellationToken ct);
 
     /// <summary>Structured status buckets (porcelain v2).</summary>
-    Task<GitChanges> GetChangesAsync(DomainSandbox sandbox, CancellationToken ct);
+    Task<GitChanges> GetChangesAsync(
+        DomainSandbox sandbox, CancellationToken ct, string? repoPath = null);
 
     /// <summary>Structured diff vs HEAD (unified, parsed).</summary>
     Task<GitDiffReport?> GetDiffAsync(
-        DomainSandbox sandbox, string? path, CancellationToken ct);
+        DomainSandbox sandbox, string? path, CancellationToken ct,
+        string? repoPath = null);
 
     /// <summary>Raw unified diff text vs HEAD.</summary>
     Task<string?> GetRawDiffAsync(
-        DomainSandbox sandbox, string? path, CancellationToken ct);
+        DomainSandbox sandbox, string? path, CancellationToken ct,
+        string? repoPath = null);
 
     /// <summary>Commit log (newest first, bounded).</summary>
     Task<IReadOnlyList<GitLogEntry>> GetLogAsync(
-        DomainSandbox sandbox, int limit, CancellationToken ct);
+        DomainSandbox sandbox, int limit, CancellationToken ct,
+        string? repoPath = null);
 
     /// <summary>
     /// SPEC-21 RF-006: conteúdo de <paramref name="path"/> na revisão
@@ -60,12 +76,13 @@ public interface IGitService
     /// </summary>
     Task<string?> GetFileAtRefAsync(
         DomainSandbox sandbox, string path, string gitRef,
-        CancellationToken ct);
+        CancellationToken ct, string? repoPath = null);
 
     /// <summary>Stages <paramref name="files"/> (or all) and commits as the agent author.</summary>
     Task<GitCommitResult> CommitAsync(
         DomainSandbox sandbox, string message,
-        IReadOnlyList<string>? files, CancellationToken ct);
+        IReadOnlyList<string>? files, CancellationToken ct,
+        string? repoPath = null);
 
     /// <summary>
     /// SPEC-52 RF-003: pushes <paramref name="head"/> to <c>origin</c>
@@ -75,9 +92,10 @@ public interface IGitService
     /// </summary>
     Task<GitPushResult> PushAsync(
         DomainSandbox sandbox, string head, string? remoteBranch,
-        bool forceWithLease, string? ownerId, CancellationToken ct);
+        bool forceWithLease, string? ownerId, CancellationToken ct,
+        string? repoPath = null);
 
     /// <summary>Current work branch name (null = detached/no repo).</summary>
     Task<string?> GetCurrentBranchAsync(
-        DomainSandbox sandbox, CancellationToken ct);
+        DomainSandbox sandbox, CancellationToken ct, string? repoPath = null);
 }

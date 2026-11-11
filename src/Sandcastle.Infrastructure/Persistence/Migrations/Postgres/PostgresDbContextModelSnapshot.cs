@@ -575,6 +575,14 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("text")
                         .HasColumnName("pull_request_url");
 
+                    b.Property<string>("PullRequestsJson")
+                        .HasColumnType("text")
+                        .HasColumnName("pull_requests_json");
+
+                    b.Property<string>("RepositoriesJson")
+                        .HasColumnType("text")
+                        .HasColumnName("repositories_json");
+
                     b.Property<Guid?>("SandboxId")
                         .HasColumnType("uuid")
                         .HasColumnName("sandbox_id");

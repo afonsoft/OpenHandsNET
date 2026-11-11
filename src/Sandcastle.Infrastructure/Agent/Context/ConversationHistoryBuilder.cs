@@ -180,6 +180,9 @@ public sealed class ConversationHistoryBuilder(IServiceProvider services)
             .ComposeAsync(new Application.Agent.AgentPromptContext
             {
                 SelectedRepository = conv.SelectedRepository,
+                // SPEC-146: repos efetivamente montados (clone ok) —
+                // filtra pelo state event do worker quando presente.
+                SelectedRepositories = MountedRepositories(conv, h.All),
                 Tools = tools.All.Select(t => t.Schema).ToList(),
                 Skills = skills,
                 RepoContext = repoContext,
@@ -208,6 +211,59 @@ public sealed class ConversationHistoryBuilder(IServiceProvider services)
         h.History.Insert(0, new LlmMessage("system", prompt));
         h.Ids.Insert(0, sp.Id);
         return newId;
+    }
+
+    /// <summary>
+    /// SPEC-146 RF-003: repos efetivamente montados — parseia o último
+    /// <c>ConversationStateUpdateEvent(key="repositories")</c> do worker
+    /// (status="cloned"); sem o evento → seleção inteira (clone pendente
+    /// ou conversa legada).
+    /// </summary>
+    internal static IReadOnlyList<string>? MountedRepositories(
+        ConversationRecord conv, IReadOnlyList<EventBase> events)
+    {
+        var repos = conv.GetRepositories();
+        if (repos.Count == 0)
+        {
+            return null;
+        }
+
+        var state = events.OfType<ConversationStateUpdateEvent>()
+            .Where(e => e.Key == "repositories")
+            .OrderByDescending(e => e.Timestamp)
+            .FirstOrDefault();
+        if (state is null)
+        {
+            return repos;
+        }
+
+        try
+        {
+            if (state.Value is not { } v
+                || v.ValueKind != JsonValueKind.Object
+                || !v.TryGetProperty("repositories", out var arr)
+                || arr.ValueKind != JsonValueKind.Array)
+            {
+                return repos;
+            }
+            var cloned = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var r in arr.EnumerateArray())
+            {
+                if (r.TryGetProperty("status", out var s)
+                    && s.GetString() == "cloned"
+                    && r.TryGetProperty("name", out var n)
+                    && n.GetString() is { } name)
+                {
+                    cloned.Add(name);
+                }
+            }
+            var mounted = repos.Where(cloned.Contains).ToList();
+            return mounted.Count > 0 ? mounted : repos;
+        }
+        catch (Exception)
+        {
+            return repos; // payload inesperado — não derruba o prompt
+        }
     }
 
     // SPEC-25 RF-002: db ∪ repo, dedupe por nome (db ganha), cap 20.

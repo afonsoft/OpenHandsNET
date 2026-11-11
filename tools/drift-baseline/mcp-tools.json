@@ -49,8 +49,15 @@
           "description": "Model id override.",
           "type": "string"
         },
+        "selected_repositories": {
+          "description": "Ordered org/repo list (max 4; index 0 = primary) — overrides selected_repository.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "selected_repository": {
-          "description": "org/repo to bind.",
+          "description": "org/repo to bind (primary).",
           "type": "string"
         }
       },

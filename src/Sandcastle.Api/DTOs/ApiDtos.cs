@@ -10,6 +10,12 @@ public sealed record CreateAppConversationRequest
 {
     public InitialMessageDto? InitialMessage { get; init; }
     public string? SelectedRepository { get; init; }
+    /// <summary>
+    /// SPEC-146 RF-001: multi-repo — primário no índice 0 (==
+    /// <see cref="SelectedRepository"/> quando ambos presentes);
+    /// máx 4 (<c>MultiRepo:MaxRepos</c>, hard cap).
+    /// </summary>
+    public IReadOnlyList<string>? SelectedRepositories { get; init; }
     public string? AgentType { get; init; }
     public string? LlmModel { get; init; }
     public Guid? SandboxSpecId { get; init; }
@@ -80,8 +86,25 @@ public sealed record AppConversationDto
     public string? NeedsAttention { get; init; }
     /// <summary>SPEC-135: origem do fork (null = conversa raiz).</summary>
     public string? ParentConversationId { get; init; }
+    /// <summary>
+    /// SPEC-146 RF-001: repos da conversa ordenados (primário ==
+    /// <see cref="SelectedRepository"/> no índice 0).
+    /// </summary>
+    public IReadOnlyList<string>? Repositories { get; init; }
+    /// <summary>SPEC-146 RF-004: PRs por repo criados pela conversa.</summary>
+    public IReadOnlyList<ConversationPullRequestDto>? PullRequests { get; init; }
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset UpdatedAt { get; init; }
+}
+
+/// <summary>SPEC-146: PR criado num repo da conversa (agregado).</summary>
+public sealed record ConversationPullRequestDto
+{
+    public required string Repository { get; init; }
+    public required string Url { get; init; }
+    public required int Number { get; init; }
+    public string? State { get; init; }
+    public string? HeadSha { get; init; }
 }
 
 /// <summary>POST .../send-message body.</summary>

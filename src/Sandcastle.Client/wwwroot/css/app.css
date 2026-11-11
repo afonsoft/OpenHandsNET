@@ -170,6 +170,9 @@ pre, code { font-family: var(--sc-mono); font-size: 12.5px; }
 .new-conv textarea { width: 100%; min-height: 72px; resize: vertical; border-radius: 8px; }
 .new-conv .row { display: flex; gap: 10px; margin-top: 10px; align-items: center; }
 .new-conv .row input { flex: 1; }
+/* SPEC-146: chips multi-repo — primário destacado (.chip.mention). */
+.new-conv .repo-chips { flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.new-conv .repo-chips .chip { font-size: 12px; padding: 3px 9px; }
 .start-progress { margin-top: 12px; color: var(--sc-fg-dim); }
 .start-progress .step { padding: 3px 0; font-family: var(--sc-mono); font-size: 12px; }
 .start-progress .step.done { color: var(--sc-green); }

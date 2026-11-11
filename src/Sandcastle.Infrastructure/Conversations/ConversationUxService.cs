@@ -125,6 +125,9 @@ public sealed class ConversationUxService(
             CreatedByUserId = userId ?? src.CreatedByUserId,
             Title = req.Title ?? Truncate(src.Title, 80),
             SelectedRepository = src.SelectedRepository,
+            // SPEC-146: filha herda a seleção multi-repo (PRs não — são
+            // do run da origem).
+            RepositoriesJson = src.RepositoriesJson,
             AgentType = src.AgentType,
             LlmModel = src.LlmModel,
             SandboxProfile = src.SandboxProfile,

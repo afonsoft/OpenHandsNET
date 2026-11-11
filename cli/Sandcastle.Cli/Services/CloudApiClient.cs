@@ -47,10 +47,15 @@ public sealed class CloudApiClient
         return new CloudApiClient(http ?? new HttpClient(), url, key);
     }
 
-    /// <summary>POST /app-conversations → start-task.</summary>
+    /// <summary>
+    /// POST /app-conversations → start-task. SPEC-146:
+    /// <paramref name="repositories"/> (máx 4, índice 0 = primário) →
+    /// <c>selected_repositories</c> + primário espelhado no legado
+    /// <c>selected_repository</c>. String solitária continua aceita.
+    /// </summary>
     public async Task<JsonElement> CreateConversationAsync(
-        string? initialMessage, string? repository, bool run = true,
-        bool confirmationMode = false, string? model = null,
+        string? initialMessage, IReadOnlyList<string>? repositories,
+        bool run = true, bool confirmationMode = false, string? model = null,
         CancellationToken ct = default)
     {
         object? initial = initialMessage is null ? null : new
@@ -63,7 +68,10 @@ public sealed class CloudApiClient
             $"{BaseUrl}/api/v1/app-conversations", new
             {
                 initial_message = initial,
-                selected_repository = repository,
+                selected_repository = repositories is { Count: > 0 }
+                    ? repositories[0] : null,
+                selected_repositories =
+                    repositories is { Count: > 0 } ? repositories : null,
                 confirmation_mode = confirmationMode,
                 llm_model = model,
             }, ct);

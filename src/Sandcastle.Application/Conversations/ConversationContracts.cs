@@ -13,7 +13,96 @@ public sealed record CreateConversationRequest(
     string? SandboxProfile = null,
     IReadOnlyList<Agent.AgentPermissionRule>? Permissions = null,
     string? Mode = null,
-    IReadOnlyList<string>? Secrets = null);
+    IReadOnlyList<string>? Secrets = null,
+    // SPEC-146 RF-001: multi-repo — ordered, primary first (==
+    // SelectedRepository when both present). null/empty = single repo.
+    IReadOnlyList<string>? SelectedRepositories = null);
+
+/// <summary>
+/// SPEC-146 RF-001: <c>MultiRepo</c> options — <c>MaxRepos</c> is a hard cap
+/// of <see cref="MultiRepoOptions.HardMaxRepos"/>; config can only lower it.
+/// </summary>
+public sealed class MultiRepoOptions
+{
+    /// <summary>Teto duro — sem bypass por config (guardrail SPEC-146 §9).</summary>
+    public const int HardMaxRepos = 4;
+
+    /// <summary>Config value (default 4) — clamped to [1, HardMaxRepos].</summary>
+    public int MaxRepos { get; set; } = HardMaxRepos;
+
+    /// <summary>Effective cap used by validation.</summary>
+    public int EffectiveMaxRepos => Math.Clamp(MaxRepos, 1, HardMaxRepos);
+}
+
+/// <summary>
+/// SPEC-146: invalid <c>selected_repository</c>/<c>selected_repositories</c>
+/// combination — mapped to HTTP 400 by the API layer.
+/// </summary>
+public sealed class RepositorySelectionException(string detail)
+    : ArgumentException(detail);
+
+/// <summary>
+/// SPEC-146 RF-001: normaliza a seleção de repositórios da conversa —
+/// <c>selected_repositories</c> ordenado com o primário primeiro
+/// (== <c>selected_repository</c> quando ambos presentes), trim, não-vazio,
+/// dedup case-insensitive, cap <c>MaxRepos</c>. Retorna a lista ordenada
+/// (vazia quando nada foi selecionado).
+/// </summary>
+public static class RepositorySelection
+{
+    /// <summary>Ordered repo list (primary at index 0) or throws.</summary>
+    public static IReadOnlyList<string> Normalize(
+        string? selectedRepository,
+        IReadOnlyList<string>? selectedRepositories,
+        int maxRepos)
+    {
+        var repos = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (selectedRepositories is not null)
+        {
+            foreach (var raw in selectedRepositories)
+            {
+                var r = raw?.Trim();
+                if (string.IsNullOrEmpty(r))
+                {
+                    throw new RepositorySelectionException(
+                        "selected_repositories entries must be non-empty");
+                }
+                if (!seen.Add(r))
+                {
+                    throw new RepositorySelectionException(
+                        $"duplicate repository '{r}'");
+                }
+                repos.Add(r);
+            }
+        }
+
+        var primary = string.IsNullOrWhiteSpace(selectedRepository)
+            ? null : selectedRepository.Trim();
+        if (primary is not null)
+        {
+            if (repos.Count == 0)
+            {
+                repos.Add(primary);
+            }
+            else if (!string.Equals(
+                    repos[0], primary, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new RepositorySelectionException(
+                    "selected_repository must equal the first entry of "
+                    + "selected_repositories (the primary repository)");
+            }
+        }
+
+        if (repos.Count > maxRepos)
+        {
+            throw new RepositorySelectionException(
+                $"too many repositories ({repos.Count} > max {maxRepos})");
+        }
+
+        return repos;
+    }
+}
 
 /// <summary>
 /// User/agent message seed for a new conversation. <paramref name="Run"/>

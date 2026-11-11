@@ -702,6 +702,10 @@ public static class AppConversationEndpoints
         {
             return PlanLimitProblem(ex.Error);
         }
+        catch (RepositorySelectionException ex)
+        {
+            return SandcastleProblemFactory.Create(p.Http, 400, ex.Message);
+        }
 
         return Results.Created(
             $"/api/v1/app-conversations/start-tasks/{createdTask.Id}",
@@ -789,6 +793,10 @@ public static class AppConversationEndpoints
         {
             return PlanLimitProblem(ex.Error);
         }
+        catch (RepositorySelectionException ex)
+        {
+            return SandcastleProblemFactory.Create(p.Http, 400, ex.Message);
+        }
     }
 
     /// <summary>
@@ -813,8 +821,23 @@ public static class AppConversationEndpoints
     private static IResult StreamStartAsync(
         CreateAppConversationRequest body,
         IAppConversationService svc, IStartTaskService tasks,
+        HttpContext http,
+        Microsoft.Extensions.Options.IOptions<MultiRepoOptions> multiRepo,
         CancellationToken ct)
     {
+        // SPEC-146: valida a seleção de repos ANTES de abrir o SSE —
+        // inválido → 400 problem, nunca task+stream quebrada.
+        try
+        {
+            RepositorySelection.Normalize(body.SelectedRepository,
+                body.SelectedRepositories,
+                multiRepo.Value.EffectiveMaxRepos);
+        }
+        catch (RepositorySelectionException ex)
+        {
+            return SandcastleProblemFactory.Create(http, 400, ex.Message);
+        }
+
         // SSE: um item por transição de status até READY|ERROR.
         return TypedResults.ServerSentEvents(StreamTaskUpdates(body, svc, tasks, ct));
     }
@@ -935,7 +958,8 @@ public static class AppConversationEndpoints
             b.ConfirmationMode, b.SandboxProfile,
             b.Permissions?.Select(p => new Application.Agent.AgentPermissionRule(
                 p.Pattern, ParseDecision(p.Decision))).ToList(),
-            b.Mode, b.Secrets);
+            b.Mode, b.Secrets,
+            SelectedRepositories: b.SelectedRepositories);
 
     private static StartTaskStatus? ParseStatus(string? s) =>
         Enum.TryParse<StartTaskStatus>(s, ignoreCase: true, out var v) ? v : null;
@@ -971,6 +995,17 @@ public static class AppConversationEndpoints
         ConfirmationMode = c.ConfirmationMode,
         NeedsAttention = c.NeedsAttentionKind,
         ParentConversationId = c.ParentConversationId?.ToString(),
+        // SPEC-146: lista efetiva (null só quando não há repo algum).
+        Repositories = c.EffectiveRepositories is { Count: > 0 } r ? r : null,
+        PullRequests = c.PullRequests?.Select(p =>
+            new ConversationPullRequestDto
+            {
+                Repository = p.Repository,
+                Url = p.Url,
+                Number = p.Number,
+                State = p.State,
+                HeadSha = p.HeadSha,
+            }).ToList(),
         CreatedAt = c.CreatedAt,
         UpdatedAt = c.UpdatedAt,
     };
