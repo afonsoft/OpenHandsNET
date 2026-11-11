@@ -1684,6 +1684,10 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<long>("CreatedAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_at_ticks");
+
                     b.Property<string>("FailureReason")
                         .HasColumnType("text")
                         .HasColumnName("failure_reason");
@@ -1709,6 +1713,10 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations.Postgres
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
+
+                    b.Property<long>("UpdatedAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("updated_at_ticks");
 
                     b.HasKey("Id")
                         .HasName("pk_repo_indexes");
@@ -2251,6 +2259,177 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations.Postgres
                         .HasDatabaseName("ix_webhook_registrations_owner_id");
 
                     b.ToTable("webhook_registrations", (string)null);
+                });
+
+            modelBuilder.Entity("Sandcastle.Infrastructure.Persistence.WikiPageRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Branch")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("branch");
+
+                    b.Property<string>("ContentHash")
+                        .HasColumnType("text")
+                        .HasColumnName("content_hash");
+
+                    b.Property<string>("ContentMd")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("content_md");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("CreatedAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_at_ticks");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("PathKey")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("path_key");
+
+                    b.Property<string>("Repository")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("repository");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<string>("SourceFilesJson")
+                        .HasColumnType("text")
+                        .HasColumnName("source_files_json");
+
+                    b.Property<bool>("Stale")
+                        .HasColumnType("boolean")
+                        .HasColumnName("stale");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("title");
+
+                    b.Property<string>("Topic")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("topic");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<long>("UpdatedAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("updated_at_ticks");
+
+                    b.Property<Guid>("WikiRunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("wiki_run_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_wiki_pages");
+
+                    b.HasIndex("WikiRunId")
+                        .HasDatabaseName("ix_wiki_pages_wiki_run_id");
+
+                    b.HasIndex("OrgId", "Repository")
+                        .HasDatabaseName("ix_wiki_pages_org_id_repository");
+
+                    b.HasIndex("Repository", "Branch", "PathKey")
+                        .HasDatabaseName("ix_wiki_pages_repository_branch_path_key");
+
+                    b.ToTable("wiki_pages", (string)null);
+                });
+
+            modelBuilder.Entity("Sandcastle.Infrastructure.Persistence.WikiRunRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("AutoUpdate")
+                        .HasColumnType("boolean")
+                        .HasColumnName("auto_update");
+
+                    b.Property<string>("Branch")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("branch");
+
+                    b.Property<string>("CommitSha")
+                        .HasColumnType("text")
+                        .HasColumnName("commit_sha");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("CreatedAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_at_ticks");
+
+                    b.Property<string>("Effort")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("effort");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("text")
+                        .HasColumnName("error");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finished_at");
+
+                    b.Property<long?>("FinishedAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("finished_at_ticks");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Repository")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("repository");
+
+                    b.Property<string>("RequestedByUserId")
+                        .HasColumnType("text")
+                        .HasColumnName("requested_by_user_id");
+
+                    b.Property<string>("StatsJson")
+                        .HasColumnType("text")
+                        .HasColumnName("stats_json");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_wiki_runs");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_wiki_runs_created_at");
+
+                    b.HasIndex("OrgId", "Repository", "Branch")
+                        .HasDatabaseName("ix_wiki_runs_org_id_repository_branch");
+
+                    b.ToTable("wiki_runs", (string)null);
                 });
 
             modelBuilder.Entity("Sandcastle.Infrastructure.Sandbox.SandboxRecord", b =>

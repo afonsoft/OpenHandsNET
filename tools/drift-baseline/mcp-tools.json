@@ -1,5 +1,30 @@
 [
   {
+    "description": "Ask a question about an indexed repository (Ask mode) — returns the answer plus code citations with permalinks.",
+    "inputSchema": {
+      "properties": {
+        "branch": {
+          "description": "Branch (default main).",
+          "type": "string"
+        },
+        "question": {
+          "description": "Natural-language question.",
+          "type": "string"
+        },
+        "repository": {
+          "description": "org/repo to ask about.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "question"
+      ],
+      "type": "object"
+    },
+    "name": "sc_ask"
+  },
+  {
     "description": "Attention inbox: conversations waiting on the user (approvals, finished/failed runs).",
     "inputSchema": {
       "properties": {},
@@ -184,5 +209,53 @@
       "type": "object"
     },
     "name": "sc_stop_run"
+  },
+  {
+    "description": "Get one wiki page (markdown with code citations) — by page_id or by topic path (e.g. 'modules/api').",
+    "inputSchema": {
+      "properties": {
+        "branch": {
+          "description": "Branch (default main).",
+          "type": "string"
+        },
+        "page_id": {
+          "description": "Wiki page id (from sc_wiki_structure).",
+          "type": "string"
+        },
+        "repository": {
+          "description": "org/repo the wiki belongs to.",
+          "type": "string"
+        },
+        "topic": {
+          "description": "Topic path key (e.g. 'overview', 'modules/x').",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository"
+      ],
+      "type": "object"
+    },
+    "name": "sc_wiki_contents"
+  },
+  {
+    "description": "Get the generated wiki topic tree of a repository (topics + page ids + stale flags; latest completed run).",
+    "inputSchema": {
+      "properties": {
+        "branch": {
+          "description": "Branch (default main).",
+          "type": "string"
+        },
+        "repository": {
+          "description": "org/repo to read the wiki of.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository"
+      ],
+      "type": "object"
+    },
+    "name": "sc_wiki_structure"
   }
 ]

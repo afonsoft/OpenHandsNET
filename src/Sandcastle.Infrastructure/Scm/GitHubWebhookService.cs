@@ -8,7 +8,9 @@ using Microsoft.Extensions.Logging;
 using Sandcastle.Application.Contracts;
 using Sandcastle.Application.Conversations;
 using Sandcastle.Application.Identity;
+using Sandcastle.Application.Indexing;
 using Sandcastle.Application.Scm;
+using Sandcastle.Application.Wiki;
 using Sandcastle.Infrastructure.Persistence;
 using Sandcastle.Infrastructure.Security;
 
@@ -31,7 +33,10 @@ public sealed class GitHubWebhookService(
     IAutofixService? autofix = null,
     Microsoft.Extensions.Options.IOptions<Autofix.AutofixOptions>? autofixOptions = null,
     IQaService? qa = null,
-    Microsoft.Extensions.Options.IOptions<Qa.QaOptions>? qaOptions = null) : IScmWebhookService
+    Microsoft.Extensions.Options.IOptions<Qa.QaOptions>? qaOptions = null,
+    IRepoIndexer? indexer = null,
+    Microsoft.Extensions.Options.IOptions<Indexing.IndexingOptions>? indexingOptions = null,
+    IWikiService? wiki = null) : IScmWebhookService
 {
     private const string Repository = "repository";
     private const string Comment = "comment";
@@ -106,6 +111,14 @@ public sealed class GitHubWebhookService(
             {
                 return await HandleCiEventAsync(
                     eventType, root, connection, ct);
+            }
+
+            // SPEC-145 RF-001: push muda head da branch → re-index
+            // (AutoRefreshOnPush) + stale-mark das páginas de wiki.
+            if (eventType == "push")
+            {
+                return await HandlePushEventAsync(
+                    ScmKind.GitHub, root, connection, repository, ct);
             }
 
             var mention = ParseMention(eventType, root, installationId);
@@ -409,6 +422,128 @@ public sealed class GitHubWebhookService(
                 ev.Repository, ev.CheckName, result.Error, result.Detail);
         }
         return ScmWebhookResult.Ignored;
+    }
+
+    /// <summary>
+    /// SPEC-145 RF-001: push event (GitHub <c>push</c> / GitLab
+    /// <c>Push Hook</c>). Quando a branch tocada tem índice desta
+    /// conexão: re-index se <c>Indexing:AutoRefreshOnPush</c> e marca
+    /// stale das páginas de wiki que cobrem os arquivos do diff.
+    /// </summary>
+    private async Task<ScmWebhookResult> HandlePushEventAsync(
+        ScmKind kind, JsonElement root, ScmConnection connection,
+        string? repository, CancellationToken ct)
+    {
+        if (indexer is null && wiki is null)
+        {
+            return ScmWebhookResult.Ignored;
+        }
+
+        // Branch: "refs/heads/<b>" nos dois providers; branch/tag
+        // deletes (after/checkout_sha zerados) são ignorados.
+        var refName = root.TryGetProperty("ref", out var r)
+            ? r.GetString() : null;
+        const string prefix = "refs/heads/";
+        if (refName is null || !refName.StartsWith(prefix,
+                StringComparison.Ordinal))
+        {
+            return ScmWebhookResult.Ignored;
+        }
+        var branch = refName[prefix.Length..];
+        var headSha = root.TryGetProperty("after", out var a)
+            ? a.GetString()
+            : root.TryGetProperty("checkout_sha", out var c2)
+                ? c2.GetString() : null;
+        if (headSha is null
+            || headSha.All(c => c == '0')) // "0000…" = branch deleted
+        {
+            return ScmWebhookResult.Ignored;
+        }
+
+        repository ??= kind == ScmKind.GitLab
+            ? root.TryGetProperty("project", out var pr)
+                && pr.TryGetProperty("path_with_namespace", out var pn)
+                    ? pn.GetString() : null
+            : null;
+        if (repository is null)
+        {
+            return ScmWebhookResult.Ignored;
+        }
+
+        // Só reage quando a conexão cobre (repo, branch) indexado —
+        // push em repo desconectado é Ignored.
+        var indexed = await db.RepoIndexes.IgnoreQueryFilters()
+            .AnyAsync(x => x.Repository == repository
+                && x.Branch == branch
+                && x.OrgId == connection.OrgId, ct);
+        var wikiRun = await db.WikiRuns.IgnoreQueryFilters()
+            .AnyAsync(x => x.Repository == repository
+                && x.Branch == branch
+                && x.OrgId == connection.OrgId, ct);
+        if (!indexed && !wikiRun)
+        {
+            return ScmWebhookResult.Ignored;
+        }
+
+        // Caminhos do diff: union(commits[].added|modified|removed).
+        var changed = new HashSet<string>(
+            StringComparer.OrdinalIgnoreCase);
+        if (root.TryGetProperty("commits", out var commits)
+            && commits.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var commit in commits.EnumerateArray())
+            {
+                foreach (var field in new[] { "added", "modified", "removed" })
+                {
+                    if (commit.TryGetProperty(field, out var arr)
+                        && arr.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var p in arr.EnumerateArray())
+                        {
+                            if (p.GetString() is { } path)
+                            {
+                                changed.Add(path);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        var processed = false;
+        if (indexed && indexer is not null
+            && indexingOptions?.Value.AutoRefreshOnPush is true)
+        {
+            var index = await indexer.TriggerIndexAsync(
+                repository, branch, connection.OrgId, ct);
+            if (index is not null)
+            {
+                processed = true;
+                await audit.RecordAsync("scm.index_refreshed",
+                    orgId: connection.OrgId,
+                    targetType: "repo_index",
+                    targetId: index.Id.ToString(),
+                    metadata: new
+                    {
+                        repository,
+                        branch,
+                        head_sha = headSha,
+                        trigger = "push",
+                    },
+                    cancellationToken: ct);
+            }
+        }
+
+        if (wiki is not null
+            && await wiki.HandlePushAsync(
+                repository, branch, [.. changed], headSha,
+                connection.OrgId, ct))
+        {
+            processed = true;
+        }
+
+        return processed
+            ? ScmWebhookResult.Processed : ScmWebhookResult.Ignored;
     }
 
     /// <summary>Login do bot da App ("{slug}[bot]") — null quando desconhecido.</summary>
@@ -881,6 +1016,14 @@ public sealed class GitHubWebhookService(
                     || qaResult == ScmWebhookResult.Processed
                         ? ScmWebhookResult.Processed
                         : ScmWebhookResult.Ignored;
+            }
+
+            // SPEC-145 RF-001: GitLab Push Hook — mesmo pipeline do
+            // push do GitHub (re-index + wiki stale).
+            if (kind == ScmKind.GitLab && eventType == "Push Hook")
+            {
+                return await HandlePushEventAsync(
+                    kind, root, connection, repository, ct);
             }
 
             var mention = ParseMentionByKind(kind, eventType, root);

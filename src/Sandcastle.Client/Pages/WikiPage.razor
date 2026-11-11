@@ -1,0 +1,283 @@
+@page "/wiki"
+@using Sandcastle.Client.Services
+@inject SandcastleApiClient Api
+@inject LocalizationService L
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<PageTitle>@L["wiki.title"] — Sandcastle</PageTitle>
+
+<h2>@L["wiki.title"]</h2>
+
+<div class="wiki">
+    <div class="wiki-toolbar">
+        @* SPEC-145: badge X/Y repos indexados (mesmo /indexing/status
+           do Home) + seletor de repo/branch + esforço + regenerate. *@
+        @if (_indexing is not null)
+        {
+            <span class="index-badge">
+                @L.T("indexing.repos_indexed",
+                    ("indexed", _indexing.Indexed.ToString()),
+                    ("total", _indexing.TotalConnected.ToString()))
+            </span>
+        }
+        <input class="repo-input" list="wiki-repos"
+               placeholder="@L["wiki.repository_placeholder"]"
+               aria-label="@L["wiki.repository"]"
+               @bind="_repo" @bind:event="oninput" />
+        <datalist id="wiki-repos">
+            @foreach (var r in _repos)
+            {
+                <option value="@r"></option>
+            }
+        </datalist>
+        <input class="branch-input"
+               placeholder="@L["wiki.branch_placeholder"]"
+               aria-label="@L["wiki.branch"]"
+               @bind="_branch" @bind:event="oninput" />
+        <select aria-label="@L["wiki.effort"]" @bind="_effort">
+            <option value="low">@L["wiki.effort_low"]</option>
+            <option value="medium">@L["wiki.effort_medium"]</option>
+            <option value="high">@L["wiki.effort_high"]</option>
+        </select>
+        <button @onclick="LoadTreeAsync" disabled="@(_busy || _repo.Length == 0)">
+            @L["wiki.load"]
+        </button>
+        <button class="primary" @onclick="GenerateAsync"
+                disabled="@(_busy || _repo.Length == 0 || _generating)">
+            @(_generating ? L["wiki.generating"] : L["wiki.regenerate"])
+        </button>
+    </div>
+
+    @if (_error is not null)
+    {
+        <p class="sub" style="color:var(--sc-red)">@_error</p>
+    }
+    @if (_runStatus is not null)
+    {
+        <p class="sub">@L.T("wiki.run_status", ("status", _runStatus))</p>
+    }
+
+    @if (_tree is null)
+    {
+        <p class="sub">@L["wiki.empty_hint"]</p>
+    }
+    else if (_tree.Topics.Count == 0)
+    {
+        <p class="sub">@L["wiki.no_wiki"]</p>
+    }
+    else
+    {
+        <div class="wiki-layout">
+            <nav class="wiki-tree" aria-label="@L["wiki.topics"]">
+                @foreach (var topic in _tree.Topics)
+                {
+                    <div class="wiki-topic">
+                        <div class="wiki-topic-title">@topic.Title</div>
+                        @foreach (var p in topic.Pages)
+                        {
+                            <button type="button"
+                                    class="wiki-page-link @(p.Id == _selectedId ? "active" : "")"
+                                    @onclick="() => SelectPageAsync(p.Id)">
+                                @p.Title
+                                @if (p.Stale)
+                                {
+                                    <span class="badge wiki-stale">@L["wiki.stale"]</span>
+                                }
+                            </button>
+                        }
+                    </div>
+                }
+            </nav>
+            <article id="wiki-page-content" class="wiki-content">
+                @if (_page is null)
+                {
+                    <p class="sub">@L["wiki.pick_page"]</p>
+                }
+                else
+                {
+                    <h3>
+                        @_page.Title
+                        @if (_page.Stale)
+                        {
+                            <span class="badge wiki-stale">@L["wiki.stale"]</span>
+                        }
+                    </h3>
+                    <div class="wiki-markdown">
+                        @MarkdownService.Render(_page.ContentMd)
+                    </div>
+                    @if (_page.SourceFiles.Count > 0)
+                    {
+                        <details class="wiki-sources">
+                            <summary>@L.T("wiki.sources", ("count", _page.SourceFiles.Count.ToString()))</summary>
+                            <ul>
+                                @foreach (var f in _page.SourceFiles)
+                                {
+                                    <li><code>@f</code></li>
+                                }
+                            </ul>
+                        </details>
+                    }
+                }
+            </article>
+        </div>
+    }
+</div>
+
+@code {
+    private IndexingStatusDto? _indexing;
+    private WikiTreeDto? _tree;
+    private WikiPageDto? _page;
+    private IReadOnlyList<string> _repos = [];
+    private string _repo = "";
+    private string _branch = "";
+    private string _effort = "medium";
+    private Guid? _selectedId;
+    private bool _busy;
+    private bool _generating;
+    private string? _error;
+    private string? _runStatus;
+    private CancellationTokenSource _poll = new();
+    private bool _renderPending;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { _indexing = await Api.GetIndexingStatusAsync(); }
+        catch (Exception) { /* badge é best-effort */ }
+        try
+        {
+            var convs = await Api.ListConversationsAsync();
+            _repos = convs
+                .Select(c => c.SelectedRepository)
+                .Where(r => !string.IsNullOrEmpty(r))
+                .Select(r => r!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(r => r, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            _repo = _repos.FirstOrDefault() ?? "";
+            if (_repo.Length > 0)
+            {
+                await LoadTreeAsync();
+            }
+        }
+        catch (Exception)
+        {
+            // repo list é conveniência — a página funciona com input manual.
+        }
+    }
+
+    private async Task LoadTreeAsync()
+    {
+        if (_repo.Length == 0)
+        {
+            return;
+        }
+        _busy = true;
+        _error = null;
+        try
+        {
+            _tree = await Api.GetWikiTreeAsync(_repo, EmptyToNull(_branch));
+            _page = null;
+            _selectedId = null;
+        }
+        catch (Exception e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SelectPageAsync(Guid pageId)
+    {
+        _selectedId = pageId;
+        try
+        {
+            _page = await Api.GetWikiPageAsync(_repo, pageId);
+            _renderPending = _page is not null;
+        }
+        catch (Exception e)
+        {
+            _error = e.Message;
+        }
+    }
+
+    private async Task GenerateAsync()
+    {
+        _generating = true;
+        _error = null;
+        try
+        {
+            var run = await Api.GenerateWikiAsync(
+                _repo, EmptyToNull(_branch), _effort);
+            if (run is null)
+            {
+                _error = L["wiki.generate_failed"];
+                return;
+            }
+            await PollRunAsync(run.Id);
+        }
+        finally
+        {
+            _generating = false;
+        }
+    }
+
+    /// <summary>Poll do run até completed/failed → recarrega a árvore.</summary>
+    private async Task PollRunAsync(Guid runId)
+    {
+        using var linked = CancellationTokenSource
+            .CreateLinkedTokenSource(_poll.Token);
+        linked.CancelAfter(TimeSpan.FromMinutes(5));
+        while (!linked.IsCancellationRequested)
+        {
+            var run = await Api.GetWikiRunAsync(_repo, runId, linked.Token);
+            if (run is null)
+            {
+                break;
+            }
+            _runStatus = run.Status;
+            StateHasChanged();
+            if (run.Status is "completed" or "failed")
+            {
+                if (run.Status == "failed")
+                {
+                    _error = run.Error ?? L["wiki.generate_failed"];
+                }
+                break;
+            }
+            await Task.Delay(TimeSpan.FromSeconds(3), linked.Token);
+        }
+        await LoadTreeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_renderPending)
+        {
+            _renderPending = false;
+            try
+            {
+                await JS.InvokeAsync<bool>(
+                    "wikiInterop.render", "wiki-page-content");
+            }
+            catch (Exception)
+            {
+                // mermaid ausente → bloco fica como <pre><code> (fallback).
+            }
+        }
+    }
+
+    private static string? EmptyToNull(string s) =>
+        string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    /// <inheritdoc />
+    public ValueTask DisposeAsync()
+    {
+        _poll.Cancel();
+        _poll.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

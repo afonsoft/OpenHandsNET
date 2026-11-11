@@ -107,6 +107,12 @@
                 <Icon Name="book" Size="16" />
                 <span class="txt">@L["sidebar.knowledge"]</span>
             </a>
+            @* SPEC-145 RF-003: wiki gerada por repo (sidebar workspace). *@
+            <a class="sb-item @(IsActive("/wiki") ? "active" : "")"
+               href="/wiki" title="@L["sidebar.wiki"]">
+                <Icon Name="file" Size="16" />
+                <span class="txt">@L["sidebar.wiki"]</span>
+            </a>
             <div class="sb-label">@L["sidebar.general"]</div>
             <a class="sb-item @(IsActive("/automations") ? "active" : "")"
                href="/automations" title="@L["sidebar.automations"]">

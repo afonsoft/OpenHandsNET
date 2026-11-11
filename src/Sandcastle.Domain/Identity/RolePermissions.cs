@@ -18,6 +18,7 @@ public static class RolePermissions
         Permission.ViewOrgSettings,
         Permission.ViewLlmSettings,
         Permission.ViewAutomations,
+        Permission.WikiRead,
     ];
 
     private static readonly Permission[] Admin =
@@ -36,6 +37,7 @@ public static class RolePermissions
         Permission.ManageAutomations,
         Permission.ProvisionUser,
         Permission.ViewOrgConversations,
+        Permission.IndexingManage,
     ];
 
     private static readonly Permission[] Owner =

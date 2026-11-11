@@ -115,6 +115,28 @@ public static class AskAndIndexEndpoints
                 connectedSet.Count, indexed, indexing, failed));
         }).WithTags(EndpointTags.Api).RequireAuthorization();
 
+        // SPEC-145 RF-001: re-index manual por (repo, branch) — mesma
+        // trigger de /repos/index mas com permissão explícita de gestão
+        // (perm:indexing.manage). Escopo = org efetiva do caller.
+        group.MapPost("/indexing/reindex", async (
+            [FromBody] TriggerIndexApiRequest req,
+            [FromServices] ICurrentUserAccessor current,
+            [FromServices] IEffectiveOrgResolver resolver,
+            [FromServices] IRepoIndexer indexer,
+            CancellationToken ct) =>
+        {
+            var user = current.User;
+            if (user is null)
+            {
+                return Results.Unauthorized();
+            }
+            var orgId = (await resolver.ResolveAsync(user, null, ct))?.OrgId;
+            var res = await indexer.TriggerIndexAsync(
+                req.Repository, req.Branch ?? "main", orgId, ct);
+            return Results.Accepted($"/api/v1/repos/index/{res.Id}", res);
+        }).WithTags(EndpointTags.Api)
+            .RequireAuthorization(WikiEndpoints.PermIndexingManage);
+
         // RF-002: Pergunta em modo Ask
         group.MapPost("/ask-sessions", async (
             [FromBody] AskRequest req,

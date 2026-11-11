@@ -243,6 +243,12 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// <summary>SPEC-60 RF-001: Índices de código por repositório.</summary>
     public DbSet<RepoIndexRecord> RepoIndexes => Set<RepoIndexRecord>();
 
+    /// <summary>SPEC-145: wiki generation runs.</summary>
+    public DbSet<WikiRunRecord> WikiRuns => Set<WikiRunRecord>();
+
+    /// <summary>SPEC-145: generated wiki pages.</summary>
+    public DbSet<WikiPageRecord> WikiPages => Set<WikiPageRecord>();
+
     /// <summary>SPEC-60 RF-001: Unidades de código (chunks/symbols) indexadas.</summary>
     public DbSet<CodeUnitRecord> CodeUnits => Set<CodeUnitRecord>();
 
@@ -312,6 +318,18 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
                     break;
                 case Sandcastle.Infrastructure.Scm.QaRunRecord q:
                     q.CreatedAtTicks = q.CreatedAt.UtcTicks;
+                    break;
+                case RepoIndexRecord i:
+                    i.CreatedAtTicks = i.CreatedAt.UtcTicks;
+                    i.UpdatedAtTicks = i.UpdatedAt.UtcTicks;
+                    break;
+                case WikiRunRecord w:
+                    w.CreatedAtTicks = w.CreatedAt.UtcTicks;
+                    w.FinishedAtTicks = w.FinishedAt?.UtcTicks;
+                    break;
+                case WikiPageRecord p:
+                    p.CreatedAtTicks = p.CreatedAt.UtcTicks;
+                    p.UpdatedAtTicks = p.UpdatedAt.UtcTicks;
                     break;
             }
         }

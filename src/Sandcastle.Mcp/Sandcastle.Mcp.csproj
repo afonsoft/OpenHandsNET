@@ -19,4 +19,9 @@
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Testes dirigem internals (CIDR matcher do transporte HTTP). -->
+    <InternalsVisibleTo Include="Sandcastle.UnitTests" />
+  </ItemGroup>
+
 </Project>

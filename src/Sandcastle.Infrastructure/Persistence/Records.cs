@@ -374,7 +374,11 @@ public sealed class RepoIndexRecord : IOrgScoped
     public string? StatsJson { get; set; }
     public string? FailureReason { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
+    /// <summary>Ticks de <see cref="CreatedAt"/> — SQLite não ordena DateTimeOffset.</summary>
+    public long CreatedAtTicks { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
+    /// <summary>Ticks de <see cref="UpdatedAt"/> — SQLite não ordena DateTimeOffset.</summary>
+    public long UpdatedAtTicks { get; set; }
 }
 
 /// <summary>SPEC-60 RF-001: Unidade de código extraída para FTS/busca vetorial.</summary>

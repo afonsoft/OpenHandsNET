@@ -102,7 +102,7 @@ public sealed class McpEndToEndTests : IDisposable
             """{"jsonrpc":"2.0","id":2,"method":"tools/list"}""",
             api, CancellationToken.None);
         JsonDocument.Parse(list!).RootElement.GetProperty("result")
-            .GetProperty("tools").GetArrayLength().ShouldBe(12);
+            .GetProperty("tools").GetArrayLength().ShouldBe(15);
 
         using var call = await CallAsync(
             server, api, "sc_list_conversations");

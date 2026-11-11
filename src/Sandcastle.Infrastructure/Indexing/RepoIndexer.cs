@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 using Sandcastle.Application.Indexing;
 using Sandcastle.Infrastructure.Agent;
@@ -16,10 +17,12 @@ public sealed class RepoIndexer : IRepoIndexer
 {
     private readonly AppDbContext _db;
     private readonly ICodeSearchStore _searchStore;
+    private readonly IRepoContentProvider _contentProvider;
+    private readonly IOptions<IndexingOptions> _options;
     private readonly ILogger<RepoIndexer> _logger;
 
     // Extensões de arquivos permitidos para indexação
-    private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
+    internal static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".cs", ".fs", ".ts", ".js", ".tsx", ".jsx", ".py", ".go", ".rs", ".java",
         ".kt", ".cpp", ".c", ".h", ".hpp", ".rb", ".php", ".sh", ".sql", ".md",
@@ -35,11 +38,16 @@ public sealed class RepoIndexer : IRepoIndexer
     public RepoIndexer(
         AppDbContext db,
         ICodeSearchStore searchStore,
-        ILogger<RepoIndexer> logger)
+        IRepoContentProvider contentProvider,
+        ILogger<RepoIndexer> logger,
+        IOptions<IndexingOptions>? options = null)
     {
         _db = db;
         _searchStore = searchStore;
+        _contentProvider = contentProvider;
         _logger = logger;
+        _options = options ?? Microsoft.Extensions.Options.Options
+            .Create(new IndexingOptions());
     }
 
     public async Task<RepoIndexStatusDto> TriggerIndexAsync(string repository, string branch, Guid? orgId = null, CancellationToken ct = default)
@@ -69,21 +77,27 @@ public sealed class RepoIndexer : IRepoIndexer
         }
 
         await _db.SaveChangesAsync(ct);
+        var indexId = existing.Id;
 
-        // Se estivermos rodando no repositório local corrente, indexamos os arquivos do workspace
+        // Job em background — indexa o CONTEÚDO do repo (clone shallow ou
+        // checkout local) e persiste o CommitSha resolvido (SPEC-145).
         _ = Task.Run(async () =>
         {
             try
             {
-                await RunIndexingAsync(existing.Id, repository, branch, ct);
+                await RunIndexingAsync(indexId, repository, branch, CancellationToken.None);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error while indexing repository {Repository}", repository);
-                existing.Status = "failed";
-                existing.FailureReason = SecretRedactor.Redact(ex.Message);
-                existing.UpdatedAt = DateTimeOffset.UtcNow;
-                await _db.SaveChangesAsync(CancellationToken.None);
+                var failed = await _db.RepoIndexes.FindAsync(indexId);
+                if (failed is not null)
+                {
+                    failed.Status = "failed";
+                    failed.FailureReason = SecretRedactor.Redact(ex.Message);
+                    failed.UpdatedAt = DateTimeOffset.UtcNow;
+                    await _db.SaveChangesAsync(CancellationToken.None);
+                }
             }
         }, CancellationToken.None);
 
@@ -103,32 +117,43 @@ public sealed class RepoIndexer : IRepoIndexer
         return record is null ? null : ToDto(record);
     }
 
+    /// <summary>
+    /// SPEC-145 RF-001 — pipeline real: adquire o workdir do repo via
+    /// <see cref="IRepoContentProvider"/> (clone shallow do remoto ou
+    /// checkout local), persiste o <see cref="RepoIndexRecord.CommitSha"/>
+    /// resolvido e indexa os arquivos daquela árvore.
+    /// </summary>
     public async Task RunIndexingAsync(Guid indexId, string repository, string branch, CancellationToken ct)
     {
-        _logger.LogInformation("Starting repo indexing for {Repo} (IndexId: {Id})", repository, indexId);
+        _logger.LogInformation("Starting repo indexing for {Repo}@{Branch} (IndexId: {Id})",
+            repository, branch, indexId);
 
         var record = await _db.RepoIndexes.FindAsync(new object[] { indexId }, ct);
         if (record == null) return;
 
+        await using var lease = await _contentProvider.AcquireAsync(
+            new RepoContentRequest(repository, branch, record.OrgId), ct)
+            ?? throw new InvalidOperationException(
+                $"no content provider can serve '{repository}'");
+
+        record.CommitSha = lease.CommitSha;
+
         // Limpa unidades antigas se houver
         await _searchStore.DeleteIndexUnitsAsync(indexId, ct);
 
-        // Varre diretórios do workspace ignorando pastas de build/dependências
-        var rootDir = Directory.GetCurrentDirectory();
+        // Varre a árvore do workdir ignorando pastas de build/dependências
+        var rootDir = lease.RootPath;
         var codeUnits = new List<CodeUnitDto>();
-        int filesCount = 0;
+        var files = new List<string>();
+        var maxFiles = _options.Value.MaxFiles;
 
-        var allFiles = Directory.EnumerateFiles(rootDir, "*.*", SearchOption.AllDirectories)
-            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}.") &&
-                        !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}") &&
-                        !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") &&
-                        !f.Contains($"{Path.DirectorySeparatorChar}node_modules{Path.DirectorySeparatorChar}") &&
-                        !f.Contains($"{Path.DirectorySeparatorChar}.git{Path.DirectorySeparatorChar}") &&
-                        AllowedExtensions.Contains(Path.GetExtension(f)));
+        var allFiles = EnumerateRepoFiles(rootDir)
+            .Where(f => AllowedExtensions.Contains(Path.GetExtension(f)));
 
         foreach (var file in allFiles)
         {
             if (ct.IsCancellationRequested) break;
+            if (maxFiles > 0 && files.Count >= maxFiles) break;
 
             var relPath = Path.GetRelativePath(rootDir, file).Replace('\\', '/');
             string content;
@@ -145,7 +170,7 @@ public sealed class RepoIndexer : IRepoIndexer
             var safeContent = SecretRedactor.Redact(content);
             var chunks = ChunkFile(indexId, relPath, safeContent);
             codeUnits.AddRange(chunks);
-            filesCount++;
+            files.Add(relPath);
         }
 
         // Persiste unidades no store
@@ -155,14 +180,27 @@ public sealed class RepoIndexer : IRepoIndexer
         record.UpdatedAt = DateTimeOffset.UtcNow;
         record.StatsJson = JsonSerializer.Serialize(new
         {
-            files_indexed = filesCount,
+            files_indexed = files.Count,
             units_indexed = codeUnits.Count,
+            provider = lease.ProviderKind,
+            commit_sha = lease.CommitSha,
             completed_at = DateTimeOffset.UtcNow
         });
 
         await _db.SaveChangesAsync(ct);
-        _logger.LogInformation("Finished repo indexing for {Repo}. Files: {Files}, Units: {Units}", repository, filesCount, codeUnits.Count);
+        _logger.LogInformation(
+            "Finished repo indexing for {Repo}@{Branch} ({Sha}). Files: {Files}, Units: {Units}",
+            repository, branch, lease.CommitSha, files.Count, codeUnits.Count);
     }
+
+    /// <summary>Arquivos do workdir excluindo .git/build/deps.</summary>
+    internal static IEnumerable<string> EnumerateRepoFiles(string rootDir) =>
+        Directory.EnumerateFiles(rootDir, "*.*", SearchOption.AllDirectories)
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}.") &&
+                        !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}") &&
+                        !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") &&
+                        !f.Contains($"{Path.DirectorySeparatorChar}node_modules{Path.DirectorySeparatorChar}") &&
+                        !f.Contains($"{Path.DirectorySeparatorChar}.git{Path.DirectorySeparatorChar}"));
 
     public static List<CodeUnitDto> ChunkFile(Guid indexId, string path, string content)
     {
