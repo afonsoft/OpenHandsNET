@@ -1104,3 +1104,46 @@ details.ev-details summary { cursor: pointer; color: var(--sc-fg-dim); font-size
     text-decoration: none;
 }
 .index-badge:hover { border-color: var(--sc-accent); color: var(--sc-fg); }
+
+/* SPEC-145 RF-003: página Wiki — toolbar, árvore de tópicos,
+   conteúdo renderizado (markdown + mermaid) e badge stale. */
+.wiki { display: flex; flex-direction: column; gap: 12px; }
+.wiki-toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.wiki-toolbar .repo-input { min-width: 220px; flex: 1; max-width: 340px; }
+.wiki-toolbar .branch-input { width: 140px; }
+.wiki-layout {
+    display: grid; grid-template-columns: 240px 1fr; gap: 16px;
+    align-items: start;
+}
+.wiki-tree {
+    border: 1px solid var(--sc-border); border-radius: 8px;
+    background: var(--sc-bg-alt); padding: 8px; max-height: 70vh;
+    overflow-y: auto;
+}
+.wiki-topic { margin-bottom: 8px; }
+.wiki-topic-title {
+    font-size: 12px; font-weight: 600; color: var(--sc-fg-dim);
+    text-transform: uppercase; letter-spacing: .04em; padding: 4px 8px;
+}
+.wiki-page-link {
+    display: block; width: 100%; text-align: left; border: 0;
+    background: transparent; color: var(--sc-fg); padding: 5px 8px;
+    border-radius: 6px; cursor: pointer; font-size: 13px;
+}
+.wiki-page-link:hover { background: var(--sc-bg); }
+.wiki-page-link.active { background: var(--sc-bg); font-weight: 600; }
+.wiki-stale {
+    margin-left: 6px; font-size: 10.5px; color: var(--sc-yellow);
+    border-color: var(--sc-yellow);
+}
+.wiki-content {
+    border: 1px solid var(--sc-border); border-radius: 8px;
+    padding: 16px 20px; min-height: 300px;
+}
+.wiki-markdown { font-size: 14px; line-height: 1.6; }
+.wiki-markdown pre.mermaid {
+    background: var(--sc-bg-alt); border: 1px solid var(--sc-border);
+    border-radius: 8px; padding: 12px; overflow-x: auto;
+}
+.wiki-sources { margin-top: 16px; font-size: 12.5px; color: var(--sc-fg-dim); }
+.wiki-sources ul { margin: 6px 0 0 16px; }

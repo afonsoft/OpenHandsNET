@@ -375,6 +375,7 @@ internal static class ProgramParts
         app.MapScimEndpoints();
         app.MapEdgeEndpoints();
         app.MapAskAndIndexEndpoints();
+        app.MapWikiEndpoints();
         app.MapSessionInsightEndpoints();
         app.MapDelegationEndpoints();
         app.MapKnowledgeEndpoints();

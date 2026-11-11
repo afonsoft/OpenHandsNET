@@ -1092,6 +1092,48 @@ public sealed class SandcastleApiClient(HttpClient http)
             new { repository, branch }, Json, ct);
         return resp.IsSuccessStatusCode;
     }
+
+    // ---- SPEC-145: repo wiki ----------------------------------------------
+
+    /// <summary>GET /repos/{repo}/wiki — árvore de tópicos (nunca 404: empty tree).</summary>
+    public Task<WikiTreeDto?> GetWikiTreeAsync(
+        string repository, string? branch, CancellationToken ct = default)
+    {
+        var path = $"/api/v1/repos/{Uri.EscapeDataString(repository)}/wiki"
+            + (string.IsNullOrEmpty(branch)
+                ? "" : $"?branch={Uri.EscapeDataString(branch)}");
+        return GetOrNull<WikiTreeDto>(path, ct);
+    }
+
+    /// <summary>GET /repos/{repo}/wiki/pages/{id} — página completa.</summary>
+    public Task<WikiPageDto?> GetWikiPageAsync(
+        string repository, Guid pageId, CancellationToken ct = default) =>
+        GetOrNull<WikiPageDto>(
+            $"/api/v1/repos/{Uri.EscapeDataString(repository)}"
+            + $"/wiki/pages/{pageId}", ct);
+
+    /// <summary>POST /repos/{repo}/wiki/generate — 202 (run) | null (409/erro).</summary>
+    public async Task<WikiRunDto?> GenerateWikiAsync(
+        string repository, string? branch, string? effort,
+        CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync(
+            $"/api/v1/repos/{Uri.EscapeDataString(repository)}/wiki/generate",
+            new { branch, effort }, Json, ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            return null;
+        }
+        return await resp.Content
+            .ReadFromJsonAsync<WikiRunDto>(Json, ct);
+    }
+
+    /// <summary>GET /repos/{repo}/wiki/runs/{id} — status do job.</summary>
+    public Task<WikiRunDto?> GetWikiRunAsync(
+        string repository, Guid runId, CancellationToken ct = default) =>
+        GetOrNull<WikiRunDto>(
+            $"/api/v1/repos/{Uri.EscapeDataString(repository)}"
+            + $"/wiki/runs/{runId}", ct);
 }
 
 /// <summary>SPEC-147 RF-004: resposta de <c>/usage/budget</c>.</summary>
@@ -1106,6 +1148,33 @@ public sealed record ModelUsageDto(string Model, long Tokens, decimal CostUsd);
 /// <summary>SPEC-147 RF-005: resposta de <c>/indexing/status</c>.</summary>
 public sealed record IndexingStatusDto(
     int TotalConnected, int Indexed, int Indexing, int Failed);
+
+/// <summary>SPEC-145: árvore de tópicos da wiki de um repo.</summary>
+public sealed record WikiTreeDto(
+    string Repository, string Branch, string? CommitSha,
+    IReadOnlyList<WikiTopicNode> Topics);
+
+/// <summary>SPEC-145: nó de tópico (grupo de páginas).</summary>
+public sealed record WikiTopicNode(
+    string Key, string Title, IReadOnlyList<WikiPageItem> Pages);
+
+/// <summary>SPEC-145: entrada de página na árvore.</summary>
+public sealed record WikiPageItem(
+    Guid Id, string Topic, string PathKey, string Title,
+    bool Stale, int SortOrder);
+
+/// <summary>SPEC-145: página completa (markdown + fontes).</summary>
+public sealed record WikiPageDto(
+    Guid Id, string Repository, string Branch, string Topic,
+    string PathKey, string Title, string ContentMd,
+    IReadOnlyList<string> SourceFiles, bool Stale,
+    Guid WikiRunId, DateTimeOffset UpdatedAt);
+
+/// <summary>SPEC-145: status do job de geração.</summary>
+public sealed record WikiRunDto(
+    Guid Id, Guid? OrgId, string Repository, string Branch,
+    string? CommitSha, string Effort, string Status, string? StatsJson,
+    string? Error, DateTimeOffset CreatedAt, DateTimeOffset? FinishedAt);
 
 /// <summary>SPEC-63: sugestão de knowledge na fila.</summary>
 public sealed record KnowledgeSuggestionItem(

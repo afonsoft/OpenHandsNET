@@ -37,6 +37,8 @@ public enum Permission
     ManageOrgQuota,
     CreateSignupLink,
     ManageOauthProviders,
+    IndexingManage,
+    WikiRead,
 }
 
 public static class PermissionExtensions
@@ -74,6 +76,8 @@ public static class PermissionExtensions
         Permission.ManageOrgQuota => "manage_org_quota",
         Permission.CreateSignupLink => "create_signup_link",
         Permission.ManageOauthProviders => "manage_oauth_providers",
+        Permission.IndexingManage => "indexing.manage",
+        Permission.WikiRead => "wiki.read",
         _ => throw new ArgumentOutOfRangeException(nameof(permission)),
     };
 
@@ -110,6 +114,8 @@ public static class PermissionExtensions
         "manage_org_quota" => Permission.ManageOrgQuota,
         "create_signup_link" => Permission.CreateSignupLink,
         "manage_oauth_providers" => Permission.ManageOauthProviders,
+        "indexing.manage" => Permission.IndexingManage,
+        "wiki.read" => Permission.WikiRead,
         _ => null,
     };
 }

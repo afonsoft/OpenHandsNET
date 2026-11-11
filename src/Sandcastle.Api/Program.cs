@@ -94,6 +94,27 @@ builder.Services.AddSingleton<Sandcastle.Application.Sandbox.ISandboxSnapshotPro
 builder.Services.AddScoped<Sandcastle.Application.Indexing.ICodeSearchStore, Sandcastle.Infrastructure.Indexing.EfCodeSearchStore>();
 builder.Services.AddScoped<Sandcastle.Application.Indexing.IRepoIndexer, Sandcastle.Infrastructure.Indexing.RepoIndexer>();
 builder.Services.AddScoped<Sandcastle.Application.Ask.IAskModeService, Sandcastle.Infrastructure.Ask.AskModeService>();
+// SPEC-145 RF-001/RF-002 — conteúdo do repo (clone remoto | local) +
+// pipeline de wiki (service → fila in-process → runner LLM).
+builder.Services.Configure<Sandcastle.Infrastructure.Indexing.IndexingOptions>(
+    builder.Configuration.GetSection(
+        Sandcastle.Infrastructure.Indexing.IndexingOptions.Section));
+builder.Services.Configure<Sandcastle.Infrastructure.Wiki.WikiOptions>(
+    builder.Configuration.GetSection(
+        Sandcastle.Infrastructure.Wiki.WikiOptions.Section));
+builder.Services.AddScoped<Sandcastle.Infrastructure.Indexing.LocalRepoContentProvider>();
+builder.Services.AddScoped<Sandcastle.Infrastructure.Indexing.GitRepoContentProvider>();
+builder.Services.AddScoped<Sandcastle.Infrastructure.Indexing.RepoContentProviderResolver>();
+builder.Services.AddScoped<Sandcastle.Application.Indexing.IRepoContentProvider>(
+    sp => sp.GetRequiredService<Sandcastle.Infrastructure.Indexing.RepoContentProviderResolver>());
+builder.Services.AddSingleton<Sandcastle.Infrastructure.Wiki.WikiDispatcher>();
+builder.Services.AddScoped<Sandcastle.Application.Wiki.IWikiDispatcher>(
+    sp => sp.GetRequiredService<Sandcastle.Infrastructure.Wiki.WikiDispatcher>());
+builder.Services.AddScoped<Sandcastle.Application.Wiki.IWikiRunner,
+    Sandcastle.Infrastructure.Wiki.WikiRunner>();
+builder.Services.AddScoped<Sandcastle.Application.Wiki.IWikiService,
+    Sandcastle.Infrastructure.Wiki.WikiService>();
+builder.Services.AddHostedService<Sandcastle.Infrastructure.Wiki.WikiRunWorker>();
 builder.Services.AddScoped<Sandcastle.Application.Insights.ISessionInsightService, Sandcastle.Infrastructure.Insights.SessionInsightService>();
 builder.Services.AddScoped<Sandcastle.Application.Delegation.IDelegationService, Sandcastle.Infrastructure.Delegation.DelegationService>();
 builder.Services.AddScoped<Sandcastle.Application.Identity.ICurrentUserAccessor,
