@@ -292,7 +292,7 @@ public interface IQaService
     /// <c>(repo, pr, head_sha)</c> — run existente (queued|running|
     /// completed) retorna <see cref="QaTriggerError.Duplicate"/>.
     /// </summary>
-    Task<QaTriggerResult> TriggerAsync(
+    Task<QaTriggerResult> TriggerAsync( // NOSONAR S107 — contexto de trigger único; param object só desloca aridade
         ScmConnection connection, string repository, int prNumber,
         string headSha, string? baseSha, string trigger,
         string? requestedByUserId, CancellationToken ct);

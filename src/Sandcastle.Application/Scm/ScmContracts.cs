@@ -139,9 +139,9 @@ public sealed record ScmConnection(
 
     /// <summary><c>completed</c> (default) | <c>passed</c>.</summary>
     public string EffectiveQaPassCondition =>
-        string.IsNullOrEmpty(QaPassCondition)
-            ? QaDefaults.PassConditionCompleted
-            : QaPassCondition!;
+        QaPassCondition is { Length: > 0 } q
+            ? q
+            : QaDefaults.PassConditionCompleted;
 }
 
 /// <summary>

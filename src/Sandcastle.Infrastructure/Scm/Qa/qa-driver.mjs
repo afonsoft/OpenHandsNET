@@ -2,8 +2,8 @@
 // Sandcastle QA driver — executes a batch of browser steps with
 // Playwright inside the sandbox runtime image (SPEC-131/142).
 // Usage: node qa-driver.mjs <job.json>
-// job:  { "base_url": "http://localhost:3000", "out_dir": "/tmp/qa-shots",
-//         "video_dir": "/tmp/qa-video", "timeout_ms": 30000,
+// job:  { "base_url": "http://localhost:3000", "out_dir": "/workspace/.qa/shots",
+//         "video_dir": "/workspace/.qa/video", "timeout_ms": 30000,
 //         "steps": [ {kind:"browser", action:"goto", url:"/"}, ... ] }
 // stdout: JSON {ok, error?, video?, steps:[{ok, detail?, screenshot?}]}
 // Screenshots land in out_dir/step-<n>.png; video (webm) in video_dir.

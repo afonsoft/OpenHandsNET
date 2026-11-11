@@ -40,11 +40,17 @@ internal sealed class SandboxQaBrowserDriver(
     ILogger logger,
     Domain.Sandbox.Sandbox sandbox) : IQaBrowserDriver
 {
-    private const string DriverPath = "/tmp/qa/qa-driver.mjs";
-    private const string JobPath = "/tmp/qa/job.json";
-    private const string ResultPath = "/tmp/qa/result.json";
-    private const string ShotDir = "/tmp/qa/shots";
-    private const string VideoDir = "/tmp/qa/video";
+    /// <summary>
+    /// Diretório de trabalho do driver — fora do checkout do repo e
+    /// fora de dirs públicos (<c>/tmp</c>) para não trombar o app nem
+    /// partilhar state com outros processos do sandbox.
+    /// </summary>
+    private const string WorkDir = "/workspace/.qa";
+    private const string DriverPath = WorkDir + "/qa-driver.mjs";
+    private const string JobPath = WorkDir + "/job.json";
+    private const string ResultPath = WorkDir + "/result.json";
+    private const string ShotDir = WorkDir + "/shots";
+    private const string VideoDir = WorkDir + "/video";
     private bool? _available;
 
     /// <inheritdoc />
@@ -59,7 +65,47 @@ internal sealed class SandboxQaBrowserDriver(
                 [], null);
         }
 
-        var job = new
+        await WriteFileAsync(
+            JobPath, BuildJobJson(baseUrl, steps), ct);
+
+        var timeout = TimeSpan.FromSeconds(
+            options.StepTimeoutSeconds * (steps.Count + 2) + 30);
+        var run = await executor.ExecAsync(sandbox,
+            $"cd {WorkDir} && node qa-driver.mjs {JobPath} "
+            + $"> {ResultPath} 2>{WorkDir}/driver.err",
+            timeout, ct);
+        if (run.TimedOut)
+        {
+            return new QaBrowserRunResult(
+                false, "qa driver timed out", [], null);
+        }
+
+        var read = await executor.ExecAsync(sandbox,
+            $"cat {ResultPath}", TimeSpan.FromSeconds(15), ct);
+        if (read.ExitCode != 0
+            || string.IsNullOrWhiteSpace(read.StdOut))
+        {
+            var tail = await executor.ExecAsync(sandbox,
+                $"tail -c 1000 {WorkDir}/driver.err 2>/dev/null",
+                TimeSpan.FromSeconds(15), ct);
+            return new QaBrowserRunResult(
+                false, $"qa driver failed: {tail.StdOut.Trim()}",
+                [], null);
+        }
+
+        using var doc = JsonDocument.Parse(read.StdOut);
+        var root = doc.RootElement;
+        var stepResults = await ReadStepResultsAsync(
+            root, steps.Count, ct);
+        var video = await ReadVideoAsync(root, ct);
+        return new QaBrowserRunResult(
+            true, null, stepResults, video);
+    }
+
+    /// <summary>Job JSON do batch (base url, dirs, timeouts, passos).</summary>
+    private string BuildJobJson(
+        string baseUrl, IReadOnlyList<QaPlanStep> steps) =>
+        JsonSerializer.Serialize(new
         {
             base_url = baseUrl,
             out_dir = ShotDir,
@@ -74,49 +120,24 @@ internal sealed class SandboxQaBrowserDriver(
                 expect = s.Expect,
                 timeout_seconds = s.TimeoutSeconds,
             }).ToList(),
-        };
-        var jobJson = JsonSerializer.Serialize(job);
-        await WriteFileAsync(JobPath, jobJson, ct);
+        });
 
-        var timeout = TimeSpan.FromSeconds(
-            options.StepTimeoutSeconds * (steps.Count + 2) + 30);
-        var run = await executor.ExecAsync(sandbox,
-            $"cd /tmp/qa && node qa-driver.mjs {JobPath} > {ResultPath} "
-            + "2>/tmp/qa/driver.err",
-            timeout, ct);
-        if (run.TimedOut)
-        {
-            return new QaBrowserRunResult(
-                false, "qa driver timed out", [], null);
-        }
-
-        var read = await executor.ExecAsync(sandbox,
-            $"cat {ResultPath}", TimeSpan.FromSeconds(15), ct);
-        if (read.ExitCode != 0
-            || string.IsNullOrWhiteSpace(read.StdOut))
-        {
-            var tail = await executor.ExecAsync(sandbox,
-                "tail -c 1000 /tmp/qa/driver.err 2>/dev/null",
-                TimeSpan.FromSeconds(15), ct);
-            return new QaBrowserRunResult(
-                false, $"qa driver failed: {tail.StdOut.Trim()}",
-                [], null);
-        }
-
-        using var doc = JsonDocument.Parse(read.StdOut);
-        var root = doc.RootElement;
+    /// <summary>
+    /// Resultados por passo do JSON do driver (fetch dos screenshots);
+    /// passos não executados viram <c>ok=false, "not executed"</c>.
+    /// </summary>
+    private async Task<List<QaBrowserStepResult>> ReadStepResultsAsync(
+        JsonElement root, int planned, CancellationToken ct)
+    {
         var stepResults = new List<QaBrowserStepResult>();
-        var n = 0;
         foreach (var s in root.GetProperty("steps").EnumerateArray())
         {
-            n++;
             byte[]? png = null;
             var shot = s.TryGetProperty("screenshot", out var sh)
                 ? sh.GetString() : null;
             if (shot is not null)
             {
-                png = await FetchFileAsync(
-                    shot, 4 * 1024 * 1024, ct);
+                png = await FetchFileAsync(shot, 4 * 1024 * 1024, ct);
             }
             stepResults.Add(new QaBrowserStepResult(
                 s.GetProperty("ok").GetBoolean(),
@@ -126,23 +147,26 @@ internal sealed class SandboxQaBrowserDriver(
                 s.TryGetProperty("content", out var c)
                     ? c.GetString() : null));
         }
-        var stepsMissed = steps.Count - stepResults.Count;
-        for (var i = 0; i < stepsMissed; i++)
+        for (var i = stepResults.Count; i < planned; i++)
         {
             stepResults.Add(new QaBrowserStepResult(
                 false, "not executed", null, null));
         }
+        return stepResults;
+    }
 
-        byte[]? video = null;
+    /// <summary>Fetch do vídeo reportado pelo driver (path no sandbox).</summary>
+    private async Task<byte[]?> ReadVideoAsync(
+        JsonElement root, CancellationToken ct)
+    {
         if (root.TryGetProperty("video", out var v)
             && v.ValueKind == JsonValueKind.String
             && v.GetString() is { } vpath)
         {
-            video = await FetchFileAsync(
+            return await FetchFileAsync(
                 vpath, options.MaxVideoMb * 1024 * 1024, ct);
         }
-        return new QaBrowserRunResult(
-            true, null, stepResults, video);
+        return null;
     }
 
     /// <summary>
@@ -170,7 +194,7 @@ internal sealed class SandboxQaBrowserDriver(
             using var reader = new StreamReader(stream);
             var script = await reader.ReadToEndAsync(ct);
             var setup = await executor.ExecAsync(sandbox,
-                "mkdir -p /tmp/qa/shots /tmp/qa/video",
+                $"mkdir -p {ShotDir} {VideoDir}",
                 TimeSpan.FromSeconds(15), ct);
             if (setup.ExitCode != 0)
             {

@@ -13,6 +13,8 @@ namespace Sandcastle.Infrastructure.Scm.Qa;
 /// </summary>
 public static class QaFormatter
 {
+    private const string Success = "success";
+
     /// <summary>
     /// Comentário do run: <c>PASS|FAIL|PARTIAL</c> + passos + evidência.
     /// <paramref name="evidence"/> carrega pares (nome, url auth'd);
@@ -56,6 +58,21 @@ public static class QaFormatter
                 + " skipped steps below.");
         }
         b.AppendLine();
+        AppendStepsTable(b, steps);
+        AppendEvidence(b, evidence, inlineShots);
+        b.AppendLine("**Full report:** `/api/v1/qa/runs/" + run.Id + "`");
+        b.AppendLine();
+        b.AppendLine("<sub>`" + QaDefaults.StatusContext
+            + "` is advisory — it never blocks merge on its own."
+            + " QA only exercised the PR head; the branch was not modified."
+            + "</sub>");
+        return b.ToString();
+    }
+
+    /// <summary>Tabela markdown dos passos de teste (até 12 linhas).</summary>
+    private static void AppendStepsTable(
+        StringBuilder b, IReadOnlyList<QaStepRecord> steps)
+    {
         b.AppendLine("| # | Step | Target | Result |");
         b.AppendLine("|---|------|--------|--------|");
         var shown = 0;
@@ -88,36 +105,37 @@ public static class QaFormatter
             b.AppendLine("| — | *(no test steps executed)* | | |");
         }
         b.AppendLine();
+    }
 
-        if (evidence.Count > 0)
+    /// <summary>Links de evidência — até <paramref name="inlineShots"/> imagens inline.</summary>
+    private static void AppendEvidence(
+        StringBuilder b,
+        IReadOnlyList<(string Name, string Url)> evidence,
+        int inlineShots)
+    {
+        if (evidence.Count == 0)
         {
-            b.AppendLine("**Evidence** (requires Sandcastle auth)");
-            var shots = 0;
-            foreach (var (name, url) in evidence)
-            {
-                var isImage = name.EndsWith(".png",
-                    StringComparison.OrdinalIgnoreCase);
-                if (isImage && shots < inlineShots)
-                {
-                    b.AppendLine(
-                        string.Create(CultureInfo.InvariantCulture,
-                            $"![{name}]({url})"));
-                    shots++;
-                }
-                else
-                {
-                    b.AppendLine($"- [{name}]({url})");
-                }
-            }
-            b.AppendLine();
+            return;
         }
-        b.AppendLine("**Full report:** `/api/v1/qa/runs/" + run.Id + "`");
+        b.AppendLine("**Evidence** (requires Sandcastle auth)");
+        var shots = 0;
+        foreach (var (name, url) in evidence)
+        {
+            var isImage = name.EndsWith(".png",
+                StringComparison.OrdinalIgnoreCase);
+            if (isImage && shots < inlineShots)
+            {
+                b.AppendLine(
+                    string.Create(CultureInfo.InvariantCulture,
+                        $"![{name}]({url})"));
+                shots++;
+            }
+            else
+            {
+                b.AppendLine($"- [{name}]({url})");
+            }
+        }
         b.AppendLine();
-        b.AppendLine("<sub>`" + QaDefaults.StatusContext
-            + "` is advisory — it never blocks merge on its own."
-            + " QA only exercised the PR head; the branch was not modified."
-            + "</sub>");
-        return b.ToString();
     }
 
     /// <summary>
@@ -135,15 +153,15 @@ public static class QaFormatter
             _ => passCondition == QaDefaults.PassConditionPassed
                 ? verdict switch
                 {
-                    QaVerdicts.Pass => ("success", "qa: pass"),
+                    QaVerdicts.Pass => (Success, "qa: pass"),
                     QaVerdicts.Fail => ("failure", "qa: fail"),
                     _ => ("failure", "qa: partial"),
                 }
                 : verdict switch
                 {
-                    QaVerdicts.Pass => ("success", "qa: pass"),
-                    QaVerdicts.Fail => ("success", "qa: fail"),
-                    _ => ("success", "qa: partial"),
+                    QaVerdicts.Pass => (Success, "qa: pass"),
+                    QaVerdicts.Fail => (Success, "qa: fail"),
+                    _ => (Success, "qa: partial"),
                 },
         };
 }

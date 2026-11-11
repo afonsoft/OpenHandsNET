@@ -49,6 +49,12 @@ public sealed class QaRunner : IQaRunner
 {
     private const string RepoDir = "/workspace/repo";
 
+    /// <summary>Working dir do run fora do repo e fora de /tmp (S5443).</summary>
+    private const string WorkDir = "/workspace/.qa";
+
+    /// <summary>Kind de passo do plano executado no browser.</summary>
+    internal const string Browser = "browser";
+
     private readonly AppDbContext _db;
     private readonly IScmProviderRegistry _providers;
     private readonly IAgentLlmProvider _llm;
@@ -121,7 +127,7 @@ public sealed class QaRunner : IQaRunner
             ? null : _providers.Get(model.Kind);
         if (model is null || provider is null)
         {
-            await FailAsync(run, "scm connection/provider missing", ct);
+            await FailAsync(run, "scm connection/provider missing");
             return;
         }
 
@@ -142,7 +148,7 @@ public sealed class QaRunner : IQaRunner
         catch (Exception ex)
         {
             _logger.LogError(ex, "qa run {Id} failed", run.Id);
-            await FailAsync(run, ex.Message, ct);
+            await FailAsync(run, ex.Message);
         }
     }
 
@@ -186,7 +192,7 @@ public sealed class QaRunner : IQaRunner
         {
             await FinishAsync(run, connection, provider, recorder,
                 QaVerdicts.Partial,
-                "no exercisable test plan", artifactNs, ct);
+                "no exercisable test plan", ct);
             return;
         }
 
@@ -222,7 +228,7 @@ public sealed class QaRunner : IQaRunner
 
         // ── Phase 4: Report ──────────────────────────────────────
         await FinishAsync(run, connection, provider, recorder,
-            Verdict(recorder.Steps), recorder.BailNote, artifactNs, ct);
+            Verdict(recorder.Steps), recorder.BailNote, ct);
     }
 
     /// <summary>Understand: LLM → <see cref="QaPlan"/> (null = sem plano).</summary>
@@ -326,7 +332,7 @@ public sealed class QaRunner : IQaRunner
                     $"git -C {RepoDir} fetch --depth 50 origin "
                     + $"{run.HeadSha} 2>/dev/null; "
                     + $"git -C {RepoDir} checkout --detach {run.HeadSha} "
-                    + "|| git -C repo checkout --detach FETCH_HEAD",
+                    + $"|| git -C {RepoDir} checkout --detach FETCH_HEAD",
                     TimeSpan.FromSeconds(120), ct);
                 return co.ExitCode == 0;
             });
@@ -411,8 +417,10 @@ public sealed class QaRunner : IQaRunner
             async () =>
             {
                 var launch = await ExecAsync(sandbox,
-                    $"cd {RepoDir} && (nohup bash -lc '{start.Command}' "
-                    + "> /tmp/qa-app.log 2>&1 & echo $! > /tmp/qa-app.pid)",
+                    $"mkdir -p {WorkDir} && cd {RepoDir} "
+                    + $"&& (nohup bash -lc '{start.Command}' "
+                    + $"> {WorkDir}/qa-app.log 2>&1 "
+                    + $"& echo $! > {WorkDir}/qa-app.pid)",
                     TimeSpan.FromSeconds(15), ct);
                 if (launch.ExitCode != 0)
                 {
@@ -431,7 +439,7 @@ public sealed class QaRunner : IQaRunner
                         return true;
                     }
                     var alive = await ExecAsync(sandbox,
-                        "kill -0 $(cat /tmp/qa-app.pid) 2>/dev/null",
+                        $"kill -0 $(cat {WorkDir}/qa-app.pid) 2>/dev/null",
                         TimeSpan.FromSeconds(10), ct);
                     if (alive.ExitCode != 0)
                     {
@@ -440,7 +448,7 @@ public sealed class QaRunner : IQaRunner
                     await Task.Delay(2000, ct);
                 }
                 var tail = await ExecAsync(sandbox,
-                    "tail -c 2000 /tmp/qa-app.log 2>/dev/null",
+                    $"tail -c 2000 {WorkDir}/qa-app.log 2>/dev/null",
                     TimeSpan.FromSeconds(10), ct);
                 var log = tail.StdOut.Trim();
                 recorder.Note(
@@ -456,27 +464,25 @@ public sealed class QaRunner : IQaRunner
     /// (uma sessão = um vídeo), exec individual ao sandbox; bugfix tenta
     /// reproduce-on-base antes quando viável. Caps: MaxSteps + deadline.
     /// </summary>
-    private async Task ExerciseAsync(
+    private async Task ExerciseAsync( // NOSONAR S107 — contexto da fase Exercise (mesmo critério dos runners SPEC-140/141)
         QaRunRecord run, QaPlan plan, StepRecorder recorder,
         Domain.Sandbox.Sandbox sandbox, string? baseUrl, DateTimeOffset deadline,
         QaOptions opts, Guid artifactNs, CancellationToken ct)
     {
-        if (opts.ReproductionEnabled
-            && plan.Classification == QaClassifications.Bugfix
-            && plan.Reproduction is { } repro
-            && run.BaseSha is { Length: > 0 } baseSha
-            && baseUrl is not null)
+        if (CanReproduce(opts, plan, run, baseUrl))
         {
             await ReproduceOnBaseAsync(
-                run, plan, repro, recorder, sandbox, baseSha, opts, ct);
+                run, plan, plan.Reproduction!, recorder, sandbox,
+                run.BaseSha!, opts, ct);
         }
 
-        var driver = plan.Steps.Any(s => s.Kind == "browser")
+        var driver = plan.Steps.Any(s => s.Kind == Browser)
             && opts.BrowserEnabled && baseUrl is not null
             ? _driverFactory.Create(sandbox)
             : null;
 
-        for (var i = 0; i < plan.Steps.Count; i++)
+        var i = 0;
+        while (i < plan.Steps.Count)
         {
             var step = plan.Steps[i];
             if (DateTimeOffset.UtcNow >= deadline)
@@ -487,34 +493,52 @@ public sealed class QaRunner : IQaRunner
                 break;
             }
 
-            if (step.Kind == "browser"
-                && driver is not null && baseUrl is not null)
-            {
-                var batch = new List<QaPlanStep>();
-                while (i < plan.Steps.Count
-                    && plan.Steps[i].Kind == "browser")
-                {
-                    batch.Add(plan.Steps[i++]);
-                }
-                i--;
-                await RunBrowserBatchAsync(
-                    recorder, driver, baseUrl, batch, artifactNs, ct);
-            }
-            else if (step.Kind == "browser")
-            {
-                await recorder.RecordAsync("browser",
-                    step.Url ?? step.Selector ?? step.Action,
-                    QaStepOutcomes.Skipped,
-                    baseUrl is null
-                        ? "no app url (no start command in plan)"
-                        : "browser driver disabled",
-                    null, null, ct);
-            }
-            else
+            if (step.Kind != Browser)
             {
                 await RunExecStepAsync(
                     recorder, sandbox, step, opts, ct);
+                i++;
+                continue;
             }
+
+            var batch = plan.Steps.Skip(i)
+                .TakeWhile(s => s.Kind == Browser).ToList();
+            i += batch.Count;
+            if (driver is not null && baseUrl is not null)
+            {
+                await RunBrowserBatchAsync(
+                    recorder, driver, baseUrl, batch, artifactNs, ct);
+            }
+            else
+            {
+                await SkipBrowserBatchAsync(recorder, batch, baseUrl, ct);
+            }
+        }
+    }
+
+    /// <summary>Guard do reproduce-on-base (bugfix + base + start + repro).</summary>
+    private static bool CanReproduce(
+        QaOptions opts, QaPlan plan, QaRunRecord run, string? baseUrl) =>
+        opts.ReproductionEnabled
+        && plan.Classification == QaClassifications.Bugfix
+        && plan.Reproduction is not null
+        && run.BaseSha is { Length: > 0 }
+        && baseUrl is not null;
+
+    /// <summary>Passos browser sem driver/url → skipped (bail honesto).</summary>
+    private static async Task SkipBrowserBatchAsync(
+        StepRecorder recorder, IReadOnlyList<QaPlanStep> batch,
+        string? baseUrl, CancellationToken ct)
+    {
+        foreach (var s in batch)
+        {
+            await recorder.RecordAsync(Browser,
+                s.Url ?? s.Selector ?? s.Action,
+                QaStepOutcomes.Skipped,
+                baseUrl is null
+                    ? "no app url (no start command in plan)"
+                    : "browser driver disabled",
+                null, null, ct);
         }
     }
 
@@ -572,7 +596,7 @@ public sealed class QaRunner : IQaRunner
         {
             foreach (var s in batch)
             {
-                await recorder.RecordAsync("browser",
+                await recorder.RecordAsync(Browser,
                     s.Url ?? s.Selector ?? s.Action,
                     QaStepOutcomes.Skipped,
                     result.Error ?? "browser driver unavailable",
@@ -595,7 +619,7 @@ public sealed class QaRunner : IQaRunner
                 artifactRef = await _artifacts.PutAsync(
                     artifactNs, Sanitize(name), png, ct);
             }
-            await recorder.RecordAsync("browser",
+            await recorder.RecordAsync(Browser,
                 $"{s.Action} {s.Url ?? s.Selector ?? s.Name}".Trim(),
                 r.Ok ? QaStepOutcomes.Ok : QaStepOutcomes.Fail,
                 r.Detail is null
@@ -623,7 +647,7 @@ public sealed class QaRunner : IQaRunner
     /// Falha de infra no base vira nota e segue — verificação no PR
     /// ainda acontece (bail honesto, nunca FAIL por infra).
     /// </summary>
-    private async Task ReproduceOnBaseAsync(
+    private async Task ReproduceOnBaseAsync( // NOSONAR S107 — contexto da fase (mesmo critério dos runners SPEC-140/141)
         QaRunRecord run, QaPlan plan, QaPlanReproduction repro,
         StepRecorder recorder, Domain.Sandbox.Sandbox sandbox, string baseSha,
         QaOptions opts, CancellationToken ct)
@@ -662,7 +686,7 @@ public sealed class QaRunner : IQaRunner
             $"git -C {RepoDir} checkout --detach {run.HeadSha}",
             TimeSpan.FromSeconds(120), ct);
         await ExecAsync(sandbox,
-            "kill $(cat /tmp/qa-app.pid) 2>/dev/null; sleep 1",
+            $"kill $(cat {WorkDir}/qa-app.pid) 2>/dev/null; sleep 1",
             TimeSpan.FromSeconds(15), ct);
         await StartAppAsync(
             recorder, sandbox, plan.Start, opts, ct);
@@ -685,7 +709,7 @@ public sealed class QaRunner : IQaRunner
     internal static string Verdict(IReadOnlyList<QaStepRecord> steps)
     {
         var test = steps.Where(
-            s => s.Action is "exec" or "browser" or "repro").ToList();
+            s => s.Action is "exec" or Browser or "repro").ToList();
         if (test.Any(s => s.Outcome is QaStepOutcomes.Fail))
         {
             return QaVerdicts.Fail;
@@ -707,8 +731,7 @@ public sealed class QaRunner : IQaRunner
     private async Task FinishAsync(
         QaRunRecord run, ScmConnection connection,
         IScmProvider provider, StepRecorder recorder,
-        string verdict, string? finishError, Guid artifactNs,
-        CancellationToken ct)
+        string verdict, string? finishError, CancellationToken ct)
     {
         run.Status = QaRunStatuses.Completed;
         run.Verdict = verdict;
@@ -768,8 +791,7 @@ public sealed class QaRunner : IQaRunner
     }
 
     /// <summary>Falha de pipeline — run failed, status error.</summary>
-    private async Task FailAsync(
-        QaRunRecord run, string error, CancellationToken ct)
+    private async Task FailAsync(QaRunRecord run, string error)
     {
         run.Status = QaRunStatuses.Failed;
         run.Error = SecretRedactor.Redact(
@@ -823,7 +845,7 @@ public sealed class QaRunner : IQaRunner
         _executor.ExecAsync(sandbox, command, timeout, ct);
 
     /// <summary>Executa uma ação de infra cronometrada → qa_step.</summary>
-    private async Task<bool> TimeAsync(
+    private static async Task<bool> TimeAsync(
         StepRecorder recorder, string action, string? target,
         Func<Task<bool>> work)
     {
@@ -860,30 +882,27 @@ public sealed class QaRunner : IQaRunner
         string? expect, CommandResult r)
     {
         var combined = (r.StdOut ?? "") + (r.StdErr ?? "");
-        if (expect is null)
+        var i = expect?.IndexOf(':') ?? -1;
+        var op = i < 0 ? expect : expect![..i];
+        var arg = i < 0 ? "" : expect![(i + 1)..];
+        var (passed, error) = op switch
         {
-            return r.ExitCode == 0 ? null : $"exit {r.ExitCode} != 0";
-        }
-        var i = expect.IndexOf(':');
-        var op = i < 0 ? expect : expect[..i];
-        var arg = i < 0 ? "" : expect[(i + 1)..];
-        return op switch
-        {
-            "exit" => r.ExitCode.ToString(
-                System.Globalization.CultureInfo.InvariantCulture)
-                == arg.Trim()
-                ? null : $"exit {r.ExitCode} != {arg}",
-            "status" => combined.Contains(arg.Trim(),
-                StringComparison.Ordinal)
-                ? null : $"status {arg} not in output",
-            "contains" => combined.Contains(arg,
-                StringComparison.Ordinal)
-                ? null : $"output missing \"{arg}\"",
-            "not_contains" => combined.Contains(arg,
-                StringComparison.Ordinal)
-                ? $"output contains forbidden \"{arg}\"" : null,
-            _ => r.ExitCode == 0 ? null : $"exit {r.ExitCode} != 0",
+            "exit" => (r.ExitCode.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture)
+                    == arg.Trim(),
+                $"exit {r.ExitCode} != {arg}"),
+            "status" => (combined.Contains(arg.Trim(),
+                    StringComparison.Ordinal),
+                $"status {arg} not in output"),
+            "contains" => (combined.Contains(arg,
+                    StringComparison.Ordinal),
+                $"output missing \"{arg}\""),
+            "not_contains" => (!combined.Contains(arg,
+                    StringComparison.Ordinal),
+                $"output contains forbidden \"{arg}\""),
+            _ => (r.ExitCode == 0, $"exit {r.ExitCode} != 0"),
         };
+        return passed ? null : error;
     }
 }
 
@@ -949,7 +968,8 @@ internal sealed class StepRecorder(AppDbContext db, QaRunRecord run)
     {
         foreach (var s in remaining)
         {
-            await RecordAsync(s.Kind == "browser" ? "browser" : "exec",
+            await RecordAsync(
+                s.Kind == QaRunner.Browser ? QaRunner.Browser : "exec",
                 s.Command ?? s.Url ?? s.Selector ?? s.Action,
                 QaStepOutcomes.Skipped, reason, null, null, ct);
         }

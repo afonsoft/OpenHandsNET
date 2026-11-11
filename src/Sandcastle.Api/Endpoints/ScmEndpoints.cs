@@ -89,7 +89,7 @@ public static class ScmEndpoints
     // ---- SPEC-142: QA agent endpoints -------------------------------------
 
     /// <summary><c>POST /qa/runs</c> — trigger manual {repository, pr_number} → 202.</summary>
-    private static async Task<IResult> PostQaRunAsync(
+    private static async Task<IResult> PostQaRunAsync( // NOSONAR S107 — minimal-API handler: bindings individuais
         [FromBody] ScmQaRunRequest req, HttpContext http,
         ICurrentUserAccessor current, IEffectiveOrgResolver orgs,
         IScmConnectionService connections, IQaService qaService,
@@ -153,7 +153,7 @@ public static class ScmEndpoints
     }
 
     /// <summary><c>GET /qa/runs</c> — filtros repository/pr/verdict + cursor.</summary>
-    private static async Task<IResult> ListQaRunsAsync(
+    private static async Task<IResult> ListQaRunsAsync( // NOSONAR S107 — minimal-API handler: filtros query bound
         HttpContext http, ICurrentUserAccessor current,
         IEffectiveOrgResolver orgs, IQaService qaService,
         string? repository, int? pr, string? verdict,
@@ -218,7 +218,7 @@ public static class ScmEndpoints
     /// (screenshot/vídeo). ACL: org do run; o namespace do artifact é a
     /// conversa do PR quando existe, senão o próprio run id.
     /// </summary>
-    private static async Task<IResult> GetQaArtifactAsync(
+    private static async Task<IResult> GetQaArtifactAsync( // NOSONAR S107 — minimal-API handler: route/services bound
         Guid id, string @ref, HttpContext http,
         ICurrentUserAccessor current, IEffectiveOrgResolver orgs,
         IQaService qaService,
@@ -452,33 +452,9 @@ public static class ScmEndpoints
         {
             return Results.NotFound();
         }
-        if (req.ReviewTriggerMode is { } m
-            && m is not (ReviewDefaults.TriggerModeAll
-                or ReviewDefaults.TriggerModeLabelOnly))
+        if (ValidateReviewPatch(req, http) is { } bad)
         {
-            return SandcastleProblemFactory.Create(
-                http, 400, "review_trigger_mode must be all_prs|label_only");
-        }
-        if (req.ReviewPassCondition is { } p
-            && p is not (ReviewDefaults.PassConditionCompleted
-                or ReviewDefaults.PassConditionNoCritical
-                or ReviewDefaults.PassConditionNoFindings))
-        {
-            return SandcastleProblemFactory.Create(http, 400,
-                "review_pass_condition must be "
-                + "completed|no_critical|no_findings");
-        }
-        if (req.AutofixMaxAttempts is < 1 or > 10)
-        {
-            return SandcastleProblemFactory.Create(
-                http, 400, "autofix_max_attempts must be 1..10");
-        }
-        if (req.QaPassCondition is { } qc
-            && qc is not (QaDefaults.PassConditionCompleted
-                or QaDefaults.PassConditionPassed))
-        {
-            return SandcastleProblemFactory.Create(
-                http, 400, "qa_pass_condition must be completed|passed");
+            return bad;
         }
         var conn = await svc.UpdateReviewSettingsAsync(
             org.OrgId, id,
@@ -511,6 +487,44 @@ public static class ScmEndpoints
                     req.QaEnabled, req.QaRepos, req.QaPassCondition), ct);
         }
         return conn is null ? Results.NotFound() : Results.Ok(conn);
+    }
+
+    /// <summary>
+    /// Valida os campos enumerados do patch de settings SCM; retorna o
+    /// ProblemDetails ou <c>null</c> quando válido.
+    /// </summary>
+    private static IResult? ValidateReviewPatch(
+        ScmConnectionReviewPatch req, HttpContext http)
+    {
+        if (req.ReviewTriggerMode is { } m
+            && m is not (ReviewDefaults.TriggerModeAll
+                or ReviewDefaults.TriggerModeLabelOnly))
+        {
+            return SandcastleProblemFactory.Create(
+                http, 400, "review_trigger_mode must be all_prs|label_only");
+        }
+        if (req.ReviewPassCondition is { } p
+            && p is not (ReviewDefaults.PassConditionCompleted
+                or ReviewDefaults.PassConditionNoCritical
+                or ReviewDefaults.PassConditionNoFindings))
+        {
+            return SandcastleProblemFactory.Create(http, 400,
+                "review_pass_condition must be "
+                + "completed|no_critical|no_findings");
+        }
+        if (req.AutofixMaxAttempts is < 1 or > 10)
+        {
+            return SandcastleProblemFactory.Create(
+                http, 400, "autofix_max_attempts must be 1..10");
+        }
+        if (req.QaPassCondition is { } qc
+            && qc is not (QaDefaults.PassConditionCompleted
+                or QaDefaults.PassConditionPassed))
+        {
+            return SandcastleProblemFactory.Create(
+                http, 400, "qa_pass_condition must be completed|passed");
+        }
+        return null;
     }
 
     // ---- SPEC-141: autofix endpoints --------------------------------------

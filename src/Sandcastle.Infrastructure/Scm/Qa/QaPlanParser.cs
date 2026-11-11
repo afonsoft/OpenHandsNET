@@ -13,6 +13,10 @@ namespace Sandcastle.Infrastructure.Scm.Qa;
 /// </summary>
 public static class QaPlanParser
 {
+    private const string CommandProp = "command";
+    private const string ExecKind = "exec";
+    private const string BrowserKind = "browser";
+
     /// <summary>Ações browser reconhecidas pelo driver.</summary>
     public static readonly IReadOnlySet<string> BrowserActions =
         new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -66,9 +70,9 @@ public static class QaPlanParser
     {
         switch (s.Kind)
         {
-            case "exec":
+            case ExecKind:
                 return !string.IsNullOrWhiteSpace(s.Command);
-            case "browser":
+            case BrowserKind:
                 if (s.Action is null || !BrowserActions.Contains(s.Action))
                 {
                     return false;
@@ -118,8 +122,7 @@ public static class QaPlanParser
             return null;
         }
         var kind = Str(e, "kind")?.ToLowerInvariant()
-            ?? (Str(e, "command") is not null ? "exec"
-                : Str(e, "action") is not null ? "browser" : null);
+            ?? InferKind(e);
         if (kind is null)
         {
             return null;
@@ -129,10 +132,20 @@ public static class QaPlanParser
             && ts.TryGetInt32(out var n)
                 ? Math.Clamp(n, 1, 600) : null;
         return new QaPlanStep(
-            kind is "exec" or "browser" ? kind : "exec",
+            kind is ExecKind or BrowserKind ? kind : ExecKind,
             Str(e, "name"), Str(e, "action")?.ToLowerInvariant(),
-            Str(e, "command"), Str(e, "url"), Str(e, "selector"),
+            Str(e, CommandProp), Str(e, "url"), Str(e, "selector"),
             Str(e, "text"), Str(e, "expect"), timeout);
+    }
+
+    /// <summary>Infere o kind pelo campo presente (command→exec, action→browser).</summary>
+    private static string? InferKind(JsonElement e)
+    {
+        if (Str(e, CommandProp) is not null)
+        {
+            return ExecKind;
+        }
+        return Str(e, "action") is not null ? BrowserKind : null;
     }
 
     private static QaPlanStart? ReadStart(JsonElement root)
@@ -142,7 +155,7 @@ public static class QaPlanParser
         {
             return null;
         }
-        var command = Str(s, "command");
+        var command = Str(s, CommandProp);
         if (string.IsNullOrWhiteSpace(command))
         {
             return null;
@@ -162,7 +175,7 @@ public static class QaPlanParser
         {
             return null;
         }
-        var command = Str(r, "command");
+        var command = Str(r, CommandProp);
         return string.IsNullOrWhiteSpace(command)
             ? null
             : new QaPlanReproduction(command.Trim(), Str(r, "indicator"));
