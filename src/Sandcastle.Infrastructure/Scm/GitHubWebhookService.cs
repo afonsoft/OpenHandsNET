@@ -35,6 +35,9 @@ public sealed class GitHubWebhookService(
 {
     private const string Repository = "repository";
     private const string Comment = "comment";
+    private const string ActionProp = "action";
+    private const string NumberProp = "number";
+    private const string WebhookTrigger = "webhook";
     /// <summary>Mention marker that triggers a conversation.</summary>
     public const string Mention = "@sandcastle";
 
@@ -92,14 +95,7 @@ public sealed class GitHubWebhookService(
             // (opened|synchronize, opt-in por conexão) — ambos rodam.
             if (eventType == "pull_request")
             {
-                var reviewResult = await HandlePullRequestEventAsync(
-                    root, connection, ct);
-                var qaResult = await HandleQaPullRequestAsync(
-                    root, connection, ct);
-                return reviewResult == ScmWebhookResult.Processed
-                    || qaResult == ScmWebhookResult.Processed
-                        ? ScmWebhookResult.Processed
-                        : ScmWebhookResult.Ignored;
+                return await RoutePullRequestAsync(root, connection, ct);
             }
 
             // SPEC-141 RF-001: check_run|check_suite|workflow_run|status
@@ -153,6 +149,24 @@ public sealed class GitHubWebhookService(
     }
 
     /// <summary>
+    /// Despacho de <c>pull_request</c> (GitHub): review + QA rodam em
+    /// paralelo lógico — <see cref="ScmWebhookResult.Processed"/> se
+    /// qualquer um enfileirar.
+    /// </summary>
+    private async Task<ScmWebhookResult> RoutePullRequestAsync(
+        JsonElement root, ScmConnection connection, CancellationToken ct)
+    {
+        var reviewResult = await HandlePullRequestEventAsync(
+            root, connection, ct);
+        var qaResult = await HandleQaPullRequestAsync(
+            root, connection, ct);
+        return reviewResult == ScmWebhookResult.Processed
+            || qaResult == ScmWebhookResult.Processed
+                ? ScmWebhookResult.Processed
+                : ScmWebhookResult.Ignored;
+    }
+
+    /// <summary>
     /// SPEC-140 RF-001/RF-005 — roteamento de <c>pull_request</c>:
     /// actions disparadoras {opened, synchronize, ready_for_review,
     /// labeled, unlabeled, review_requested} → enrollment
@@ -163,12 +177,12 @@ public sealed class GitHubWebhookService(
     private async Task<ScmWebhookResult> HandlePullRequestEventAsync(
         JsonElement root, ScmConnection connection, CancellationToken ct)
     {
-        if (reviews is null || reviewOptions?.Value.Enabled == false)
+        if (reviews is null || reviewOptions?.Value.Enabled is false)
         {
             return ScmWebhookResult.Ignored;
         }
         if (!root.TryGetProperty("pull_request", out var pr)
-            || !root.TryGetProperty("action", out var act))
+            || !root.TryGetProperty(ActionProp, out var act))
         {
             return ScmWebhookResult.Ignored;
         }
@@ -209,7 +223,7 @@ public sealed class GitHubWebhookService(
             return ScmWebhookResult.Ignored;
         }
 
-        var prNumber = pr.TryGetProperty("number", out var n)
+        var prNumber = pr.TryGetProperty(NumberProp, out var n)
             ? n.GetInt32() : 0;
         var headSha = pr.TryGetProperty("head", out var h)
             && h.TryGetProperty("sha", out var hs)
@@ -220,7 +234,7 @@ public sealed class GitHubWebhookService(
         }
 
         var trigger = action == "review_requested"
-            ? "reviewer_request" : "webhook";
+            ? "reviewer_request" : WebhookTrigger;
         var result = await reviews.TriggerAsync(
             connection, repository, prNumber, headSha, trigger, null, ct);
         if (result.Error is not null and not ReviewTriggerError.Duplicate)
@@ -260,48 +274,16 @@ public sealed class GitHubWebhookService(
     private async Task<ScmWebhookResult> HandleQaPullRequestAsync(
         JsonElement root, ScmConnection connection, CancellationToken ct)
     {
-        if (qa is null || qaOptions?.Value.Enabled == false)
-        {
-            return ScmWebhookResult.Ignored;
-        }
-        if (!root.TryGetProperty("pull_request", out var pr)
-            || !root.TryGetProperty("action", out var act))
-        {
-            return ScmWebhookResult.Ignored;
-        }
-        var action = act.GetString();
-        if (action is not ("opened" or "synchronize"))
-        {
-            return ScmWebhookResult.Ignored;
-        }
-        var repository = root.TryGetProperty(Repository, out var repo)
-            && repo.TryGetProperty("full_name", out var fn)
-                ? fn.GetString() : null;
-        if (repository is null || !connection.QaCovers(repository))
-        {
-            return ScmWebhookResult.Ignored;
-        }
-        if (pr.TryGetProperty("draft", out var d) && d.GetBoolean())
+        if (!TryReadQaPullRequest(root, connection, out var repository,
+                out var prNumber, out var headSha, out var baseSha,
+                out var action))
         {
             return ScmWebhookResult.Ignored;
         }
 
-        var prNumber = pr.TryGetProperty("number", out var n)
-            ? n.GetInt32() : 0;
-        var headSha = pr.TryGetProperty("head", out var h)
-            && h.TryGetProperty("sha", out var hs)
-                ? hs.GetString() : null;
-        var baseSha = pr.TryGetProperty("base", out var bs)
-            && bs.TryGetProperty("sha", out var bss)
-                ? bss.GetString() : null;
-        if (prNumber <= 0 || string.IsNullOrEmpty(headSha))
-        {
-            return ScmWebhookResult.Ignored;
-        }
-
-        var result = await qa.TriggerAsync(
+        var result = await qa!.TriggerAsync(
             connection, repository, prNumber, headSha, baseSha,
-            "webhook", null, ct);
+            WebhookTrigger, null, ct);
         if (result.Error is not null and not QaTriggerError.Duplicate)
         {
             logger.LogWarning(
@@ -329,6 +311,58 @@ public sealed class GitHubWebhookService(
     }
 
     /// <summary>
+    /// Gates do trigger QA de <c>pull_request</c> (GitHub): QA habilitado,
+    /// action <c>opened</c>/<c>synchronize</c>, repo inscrito, não-draft,
+    /// número/head válidos. Retorna os dados extraídos via out.
+    /// </summary>
+    private bool TryReadQaPullRequest(
+        JsonElement root, ScmConnection connection,
+        out string repository, out int prNumber, out string headSha,
+        out string? baseSha, out string? action)
+    {
+        repository = "";
+        prNumber = 0;
+        headSha = "";
+        baseSha = null;
+        action = null;
+        if (qa is null || qaOptions?.Value.Enabled is false)
+        {
+            return false;
+        }
+        if (!root.TryGetProperty("pull_request", out var pr)
+            || !root.TryGetProperty(ActionProp, out var act))
+        {
+            return false;
+        }
+        action = act.GetString();
+        if (action is not ("opened" or "synchronize"))
+        {
+            return false;
+        }
+        repository = root.TryGetProperty(Repository, out var repo)
+            && repo.TryGetProperty("full_name", out var fn)
+                ? fn.GetString() ?? "" : "";
+        if (repository.Length == 0 || !connection.QaCovers(repository))
+        {
+            return false;
+        }
+        if (pr.TryGetProperty("draft", out var d) && d.GetBoolean())
+        {
+            return false;
+        }
+
+        prNumber = pr.TryGetProperty(NumberProp, out var n)
+            ? n.GetInt32() : 0;
+        headSha = pr.TryGetProperty("head", out var h)
+            && h.TryGetProperty("sha", out var hs)
+                ? hs.GetString() ?? "" : "";
+        baseSha = pr.TryGetProperty("base", out var bs)
+            && bs.TryGetProperty("sha", out var bss)
+                ? bss.GetString() : null;
+        return prNumber > 0 && headSha.Length > 0;
+    }
+
+    /// <summary>
     /// SPEC-141 RF-001 — roteamento dos eventos de CI: normaliza o
     /// payload (<see cref="Autofix.CiCheckEventParser"/>) e dispara
     /// <see cref="IAutofixService.TriggerCiEventAsync"/>. Skips de
@@ -339,7 +373,7 @@ public sealed class GitHubWebhookService(
         string eventType, JsonElement root, ScmConnection connection,
         CancellationToken ct)
     {
-        if (autofix is null || autofixOptions?.Value.Enabled == false)
+        if (autofix is null || autofixOptions?.Value.Enabled is false)
         {
             return ScmWebhookResult.Ignored;
         }
@@ -426,7 +460,7 @@ public sealed class GitHubWebhookService(
     private async Task<ScmWebhookResult> HandleGitLabMergeRequestAsync(
         JsonElement root, ScmConnection connection, CancellationToken ct)
     {
-        if (reviews is null || reviewOptions?.Value.Enabled == false)
+        if (reviews is null || reviewOptions?.Value.Enabled is false)
         {
             return ScmWebhookResult.Ignored;
         }
@@ -439,7 +473,7 @@ public sealed class GitHubWebhookService(
         {
             return ScmWebhookResult.Ignored;
         }
-        var action = oa.TryGetProperty("action", out var a)
+        var action = oa.TryGetProperty(ActionProp, out var a)
             ? a.GetString() : null;
         var draft = oa.TryGetProperty("work_in_progress", out var w)
             && w.GetBoolean();
@@ -478,7 +512,7 @@ public sealed class GitHubWebhookService(
         }
 
         var result = await reviews.TriggerAsync(
-            connection, repository, prNumber, headSha, "webhook",
+            connection, repository, prNumber, headSha, WebhookTrigger,
             null, ct);
         if (result.ReviewRunId is { } runId)
         {
@@ -507,40 +541,16 @@ public sealed class GitHubWebhookService(
     private async Task<ScmWebhookResult> HandleGitLabQaMergeRequestAsync(
         JsonElement root, ScmConnection connection, CancellationToken ct)
     {
-        if (qa is null || qaOptions?.Value.Enabled == false)
-        {
-            return ScmWebhookResult.Ignored;
-        }
-        var repository = ExtractRepository(ScmKind.GitLab, root);
-        if (repository is null || !connection.QaCovers(repository))
-        {
-            return ScmWebhookResult.Ignored;
-        }
-        if (!root.TryGetProperty("object_attributes", out var oa))
-        {
-            return ScmWebhookResult.Ignored;
-        }
-        var action = oa.TryGetProperty("action", out var a)
-            ? a.GetString() : null;
-        if (action is not ("open" or "update")
-            || (oa.TryGetProperty("work_in_progress", out var w)
-                && w.GetBoolean()))
-        {
-            return ScmWebhookResult.Ignored;
-        }
-        var prNumber = oa.TryGetProperty("iid", out var ii)
-            ? ii.GetInt32() : 0;
-        var headSha = oa.TryGetProperty("last_commit", out var lc)
-            && lc.TryGetProperty("id", out var id)
-                ? id.GetString() : null;
-        if (prNumber <= 0 || string.IsNullOrEmpty(headSha))
+        if (!TryReadGitLabQaMr(root, connection,
+                out var repository, out var prNumber, out var headSha,
+                out var action))
         {
             return ScmWebhookResult.Ignored;
         }
 
-        var result = await qa.TriggerAsync(
+        var result = await qa!.TriggerAsync(
             connection, repository, prNumber, headSha, baseSha: null,
-            "webhook", null, ct);
+            WebhookTrigger, null, ct);
         if (result.QaRunId is { } runId)
         {
             await audit.RecordAsync("scm.qa_triggered",
@@ -558,6 +568,49 @@ public sealed class GitHubWebhookService(
             return ScmWebhookResult.Processed;
         }
         return ScmWebhookResult.Ignored;
+    }
+
+    /// <summary>
+    /// Gates do trigger QA de merge_request (GitLab): QA habilitado, repo
+    /// inscrito, action <c>open</c>/<c>update</c>, não-WIP, iid/head
+    /// válidos. Retorna os dados extraídos via out.
+    /// </summary>
+    private bool TryReadGitLabQaMr(
+        JsonElement root, ScmConnection connection,
+        out string repository, out int prNumber, out string headSha,
+        out string? action)
+    {
+        repository = "";
+        prNumber = 0;
+        headSha = "";
+        action = null;
+        if (qa is null || qaOptions?.Value.Enabled is false)
+        {
+            return false;
+        }
+        repository = ExtractRepository(ScmKind.GitLab, root) ?? "";
+        if (repository.Length == 0 || !connection.QaCovers(repository))
+        {
+            return false;
+        }
+        if (!root.TryGetProperty("object_attributes", out var oa))
+        {
+            return false;
+        }
+        action = oa.TryGetProperty(ActionProp, out var a)
+            ? a.GetString() : null;
+        if (action is not ("open" or "update")
+            || (oa.TryGetProperty("work_in_progress", out var w)
+                && w.GetBoolean()))
+        {
+            return false;
+        }
+        prNumber = oa.TryGetProperty("iid", out var ii)
+            ? ii.GetInt32() : 0;
+        headSha = oa.TryGetProperty("last_commit", out var lc)
+            && lc.TryGetProperty("id", out var id)
+                ? id.GetString() ?? "" : "";
+        return prNumber > 0 && headSha.Length > 0;
     }
 
     private async Task<ScmConnection?> FindConnectionAsync(
@@ -690,7 +743,7 @@ public sealed class GitHubWebhookService(
 
     private static (string? PrUrl, int? PrNumber, string? Branch) PullRefOf(JsonElement pr)
         => (pr.TryGetProperty("html_url", out var u) ? u.GetString() : null,
-            pr.TryGetProperty("number", out var n) ? n.GetInt32() : null,
+            pr.TryGetProperty(NumberProp, out var n) ? n.GetInt32() : null,
             pr.TryGetProperty("head", out var h)
                 && h.TryGetProperty("ref", out var rf)
                     ? rf.GetString() : null);
@@ -712,7 +765,7 @@ public sealed class GitHubWebhookService(
             && pr.TryGetProperty("html_url", out var pu))
         {
             prUrl = pu.GetString();
-            prNumber = issue.GetProperty("number").GetInt32();
+            prNumber = issue.GetProperty(NumberProp).GetInt32();
         }
         return new MentionFields(body, author, null, prUrl, prNumber, null);
     }
