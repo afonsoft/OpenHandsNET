@@ -41,6 +41,7 @@
     <EmbeddedResource Include="agents/*.agent.md" />
     <!-- SPEC-123: prompts embutidos (advisor, smart-permission-judge) -->
     <EmbeddedResource Include="prompts/*.md" />
+    <EmbeddedResource Include="Scm/Qa/qa-driver.mjs" />
   </ItemGroup>
   <ItemGroup>
     <!-- Testes dirigem internals (ex.: SandboxTimeoutWatcher.Interval). -->

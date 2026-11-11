@@ -46,6 +46,7 @@ else
                             <th>@L["admin.scm_repos"]</th>
                             <th>@L["admin.scm_review"]</th>
                             <th>@L["admin.scm_autofix"]</th>
+                            <th>@L["admin.scm_qa"]</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -68,6 +69,12 @@ else
                                         aria-label="@L["admin.scm_autofix"]"
                                         checked="@BoolOf(c, "autofix_enabled")"
                                         @onchange="e => ToggleAutofixAsync(c, e)" />
+                                </td>
+                                <td>
+                                    <input type="checkbox"
+                                        aria-label="@L["admin.scm_qa"]"
+                                        checked="@BoolOf(c, "qa_enabled")"
+                                        @onchange="e => ToggleQaAsync(c, e)" />
                                 </td>
                                 <td>
                                     <button class="btn danger"
@@ -148,6 +155,22 @@ else
         else
         {
             Toasts.Error(L["admin.scm_autofix_failed"]);
+        }
+        await LoadConnectionsAsync();
+    }
+
+    private async Task ToggleQaAsync(JsonElement c, ChangeEventArgs e)
+    {
+        var enabled = e.Value is bool b && b;
+        var ok = await Api.PatchScmConnectionQaAsync(
+            _orgId, Str(c, "id")!, enabled);
+        if (ok)
+        {
+            Toasts.Success(L["admin.scm_qa_updated"]);
+        }
+        else
+        {
+            Toasts.Error(L["admin.scm_qa_failed"]);
         }
         await LoadConnectionsAsync();
     }

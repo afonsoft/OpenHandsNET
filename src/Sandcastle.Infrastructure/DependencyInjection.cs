@@ -208,6 +208,34 @@ public static class DependencyInjection
         services.AddScoped<
             Sandcastle.Application.Scm.IAutofixRunner,
             Sandcastle.Infrastructure.Scm.Autofix.AutofixRunner>();
+
+        // SPEC-142: QA agent com evidência — options, fila in-process +
+        // worker (um run por vez — sandbox descartável dedicado),
+        // trigger/dedup/quota service, runner do pipeline de 4 fases e
+        // seam do driver browser (Playwright dentro do sandbox).
+        services.Configure<
+            Sandcastle.Infrastructure.Scm.Qa.QaOptions>(
+            configuration.GetSection(
+                Sandcastle.Infrastructure.Scm.Qa
+                    .QaOptions.Section));
+        services.AddSingleton<
+            Sandcastle.Infrastructure.Scm.Qa.QaDispatcher>();
+        services.AddSingleton<
+            Sandcastle.Application.Scm.IQaDispatcher>(sp =>
+            sp.GetRequiredService<
+                Sandcastle.Infrastructure.Scm.Qa.QaDispatcher>());
+        services.AddHostedService<
+            Sandcastle.Infrastructure.Scm.Qa.QaRunWorker>();
+        services.AddScoped<
+            Sandcastle.Application.Scm.IQaService,
+            Sandcastle.Infrastructure.Scm.Qa.QaService>();
+        services.AddScoped<
+            Sandcastle.Application.Scm.IQaRunner,
+            Sandcastle.Infrastructure.Scm.Qa.QaRunner>();
+        services.AddScoped<
+            Sandcastle.Application.Scm.IQaBrowserDriverFactory,
+            Sandcastle.Infrastructure.Scm.Qa
+                .SandboxQaBrowserDriverFactory>();
     }
 
     private static void RegisterScmProviders(

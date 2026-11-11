@@ -321,6 +321,22 @@ public sealed class AdminApiClient(HttpClient http)
         return resp.IsSuccessStatusCode;
     }
 
+    /// <summary>SPEC-142: toggle do QA agent (evidência) na connection.</summary>
+    public async Task<bool> PatchScmConnectionQaAsync(
+        string orgId, string id, bool qaEnabled,
+        CancellationToken ct = default)
+    {
+        using var req = new HttpRequestMessage(
+            HttpMethod.Patch, $"/api/v1/scm/connections/{id}")
+        {
+            Content = JsonContent.Create(
+                new { qa_enabled = qaEnabled }, options: Json),
+            Headers = { { "X-Org-Id", orgId } },
+        };
+        var resp = Guard(await http.SendAsync(req, ct));
+        return resp.IsSuccessStatusCode;
+    }
+
     // ---- chatops (SPEC-54) -------------------------------------------------
 
     /// <summary>Chat connections (Slack) da org.</summary>
