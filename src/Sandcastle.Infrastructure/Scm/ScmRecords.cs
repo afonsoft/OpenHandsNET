@@ -72,6 +72,15 @@ public sealed class ScmConnectionRecord : IOrgScoped
     /// <summary>SPEC-141 RF-002: cap de tentativas por PR (null = <c>Autofix:MaxAttempts</c>).</summary>
     public int? AutofixMaxAttempts { get; set; }
 
+    /// <summary>SPEC-142 RF-001: QA agent habilitado na conexão.</summary>
+    public bool QaEnabled { get; set; }
+
+    /// <summary>SPEC-142 RF-001: JSON array de repos inscritos (vazio/null = todos da conexão).</summary>
+    public string? QaReposJson { get; set; }
+
+    /// <summary>SPEC-142 RF-002: <c>completed</c> (default) | <c>passed</c>.</summary>
+    public string? QaPassCondition { get; set; }
+
     /// <summary>Usuário que registrou a conexão (atribuição de triggers).</summary>
     public string? CreatedByUserId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
@@ -263,6 +272,101 @@ public sealed class AutofixAttemptRecord : IOrgScoped
 }
 
 /// <summary>
+/// SPEC-142 RF-001/RF-004: um run do QA agent — pipeline
+/// Understand→Setup→Exercise→Report sobre o head do PR. Dedup por
+/// <c>(Repository, PrNumber, HeadSha)</c>; <see cref="Verdict"/>
+/// (<c>pass|fail|partial</c>) é preenchido no Report; o sandbox do run
+/// é descartável e nunca edita a branch do PR.
+/// </summary>
+public sealed class QaRunRecord : IOrgScoped
+{
+    public required Guid Id { get; set; }
+    public Guid? OrgId { get; set; }
+
+    /// <summary>Conexão SCM dona do repo.</summary>
+    public required Guid ConnectionId { get; set; }
+
+    /// <summary><c>owner/repo</c> (repo base do PR).</summary>
+    public required string Repository { get; set; }
+    public int PrNumber { get; set; }
+
+    /// <summary>Head SHA exercitado.</summary>
+    public required string HeadSha { get; set; }
+
+    /// <summary>Base SHA (bugfix reproduce-on-base) — do payload/manual quando resolvido.</summary>
+    public string? BaseSha { get; set; }
+
+    /// <summary><c>queued|running|completed|failed</c>.</summary>
+    public required string Status { get; set; }
+
+    /// <summary><c>pass|fail|partial</c> — null até o Report.</summary>
+    public string? Verdict { get; set; }
+
+    /// <summary><c>feature|bugfix|refactor|config|unknown</c>.</summary>
+    public string? Classification { get; set; }
+
+    /// <summary>Plano de teste serializado — null até Understand.</summary>
+    public string? PlanJson { get; set; }
+
+    /// <summary>Plano truncado pelos caps (MaxFilesPerRun/MaxDiffKb).</summary>
+    public bool PartialPlan { get; set; }
+
+    /// <summary>Conversa Sandcastle que originou o PR (link p/ ACL de artifacts).</summary>
+    public Guid? ConversationId { get; set; }
+
+    /// <summary><c>webhook|manual</c>.</summary>
+    public required string Trigger { get; set; }
+
+    /// <summary>Usuário que disparou (manual) — null = webhook.</summary>
+    public string? RequestedByUserId { get; set; }
+
+    /// <summary>Detalhe do erro quando <c>failed</c>.</summary>
+    public string? Error { get; set; }
+
+    /// <summary>Stats do run (steps, modelo, verdict detail, evidence counts).</summary>
+    public string? StatsJson { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>Ticks de <see cref="CreatedAt"/> — cursor pagination.</summary>
+    public long CreatedAtTicks { get; set; }
+    public DateTimeOffset? StartedAt { get; set; }
+    public DateTimeOffset? FinishedAt { get; set; }
+}
+
+/// <summary>
+/// SPEC-142 RF-003: um passo do run — ação (clone/setup/app_start/
+/// exec/browser/repro), alvo (comando/url/seletor), outcome
+/// (<c>ok|fail|skipped|infra_fail</c>), artifact de evidência e
+/// duração.
+/// </summary>
+public sealed class QaStepRecord : IOrgScoped
+{
+    public required Guid Id { get; set; }
+    public Guid? OrgId { get; set; }
+    public required Guid QaRunId { get; set; }
+
+    /// <summary>Nº do passo (1..n, ordem de execução).</summary>
+    public int Number { get; set; }
+
+    /// <summary><c>clone|checkout|provision|setup|app_start|exec|browser|repro|video</c>.</summary>
+    public required string Action { get; set; }
+
+    /// <summary>Comando, URL ou seletor do passo.</summary>
+    public string? Target { get; set; }
+
+    /// <summary><c>ok|fail|skipped|infra_fail</c>.</summary>
+    public required string Outcome { get; set; }
+
+    /// <summary>Detalhe curto (exit code, url final, erro, log tail — redacted).</summary>
+    public string? Detail { get; set; }
+
+    /// <summary>Ref opaco do artifact de evidência (<c>ws:</c>/<c>art:</c>).</summary>
+    public string? ArtifactRef { get; set; }
+    public long? DurationMs { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+/// <summary>
 /// Entrega de webhook já processada — idempotência por
 /// <see cref="DeliveryId"/> único (SPEC-52 RF-004).
 /// </summary>
@@ -301,6 +405,7 @@ public sealed class ScmConnectionRecordConfiguration
         builder.Property(e => e.AuthKind).HasMaxLength(20);
         builder.Property(e => e.ReviewTriggerMode).HasMaxLength(20);
         builder.Property(e => e.ReviewPassCondition).HasMaxLength(20);
+        builder.Property(e => e.QaPassCondition).HasMaxLength(20);
         builder.Property(e => e.CreatedByUserId).HasMaxLength(200);
         builder.HasIndex(e => new { e.OrgId, e.Kind });
     }
@@ -391,6 +496,50 @@ public sealed class AutofixAttemptRecordConfiguration
         builder.HasIndex(e => e.RunId);
         builder.HasIndex(e => new { e.RunId, e.Number });
         builder.HasIndex(e => e.HeadShaOut);
+    }
+}
+
+/// <summary>EF config for <see cref="QaRunRecord"/>.</summary>
+public sealed class QaRunRecordConfiguration
+    : IEntityTypeConfiguration<QaRunRecord>
+{
+    /// <inheritdoc />
+    public void Configure(EntityTypeBuilder<QaRunRecord> builder)
+    {
+        builder.ToTable("qa_runs");
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Repository).HasMaxLength(300).IsRequired();
+        builder.Property(e => e.HeadSha).HasMaxLength(80).IsRequired();
+        builder.Property(e => e.BaseSha).HasMaxLength(80);
+        builder.Property(e => e.Status).HasMaxLength(20).IsRequired();
+        builder.Property(e => e.Verdict).HasMaxLength(20);
+        builder.Property(e => e.Classification).HasMaxLength(20);
+        builder.Property(e => e.Trigger).HasMaxLength(20).IsRequired();
+        builder.Property(e => e.RequestedByUserId).HasMaxLength(200);
+        builder.Property(e => e.Error).HasMaxLength(2000);
+        builder.HasIndex(e => new { e.Repository, e.PrNumber, e.HeadSha });
+        builder.HasIndex(e => new { e.OrgId, e.Status });
+        builder.HasIndex(e => e.ConnectionId);
+        builder.HasIndex(e => e.CreatedAtTicks).IsDescending();
+    }
+}
+
+/// <summary>EF config for <see cref="QaStepRecord"/>.</summary>
+public sealed class QaStepRecordConfiguration
+    : IEntityTypeConfiguration<QaStepRecord>
+{
+    /// <inheritdoc />
+    public void Configure(EntityTypeBuilder<QaStepRecord> builder)
+    {
+        builder.ToTable("qa_steps");
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Action).HasMaxLength(40).IsRequired();
+        builder.Property(e => e.Target).HasMaxLength(1000);
+        builder.Property(e => e.Outcome).HasMaxLength(20).IsRequired();
+        builder.Property(e => e.Detail).HasMaxLength(2000);
+        builder.Property(e => e.ArtifactRef).HasMaxLength(500);
+        builder.HasIndex(e => e.QaRunId);
+        builder.HasIndex(e => new { e.QaRunId, e.Number });
     }
 }
 

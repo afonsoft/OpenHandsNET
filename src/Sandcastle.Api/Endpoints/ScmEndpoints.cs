@@ -70,11 +70,196 @@ public static class ScmEndpoints
         scm.MapPost("/autofix-runs/{id:guid}/cancel", CancelAutofixRunAsync)
             .RequireAuthorization();
 
+        // SPEC-142: QA agent — trigger manual + runs (list/detail) +
+        // evidência auth'd (artifacts do run — ACL da org).
+        var qa = app.MapGroup("/api/v1/qa").WithTags("QA");
+        qa.MapPost("/runs", PostQaRunAsync).RequireAuthorization();
+        qa.MapGet("/runs", ListQaRunsAsync).RequireAuthorization();
+        qa.MapGet("/runs/{id:guid}", GetQaRunAsync).RequireAuthorization();
+        qa.MapGet("/runs/{id:guid}/artifacts/{*ref}",
+            GetQaArtifactAsync).RequireAuthorization();
+
         // Webhook público (HMAC + idempotência; sem auth de usuário).
         app.MapPost("/api/v1/webhooks/scm/{kind}",
             HandleScmWebhookAsync).WithTags(EndpointTags.Api);
 
         return app;
+    }
+
+    // ---- SPEC-142: QA agent endpoints -------------------------------------
+
+    /// <summary><c>POST /qa/runs</c> — trigger manual {repository, pr_number} → 202.</summary>
+    private static async Task<IResult> PostQaRunAsync(
+        [FromBody] ScmQaRunRequest req, HttpContext http,
+        ICurrentUserAccessor current, IEffectiveOrgResolver orgs,
+        IScmConnectionService connections, IQaService qaService,
+        Microsoft.Extensions.Options.IOptions<
+            Infrastructure.Scm.Qa.QaOptions> qaOptions,
+        CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+        {
+            return Results.Unauthorized();
+        }
+        if (!qaOptions.Value.Enabled)
+        {
+            return SandcastleProblemFactory.Create(
+                http, 403, "qa agent is disabled");
+        }
+        if (string.IsNullOrWhiteSpace(req.Repository) || req.PrNumber <= 0)
+        {
+            return SandcastleProblemFactory.Create(
+                http, 400, "repository and pr_number are required");
+        }
+        var org = await orgs.ResolveAsync(
+            user, http.Request.Headers["X-Org-Id"].ToString(), ct);
+        if (org is null)
+        {
+            return SandcastleProblemFactory.Create(http, 404, "no org");
+        }
+        var connection = (await connections.ListAsync(org.OrgId, ct))
+            .FirstOrDefault(c => c.Repos.Count == 0
+                || c.Repos.Contains(req.Repository,
+                    StringComparer.OrdinalIgnoreCase));
+        if (connection is null)
+        {
+            return SandcastleProblemFactory.Create(
+                http, 404, "no scm connection for repository");
+        }
+
+        var result = await qaService.TriggerManualAsync(
+            connection, req.Repository, req.PrNumber,
+            user.UserId.ToString(), ct);
+        return result switch
+        {
+            { QaRunId: { } id } => Results.Accepted(
+                $"/api/v1/qa/runs/{id}", new { qa_run_id = id }),
+            { Error: QaTriggerError.NotFound } =>
+                SandcastleProblemFactory.Create(
+                    http, 404, "pull request not found"),
+            { Error: QaTriggerError.Disabled } =>
+                SandcastleProblemFactory.Create(http, 403,
+                    "qa agent not enabled for this repository"),
+            { Error: QaTriggerError.Duplicate, Detail: var d } =>
+                SandcastleProblemFactory.Create(http, 409,
+                    d ?? "qa run already covers this head"),
+            { Error: QaTriggerError.QuotaExceeded, Detail: var d } =>
+                SandcastleProblemFactory.Create(http, 403,
+                    d ?? "daily qa quota reached"),
+            _ => SandcastleProblemFactory.Create(
+                http, 409, "qa run could not be started"),
+        };
+    }
+
+    /// <summary><c>GET /qa/runs</c> — filtros repository/pr/verdict + cursor.</summary>
+    private static async Task<IResult> ListQaRunsAsync(
+        HttpContext http, ICurrentUserAccessor current,
+        IEffectiveOrgResolver orgs, IQaService qaService,
+        string? repository, int? pr, string? verdict,
+        string? page_id, int? limit, CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+        {
+            return Results.Unauthorized();
+        }
+        var org = await orgs.ResolveAsync(
+            user, http.Request.Headers["X-Org-Id"].ToString(), ct);
+        if (org is null)
+        {
+            return Results.Ok(new
+            {
+                items = Array.Empty<object>(),
+                next_page_id = (string?)null
+            });
+        }
+        var page = await qaService.SearchAsync(
+            org.OrgId, repository, pr, verdict, page_id,
+            limit ?? 50, ct);
+        return Results.Ok(new
+        {
+            items = page.Items,
+            next_page_id = page.NextPageId,
+        });
+    }
+
+    /// <summary><c>GET /qa/runs/{id}</c> — run + plano + passos + evidência.</summary>
+    private static async Task<IResult> GetQaRunAsync(
+        Guid id, HttpContext http, ICurrentUserAccessor current,
+        IEffectiveOrgResolver orgs, IQaService qaService,
+        CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+        {
+            return Results.Unauthorized();
+        }
+        var org = await orgs.ResolveAsync(
+            user, http.Request.Headers["X-Org-Id"].ToString(), ct);
+        if (org is null)
+        {
+            return Results.NotFound();
+        }
+        var detail = await qaService.GetAsync(org.OrgId, id, ct);
+        return detail is null
+            ? Results.NotFound()
+            : Results.Ok(new
+            {
+                run = detail.Run,
+                plan = detail.Plan,
+                steps = detail.Steps,
+                evidence = detail.Evidence,
+            });
+    }
+
+    /// <summary>
+    /// <c>GET /qa/runs/{id}/artifacts/{*ref}</c> — evidência auth'd do run
+    /// (screenshot/vídeo). ACL: org do run; o namespace do artifact é a
+    /// conversa do PR quando existe, senão o próprio run id.
+    /// </summary>
+    private static async Task<IResult> GetQaArtifactAsync(
+        Guid id, string @ref, HttpContext http,
+        ICurrentUserAccessor current, IEffectiveOrgResolver orgs,
+        IQaService qaService,
+        Application.Artifacts.IArtifactStore store,
+        CancellationToken ct)
+    {
+        var user = current.User;
+        if (user is null)
+        {
+            return Results.Unauthorized();
+        }
+        var org = await orgs.ResolveAsync(
+            user, http.Request.Headers["X-Org-Id"].ToString(), ct);
+        if (org is null)
+        {
+            return Results.NotFound();
+        }
+        var detail = await qaService.GetAsync(org.OrgId, id, ct);
+        if (detail is null)
+        {
+            return Results.NotFound();
+        }
+        // Ref deve pertencer ao run (defesa contra ref arbitrária de
+        // outro namespace com mesmo id — a loja é keyed por namespace).
+        if (!detail.Steps.Any(s => s.ArtifactRef == @ref))
+        {
+            return Results.NotFound();
+        }
+        var stream = await store.OpenAsync(
+            detail.Run.ConversationId ?? detail.Run.Id, @ref, ct);
+        if (stream is null)
+        {
+            return Results.NotFound();
+        }
+        var contentType = @ref.EndsWith(".webm",
+                StringComparison.OrdinalIgnoreCase)
+            || detail.Steps.Any(s => s.ArtifactRef == @ref
+                && s.Action == "video")
+            ? "video/webm" : "image/png";
+        return Results.File(stream, contentType,
+            enableRangeProcessing: true);
     }
 
     // ---- SPEC-140: review endpoints ---------------------------------------
@@ -288,6 +473,13 @@ public static class ScmEndpoints
             return SandcastleProblemFactory.Create(
                 http, 400, "autofix_max_attempts must be 1..10");
         }
+        if (req.QaPassCondition is { } qc
+            && qc is not (QaDefaults.PassConditionCompleted
+                or QaDefaults.PassConditionPassed))
+        {
+            return SandcastleProblemFactory.Create(
+                http, 400, "qa_pass_condition must be completed|passed");
+        }
         var conn = await svc.UpdateReviewSettingsAsync(
             org.OrgId, id,
             new ScmConnectionReviewUpdate(
@@ -308,6 +500,15 @@ public static class ScmEndpoints
                 new ScmConnectionAutofixUpdate(
                     req.AutofixEnabled, req.AutofixRepos,
                     req.AutofixCheckPatterns, req.AutofixMaxAttempts), ct);
+        }
+        // SPEC-142 RF-001: campos qa_* na mesma PATCH.
+        if (req.QaEnabled is not null || req.QaRepos is not null
+            || req.QaPassCondition is not null)
+        {
+            conn = await svc.UpdateQaSettingsAsync(
+                org.OrgId, id,
+                new ScmConnectionQaUpdate(
+                    req.QaEnabled, req.QaRepos, req.QaPassCondition), ct);
         }
         return conn is null ? Results.NotFound() : Results.Ok(conn);
     }
@@ -691,7 +892,7 @@ public sealed record ScmReviewRequest(
 /// <summary>SPEC-140: finding status patch (<c>open|dismissed</c>).</summary>
 public sealed record ScmFindingPatchRequest(string? Status = null);
 
-/// <summary>SPEC-140/141: review + autofix enrollment patch on a connection.</summary>
+/// <summary>SPEC-140/141/142: review + autofix + qa enrollment patch on a connection.</summary>
 public sealed record ScmConnectionReviewPatch(
     bool? ReviewEnabled = null,
     IReadOnlyList<string>? ReviewRepos = null,
@@ -700,7 +901,15 @@ public sealed record ScmConnectionReviewPatch(
     bool? AutofixEnabled = null,
     IReadOnlyList<string>? AutofixRepos = null,
     IReadOnlyList<string>? AutofixCheckPatterns = null,
-    int? AutofixMaxAttempts = null);
+    int? AutofixMaxAttempts = null,
+    bool? QaEnabled = null,
+    IReadOnlyList<string>? QaRepos = null,
+    string? QaPassCondition = null);
+
+/// <summary>SPEC-142: manual QA trigger body.</summary>
+public sealed record ScmQaRunRequest(
+    string? Repository = null,
+    int PrNumber = 0);
 
 /// <summary>SPEC-141: manual autofix trigger body.</summary>
 public sealed record ScmAutofixRequest(

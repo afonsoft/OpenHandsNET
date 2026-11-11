@@ -1,8 +1,35 @@
 # memory.md — estado corrente (max 100 linhas)
 
-## Sessão 2026-11-10 (cont. 3) — SPEC-141 CI autofix loop IMPLEMENTADO
+## Sessão 2026-11-11 — SPEC-142 QA agent com evidência (issue #407)
 
-- Branch `feature/spec-141-ci-autofix` (issue #406) — pipeline
+- **WIP herdado**: sessão anterior deixou a implementação INTEIRA
+  uncommitted em `main` (~3.700 linhas novas); movida para
+  `feature/spec-142-qa-evidence` via checkout (mesma HEAD).
+- Pipeline: webhook `pull_request` opened/synchronize (GH) +
+  open/update (GitLab) → `QaService` (dedup repo+pr+head_sha, quota
+  diária, `QaCovers` enrollment) → `QaRunWorker` → `QaRunner` 4 fases:
+  Understand (LLM → `QaPlan` em plan_json), Setup (clone head exato +
+  provision + sandcastle.yaml/detecção + app start/readiness),
+  Exercise (exec+browser via `IQaBrowserDriver` — `qa-driver.mjs`
+  Playwright no sandbox, page.video→webm; caps MaxSteps/MaxMinutes →
+  PARTIAL honesto; bugfix reproduce-on-base), Report (verdict +
+  comentário + `sandcastle/qa` advisory + artifacts `qa_screenshot`/
+  `qa_video` auth'd em `/api/v1/qa/runs/{id}/artifacts/{ref}`).
+- `scm_connections.qa_{enabled,repos_json,pass_condition}` + tabelas
+  `qa_runs|qa_steps` (dual migrations já geradas); admin toggle
+  `admin.scm_qa` ×8; `QaOptions` (MaxSteps/MaxMinutes/MaxDaily=30).
+- Único fix meu: placeholders literais `{repo}/{diff}` removidos de
+  `prompts/qa-plan.md` (contexto via user msg, como `pr-review.md`).
+- Verde: build 0/0, unit 892/892 (37 novos), format clean, golden
+  regen, drift guards OK. Deferidos: slash `/qa`+card (sem precedente
+  — mesmo defer de SPEC-140), real-browser E2E em CI.
+
+## Sessão 2026-11-10 (cont. 3) — SPEC-141 CI autofix loop ENTREGUE
+
+- **PR #416 merged** (`a750cba`, squash), issue #406 closed auto +
+  `in_pullrequest`; spec arquivada em `docs/specs/` (`0fbf6f9`,
+  push direto em main seguindo precedente PR #415).
+- Pipeline
   completa: webhook `check_run|check_suite|workflow_run|status` →
   `CiCheckEventParser` → `AutofixService` (política: falha, escopo repo,
   check-name glob, anti-loop app/ator/head_sha_out, fork, dedup

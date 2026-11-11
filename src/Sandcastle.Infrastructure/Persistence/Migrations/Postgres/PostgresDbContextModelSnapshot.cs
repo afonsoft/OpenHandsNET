@@ -2609,6 +2609,191 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations.Postgres
                     b.ToTable("autofix_runs", (string)null);
                 });
 
+            modelBuilder.Entity("Sandcastle.Infrastructure.Scm.QaRunRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BaseSha")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("base_sha");
+
+                    b.Property<string>("Classification")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("classification");
+
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("connection_id");
+
+                    b.Property<Guid?>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("CreatedAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_at_ticks");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("error");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finished_at");
+
+                    b.Property<string>("HeadSha")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("head_sha");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<bool>("PartialPlan")
+                        .HasColumnType("boolean")
+                        .HasColumnName("partial_plan");
+
+                    b.Property<string>("PlanJson")
+                        .HasColumnType("text")
+                        .HasColumnName("plan_json");
+
+                    b.Property<int>("PrNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("pr_number");
+
+                    b.Property<string>("Repository")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("repository");
+
+                    b.Property<string>("RequestedByUserId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("requested_by_user_id");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("StatsJson")
+                        .HasColumnType("text")
+                        .HasColumnName("stats_json");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Trigger")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("trigger");
+
+                    b.Property<string>("Verdict")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("verdict");
+
+                    b.HasKey("Id")
+                        .HasName("pk_qa_runs");
+
+                    b.HasIndex("ConnectionId")
+                        .HasDatabaseName("ix_qa_runs_connection_id");
+
+                    b.HasIndex("CreatedAtTicks")
+                        .IsDescending()
+                        .HasDatabaseName("ix_qa_runs_created_at_ticks");
+
+                    b.HasIndex("OrgId", "Status")
+                        .HasDatabaseName("ix_qa_runs_org_id_status");
+
+                    b.HasIndex("Repository", "PrNumber", "HeadSha")
+                        .HasDatabaseName("ix_qa_runs_repository_pr_number_head_sha");
+
+                    b.ToTable("qa_runs", (string)null);
+                });
+
+            modelBuilder.Entity("Sandcastle.Infrastructure.Scm.QaStepRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("action");
+
+                    b.Property<string>("ArtifactRef")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("artifact_ref");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Detail")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("detail");
+
+                    b.Property<long?>("DurationMs")
+                        .HasColumnType("bigint")
+                        .HasColumnName("duration_ms");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer")
+                        .HasColumnName("number");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("outcome");
+
+                    b.Property<Guid>("QaRunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("qa_run_id");
+
+                    b.Property<string>("Target")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("target");
+
+                    b.HasKey("Id")
+                        .HasName("pk_qa_steps");
+
+                    b.HasIndex("QaRunId")
+                        .HasDatabaseName("ix_qa_steps_qa_run_id");
+
+                    b.HasIndex("QaRunId", "Number")
+                        .HasDatabaseName("ix_qa_steps_qa_run_id_number");
+
+                    b.ToTable("qa_steps", (string)null);
+                });
+
             modelBuilder.Entity("Sandcastle.Infrastructure.Scm.ReviewFindingRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2889,6 +3074,19 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations.Postgres
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("pem_secret_ref");
+
+                    b.Property<bool>("QaEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("qa_enabled");
+
+                    b.Property<string>("QaPassCondition")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("qa_pass_condition");
+
+                    b.Property<string>("QaReposJson")
+                        .HasColumnType("text")
+                        .HasColumnName("qa_repos_json");
 
                     b.Property<string>("ReposJson")
                         .HasColumnType("text")

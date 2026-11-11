@@ -293,6 +293,41 @@ public sealed class ScmConnectionService(
     }
 
     /// <inheritdoc />
+    public async Task<ScmConnection?> UpdateQaSettingsAsync(
+        Guid orgId, Guid id, ScmConnectionQaUpdate update,
+        CancellationToken ct)
+    {
+        var record = await db.ScmConnections.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.Id == id && c.OrgId == orgId, ct);
+        if (record is null)
+        {
+            return null;
+        }
+
+        if (update.QaEnabled is { } enabled)
+        {
+            record.QaEnabled = enabled;
+        }
+        if (update.QaRepos is { } repos)
+        {
+            record.QaReposJson = repos.Count == 0
+                ? null : JsonSerializer.Serialize(repos);
+        }
+        if (update.QaPassCondition is { } pass)
+        {
+            record.QaPassCondition = pass;
+        }
+
+        await db.SaveChangesAsync(ct);
+        await audit.RecordAsync("scm.connection_qa_updated",
+            orgId: orgId, targetType: "scm_connection",
+            targetId: id.ToString(),
+            metadata: new { qa_enabled = record.QaEnabled },
+            cancellationToken: ct);
+        return ToModel(record);
+    }
+
+    /// <inheritdoc />
     public async Task<bool> DeleteAsync(Guid orgId, Guid id, CancellationToken ct)
     {
         var record = await db.ScmConnections.IgnoreQueryFilters()
@@ -325,5 +360,10 @@ public sealed class ScmConnectionService(
             r.AutofixCheckPatternsJson is null
                 ? null
                 : JsonSerializer.Deserialize<List<string>>(r.AutofixCheckPatternsJson),
-            r.AutofixMaxAttempts);
+            r.AutofixMaxAttempts,
+            r.QaEnabled,
+            r.QaReposJson is null
+                ? null
+                : JsonSerializer.Deserialize<List<string>>(r.QaReposJson),
+            r.QaPassCondition);
 }

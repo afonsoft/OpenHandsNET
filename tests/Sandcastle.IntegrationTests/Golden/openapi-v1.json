@@ -1358,7 +1358,7 @@
         "type": "object"
       },
       "ScmConnectionReviewPatch": {
-        "description": "SPEC-140/141: review \u002B autofix enrollment patch on a connection.",
+        "description": "SPEC-140/141/142: review \u002B autofix \u002B qa enrollment patch on a connection.",
         "properties": {
           "autofix_check_patterns": {
             "items": {
@@ -1385,6 +1385,27 @@
             ]
           },
           "autofix_repos": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "qa_enabled": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "qa_pass_condition": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "qa_repos": {
             "items": {
               "type": "string"
             },
@@ -1495,6 +1516,27 @@
           "title",
           "body"
         ],
+        "type": "object"
+      },
+      "ScmQaRunRequest": {
+        "description": "SPEC-142: manual QA trigger body.",
+        "properties": {
+          "pr_number": {
+            "default": 0,
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "repository": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
         "type": "object"
       },
       "ScmReviewRequest": {
@@ -8810,6 +8852,167 @@
         ]
       }
     },
+    "/api/v1/qa/runs": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "repository",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pr",
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "verdict",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/qa/runs",
+        "tags": [
+          "QA"
+        ]
+      },
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScmQaRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "POST /api/v1/qa/runs",
+        "tags": [
+          "QA"
+        ]
+      }
+    },
+    "/api/v1/qa/runs/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/qa/runs/{id:guid}",
+        "tags": [
+          "QA"
+        ]
+      }
+    },
+    "/api/v1/qa/runs/{id}/artifacts/{ref}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ref",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/qa/runs/{id:guid}/artifacts/{*ref}",
+        "tags": [
+          "QA"
+        ]
+      }
+    },
     "/api/v1/sandbox-specs": {
       "post": {
         "requestBody": {
@@ -11254,6 +11457,9 @@
     },
     {
       "name": "SCM"
+    },
+    {
+      "name": "QA"
     },
     {
       "name": "BrowserProfiles"

@@ -69,7 +69,10 @@ public sealed record ScmConnection(
     bool AutofixEnabled = false,
     IReadOnlyList<string>? AutofixRepos = null,
     IReadOnlyList<string>? AutofixCheckPatterns = null,
-    int? AutofixMaxAttempts = null)
+    int? AutofixMaxAttempts = null,
+    bool QaEnabled = false,
+    IReadOnlyList<string>? QaRepos = null,
+    string? QaPassCondition = null)
 {
     /// <summary>
     /// SPEC-140 RF-001: repos cobertos pelo auto-review — vazio/null =
@@ -123,6 +126,22 @@ public sealed record ScmConnection(
     /// <summary>Cap de tentativas efetivo (conexão → default global).</summary>
     public int EffectiveAutofixMaxAttempts(int globalDefault) =>
         Math.Clamp(AutofixMaxAttempts ?? globalDefault, 1, 10);
+
+    /// <summary>
+    /// SPEC-142 RF-001: repos inscritos no QA agent — vazio/null =
+    /// todos os repos da conexão.
+    /// </summary>
+    public bool QaCovers(string repository) =>
+        QaEnabled
+        && (QaRepos is null || QaRepos.Count == 0
+            || QaRepos.Contains(repository,
+                StringComparer.OrdinalIgnoreCase));
+
+    /// <summary><c>completed</c> (default) | <c>passed</c>.</summary>
+    public string EffectiveQaPassCondition =>
+        string.IsNullOrEmpty(QaPassCondition)
+            ? QaDefaults.PassConditionCompleted
+            : QaPassCondition!;
 }
 
 /// <summary>
@@ -436,6 +455,15 @@ public interface IScmConnectionService
     /// </summary>
     Task<ScmConnection?> UpdateAutofixSettingsAsync(
         Guid orgId, Guid id, ScmConnectionAutofixUpdate update,
+        CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-142 RF-001: atualiza o enrollment do QA agent da conexão
+    /// (<c>PATCH /scm/connections/{id}</c> — campos <c>qa_*</c>;
+    /// null = não altera).
+    /// </summary>
+    Task<ScmConnection?> UpdateQaSettingsAsync(
+        Guid orgId, Guid id, ScmConnectionQaUpdate update,
         CancellationToken ct);
 
     /// <summary>Deletes a connection (false = not found).</summary>

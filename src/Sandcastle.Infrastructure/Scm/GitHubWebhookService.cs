@@ -29,7 +29,9 @@ public sealed class GitHubWebhookService(
     IReviewService? reviews = null,
     Microsoft.Extensions.Options.IOptions<Review.ReviewOptions>? reviewOptions = null,
     IAutofixService? autofix = null,
-    Microsoft.Extensions.Options.IOptions<Autofix.AutofixOptions>? autofixOptions = null) : IScmWebhookService
+    Microsoft.Extensions.Options.IOptions<Autofix.AutofixOptions>? autofixOptions = null,
+    IQaService? qa = null,
+    Microsoft.Extensions.Options.IOptions<Qa.QaOptions>? qaOptions = null) : IScmWebhookService
 {
     private const string Repository = "repository";
     private const string Comment = "comment";
@@ -86,10 +88,18 @@ public sealed class GitHubWebhookService(
 
             // SPEC-140 RF-001: pull_request events → auto-review pipeline
             // (enrollment + trigger rules + dedup), independente de menção.
+            // SPEC-142 RF-001: o mesmo evento também alimenta o QA agent
+            // (opened|synchronize, opt-in por conexão) — ambos rodam.
             if (eventType == "pull_request")
             {
-                return await HandlePullRequestEventAsync(
+                var reviewResult = await HandlePullRequestEventAsync(
                     root, connection, ct);
+                var qaResult = await HandleQaPullRequestAsync(
+                    root, connection, ct);
+                return reviewResult == ScmWebhookResult.Processed
+                    || qaResult == ScmWebhookResult.Processed
+                        ? ScmWebhookResult.Processed
+                        : ScmWebhookResult.Ignored;
             }
 
             // SPEC-141 RF-001: check_run|check_suite|workflow_run|status
@@ -235,6 +245,85 @@ public sealed class GitHubWebhookService(
                 cancellationToken: ct);
         }
         return result.ReviewRunId is null
+            ? ScmWebhookResult.Ignored
+            : ScmWebhookResult.Processed;
+    }
+
+    /// <summary>
+    /// SPEC-142 RF-001 — roteamento QA de <c>pull_request</c>: actions
+    /// <c>opened</c>/<c>synchronize</c> + enrollment
+    /// (<see cref="ScmConnection.QaCovers"/>) →
+    /// <see cref="IQaService.TriggerAsync"/> (dedup por
+    /// <c>(repo, pr, head_sha)</c>). Anti-loop é estrutural: QA só
+    /// comenta e publica status — nunca dispara opened/synchronize.
+    /// </summary>
+    private async Task<ScmWebhookResult> HandleQaPullRequestAsync(
+        JsonElement root, ScmConnection connection, CancellationToken ct)
+    {
+        if (qa is null || qaOptions?.Value.Enabled == false)
+        {
+            return ScmWebhookResult.Ignored;
+        }
+        if (!root.TryGetProperty("pull_request", out var pr)
+            || !root.TryGetProperty("action", out var act))
+        {
+            return ScmWebhookResult.Ignored;
+        }
+        var action = act.GetString();
+        if (action is not ("opened" or "synchronize"))
+        {
+            return ScmWebhookResult.Ignored;
+        }
+        var repository = root.TryGetProperty(Repository, out var repo)
+            && repo.TryGetProperty("full_name", out var fn)
+                ? fn.GetString() : null;
+        if (repository is null || !connection.QaCovers(repository))
+        {
+            return ScmWebhookResult.Ignored;
+        }
+        if (pr.TryGetProperty("draft", out var d) && d.GetBoolean())
+        {
+            return ScmWebhookResult.Ignored;
+        }
+
+        var prNumber = pr.TryGetProperty("number", out var n)
+            ? n.GetInt32() : 0;
+        var headSha = pr.TryGetProperty("head", out var h)
+            && h.TryGetProperty("sha", out var hs)
+                ? hs.GetString() : null;
+        var baseSha = pr.TryGetProperty("base", out var bs)
+            && bs.TryGetProperty("sha", out var bss)
+                ? bss.GetString() : null;
+        if (prNumber <= 0 || string.IsNullOrEmpty(headSha))
+        {
+            return ScmWebhookResult.Ignored;
+        }
+
+        var result = await qa.TriggerAsync(
+            connection, repository, prNumber, headSha, baseSha,
+            "webhook", null, ct);
+        if (result.Error is not null and not QaTriggerError.Duplicate)
+        {
+            logger.LogWarning(
+                "qa trigger failed ({Repo}#{Pr}): {Err} {Detail}",
+                repository, prNumber, result.Error, result.Detail);
+            return ScmWebhookResult.Ignored;
+        }
+        if (result.QaRunId is { } runId)
+        {
+            await audit.RecordAsync("scm.qa_triggered",
+                orgId: connection.OrgId,
+                targetType: "qa_run", targetId: runId.ToString(),
+                metadata: new
+                {
+                    repository,
+                    pr = prNumber,
+                    head_sha = headSha,
+                    action,
+                },
+                cancellationToken: ct);
+        }
+        return result.QaRunId is null
             ? ScmWebhookResult.Ignored
             : ScmWebhookResult.Processed;
     }
@@ -396,6 +485,67 @@ public sealed class GitHubWebhookService(
             await audit.RecordAsync("scm.review_triggered",
                 orgId: connection.OrgId,
                 targetType: "review_run", targetId: runId.ToString(),
+                metadata: new
+                {
+                    kind = "gitlab",
+                    repository,
+                    pr = prNumber,
+                    head_sha = headSha,
+                    action,
+                },
+                cancellationToken: ct);
+            return ScmWebhookResult.Processed;
+        }
+        return ScmWebhookResult.Ignored;
+    }
+
+    /// <summary>
+    /// SPEC-142 RF-001 — GitLab <c>Merge Request Hook</c> para o QA:
+    /// actions <c>open</c>/<c>update</c> (≙ opened/synchronize) +
+    /// <see cref="ScmConnection.QaCovers"/> → trigger (dedup por head).
+    /// </summary>
+    private async Task<ScmWebhookResult> HandleGitLabQaMergeRequestAsync(
+        JsonElement root, ScmConnection connection, CancellationToken ct)
+    {
+        if (qa is null || qaOptions?.Value.Enabled == false)
+        {
+            return ScmWebhookResult.Ignored;
+        }
+        var repository = ExtractRepository(ScmKind.GitLab, root);
+        if (repository is null || !connection.QaCovers(repository))
+        {
+            return ScmWebhookResult.Ignored;
+        }
+        if (!root.TryGetProperty("object_attributes", out var oa))
+        {
+            return ScmWebhookResult.Ignored;
+        }
+        var action = oa.TryGetProperty("action", out var a)
+            ? a.GetString() : null;
+        if (action is not ("open" or "update")
+            || (oa.TryGetProperty("work_in_progress", out var w)
+                && w.GetBoolean()))
+        {
+            return ScmWebhookResult.Ignored;
+        }
+        var prNumber = oa.TryGetProperty("iid", out var ii)
+            ? ii.GetInt32() : 0;
+        var headSha = oa.TryGetProperty("last_commit", out var lc)
+            && lc.TryGetProperty("id", out var id)
+                ? id.GetString() : null;
+        if (prNumber <= 0 || string.IsNullOrEmpty(headSha))
+        {
+            return ScmWebhookResult.Ignored;
+        }
+
+        var result = await qa.TriggerAsync(
+            connection, repository, prNumber, headSha, baseSha: null,
+            "webhook", null, ct);
+        if (result.QaRunId is { } runId)
+        {
+            await audit.RecordAsync("scm.qa_triggered",
+                orgId: connection.OrgId,
+                targetType: "qa_run", targetId: runId.ToString(),
                 metadata: new
                 {
                     kind = "gitlab",
@@ -666,11 +816,18 @@ public sealed class GitHubWebhookService(
 
             // SPEC-140 RF-001: GitLab Merge Request Hook — equivalente do
             // pull_request (open|update|reopen|ready_for_review).
+            // SPEC-142 RF-001: QA segue o mesmo hook (open|update).
             if (kind == ScmKind.GitLab
                 && eventType == "Merge Request Hook")
             {
-                return await HandleGitLabMergeRequestAsync(
+                var reviewResult = await HandleGitLabMergeRequestAsync(
                     root, connection, ct);
+                var qaResult = await HandleGitLabQaMergeRequestAsync(
+                    root, connection, ct);
+                return reviewResult == ScmWebhookResult.Processed
+                    || qaResult == ScmWebhookResult.Processed
+                        ? ScmWebhookResult.Processed
+                        : ScmWebhookResult.Ignored;
             }
 
             var mention = ParseMentionByKind(kind, eventType, root);
