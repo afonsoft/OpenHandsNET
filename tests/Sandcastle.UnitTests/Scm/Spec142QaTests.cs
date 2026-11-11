@@ -673,6 +673,44 @@ public sealed class Spec142QaTests : IAsyncDisposable
         _artifacts.Puts[0].Name.ShouldEndWith(".png");
     }
 
+    // ---- driver in-sandbox (S5443) -----------------------------------------
+
+    [Fact]
+    public async Task Driver_workdir_stays_in_workspace_never_public_tmp()
+    {
+        // Remediação S5443: script do driver, job/result, screenshots,
+        // vídeo e logs do app vivem em /workspace/.qa — nunca em /tmp.
+        var exec = new FakeExecutor
+        {
+            Handler = cmd => cmd.Contains("cat /workspace/.qa/result.json")
+                ? new CommandResult(0,
+                    """{"ok":true,"steps":[{"ok":true}]}""", "", false)
+                : new CommandResult(0, "", "", false),
+        };
+        var factory = new SandboxQaBrowserDriverFactory(
+            exec, Options.Create(new QaOptions()),
+            NullLogger<SandboxQaBrowserDriverFactory>.Instance);
+        var sandbox = new SandboxModel(
+            Guid.NewGuid(), Guid.NewGuid(), null, "ctr-qa",
+            SandboxStatus.Running, null,
+            DateTimeOffset.UtcNow, null, null);
+
+        var result = await factory.Create(sandbox).RunStepsAsync(
+            "http://app:3000",
+            [new QaPlanStep("browser", null, "goto",
+                null, "/", null, null, null, null)],
+            CancellationToken.None);
+
+        result.Executed.ShouldBeTrue();
+        exec.Commands.ShouldAllBe(c => !c.Contains("/tmp"));
+        exec.Commands.ShouldContain(
+            c => c.Contains("mkdir -p /workspace/.qa/shots /workspace/.qa/video"));
+        exec.Commands.ShouldContain(
+            c => c.Contains("cd /workspace/.qa && node qa-driver.mjs"));
+        exec.Commands.ShouldContain(
+            c => c.Contains("> /workspace/.qa/qa-driver.mjs"));
+    }
+
     // ---- listagem/detalhe --------------------------------------------------
 
     [Fact]
