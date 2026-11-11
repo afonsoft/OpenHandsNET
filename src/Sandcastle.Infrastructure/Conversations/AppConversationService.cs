@@ -27,7 +27,8 @@ public sealed class AppConversationService( // NOSONAR S107 — SPEC-104 (decis�
     Sandcastle.Application.Identity.ICurrentUserAccessor? currentUser = null,
     Sandcastle.Application.Identity.IEffectiveOrgResolver? orgResolver = null,
     Sandcastle.Application.Artifacts.IArtifactStore? artifacts = null,
-    Sandcastle.Application.Conversations.IAttentionBus? attention = null)
+    Sandcastle.Application.Conversations.IAttentionBus? attention = null,
+    Microsoft.Extensions.Options.IOptions<MultiRepoOptions>? multiRepo = null)
     : IAppConversationService
 {
     /// <inheritdoc />
@@ -68,6 +69,14 @@ public sealed class AppConversationService( // NOSONAR S107 — SPEC-104 (decis�
                 .PlanLimitExceededException(limitError);
         }
 
+        // SPEC-146 RF-001: normaliza selected_repositories — primário no
+        // índice 0 espelhado em selected_repository; inválido →
+        // RepositorySelectionException (400 no endpoint).
+        var repos = RepositorySelection.Normalize(
+            request.SelectedRepository, request.SelectedRepositories,
+            multiRepo?.Value.EffectiveMaxRepos
+                ?? MultiRepoOptions.HardMaxRepos);
+
         var now = DateTimeOffset.UtcNow;
         var conv = new ConversationRecord
         {
@@ -76,7 +85,9 @@ public sealed class AppConversationService( // NOSONAR S107 — SPEC-104 (decis�
             CreatedByUserId = ownerUserId?.ToString(),
             Title = Truncate(request.InitialMessage is null
                 ? null : Flatten(request.InitialMessage), 80),
-            SelectedRepository = request.SelectedRepository,
+            SelectedRepository = repos.FirstOrDefault(),
+            RepositoriesJson = repos.Count > 0
+                ? ConversationRecord.RepositoriesToJson(repos) : null,
             AgentType = request.AgentType,
             LlmModel = request.LlmModel,
             SandboxProfile = Domain.Sandbox.SandboxProfiles

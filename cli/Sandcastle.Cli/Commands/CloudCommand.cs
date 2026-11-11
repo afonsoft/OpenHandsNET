@@ -20,7 +20,7 @@ public sealed class CloudCommand : AsyncCommand<CloudCommand.Settings>
         public string? File { get; init; }
 
         [CommandOption("--repo <OWNER_REPO>")]
-        public string? Repository { get; init; }
+        public string[]? Repositories { get; init; }
 
         [CommandOption("--server-url <URL>")]
         public string? ServerUrl { get; init; }
@@ -61,7 +61,7 @@ public sealed class CloudCommand : AsyncCommand<CloudCommand.Settings>
             "creating conversation…", async ctx =>
             {
                 var created = await api.CreateConversationAsync(
-                    task, settings.Repository,
+                    task, settings.Repositories,
                     confirmationMode: settings.ConfirmationMode, ct: cancellationToken);
                 var taskId = created.GetProperty("id").GetString()!;
                 var (readyId, error) = await runner.WaitReadyAsync(

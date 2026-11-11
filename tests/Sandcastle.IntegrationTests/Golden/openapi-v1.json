@@ -386,6 +386,16 @@
               "array"
             ]
           },
+          "selected_repositories": {
+            "description": "SPEC-146 RF-001: multi-repo \u2014 prim\u00E1rio no \u00EDndice 0 (==\nstring? CreateAppConversationRequest.SelectedRepository quando ambos presentes);\nm\u00E1x 4 (\u0060MultiRepo:MaxRepos\u0060, hard cap).",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
           "selected_repository": {
             "type": [
               "null",
@@ -559,11 +569,18 @@
               "null",
               "string"
             ]
+          },
+          "repo": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         },
         "required": [
           "message",
-          "files"
+          "files",
+          "repo"
         ],
         "type": "object"
       },
@@ -1476,7 +1493,7 @@
         "type": "object"
       },
       "ScmPrRequest": {
-        "description": "Pull-request request body.",
+        "description": "Pull-request request body. SPEC-146: \u0060Repository\u0060 target \u2014\nnull = prim\u00E1rio da conversa.",
         "properties": {
           "base": {
             "type": [
@@ -1494,6 +1511,12 @@
             ]
           },
           "head": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "repository": {
             "type": [
               "null",
               "string"
@@ -4119,6 +4142,13 @@
               "format": "uuid",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "repo",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -4203,6 +4233,13 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "repo",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -4247,6 +4284,13 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "repo",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -4288,6 +4332,13 @@
                 "integer",
                 "string"
               ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "repo",
+            "schema": {
+              "type": "string"
             }
           }
         ],

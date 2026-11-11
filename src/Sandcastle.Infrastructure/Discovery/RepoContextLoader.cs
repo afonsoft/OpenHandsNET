@@ -58,14 +58,75 @@ public sealed class RepoContextLoader(
             return new LoadedContext(null, []);
         }
 
+        var sb = new StringBuilder();
+        var skills = await LoadRepoContextAsync(
+            sb, conv, events, sandbox, ct);
+        var rendered = sb.Length > 0 ? sb.ToString() : null;
+        return new LoadedContext(rendered, skills);
+    }
+
+    /// <summary>
+    /// Preenche <paramref name="sb"/> com o contexto de repo(s) e devolve
+    /// as skills agregadas — single-repo mantém o fluxo SPEC-25 (manifesto
+    /// do evento + live fallback); multi-repo (SPEC-146) faz live
+    /// discovery por mount e renderiza seções por repo.
+    /// </summary>
+    private async Task<IReadOnlyList<Skill>> LoadRepoContextAsync(
+        StringBuilder sb, ConversationRecord conv,
+        IReadOnlyList<EventBase> events, RuntimeSandbox sandbox,
+        CancellationToken ct)
+    {
+        var repos = conv.GetRepositories();
+        if (repos.Count > 1)
+        {
+            var roots = repos.Select(r =>
+                Application.Conversations.MultiRepoLayout
+                    .PathFor(repos, r)!).ToList();
+            var skills = await repoSkills.LoadAsync(
+                sandbox, executor, ct, roots);
+            var anyConfig = false;
+            for (var i = 0; i < repos.Count; i++)
+            {
+                var m = await discovery.DiscoverAsync(
+                    executor, sandbox, ct, roots[i]);
+                if (m.InstructionFiles.Count == 0 && m.ReadmePath is null)
+                {
+                    anyConfig |= m.HasRepoConfig;
+                    continue;
+                }
+
+                sb.AppendLine($"### {repos[i]} ({roots[i]})");
+                await AppendInstructionsAsync(
+                    sb, sandbox, roots[i], m, ct);
+                await AppendReadmeAsync(sb, sandbox, roots[i], m, ct);
+                anyConfig |= m.HasRepoConfig;
+            }
+
+            AppendSkills(sb, skills);
+            if (anyConfig)
+            {
+                sb.AppendLine(
+                    "A repository declares an `sandcastle.yaml` — the"
+                    + " primary's setup already ran at sandbox provisioning"
+                    + " (blueprint).");
+            }
+
+            // SPEC-30 RF-003: digest de memória (project INDEX + org
+            // digest) — untrusted, citado; estável entre turns.
+            await AppendMemoryAsync(sb, conv, sandbox, ct);
+            return skills;
+        }
+
         var manifest = LatestManifest(events)
             ?? await discovery.DiscoverAsync(executor, sandbox, ct);
-        var skills = await repoSkills.LoadAsync(sandbox, executor, ct);
+        var legacySkills = await repoSkills.LoadAsync(
+            sandbox, executor, ct);
 
-        var sb = new StringBuilder();
-        await AppendInstructionsAsync(sb, sandbox, manifest, ct);
-        await AppendReadmeAsync(sb, sandbox, manifest, ct);
-        AppendSkills(sb, skills);
+        await AppendInstructionsAsync(
+            sb, sandbox, "/workspace/repo", manifest, ct);
+        await AppendReadmeAsync(
+            sb, sandbox, "/workspace/repo", manifest, ct);
+        AppendSkills(sb, legacySkills);
 
         if (manifest.HasRepoConfig)
         {
@@ -77,13 +138,11 @@ public sealed class RepoContextLoader(
         // SPEC-30 RF-003: digest de memória (project INDEX + org digest) —
         // untrusted, citado; estável entre turns (não é podado pela SPEC-22).
         await AppendMemoryAsync(sb, conv, sandbox, ct);
-
-        var rendered = sb.Length > 0 ? sb.ToString() : null;
-        return new LoadedContext(rendered, skills);
+        return legacySkills;
     }
 
     private async Task AppendInstructionsAsync(
-        StringBuilder sb, RuntimeSandbox sandbox,
+        StringBuilder sb, RuntimeSandbox sandbox, string repoRoot,
         RepoContextManifest manifest, CancellationToken ct)
     {
         if (manifest.InstructionFiles.Count == 0)
@@ -94,14 +153,14 @@ public sealed class RepoContextLoader(
         foreach (var file in manifest.InstructionFiles)
         {
             var content = await ReadCappedAsync(
-                sandbox, $"/workspace/repo/{file}",
+                sandbox, $"{repoRoot}/{file}",
                 InstructionCapBytes, ct);
             if (content is null)
             {
                 continue;
             }
 
-            sb.AppendLine($"<file path=\"{file}\">")
+            sb.AppendLine($"<file path=\"{repoRoot}/{file}\">")
                 .AppendLine(content)
                 .AppendLine("</file>");
         }
@@ -110,7 +169,7 @@ public sealed class RepoContextLoader(
     }
 
     private async Task AppendReadmeAsync(
-        StringBuilder sb, RuntimeSandbox sandbox,
+        StringBuilder sb, RuntimeSandbox sandbox, string repoRoot,
         RepoContextManifest manifest, CancellationToken ct)
     {
         if (manifest.ReadmePath is not { } readme)
@@ -118,7 +177,7 @@ public sealed class RepoContextLoader(
             return;
         }
         var content = await ReadCappedAsync(
-            sandbox, $"/workspace/repo/{readme}", ReadmeCapBytes, ct);
+            sandbox, $"{repoRoot}/{readme}", ReadmeCapBytes, ct);
         if (content is not null)
         {
             sb.AppendLine("<repo_readme>").AppendLine(content)

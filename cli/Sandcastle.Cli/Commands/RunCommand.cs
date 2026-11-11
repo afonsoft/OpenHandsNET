@@ -20,7 +20,7 @@ public sealed class RunCommand : AsyncCommand<RunCommand.Settings>
         public string? File { get; init; }
 
         [CommandOption("--repo <REPO>")]
-        public string? Repository { get; init; }
+        public string[]? Repositories { get; init; }
 
         [CommandOption("--server-url <URL>")]
         public string? ServerUrl { get; init; }
@@ -53,8 +53,9 @@ public sealed class RunCommand : AsyncCommand<RunCommand.Settings>
             settings.ServerUrl, new CredentialStore(), ct: cancellationToken);
         var runner = new RunExecutor(api);
 
+        // SPEC-146: --repo repetível (max 4 no server; primeiro = primário).
         var created = await api.CreateConversationAsync(
-            task, settings.Repository,
+            task, settings.Repositories,
             confirmationMode: settings.ConfirmationMode, ct: cancellationToken);
         var taskId = created.GetProperty("id").GetString()!;
         var (convId, error) = await runner.WaitReadyAsync(taskId, ct: cancellationToken);

@@ -16,7 +16,13 @@
                       DraftKey="new" OnSend="OnComposerSendAsync" />
         <div class="row">
             <input aria-label="@L["home.repository_placeholder"]" placeholder="@L["home.repository_placeholder"]"
-                   @bind="_repository" @bind:event="oninput" />
+                   @bind="_repository" @bind:event="oninput"
+                   @onkeydown="OnRepoKeyDownAsync" />
+            <button aria-label="@L["home.repo_add"]" title="@L["home.repo_add"]"
+                    @onclick="AddRepoAsync"
+                    disabled="@(_repositories.Count >= 4 || string.IsNullOrWhiteSpace(_repository))">
+                +
+            </button>
             <label title="@L["home.confirm_title"]">
                 <input type="checkbox" @bind="_confirmMode" /> @L["home.confirmation"]
             </label>
@@ -24,6 +30,24 @@
                 @(_starting ? L["home.starting"] : L["home.run"])
             </button>
         </div>
+        @* SPEC-146 RF-001/RF-010: chips multi-repo — índice 0 = primário. *@
+        @if (_repositories.Count > 0)
+        {
+            <div class="row repo-chips" role="list" aria-label="@L["home.repositories"]">
+                @for (var i = 0; i < _repositories.Count; i++)
+                {
+                    var idx = i;
+                    var chipClass = idx == 0 ? "chip mention" : "chip";
+                    <span class="@chipClass" role="listitem"
+                          title="@(idx == 0 ? L["home.repo_primary"] : "")">
+                        @(idx == 0 ? "★ " : "")@_repositories[idx]
+                        <button class="chip-x"
+                                aria-label="@L.T("home.repo_remove", ("repo", _repositories[idx]))"
+                                @onclick="() => RemoveRepo(idx)">×</button>
+                    </span>
+                }
+            </div>
+        }
         @* SPEC-147 RF-005: badge "X/Y repos indexed" + link p/ gerenciar. *@
         @if (_indexing is not null)
         {
@@ -78,7 +102,7 @@
                         <span class="dot"></span>@c.ExecutionStatus
                     </span>
                     <span class="title">@(c.Title ?? L["conversation.untitled"])</span>
-                    <span class="meta">@(c.SelectedRepository ?? "")</span>
+                    <span class="meta">@RepoLabel(c)</span>
                     <span class="meta">@c.UpdatedAt.LocalDateTime.ToString("g")</span>
                 </a>
             }
@@ -91,6 +115,8 @@
     private IndexingStatusDto? _indexing;
     private string _initialMessage = "";
     private string _repository = "";
+    /// <summary>SPEC-146: seleção multi-repo (máx 4; índice 0 = primário).</summary>
+    private readonly List<string> _repositories = [];
     private bool _confirmMode;
     private bool _starting;
     private string? _error;
@@ -110,6 +136,42 @@
     private static string BadgeClass(string status) =>
         "badge " + status.ToLowerInvariant().Replace(' ', '_');
 
+    /// <summary>
+    /// SPEC-146: adiciona repo como chip (Enter) — max 4, sem duplicata
+    /// case-insensitive; primeiro chip = primário.
+    /// </summary>
+    private Task AddRepoAsync()
+    {
+        var name = _repository.Trim().TrimEnd('/');
+        if (name.Length > 0 && _repositories.Count < 4
+            && !_repositories.Any(r => string.Equals(
+                r, name, StringComparison.OrdinalIgnoreCase)))
+        {
+            _repositories.Add(name);
+            _repository = "";
+            _error = null;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnRepoKeyDownAsync(KeyboardEventArgs e) =>
+        e.Key is "Enter" or ";" or "," ? AddRepoAsync() : Task.CompletedTask;
+
+    private void RemoveRepo(int index)
+    {
+        if (index >= 0 && index < _repositories.Count)
+        {
+            _repositories.RemoveAt(index);
+        }
+    }
+
+    /// <summary>SPEC-146: label do card — repos ordenados ou legado.</summary>
+    private static string RepoLabel(ConversationItem c) =>
+        c.Repositories is { Count: > 0 } r
+            ? string.Join(", ", r)
+            : c.SelectedRepository ?? "";
+
     /// <summary>SPEC-45: composer da Home — envio inicia a conversa.</summary>
     private async Task OnComposerSendAsync(string text)
     {
@@ -124,10 +186,18 @@
         _progress.Clear();
         try
         {
+            // Chips têm precedência; texto livre vira repo único
+            // (retrocompat SPEC-12).
+            IReadOnlyList<string>? repos = _repositories.Count > 0
+                ? _repositories.ToArray()
+                : string.IsNullOrWhiteSpace(_repository)
+                    ? null
+                    : [_repository.Trim()];
             var task = await Api.CreateConversationAsync(
                 string.IsNullOrWhiteSpace(_initialMessage) ? null : _initialMessage,
-                string.IsNullOrWhiteSpace(_repository) ? null : _repository,
-                run: true, confirmationMode: _confirmMode);
+                repos?[0],
+                run: true, confirmationMode: _confirmMode,
+                repositories: repos);
             TrackStatus(task.Status);
             _poll = new System.Timers.Timer(1200);
             _poll.Elapsed += async (_, _) => await PollTaskAsync(task.Id);

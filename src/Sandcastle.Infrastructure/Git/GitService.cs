@@ -22,10 +22,12 @@ public sealed class GitService(
     ILogger<GitService> logger) : IGitService
 {
     /// <inheritdoc />
-    public async Task<bool> HasRepositoryAsync(DomainSandbox sandbox, CancellationToken ct)
+    public async Task<bool> HasRepositoryAsync(
+        DomainSandbox sandbox, CancellationToken ct, string? repoPath = null)
     {
+        var repo = PathFor(repoPath);
         var r = await executor.ExecAsync(sandbox,
-            $"git -C {Repo} rev-parse --is-inside-work-tree",
+            $"git -C '{repo}' rev-parse --is-inside-work-tree",
             TimeSpan.FromSeconds(15), ct);
         return r.StdOut.Trim() == "true";
     }
@@ -33,15 +35,17 @@ public sealed class GitService(
     /// <inheritdoc />
     public async Task CloneAsync(
         DomainSandbox sandbox, string repoUrl, string workBranch,
-        string? ownerId, CancellationToken ct)
+        string? ownerId, CancellationToken ct,
+        string? repoPath = null, string? credentialToken = null)
     {
+        var repo = PathFor(repoPath);
         // SPEC-18 RF-005: recriação de sandbox (switch_profile) monta o mesmo
         // workspace do host — repo já clonado → só garante o work branch.
-        if (await HasRepositoryAsync(sandbox, ct))
+        if (await HasRepositoryAsync(sandbox, ct, repo))
         {
             var sw = await executor.ExecAsync(sandbox,
-                $"git -C '{Repo}' checkout '{Escape(workBranch)}' 2>/dev/null || " +
-                $"git -C '{Repo}' checkout -b '{Escape(workBranch)}'",
+                $"git -C '{repo}' checkout '{Escape(workBranch)}' 2>/dev/null || " +
+                $"git -C '{repo}' checkout -b '{Escape(workBranch)}'",
                 TimeSpan.FromSeconds(30), ct);
             if (sw.ExitCode != 0)
             {
@@ -56,8 +60,8 @@ public sealed class GitService(
         // URL com credencial embutida nunca chega a logs — redação defensiva.
         var safeUrl = SecretRedactor.Redact(url);
         var host = TryHost(url);
-        var token = host is null ? null
-            : await credentials.ResolveTokenAsync(host, ownerId, ct);
+        var token = credentialToken ?? (host is null ? null
+            : await credentials.ResolveTokenAsync(host, ownerId, ct));
 
         string askPassPath = "";
         try
@@ -76,9 +80,9 @@ public sealed class GitService(
             }
 
             logger.LogInformation("Cloning {RepoUrl} into {RepoPath} (container mode)",
-                safeUrl, Repo);
+                safeUrl, repo);
             var clone = await executor.ExecAsync(sandbox,
-                $"{envPrefix}git clone -- '{Escape(url)}' '{Repo}'",
+                $"{envPrefix}git clone -- '{Escape(url)}' '{repo}'",
                 TimeSpan.FromMinutes(10), ct);
             if (clone.ExitCode != 0)
             {
@@ -87,7 +91,7 @@ public sealed class GitService(
             }
 
             var co = await executor.ExecAsync(sandbox,
-                $"git -C '{Repo}' checkout -b '{Escape(workBranch)}'",
+                $"git -C '{repo}' checkout -b '{Escape(workBranch)}'",
                 TimeSpan.FromSeconds(30), ct);
             if (co.ExitCode != 0)
             {
@@ -150,10 +154,11 @@ public sealed class GitService(
 
     /// <inheritdoc />
     public async Task<GitChanges> GetChangesAsync(
-        DomainSandbox sandbox, CancellationToken ct)
+        DomainSandbox sandbox, CancellationToken ct, string? repoPath = null)
     {
+        var repo = PathFor(repoPath);
         var r = await executor.ExecAsync(sandbox,
-            $"git -C '{Repo}' status --porcelain=v2 --branch -uall",
+            $"git -C '{repo}' status --porcelain=v2 --branch -uall",
             TimeSpan.FromSeconds(30), ct);
         return r.ExitCode == 0
             ? GitStatusParser.Parse(r.StdOut)
@@ -163,34 +168,40 @@ public sealed class GitService(
 
     /// <inheritdoc />
     public async Task<GitDiffReport?> GetDiffAsync(
-        DomainSandbox sandbox, string? path, CancellationToken ct)
+        DomainSandbox sandbox, string? path, CancellationToken ct,
+        string? repoPath = null)
     {
-        var raw = await GetRawDiffAsync(sandbox, path, ct);
+        var raw = await GetRawDiffAsync(sandbox, path, ct, repoPath);
         return raw is null ? null : GitDiffParser.Parse(raw);
     }
 
     /// <inheritdoc />
     public async Task<string?> GetRawDiffAsync(
-        DomainSandbox sandbox, string? path, CancellationToken ct)
+        DomainSandbox sandbox, string? path, CancellationToken ct,
+        string? repoPath = null)
     {
-        if (!await HasRepositoryAsync(sandbox, ct))
+        var repo = PathFor(repoPath);
+        if (!await HasRepositoryAsync(sandbox, ct, repo))
         {
             return null;
         }
 
         var pathArg = path is null ? "" : $" -- '{Escape(path)}'";
         var r = await executor.ExecAsync(sandbox,
-            $"git -C '{Repo}' diff HEAD{pathArg} || git -C '{Repo}' diff{pathArg}",
+            $"git -C '{repo}' diff HEAD{pathArg} || " +
+            $"git -C '{repo}' diff{pathArg}",
             TimeSpan.FromSeconds(30), ct);
         return r.StdOut;
     }
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<GitLogEntry>> GetLogAsync(
-        DomainSandbox sandbox, int limit, CancellationToken ct)
+        DomainSandbox sandbox, int limit, CancellationToken ct,
+        string? repoPath = null)
     {
+        var repo = PathFor(repoPath);
         var r = await executor.ExecAsync(sandbox,
-            $"git -C '{Repo}' log -n {Math.Clamp(limit, 1, 200)} " +
+            $"git -C '{repo}' log -n {Math.Clamp(limit, 1, 200)} " +
             "--format=%H%x1f%an%x1f%aI%x1f%s%x1e",
             TimeSpan.FromSeconds(30), ct);
         return r.ExitCode == 0 ? GitLogParser.Parse(r.StdOut) : [];
@@ -199,8 +210,10 @@ public sealed class GitService(
     /// <inheritdoc />
     public async Task<GitCommitResult> CommitAsync(
         DomainSandbox sandbox, string message,
-        IReadOnlyList<string>? files, CancellationToken ct)
+        IReadOnlyList<string>? files, CancellationToken ct,
+        string? repoPath = null)
     {
+        var repo = PathFor(repoPath);
         var add = files is { Count: > 0 }
             ? string.Join(' ', files.Select(f => $"'{Escape(f)}'"))
             : "-A";
@@ -215,7 +228,7 @@ public sealed class GitService(
         var msgB64 = Convert.ToBase64String(
             System.Text.Encoding.UTF8.GetBytes(fullMessage));
         var r = await executor.ExecAsync(sandbox,
-            $"cd '{Repo}' && git add {add} && " +
+            $"cd '{repo}' && git add {add} && " +
             $"git -c user.name='{Escape(identity.AuthorName)}' " +
             $"-c user.email='{Escape(identity.AuthorEmail)}' " +
             $"commit -m \"$(echo '{msgB64}' | base64 -d)\" && git rev-parse HEAD",
@@ -230,9 +243,11 @@ public sealed class GitService(
     /// <inheritdoc />
     public async Task<GitPushResult> PushAsync(
         DomainSandbox sandbox, string head, string? remoteBranch,
-        bool forceWithLease, string? ownerId, CancellationToken ct)
+        bool forceWithLease, string? ownerId, CancellationToken ct,
+        string? repoPath = null)
     {
-        if (!await HasRepositoryAsync(sandbox, ct))
+        var repo = PathFor(repoPath);
+        if (!await HasRepositoryAsync(sandbox, ct, repo))
         {
             return new GitPushResult(false, null, "no git repository");
         }
@@ -243,7 +258,7 @@ public sealed class GitService(
         var dest = remoteBranch ?? head;
         var force = forceWithLease ? " --force-with-lease" : "";
         var r = await executor.ExecAsync(sandbox,
-            $"cd '{Repo}' && git push -u origin " +
+            $"cd '{repo}' && git push -u origin " +
             $"'{Escape(head)}:{Escape(dest)}'{force} && git rev-parse HEAD",
             TimeSpan.FromMinutes(5), ct);
         if (r.ExitCode != 0)
@@ -257,10 +272,11 @@ public sealed class GitService(
 
     /// <inheritdoc />
     public async Task<string?> GetCurrentBranchAsync(
-        DomainSandbox sandbox, CancellationToken ct)
+        DomainSandbox sandbox, CancellationToken ct, string? repoPath = null)
     {
+        var repo = PathFor(repoPath);
         var r = await executor.ExecAsync(sandbox,
-            $"git -C '{Repo}' rev-parse --abbrev-ref HEAD",
+            $"git -C '{repo}' rev-parse --abbrev-ref HEAD",
             TimeSpan.FromSeconds(15), ct);
         var name = r.StdOut.Trim();
         return r.ExitCode == 0 && name is not "" and not "HEAD" ? name : null;
@@ -269,11 +285,12 @@ public sealed class GitService(
     /// <inheritdoc />
     public async Task<string?> GetFileAtRefAsync(
         DomainSandbox sandbox, string path, string gitRef,
-        CancellationToken ct)
+        CancellationToken ct, string? repoPath = null)
     {
+        var repo = PathFor(repoPath);
         // path relativo ao repo (cliente envia /workspace/... — faz strip).
-        var rel = path.StartsWith(Repo, StringComparison.Ordinal)
-            ? path[Repo.Length..].TrimStart('/')
+        var rel = path.StartsWith(repo, StringComparison.Ordinal)
+            ? path[repo.Length..].TrimStart('/')
             : path.TrimStart('/');
         if (rel.Length == 0 || rel.Contains("..", StringComparison.Ordinal)
             || gitRef.Contains('\'', StringComparison.Ordinal))
@@ -282,7 +299,7 @@ public sealed class GitService(
         }
 
         var r = await executor.ExecAsync(sandbox,
-            $"git -C '{Repo}' show '{Escape(gitRef)}:{Escape(rel)}'",
+            $"git -C '{repo}' show '{Escape(gitRef)}:{Escape(rel)}'",
             TimeSpan.FromSeconds(30), ct);
         return r.ExitCode == 0 ? r.StdOut : null;
     }
@@ -304,6 +321,16 @@ public sealed class GitService(
     }
 
     private string Repo => options.Value.RepoPath;
+
+    /// <summary>
+    /// SPEC-146: <paramref name="repoPath"/> override — default
+    /// <see cref="GitOptions.RepoPath"/> (<c>/workspace/repo</c> = primário).
+    /// Só caminhos sob <c>/workspace</c> são aceitos (guardrail de escape).
+    /// </summary>
+    private string PathFor(string? repoPath) =>
+        string.IsNullOrEmpty(repoPath)
+            || !repoPath.StartsWith("/workspace/", StringComparison.Ordinal)
+            ? Repo : repoPath;
 
     private static string? TryHost(string url)
     {

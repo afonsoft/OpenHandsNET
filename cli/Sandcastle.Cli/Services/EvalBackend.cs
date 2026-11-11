@@ -18,7 +18,7 @@ public sealed class EvalBackend(CloudApiClient api, HttpClient http) : IEvalBack
         string task, string? repo, string? model, CancellationToken ct)
     {
         var created = await api.CreateConversationAsync(
-            task, repo, model: model, ct: ct);
+            task, repo is { } r ? [r] : null, model: model, ct: ct);
         return created.GetProperty("id").GetString()!;
     }
 

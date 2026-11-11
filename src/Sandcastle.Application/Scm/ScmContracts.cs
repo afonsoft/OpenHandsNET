@@ -242,14 +242,19 @@ public sealed record ScmReviewResult(
     string? Url,
     int PostedComments);
 
-/// <summary>Parameters for creating a pull request.</summary>
+/// <summary>
+/// Parameters for creating a pull request. SPEC-146 RF-004:
+/// <paramref name="Repository"/> target — null = primário
+/// (<c>selected_repository</c>); nome completo ou short-name aceitos.
+/// </summary>
 public sealed record ScmPrCreateRequest(
     string Title,
     string Body,
     string? Base,
     string Head,
     bool Draft,
-    IReadOnlyList<string>? Reviewers);
+    IReadOnlyList<string>? Reviewers,
+    string? Repository = null);
 
 /// <summary>
 /// Context extracted from an inbound SCM webhook that should become a
@@ -530,8 +535,14 @@ public enum ScmPrError
     /// <summary>404 — no SCM connection covers the repository.</summary>
     NoConnection,
 
-    /// <summary>409 — a PR already exists for this conversation.</summary>
+    /// <summary>409 — a PR already exists for that repository.</summary>
     AlreadyExists,
+
+    /// <summary>400 — repository not in the conversation's selection.</summary>
+    InvalidRepository,
+
+    /// <summary>403 — no access to the target repository.</summary>
+    Forbidden,
 
     /// <summary>502 — push or provider call failed.</summary>
     ProviderError,

@@ -28,11 +28,15 @@
                 @L["conv.forked_from"]
             </a>
         }
-        @if (State.Conversation?.SelectedRepository is { } repo)
+        @* SPEC-146 RF-010: um badge por repo selecionado (★ = primário);
+           conversas legadas derivam do selected_repository. *@
+        @foreach (var (repo, i) in SelectedRepos().Select(
+            (r, i) => (r, i)))
         {
             <button class="repo repo-btn" title="@repo — diff"
                     @onclick='() => _tab = "diff"'>
-                <Icon Name="git-branch" Size="13" /> @repo
+                <Icon Name="git-branch" Size="13" />
+                @(i == 0 && SelectedRepos().Count > 1 ? "★ " : "")@repo
             </button>
         }
         <ModelSelector Current="@State.Conversation?.LlmModel"
@@ -351,6 +355,22 @@
 
     private static string BadgeClass(string status) =>
         "badge " + status.ToLowerInvariant().Replace(' ', '_');
+
+    /// <summary>
+    /// SPEC-146: repos selecionados ordenados — <see
+    /// cref="ConversationItem.Repositories"/> quando presente, senão
+    /// deriva do legado <see cref="ConversationItem.SelectedRepository"/>.
+    /// </summary>
+    private IReadOnlyList<string> SelectedRepos()
+    {
+        var c = State.Conversation;
+        if (c?.Repositories is { Count: > 0 } repos)
+        {
+            return repos;
+        }
+
+        return c?.SelectedRepository is { } r ? [r] : [];
+    }
 
     /// <summary>SPEC-76 RF-001: pill viva durante run (spinner).</summary>
     private static bool IsRunActive(string status) =>

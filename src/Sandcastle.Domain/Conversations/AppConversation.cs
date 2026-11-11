@@ -58,4 +58,27 @@ public sealed record AppConversation(
     string? TicketId = null,
     string? TicketUrl = null,
     // SPEC-135: conversa de origem num fork (null = raiz).
-    Guid? ParentConversationId = null);
+    Guid? ParentConversationId = null,
+    // SPEC-146: repos da conversa, ordenados (primário ==
+    // SelectedRepository); null = legado single-repo.
+    IReadOnlyList<string>? Repositories = null,
+    // SPEC-146: PRs por repo (aggregate); pull_request_* espelha o primário.
+    IReadOnlyList<ConversationPullRequest>? PullRequests = null)
+{
+    /// <summary>
+    /// Repos efetivos — <see cref="Repositories"/> quando preenchido;
+    /// senão deriva do legado <see cref="SelectedRepository"/>.
+    /// </summary>
+    public IReadOnlyList<string> EffectiveRepositories =>
+        Repositories is { Count: > 0 } r
+            ? r
+            : SelectedRepository is { Length: > 0 } s ? [s] : [];
+}
+
+/// <summary>SPEC-146: um PR criado pela conversa num repo específico.</summary>
+public sealed record ConversationPullRequest(
+    string Repository,
+    string Url,
+    int Number,
+    string? State,
+    string? HeadSha);

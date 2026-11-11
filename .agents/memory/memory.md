@@ -1,5 +1,28 @@
 # memory.md — estado corrente (max 100 linhas)
 
+## Sessão 2026-11-11 (cont. 4) — SPEC-146 multi-repo-conversations (issue #411)
+
+- **WIP herdado** (sessão anterior, uncommitted em `main`, ~2.1k linhas)
+  movido p/ `feature/spec-146-multi-repo` (mesma HEAD) e revisado por
+  inteiro: `selected_repositories` (hard-cap 4 via `MultiRepoOptions`,
+  `RepositorySelection.Normalize` → 400 `RepositorySelectionException`);
+  `MultiRepoLayout`/`MultiRepoCloner` (clone paralelo — primário
+  obrigatório, secundário tolerated → state event `repositories`);
+  `RepoCloneCredentialResolver` (conexão SCM→token→fallback por host;
+  askpass/extraHeader, nunca argv); `IGitService` +`repoPath?` (só
+  `/workspace/*`); `/workspace/repo` → symlink primário; git_* tools
+  `repo` arg + `create_pull_request.repository`; PR por repo
+  (`pull_requests_json` agrega; legado espelha primário; erros
+  400/403/409); dual migrations sqlite+pg; prompt lista mounts;
+  RepoContextLoader multi-root; UI chips+badges (★) + i18n ×8 sorted;
+  CLI `--repo` repetível; MCP `selected_repositories`; Git `?repo=`.
+- Verde: build 0/0, unit 953/953 (~30 novos Spec146), client 147/147,
+  sandbox 10/10, integration 262/263 (1 flake ambiental
+  FrameworkAssets "client aborted" — passou isolado), format clean,
+  5 drift guards OK, golden regen.
+- Deferido documentado: Ask citations `repo:` prefix (degrade →
+  primário; indexer já per-(repo,branch)).
+
 ## Sessão 2026-11-11 (cont. 3) — SPEC-145 repo-wiki-mcp ENTREGUE (issue #410)
 
 - **WIP herdado** (sessão anterior, uncommitted) revisado por inteiro e

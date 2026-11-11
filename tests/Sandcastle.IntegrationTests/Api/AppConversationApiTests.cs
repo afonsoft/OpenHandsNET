@@ -209,4 +209,107 @@ public sealed class AppConversationApiTests : IDisposable
             $"/api/v1/app-conversations?ids={ids}");
         resp.GetArrayLength().ShouldBe(3);
     }
+
+    // ---- SPEC-146 RF-001: selected_repositories contract ----------------
+
+    [Fact]
+    public async Task Create_With_Five_Repos_Returns_400()
+    {
+        var resp = await _http.PostAsJsonAsync(
+            "/api/v1/app-conversations", new
+            {
+                selected_repositories = new[]
+                    { "o/r1", "o/r2", "o/r3", "o/r4", "o/r5" },
+            });
+        resp.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("detail").GetString()!
+            .ShouldContain("too many repositories");
+    }
+
+    [Fact]
+    public async Task Create_With_Mismatched_Primary_Returns_400()
+    {
+        var resp = await _http.PostAsJsonAsync(
+            "/api/v1/app-conversations", new
+            {
+                selected_repository = "o/other",
+                selected_repositories = new[] { "o/a", "o/b" },
+            });
+        resp.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("detail").GetString()!
+            .ShouldContain("first entry");
+    }
+
+    [Fact]
+    public async Task Create_With_Duplicate_Repos_Returns_400()
+    {
+        var resp = await _http.PostAsJsonAsync(
+            "/api/v1/app-conversations", new
+            {
+                selected_repositories = new[] { "O/A", "o/a" },
+            });
+        resp.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("detail").GetString()!
+            .ShouldContain("duplicate");
+    }
+
+    [Fact]
+    public async Task Create_Multi_Repo_Persists_Ordered_Repositories()
+    {
+        // start-task é criado (worker de sandbox roda async — o erro de
+        // provision sem Docker não impede a resposta 201).
+        var resp = await _http.PostAsJsonAsync(
+            "/api/v1/app-conversations", new
+            {
+                initial_message = new
+                {
+                    role = "user",
+                    content = new[] { new { type = "text", text = "hi" } },
+                    run = false,
+                },
+                selected_repository = "o/api",
+                selected_repositories = new[] { "o/api", "o/web" },
+            });
+        resp.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var task = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        var convId = task.GetProperty("app_conversation_id").GetString()!;
+        convId.ShouldNotBeNullOrEmpty();
+
+        var conv = await _http.GetFromJsonAsync<JsonElement>(
+            $"/api/v1/app-conversations/{convId}");
+        conv.GetProperty("selected_repository").GetString()
+            .ShouldBe("o/api");
+        var repos = conv.GetProperty("repositories");
+        repos.GetArrayLength().ShouldBe(2);
+        repos[0].GetString().ShouldBe("o/api");
+        repos[1].GetString().ShouldBe("o/web");
+    }
+
+    [Fact]
+    public async Task Get_Conversation_Legacy_Row_Has_No_Repositories()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider
+            .GetRequiredService<Sandcastle.Infrastructure.Persistence.AppDbContext>();
+        var conv = new Sandcastle.Infrastructure.Conversations.ConversationRecord
+        {
+            Id = Guid.NewGuid(),
+            SelectedRepository = "o/legacy",
+            ExecutionStatus = "Stopped",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+        db.Conversations.Add(conv);
+        await db.SaveChangesAsync();
+
+        var dto = await _http.GetFromJsonAsync<JsonElement>(
+            $"/api/v1/app-conversations/{conv.Id}");
+        // fallback legado: repositories deriva do selected_repository.
+        var repos = dto.GetProperty("repositories");
+        repos.GetArrayLength().ShouldBe(1);
+        repos[0].GetString().ShouldBe("o/legacy");
+    }
 }

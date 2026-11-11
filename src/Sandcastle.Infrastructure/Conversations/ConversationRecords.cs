@@ -72,6 +72,19 @@ public sealed class ConversationRecord : IOrgScoped
     /// <summary>SPEC-52 RF-005: head SHA reportado no último commit status.</summary>
     public string? PullRequestHeadSha { get; set; }
 
+    /// <summary>
+    /// SPEC-146 RF-001: repos da conversa (JSON <c>string[]</c>, primário
+    /// no índice 0 == <see cref="SelectedRepository"/>); null = legado.
+    /// </summary>
+    public string? RepositoriesJson { get; set; }
+
+    /// <summary>
+    /// SPEC-146 RF-004: PRs por repo — JSON de
+    /// <see cref="ConversationPullRequest"/>[]; pull_request_* espelha o
+    /// PR do primário.
+    /// </summary>
+    public string? PullRequestsJson { get; set; }
+
     /// <summary>SPEC-55 RF-003: ticket que originou a conversa (linear|jira).</summary>
     public string? TicketKind { get; set; }
     /// <summary>SPEC-57: quem criou via impersonation (service_user:{id}…).</summary>
@@ -108,7 +121,52 @@ public sealed class ConversationRecord : IOrgScoped
         Pinned, CreatedAt, UpdatedAt, CreatedByUserId, ConfirmationMode,
         SandboxProfile, NeedsAttentionKind,
         PullRequestUrl, PullRequestNumber, PullRequestState,
-        TicketKind, TicketId, TicketUrl, ParentConversationId);
+        TicketKind, TicketId, TicketUrl, ParentConversationId,
+        Repositories: GetRepositoriesOrNull(),
+        PullRequests: GetPullRequests());
+
+    /// <summary>
+    /// SPEC-146: repos efetivos ordenados — <see cref="RepositoriesJson"/>
+    /// parseado; fallback <c>[SelectedRepository]</c> para linhas legadas.
+    /// </summary>
+    public IReadOnlyList<string> GetRepositories() =>
+        GetRepositoriesOrNull()
+            ?? (SelectedRepository is { Length: > 0 } s ? [s] : []);
+
+    private IReadOnlyList<string>? GetRepositoriesOrNull() =>
+        RepositoriesJson is null ? null
+            : System.Text.Json.JsonSerializer.Deserialize<List<string>>(
+                RepositoriesJson) ?? [];
+
+    /// <summary>
+    /// SPEC-146: PRs por repo — <see cref="PullRequestsJson"/> parseado;
+    /// fallback para o legado pull_request_* quando há PR no primário.
+    /// </summary>
+    public IReadOnlyList<ConversationPullRequest> GetPullRequests()
+    {
+        if (PullRequestsJson is not null)
+        {
+            return System.Text.Json.JsonSerializer
+                .Deserialize<List<ConversationPullRequest>>(PullRequestsJson)
+                ?? [];
+        }
+        if (PullRequestNumber is { } n && SelectedRepository is { } r
+            && PullRequestUrl is { } u)
+        {
+            return [new(r, u, n, PullRequestState, PullRequestHeadSha)];
+        }
+
+        return [];
+    }
+
+    /// <summary>SPEC-146: serializa a lista ordenada de repos.</summary>
+    public static string RepositoriesToJson(IReadOnlyList<string> repos) =>
+        System.Text.Json.JsonSerializer.Serialize(repos);
+
+    /// <summary>SPEC-146: serializa o agregado de PRs.</summary>
+    public static string PullRequestsToJson(
+        IReadOnlyList<ConversationPullRequest> prs) =>
+        System.Text.Json.JsonSerializer.Serialize(prs);
 }
 
 /// <summary>Persisted start-task row.</summary>
