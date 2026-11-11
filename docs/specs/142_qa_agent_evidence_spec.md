@@ -8,7 +8,7 @@
 | Type | `Feature / Agent + Sandbox + SCM` |
 | Stack | `.NET 10 · Playwright no sandbox (SPEC-131) · artifacts` |
 | Repository | `afonsoft/sandcastle` |
-| Status | `Approved` |
+| Status | `Delivered` |
 | Ticket | `GAP-AGENT-QA-EVIDENCE` (docs/research/2026-11-competitive-gap-analysis.md §G3) |
 | Depends on | `18` (browser tool), `131` (Playwright+chrome-devtools na imagem), `34` (artifacts), `140`/`141` |
 | Reference | OH QA plugin (`qa-changes`, 4 fases + PASS/FAIL/PARTIAL); Devin "Testing & Video Recordings" — conceitos apenas |
