@@ -1,5 +1,32 @@
 # memory.md — estado corrente (max 100 linhas)
 
+## Sessão 2026-11-11 (cont. 3) — SPEC-145 repo-wiki-mcp ENTREGUE (issue #410)
+
+- **WIP herdado** (sessão anterior, uncommitted) revisado por inteiro e
+  entregue: **PR #420 merged** (`d1650b0`, squash), issue #410 closed +
+  done. Spec arquivada `docs/specs/` (commit `075f2be` direto em main).
+- `IRepoContentProvider` (clone shallow via conexão SCM + GIT_ASKPASS
+  fora de argv | local fallback) → `RepoIndexer` indexa a árvore real
+  por branch + persiste `CommitSha`; webhook `push` (GH+GL) re-indexa
+  (`Indexing:AutoRefreshOnPush`) e marca wiki pages stale (diff-aware
+  por `source_files`).
+- Wiki: `wiki_runs`/`wiki_pages` (migrations duplas) + `WikiRunWorker`
+  (fila in-process) + `WikiRunner` (effort 5/15/40, `.sandcastle/wiki.json`,
+  citações validadas contra índice → permalinks; inválida → stale).
+  UI `/wiki` (árvore+markdown+mermaid lazy, i18n ×8). Ask: permalinks
+  nas citações + `Wiki:AskEnrichment`. MCP: `sc_wiki_structure`/
+  `sc_wiki_contents`/`sc_ask` + `--http :PORT` (sk-* + CIDR allowlist;
+  stdio default). Golden MCP 15 tools. Perms `indexing.manage`/`wiki.read`.
+- Verde: build 0/0, unit 921/921 (33 Spec145), client 147/147, format
+  clean, 6 drift guards, boot smoke OK. Integration serial nesta box:
+  256/258 — 2 flakes ambientais conhecidos (Spec112 dev-login timeout,
+  Spec42 etag) passam isolados (rerun = 2/2).
+- Gotcha: `gh pr merge --auto` mergeou na hora (repo não exige check
+  verde). CI main red por flake pré-existente
+  `SandboxAgentTests.ExecStream_Sse_Chunks_And_Terminal_Exit` (SSE
+  stdout/stderr coalescing; passa local 768ms; falhava em main antes
+  do merge — fora do escopo, precisa quarantine/fix dedicado).
+
 ## Sessão 2026-11-11 — SPEC-142 QA agent com evidência (issue #407)
 
 - **WIP herdado**: sessão anterior deixou a implementação INTEIRA
