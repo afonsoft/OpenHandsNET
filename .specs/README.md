@@ -138,6 +138,6 @@ Aprovadas em 2026-11-10 pelo usuário — Epic acompanha no GitHub.
 | 142 | qa-agent-evidence | Delivered · PR #418 | #407 |
 | 143 | code-scans | Approved | GAP-SCAN-FINDINGS |
 | 144 | batch-refactor | Approved | GAP-REFACTOR-BATCH |
-| 145 | repo-wiki-mcp | Approved | GAP-WIKI-MCP |
+| 145 | repo-wiki-mcp | Delivered · PR #420 | #410 |
 | 146 | multi-repo-conversations | Approved | GAP-MULTI-REPO |
 | 147 | product-polish | Delivered · PR #413 | #412 |
