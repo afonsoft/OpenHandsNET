@@ -8,7 +8,7 @@
 | Type | `Feature / Indexing + Docs + MCP` |
 | Stack | `.NET 10 · clone real por branch · LLM docs · MCP server` |
 | Repository | `afonsoft/sandcastle` |
-| Status | `Approved` |
+| Status | `Delivered` |
 | Ticket | `GAP-WIKI-MCP` (docs/research/2026-11-competitive-gap-analysis.md §G6) |
 | Depends on | `60` (indexação/Ask), `07`+`124` (MCP), `52` (SCM/clone creds) |
 | Reference | Devin DeepWiki (wiki por repo, `.devin/wiki.json`, esforço, MCP `read_wiki_structure`/`read_wiki_contents`/`ask_question`) — conceitos apenas |
