@@ -52,15 +52,24 @@ public sealed class WikiRunner( // NOSONAR S107 — DI ctor (bundle)
     {
         var run = await db.WikiRuns.IgnoreQueryFilters()
             .FirstOrDefaultAsync(r => r.Id == wikiRunId, ct);
-        if (run is null
-            || run.Status is not (WikiRunStatuses.Queued
-                or WikiRunStatuses.Running))
+        if (run is null || run.Status != WikiRunStatuses.Queued)
+        {
+            return; // só queued executa — entrada duplicada/terminal é no-op
+        }
+
+        // Claim atômico queued→running: o reconcile de boot pode re-
+        // enfileirar um run que também já estava no canal — só o
+        // primeiro claim executa (idempotente contra double-enqueue).
+        var claimed = await db.WikiRuns.IgnoreQueryFilters()
+            .Where(r => r.Id == run.Id
+                && r.Status == WikiRunStatuses.Queued)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.Status, WikiRunStatuses.Running), ct);
+        if (claimed == 0)
         {
             return;
         }
-
         run.Status = WikiRunStatuses.Running;
-        await db.SaveChangesAsync(ct);
         try
         {
             await ExecuteAsync(run, ct);

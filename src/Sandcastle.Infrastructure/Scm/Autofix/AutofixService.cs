@@ -356,11 +356,16 @@ public sealed class AutofixService(
         {
             q = q.Where(r => r.Status == status);
         }
-        if (CursorPaginator.TryDecode(cursor, out var ticks, out var id))
+        if (CursorPaginator.TryDecode(cursor, out var ticks, out var raw)
+            && Guid.TryParse(raw, out _))
         {
+            // Sqlite persiste Guid como TEXT uppercase; normalizar os dois
+            // lados via LOWER() mantém o tie-break consistente com o
+            // ORDER BY id (#424).
+            var id = raw.ToLowerInvariant();
             q = q.Where(r => r.CreatedAtTicks < ticks
                 || (r.CreatedAtTicks == ticks
-                    && string.Compare(r.Id.ToString(), id) < 0));
+                    && string.Compare(r.Id.ToString().ToLower(), id) < 0));
         }
 
         var pageSize = Math.Clamp(limit, 1, 100);

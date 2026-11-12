@@ -48,10 +48,9 @@ public sealed class AutofixRunner( // NOSONAR S107 — SPEC-104 (decisão aprova
     {
         var run = await db.AutofixRuns.IgnoreQueryFilters()
             .FirstOrDefaultAsync(r => r.Id == autofixRunId, ct);
-        if (run is null
-            || !AutofixRunStatuses.Active.Contains(run.Status))
+        if (run is null || run.Status != AutofixRunStatuses.Queued)
         {
-            return;
+            return; // só queued executa — entrada duplicada/terminal é no-op
         }
 
         var connectionRecord = await db.ScmConnections.IgnoreQueryFilters()
@@ -63,12 +62,22 @@ public sealed class AutofixRunner( // NOSONAR S107 — SPEC-104 (decisão aprova
             return;
         }
 
-        if (run.Status == AutofixRunStatuses.Queued)
+        // Claim atômico queued→running: o reconcile de boot pode re-
+        // enfileirar um run que também já estava no canal — só o
+        // primeiro claim executa (idempotente contra double-enqueue).
+        var now = DateTimeOffset.UtcNow;
+        var claimed = await db.AutofixRuns.IgnoreQueryFilters()
+            .Where(r => r.Id == run.Id
+                && r.Status == AutofixRunStatuses.Queued)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.Status, AutofixRunStatuses.Running)
+                .SetProperty(r => r.StartedAt, now), ct);
+        if (claimed == 0)
         {
-            run.Status = AutofixRunStatuses.Running;
-            run.StartedAt = DateTimeOffset.UtcNow;
-            await db.SaveChangesAsync(ct);
+            return;
         }
+        run.Status = AutofixRunStatuses.Running;
+        run.StartedAt = now;
 
         var connection = ScmConnectionService.ToModel(connectionRecord);
         try

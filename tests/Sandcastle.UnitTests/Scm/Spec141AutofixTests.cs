@@ -4,10 +4,12 @@ using System.Text.Json;
 
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using Sandcastle.Application.Conversations;
+using Sandcastle.Application.Coordination;
 using Sandcastle.Application.Git;
 using Sandcastle.Application.Identity;
 using Sandcastle.Application.Sandbox;
@@ -504,6 +506,52 @@ public sealed class Spec141AutofixTests : IAsyncDisposable
         detail.Run.CheckName.ShouldBe("build");
     }
 
+    [Fact]
+    public async Task Search_paginates_guid_boundary_without_duplicates()
+    {
+        // #424: SQLite persiste Guid TEXT uppercase e o cursor carrega
+        // lowercase — com CreatedAt idêntico toda quebra de página cai no
+        // tie-break por id; sem normalização a linha do cursor repete.
+        var at = DateTimeOffset.UtcNow;
+        var seeded = new List<Guid>();
+        for (var i = 0; i < 5; i++)
+        {
+            var run = new AutofixRunRecord
+            {
+                Id = Guid.NewGuid(),
+                OrgId = _orgId,
+                ConnectionId = _connectionId,
+                Repository = "afonsoft/demo",
+                PrNumber = 7,
+                HeadSha = $"head-{i}",
+                HeadBranch = "fix/thing",
+                CheckName = "build",
+                CheckKind = "check_run",
+                CheckRunId = 42,
+                Status = AutofixRunStatuses.Completed,
+                Trigger = "webhook",
+                CreatedAt = at,
+            };
+            _db.AutofixRuns.Add(run);
+            seeded.Add(run.Id);
+        }
+        await _db.SaveChangesAsync();
+
+        var svc = Service();
+        var seen = new List<Guid>();
+        string? cursor = null;
+        do
+        {
+            var page = await svc.SearchAsync(_orgId, null, null, null,
+                cursor, 2, CancellationToken.None);
+            seen.AddRange(page.Items.Select(r => r.Id));
+            cursor = page.NextPageId;
+        }
+        while (cursor is not null);
+
+        seen.ShouldBe(seeded, ignoreOrder: true);
+    }
+
     // ---- RF-002: classifier ------------------------------------------------
 
     [Theory]
@@ -634,7 +682,7 @@ public sealed class Spec141AutofixTests : IAsyncDisposable
     public async Task Runner_at_cap_gives_up_immediately()
     {
         var runId = await SeedRunAsync(
-            status: AutofixRunStatuses.Running, attemptCount: 3);
+            status: AutofixRunStatuses.Queued, attemptCount: 3);
         await Runner().RunAsync(runId, CancellationToken.None);
 
         var run = await ReloadAsync(runId);
@@ -673,6 +721,112 @@ public sealed class Spec141AutofixTests : IAsyncDisposable
     {
         await _db.DisposeAsync();
         await _conn.DisposeAsync();
+    }
+
+    // ---- worker: reconcile de órfãos no boot ------------------------------
+
+    [Fact]
+    public async Task Worker_requeues_orphan_queued_run_on_start()
+    {
+        // Hygiene (#424-followup): a fila é in-process — run `queued` de
+        // um processo anterior volta ao canal no boot do worker.
+        var runId = await SeedRunAsync();
+        var runner = new RecordingRunner();
+        await using var sp = WorkerProvider(runner);
+        var worker = new AutofixRunWorker(new AutofixDispatcher(),
+            sp.GetRequiredService<IServiceScopeFactory>(),
+            new NullDistributedLock(),
+            NullLogger<AutofixRunWorker>.Instance);
+
+        using var cts = new CancellationTokenSource(
+            TimeSpan.FromSeconds(15));
+        await worker.StartAsync(cts.Token);
+        try
+        {
+            (await runner.Next.WaitAsync(cts.Token)).ShouldBe(runId);
+        }
+        finally
+        {
+            await worker.StopAsync(CancellationToken.None);
+        }
+    }
+
+    [Fact]
+    public async Task Worker_fails_interrupted_runs_as_worker_restart()
+    {
+        // `running`/`waiting_check` no boot = interrompido — failed +
+        // worker_restart (re-execução cega queimaria tentativa + conversa).
+        var runningId = await SeedRunAsync(
+            status: AutofixRunStatuses.Running);
+        var waitingId = await SeedRunAsync(
+            status: AutofixRunStatuses.WaitingCheck, headSha: "head-2");
+        var runner = new RecordingRunner();
+        await using var sp = WorkerProvider(runner);
+        var worker = new AutofixRunWorker(new AutofixDispatcher(),
+            sp.GetRequiredService<IServiceScopeFactory>(),
+            new NullDistributedLock(),
+            NullLogger<AutofixRunWorker>.Instance);
+
+        using var cts = new CancellationTokenSource(
+            TimeSpan.FromSeconds(15));
+        await worker.StartAsync(cts.Token);
+        try
+        {
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+            while (true)
+            {
+                _db.ChangeTracker.Clear();
+                var runs = await _db.AutofixRuns.IgnoreQueryFilters()
+                    .Where(r => r.Id == runningId || r.Id == waitingId)
+                    .ToListAsync();
+                if (runs.All(r =>
+                        r.Status == AutofixRunStatuses.Failed))
+                {
+                    runs.ShouldAllBe(r => r.Error == "worker_restart");
+                    runs.ShouldAllBe(r => r.FinishedAt.HasValue);
+                    break;
+                }
+                (DateTime.UtcNow < deadline).ShouldBeTrue(
+                    "interrupted runs were not reconciled");
+                await Task.Delay(50, cts.Token);
+            }
+            runner.Calls.ShouldBeEmpty();
+        }
+        finally
+        {
+            await worker.StopAsync(CancellationToken.None);
+        }
+    }
+
+    /// <summary>
+    /// Scopes do worker: DbContext scoped na mesma conexão do teste +
+    /// runner fake — espelha o grafo de DI real.
+    /// </summary>
+    private ServiceProvider WorkerProvider(IAutofixRunner runner)
+    {
+        var sc = new ServiceCollection();
+        sc.AddDbContext<AppDbContext>(o => o.UseSqlite(_conn)
+            .UseSnakeCaseNamingConvention());
+        sc.AddScoped(_ => runner);
+        return sc.BuildServiceProvider();
+    }
+
+    private sealed class RecordingRunner : IAutofixRunner
+    {
+        private readonly TaskCompletionSource<Guid> _next =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public List<Guid> Calls { get; } = [];
+        public Task<Guid> Next => _next.Task;
+
+        public Task RunAsync(Guid autofixRunId, CancellationToken ct)
+        {
+            lock (Calls)
+            {
+                Calls.Add(autofixRunId);
+            }
+            _next.TrySetResult(autofixRunId);
+            return Task.CompletedTask;
+        }
     }
 
     // ---- fakes ------------------------------------------------------------

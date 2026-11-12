@@ -142,10 +142,16 @@ public sealed class AgentHandlers(AgentState runtime, SurfaceRegistry surfaces)
         runtime.Record("exec_start", ProgramTrunc(req.Command));
         var sw = Stopwatch.StartNew();
 
+        // As pumps de stdout e stderr rodam em tasks paralelas e ambas
+        // escrevem no response — WriteAsync concorrente no mesmo stream
+        // falha/intercala bytes e o catch descartava o chunk (race real
+        // de produto). O gate serializa chunks + frame de exit.
+        var sseGate = new object();
+
         void OnChunk(string channel, string text)
         {
             runtime.Record("output", $"{channel}:{ProgramTrunc(text, 120)}");
-            WriteSseChunk(http, ct, channel, text);
+            WriteSseChunk(http, sseGate, ct, channel, text);
         }
 
         CommandResult result;
@@ -168,32 +174,42 @@ public sealed class AgentHandlers(AgentState runtime, SurfaceRegistry surfaces)
 
         runtime.Record("exec_end",
             $"exit={result.ExitCode} timeout={result.TimedOut}");
-        await http.Response.WriteAsync("data: " + JsonSerializer.Serialize(
-            new
-            {
-                type = "exit",
-                exit_code = result.ExitCode,
-                duration_ms = sw.ElapsedMilliseconds,
-                timed_out = result.TimedOut,
-                truncated,
-                std_out = result.StdOut,
-                std_err = result.StdErr,
-            }, ExecStreamJson) + "\n\n", ct);
-        await http.Response.Body.FlushAsync(ct);
+        // Exit frame também sob o gate — o tap de sessão pode emitir um
+        // chunk straggler depois que RunAsync retorna.
+        lock (sseGate)
+        {
+            http.Response.WriteAsync("data: " + JsonSerializer.Serialize(
+                new
+                {
+                    type = "exit",
+                    exit_code = result.ExitCode,
+                    duration_ms = sw.ElapsedMilliseconds,
+                    timed_out = result.TimedOut,
+                    truncated,
+                    std_out = result.StdOut,
+                    std_err = result.StdErr,
+                }, ExecStreamJson) + "\n\n", ct)
+                .GetAwaiter().GetResult();
+            http.Response.Body.FlushAsync(ct).GetAwaiter().GetResult();
+        }
         return Results.Empty;
     }
 
     private static void WriteSseChunk(
-        HttpContext http, CancellationToken ct, string channel, string text)
+        HttpContext http, object gate, CancellationToken ct,
+        string channel, string text)
     {
         try
         {
             // Callback síncrono vindo da pump — se o cliente desconectar,
             // a escrita falha e o chunk é simplesmente descartado.
-            http.Response.WriteAsync("data: " + JsonSerializer.Serialize(
-                new { channel, text }, ExecStreamJson) + "\n\n", ct)
-                .GetAwaiter().GetResult();
-            http.Response.Body.FlushAsync(ct).GetAwaiter().GetResult();
+            lock (gate)
+            {
+                http.Response.WriteAsync("data: " + JsonSerializer.Serialize(
+                    new { channel, text }, ExecStreamJson) + "\n\n", ct)
+                    .GetAwaiter().GetResult();
+                http.Response.Body.FlushAsync(ct).GetAwaiter().GetResult();
+            }
         }
         catch
         {

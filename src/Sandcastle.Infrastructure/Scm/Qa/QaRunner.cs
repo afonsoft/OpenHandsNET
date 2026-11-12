@@ -113,10 +113,9 @@ public sealed class QaRunner : IQaRunner
             _logger.LogWarning("qa run {Id} not found", qaRunId);
             return;
         }
-        if (run.Status is not (QaRunStatuses.Queued
-            or QaRunStatuses.Running))
+        if (run.Status != QaRunStatuses.Queued)
         {
-            return; // idempotente — runs terminais nunca re-executam
+            return; // só queued executa — entrada duplicada/terminal é no-op
         }
 
         var connection = await _db.ScmConnections.IgnoreQueryFilters()
@@ -131,9 +130,21 @@ public sealed class QaRunner : IQaRunner
             return;
         }
 
+        // Claim atômico queued→running: o reconcile de boot pode re-
+        // enfileirar um run que também já estava no canal — só o
+        // primeiro claim executa (idempotente contra double-enqueue).
+        var now = DateTimeOffset.UtcNow;
+        var claimed = await _db.QaRuns.IgnoreQueryFilters()
+            .Where(r => r.Id == run.Id && r.Status == QaRunStatuses.Queued)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.Status, QaRunStatuses.Running)
+                .SetProperty(r => r.StartedAt, now), ct);
+        if (claimed == 0)
+        {
+            return;
+        }
         run.Status = QaRunStatuses.Running;
-        run.StartedAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync(ct);
+        run.StartedAt = now;
         await AuditAsync(run, "scm.qa_started",
             new { repo = run.Repository, pr = run.PrNumber }, ct);
 
