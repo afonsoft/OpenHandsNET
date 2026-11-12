@@ -341,6 +341,77 @@ public sealed class CloudApiClient
         return body.TryGetProperty("key", out var k) ? k.GetString() : null;
     }
 
+    // ---- marketplace (SPEC-148) ---------------------------------------
+
+    /// <summary>GET /marketplace/entries — catálogo (items[]).</summary>
+    public async Task<JsonElement> GetMarketplaceEntriesAsync(
+        string? q = null, string? kind = null, CancellationToken ct = default)
+    {
+        var url = $"{BaseUrl}/api/v1/marketplace/entries?x=1"
+            + (q is { } s ? $"&q={Uri.EscapeDataString(s)}" : "")
+            + (kind is { } k ? $"&kind={Uri.EscapeDataString(k)}" : "");
+        return await _http.GetFromJsonAsync<JsonElement>(url, Json, ct);
+    }
+
+    /// <summary>GET /marketplace/entries/{id} — detalhe ou null (404).</summary>
+    public async Task<JsonElement?> GetMarketplaceEntryAsync(
+        string id, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync(
+            $"{BaseUrl}/api/v1/marketplace/entries/{Uri.EscapeDataString(id)}",
+            ct);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<JsonElement>(ct) : null;
+    }
+
+    /// <summary>GET /marketplace/installed — installs visíveis (items[]).</summary>
+    public async Task<JsonElement> GetMarketplaceInstalledAsync(
+        string? scope = null, CancellationToken ct = default) =>
+        await _http.GetFromJsonAsync<JsonElement>(
+            $"{BaseUrl}/api/v1/marketplace/installed"
+            + (scope is { } s ? $"?scope={s}" : ""), Json, ct);
+
+    /// <summary>
+    /// POST /marketplace/install → (status, body). Sem EnsureAsync — o
+    /// caller distingue 403/409/422/502 para mensagens úteis.
+    /// </summary>
+    public async Task<(int Status, JsonElement Body)> InstallMarketplaceAsync(
+        string entryId, string scope, string? scopeId = null,
+        string? version = null, bool acceptPermissions = false,
+        CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsJsonAsync(
+            $"{BaseUrl}/api/v1/marketplace/install", new
+            {
+                entry_id = entryId,
+                version,
+                scope,
+                scope_id = scopeId,
+                accept_permissions = acceptPermissions,
+            }, Json, ct);
+        var body = await resp.Content
+            .ReadFromJsonAsync<JsonElement>(ct);
+        return ((int)resp.StatusCode, body);
+    }
+
+    /// <summary>DELETE /marketplace/installed/{id} → status code.</summary>
+    public async Task<int> RemoveMarketplaceAsync(
+        Guid id, CancellationToken ct = default)
+    {
+        var resp = await _http.DeleteAsync(
+            $"{BaseUrl}/api/v1/marketplace/installed/{id}", ct);
+        return (int)resp.StatusCode;
+    }
+
+    /// <summary>POST /marketplace/upgrade/{id} → status code.</summary>
+    public async Task<int> UpgradeMarketplaceAsync(
+        Guid id, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsync(
+            $"{BaseUrl}/api/v1/marketplace/upgrade/{id}", null, ct);
+        return (int)resp.StatusCode;
+    }
+
     /// <summary>SPEC-52: abre PR a partir do workspace da conversa.</summary>
     public async Task<JsonElement> CreatePullRequestAsync(
         string conversationId, string title, string body,

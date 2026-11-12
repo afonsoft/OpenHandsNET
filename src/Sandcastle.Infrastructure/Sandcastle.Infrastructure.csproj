@@ -37,6 +37,8 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Skills/Embedded/*.md" />
+    <!-- SPEC-148: registry default do marketplace (offline-capable) -->
+    <EmbeddedResource Include="Marketplace/marketplace.json" />
     <!-- SPEC-123: agentes builtin .agent.md (catálogo em camadas) -->
     <EmbeddedResource Include="agents/*.agent.md" />
     <!-- SPEC-123: prompts embutidos (advisor, smart-permission-judge) -->

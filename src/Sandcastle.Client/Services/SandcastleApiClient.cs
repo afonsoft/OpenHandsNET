@@ -927,6 +927,149 @@ public sealed class SandcastleApiClient(HttpClient http)
             "/api/v1/mcp/test", new { server = config }, Json, ct))
             .Content.ReadFromJsonAsync<JsonElement>(Json, ct);
 
+    // ---- marketplace (SPEC-148) ---------------------------------------
+
+    /// <summary>GET /marketplace/entries — catálogo com installs por escopo.</summary>
+    public async Task<IReadOnlyList<MarketplaceEntryDto>>
+        ListMarketplaceEntriesAsync(string? q = null, string? kind = null,
+            CancellationToken ct = default)
+    {
+        var url = "/api/v1/marketplace/entries?x=1"
+            + (q is { } s ? $"&q={Uri.EscapeDataString(s)}" : "")
+            + (kind is { } k ? $"&kind={Uri.EscapeDataString(k)}" : "");
+        var doc = await http.GetFromJsonAsync<JsonElement>(url, Json, ct);
+        return doc.TryGetProperty(ItemsProp, out var items)
+            ? items.EnumerateArray()
+                .Select(e => e.Deserialize<MarketplaceEntryDto>(Json)!)
+                .ToList()
+            : [];
+    }
+
+    /// <summary>GET /marketplace/entries/{id} — detalhe (readme/files).</summary>
+    public Task<MarketplaceEntryDto?> GetMarketplaceEntryAsync(
+        string id, CancellationToken ct = default) =>
+        http.GetFromJsonAsync<MarketplaceEntryDto>(
+            $"/api/v1/marketplace/entries/{Uri.EscapeDataString(id)}",
+            Json, ct);
+
+    /// <summary>GET /marketplace/installed — installs visíveis ao caller.</summary>
+    public async Task<IReadOnlyList<InstalledSkillDto>>
+        ListMarketplaceInstalledAsync(string? scope = null,
+            CancellationToken ct = default)
+    {
+        var url = "/api/v1/marketplace/installed"
+            + (scope is { } s ? $"?scope={s}" : "");
+        var doc = await http.GetFromJsonAsync<JsonElement>(url, Json, ct);
+        return doc.TryGetProperty(ItemsProp, out var items)
+            ? items.EnumerateArray()
+                .Select(e => e.Deserialize<InstalledSkillDto>(Json)!)
+                .ToList()
+            : [];
+    }
+
+    /// <summary>
+    /// POST /marketplace/install — retorna (status, detail) p/ a UI
+    /// distinguir 409/422/502 sem exception parsing.
+    /// </summary>
+    public async Task<(int Status, InstalledSkillDto? Row, string? Detail)>
+        InstallMarketplaceAsync(string entryId, string scope,
+            string? scopeId = null, string? version = null,
+            bool acceptPermissions = false, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync("/api/v1/marketplace/install",
+            new
+            {
+                entry_id = entryId,
+                version,
+                scope,
+                scope_id = scopeId,
+                accept_permissions = acceptPermissions,
+            }, Json, ct);
+        if ((int)resp.StatusCode is >= 200 and < 300)
+        {
+            var row = await resp.Content
+                .ReadFromJsonAsync<InstalledSkillDto>(Json, ct);
+            return ((int)resp.StatusCode, row, null);
+        }
+
+        var body = await resp.Content.ReadAsStringAsync(ct);
+        return ((int)resp.StatusCode, null, body);
+    }
+
+    /// <summary>PATCH /marketplace/installed/{id} — enable/disable.</summary>
+    public async Task<bool> SetMarketplaceEnabledAsync(
+        Guid id, bool enabled, CancellationToken ct = default) =>
+        (await http.PatchAsJsonAsync(
+            $"/api/v1/marketplace/installed/{id}",
+            new { enabled }, Json, ct)).IsSuccessStatusCode;
+
+    /// <summary>DELETE /marketplace/installed/{id} — remove + dematerializa.</summary>
+    public async Task<bool> RemoveMarketplaceAsync(
+        Guid id, CancellationToken ct = default) =>
+        (await http.DeleteAsync(
+            $"/api/v1/marketplace/installed/{id}", ct)).IsSuccessStatusCode;
+
+    /// <summary>POST /marketplace/upgrade/{id} → (status, row|null).</summary>
+    public async Task<(int Status, InstalledSkillDto? Row)>
+        UpgradeMarketplaceAsync(Guid id, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsync(
+            $"/api/v1/marketplace/upgrade/{id}", null, ct);
+        var row = resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<InstalledSkillDto>(Json, ct)
+            : (InstalledSkillDto?)null;
+        return ((int)resp.StatusCode, row);
+    }
+
+    /// <summary>Registry entry DTO (catalog item).</summary>
+    public sealed record MarketplaceEntryDto(
+        string Id, string Name, string Version, string Kind,
+        string? Description, string? Author, IReadOnlyList<string>? Tags,
+        string? MinAppVersion, string? Source,
+        IReadOnlyList<string>? PermissionsRequired, string? ChangelogUrl,
+        string? Readme, IReadOnlyList<string>? EntryIds,
+        IReadOnlyList<MarketplaceScopeInstallDto>? Installed,
+        bool UpdateAvailable);
+
+    /// <summary>Install aninhado no DTO de entry.</summary>
+    public sealed record MarketplaceScopeInstallDto(
+        Guid InstalledId, string Scope, string? ScopeId,
+        string Version, bool Enabled);
+
+    /// <summary>installed_skills row DTO.</summary>
+    public sealed record InstalledSkillDto(
+        Guid Id, string EntryId, string Scope, string? ScopeId,
+        string Version, bool Enabled, string? InstalledBy,
+        DateTimeOffset InstalledAt, bool UpdateAvailable);
+
+    /// <summary>
+    /// GET /organizations — orgs do caller com a role dele. Usado pela
+    /// UI do marketplace para oferecer o scope <c>org</c> só onde o
+    /// papel tem <c>marketplace.manage</c> (owner|admin).
+    /// </summary>
+    public async Task<IReadOnlyList<OrgSummaryDto>> ListMyOrgsAsync(
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var doc = await http.GetFromJsonAsync<JsonElement>(
+                "/api/v1/organizations", Json, ct);
+            return doc.ValueKind == JsonValueKind.Array
+                ? doc.EnumerateArray()
+                    .Select(e => e.Deserialize<OrgSummaryDto>(Json)!)
+                    .ToList()
+                : [];
+        }
+        catch (HttpRequestException)
+        {
+            return [];
+        }
+    }
+
+    /// <summary>Org do caller (role incluída p/ gating de UI).</summary>
+    public sealed record OrgSummaryDto(
+        Guid Id, string? Slug, string? Name, string? Role);
+
     // ---- config ---------------------------------------------------------
 
     private async Task<IReadOnlyList<JsonElement>> GetListAsync(

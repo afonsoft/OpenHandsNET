@@ -108,6 +108,13 @@ public sealed class McpSettingsService(AppDbContext db) : IMcpSettingsService
     /// <inheritdoc />
     public async Task<IReadOnlyList<McpServerConfig>> EffectiveForAsync(
         string ownerId, string? conversationOverrideJson,
+        CancellationToken ct = default) =>
+        await EffectiveForOwnersAsync(
+            [ownerId], conversationOverrideJson, ct);
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<McpServerConfig>> EffectiveForOwnersAsync(
+        IReadOnlyList<string> ownerIds, string? conversationOverrideJson,
         CancellationToken ct = default)
     {
         if (conversationOverrideJson is not null)
@@ -120,7 +127,19 @@ public sealed class McpSettingsService(AppDbContext db) : IMcpSettingsService
             }
         }
 
-        return MergeBuiltin(await ListAsync(ownerId, ct));
+        // Cadeia de escopo: owners na ordem crescente de precedência —
+        // o último vence conflitos de nome (SPEC-148 user > org > system).
+        var merged = new Dictionary<string, McpServerConfig>(
+            StringComparer.OrdinalIgnoreCase);
+        foreach (var owner in ownerIds)
+        {
+            foreach (var cfg in await ListAsync(owner, ct))
+            {
+                merged[cfg.Name] = cfg;
+            }
+        }
+
+        return MergeBuiltin([.. merged.Values]);
     }
 
     /// <summary>Serializa um mapa de configs (uso do override por conversa).</summary>

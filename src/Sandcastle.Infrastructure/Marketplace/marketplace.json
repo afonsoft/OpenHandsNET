@@ -1,0 +1,243 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "id": "iterate",
+      "name": "Iterate",
+      "version": "1.0.0",
+      "description": "Verify/fix loop: run the check, read the failure, patch, re-run until green.",
+      "author": "sandcastle",
+      "kind": "skill",
+      "tags": ["loop", "verify", "fix"],
+      "min_app_version": "1.0.0",
+      "source": "embedded",
+      "permissions_required": [],
+      "readme": "Port of the OpenHands public `iterate` skill (concept only): instructs the agent to iterate on a failing check until it passes instead of stopping at the first failure.",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "content": "---\nname: iterate\ndescription: Verify/fix loop — run the check, read the failure, patch, re-run until green.\n---\n\n# Iterate\n\nWhen a verification command (build, test, lint) fails:\n\n1. Run the command and capture the full error output.\n2. Identify the **first** root cause — do not patch symptoms downstream.\n3. Apply the smallest correct fix.\n4. Re-run the same command. Repeat until it exits 0 or you have tried 5 distinct fixes.\n5. If still failing, summarize what was tried and what the remaining blocker is.\n\nNever declare success without a green run. Never widen the fix scope beyond the reported failure."
+        }
+      ]
+    },
+    {
+      "id": "pr-review-checklist",
+      "name": "PR Review Checklist",
+      "version": "1.0.0",
+      "description": "Structured pull-request review checklist: correctness, tests, security, migration safety.",
+      "author": "sandcastle",
+      "kind": "skill",
+      "tags": ["review", "pr", "quality"],
+      "min_app_version": "1.0.0",
+      "source": "embedded",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "content": "---\nname: pr-review-checklist\ndescription: Structured PR review — correctness, tests, security, migration safety.\n---\n\n# PR Review Checklist\n\nReview every diff hunk against:\n\n- **Correctness**: off-by-one, null paths, error handling, concurrency.\n- **Tests**: new behavior covered? Edge cases? Honest failure assertions?\n- **Security**: untrusted input escaped/validated, secrets never logged, injection surfaces.\n- **Schema/API**: contract drift documented, migrations reversible, versioning respected.\n- **Style**: matches the file's existing conventions.\n\nReport findings ordered by severity with file:line references. Approve only when no high-severity finding remains."
+        }
+      ]
+    },
+    {
+      "id": "review-comment-style",
+      "name": "Review Comment Style",
+      "version": "1.0.0",
+      "description": "How to phrase review comments: specific, actionable, non-blocking nits separated.",
+      "author": "sandcastle",
+      "kind": "skill",
+      "tags": ["review", "comments", "style"],
+      "min_app_version": "1.0.0",
+      "source": "embedded",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "content": "---\nname: review-comment-style\ndescription: Actionable, severity-tagged review comments.\n---\n\n# Review Comment Style\n\n- Tag each comment: `[blocker]`, `[major]`, `[nit]`.\n- State the concrete failure mode, not just a preference: \"this throws NullReferenceException when list is empty\".\n- Suggest the fix inline when trivial.\n- Nits never block approval — separate them at the end."
+        }
+      ]
+    },
+    {
+      "id": "pr-review-rules",
+      "name": "PR Review Rules Pack",
+      "version": "1.0.0",
+      "description": "Bundle: PR review checklist + review comment style — the full review ruleset.",
+      "author": "sandcastle",
+      "kind": "bundle",
+      "tags": ["review", "pack"],
+      "min_app_version": "1.0.0",
+      "source": "embedded",
+      "entry_ids": ["pr-review-checklist", "review-comment-style"]
+    },
+    {
+      "id": "dotnet-conventions",
+      "name": ".NET Conventions",
+      "version": "1.0.0",
+      "description": "C#/.NET conventions: async suffix, records, nullable discipline, warnings-as-errors.",
+      "author": "sandcastle",
+      "kind": "skill",
+      "tags": ["dotnet", "csharp", "conventions"],
+      "min_app_version": "1.0.0",
+      "source": "embedded",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "content": "---\nname: dotnet-conventions\ndescription: C#/.NET conventions — async suffix, records, nullable, warnings-as-errors.\n---\n\n# .NET Conventions\n\n- `async`/`await` everywhere; `Async` suffix; always flow `CancellationToken`.\n- Prefer immutable `record` types for DTOs; `init` setters; `required` members.\n- Nullable reference types honored — no `!` suppression without a comment.\n- No new warnings; warnings-as-errors is on.\n- Minimal-API style for endpoints; `IResult` returns; snake_case JSON."
+        }
+      ]
+    },
+    {
+      "id": "blazor-frontend",
+      "name": "Blazor Frontend",
+      "version": "1.0.0",
+      "description": "Blazor WASM conventions: component structure, HttpClient services, i18n keys, a11y.",
+      "author": "sandcastle",
+      "kind": "skill",
+      "tags": ["blazor", "frontend", "wasm", "i18n"],
+      "min_app_version": "1.0.0",
+      "source": "embedded",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "content": "---\nname: blazor-frontend\ndescription: Blazor WASM conventions — components, services, i18n, a11y.\n---\n\n# Blazor Frontend\n\n- Pages under `Pages/`, components under `Components/`; `@inject` typed API clients — never raw fetch.\n- All user-facing strings via `L[\"key\"]` — add keys to all 8 locales (`wwwroot/i18n/*.json`).\n- Form controls need accessible names (`aria-label` or label) — `check-form-a11y.py` runs in CI.\n- Keep classes inside the Tailwind/app.css vocabulary — `check-css-classes.py` guards drift.\n- Long-running work goes through state services + events, never blocking the render thread."
+        }
+      ]
+    },
+    {
+      "id": "sql-code-review",
+      "name": "SQL Code Review",
+      "version": "1.0.0",
+      "description": "SQL review rules: injection, index use, transaction scope, migration safety.",
+      "author": "sandcastle",
+      "kind": "skill",
+      "tags": ["sql", "review", "database"],
+      "min_app_version": "1.0.0",
+      "source": "embedded",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "content": "---\nname: sql-code-review\ndescription: SQL review — injection, indexes, transactions, migration safety.\n---\n\n# SQL Code Review\n\n- Reject string-concatenated SQL — parameters only.\n- Check predicates hit an index; flag sequential scans on large tables.\n- Migrations must be reversible and additive (no destructive change without explicit approval).\n- Transactions as short as possible; never span network calls.\n- `N+1` query patterns in ORM code are blockers — prefer projections/joins."
+        }
+      ]
+    },
+    {
+      "id": "k8s-ops",
+      "name": "Kubernetes Ops",
+      "version": "1.0.0",
+      "description": "K8s operational runbook: deploys, rollbacks, probes, resource limits, namespace hygiene.",
+      "author": "sandcastle",
+      "kind": "skill",
+      "tags": ["kubernetes", "ops", "deploy"],
+      "min_app_version": "1.0.0",
+      "source": "embedded",
+      "permissions_required": ["network.egress", "sandbox.bash"],
+      "files": [
+        {
+          "path": "SKILL.md",
+          "content": "---\nname: k8s-ops\ndescription: Kubernetes ops — deploys, rollbacks, probes, limits, namespaces.\n---\n\n# Kubernetes Ops\n\n- Always confirm the target context/namespace before mutating (`kubectl config current-context`).\n- Deploys: `kubectl rollout status` to verify; `rollout undo` on failure — never delete pods manually.\n- Every workload needs requests/limits + readiness/liveness probes.\n- Secrets via external-secret stores, never committed manifests.\n- Prefer `kubectl diff` before `apply`."
+        }
+      ]
+    },
+    {
+      "id": "git-workflow",
+      "name": "Git Workflow",
+      "version": "1.0.0",
+      "description": "Branch/commit conventions: feature branches, conventional commits, clean history.",
+      "author": "sandcastle",
+      "kind": "skill",
+      "tags": ["git", "workflow", "commits"],
+      "min_app_version": "1.0.0",
+      "source": "embedded",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "content": "---\nname: git-workflow\ndescription: Git workflow — feature branches, conventional commits, clean history.\n---\n\n# Git Workflow\n\n- Never commit on `main` — branch `feature/<slug>` first.\n- Conventional Commits: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:` + imperative subject ≤72 chars.\n- Rebase onto latest `main` before opening the PR; squash fixup noise.\n- One logical change per commit; tests green before push."
+        }
+      ]
+    },
+    {
+      "id": "security-hardening",
+      "name": "Security Hardening",
+      "version": "1.0.0",
+      "description": "Hardening checklist: secret handling, input validation, authz checks, dependency hygiene.",
+      "author": "sandcastle",
+      "kind": "skill",
+      "tags": ["security", "hardening", "review"],
+      "min_app_version": "1.0.0",
+      "source": "embedded",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "content": "---\nname: security-hardening\ndescription: Security hardening — secrets, validation, authz, dependencies.\n---\n\n# Security Hardening\n\n- Secrets only via the secret store — never in code, logs, or serialized DTOs (mask on output).\n- All external input is untrusted: validate at the boundary, escape at the sink.\n- Every mutating endpoint needs an authorization check; list endpoints must not leak cross-tenant existence.\n- Dependencies pinned; new packages need a license + CVE pass.\n- Audit-log security-relevant actions."
+        }
+      ]
+    },
+    {
+      "id": "onboarding-tour",
+      "name": "Onboarding Tour",
+      "version": "1.0.0",
+      "description": "Subagent that walks a repo: structure, build/test entry points, conventions.",
+      "author": "sandcastle",
+      "kind": "agent",
+      "tags": ["onboarding", "agent", "docs"],
+      "min_app_version": "1.0.0",
+      "source": "embedded",
+      "readme": "Declarative `*.agent.md` subagent (SPEC-95 catalog layer). Delegate it to produce a guided tour of an unfamiliar repository.",
+      "files": [
+        {
+          "path": "onboarding-tour.agent.md",
+          "content": "---\nname: onboarding-tour\ndescription: Walk a repo — structure, build/test entry points, conventions.\ntools: [search, file_read, bash, think, finish]\n---\n\nYou produce a concise onboarding tour of the repository:\n\n1. Map the top-level layout and the main modules.\n2. Find the build, test, and lint commands (README, CI config, makefiles).\n3. Summarize conventions worth knowing (code style, commit style, harness rules).\n4. List the five files a newcomer should read first, with one line each.\n\nStay read-only — never modify files."
+        }
+      ]
+    },
+    {
+      "id": "write-specs",
+      "name": "Write Specs",
+      "version": "1.0.0",
+      "description": "SDD meta-skill: turn a feature request into a numbered SPEC (story, RFs, API contract, task plan).",
+      "author": "sandcastle",
+      "kind": "skill",
+      "tags": ["sdd", "spec", "planning", "meta"],
+      "min_app_version": "1.0.0",
+      "source": "embedded",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "content": "---\nname: write-specs\ndescription: SDD meta-skill — feature request → numbered SPEC.\n---\n\n# Write Specs\n\nConvert a feature request into a Spec-Driven Development document:\n\n1. **Metadata**: feature slug, type, stack, dependencies, references.\n2. **User story**: As a / I want / So that.\n3. **RF sections**: numbered functional requirements — each independently testable.\n4. **API contract**: method/path table + error codes.\n5. **Data model + NFR/security + guardrails.**\n6. **Task plan + DoD** with verifiable acceptance steps.\n\nKeep the spec agent-executable: imperative, unambiguous, free of open questions — defer unknowns to an explicit Out-of-scope section."
+        }
+      ]
+    },
+    {
+      "id": "context7-docs",
+      "name": "Context7 Docs Server",
+      "version": "1.0.0",
+      "description": "MCP server: up-to-date library documentation lookup (Context7) inside the sandbox.",
+      "author": "sandcastle",
+      "kind": "mcp-server",
+      "tags": ["mcp", "docs", "library"],
+      "min_app_version": "1.0.0",
+      "source": "embedded",
+      "readme": "Registers the Context7 MCP server (stdio via `npx`) in the scope's MCP settings. Runs inside the agent sandbox like every MCP server.",
+      "files": [
+        {
+          "path": "server.json",
+          "content": "{\n  \"name\": \"context7-docs\",\n  \"transport\": \"stdio\",\n  \"command\": \"npx\",\n  \"args\": [\"-y\", \"@upstash/context7-mcp\"],\n  \"enabled\": true,\n  \"timeout_seconds\": 60\n}\n"
+        }
+      ]
+    },
+    {
+      "id": "protect-main-branch",
+      "name": "Protect Main Branch",
+      "version": "1.0.0",
+      "description": "Hook: injects the never-commit-on-main ruleset at conversation start.",
+      "author": "sandcastle",
+      "kind": "hook",
+      "tags": ["hook", "git", "ruleset"],
+      "min_app_version": "1.0.0",
+      "source": "embedded",
+      "files": [
+        {
+          "path": "hook.json",
+          "content": "{\n  \"event\": \"on_conversation_start\",\n  \"type\": \"prompt\",\n  \"blocking\": false,\n  \"prompt\": \"Repository rule: never commit or push directly to main. Always work on a feature branch (feature/<slug>) and open a PR. If you find yourself on main with pending changes, create the branch first — do not amend history on main.\"\n}\n"
+        }
+      ]
+    }
+  ]
+}

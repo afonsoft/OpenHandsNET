@@ -44,6 +44,8 @@ public enum Permission
     ScansFindings,
     RefactorsRun,
     RefactorsApprove,
+    MarketplaceInstall,
+    MarketplaceManage,
 }
 
 public static class PermissionExtensions
@@ -88,6 +90,8 @@ public static class PermissionExtensions
         Permission.ScansFindings => "scans.findings",
         Permission.RefactorsRun => "refactors.run",
         Permission.RefactorsApprove => "refactors.approve",
+        Permission.MarketplaceInstall => "marketplace.install",
+        Permission.MarketplaceManage => "marketplace.manage",
         _ => throw new ArgumentOutOfRangeException(nameof(permission)),
     };
 
@@ -131,6 +135,8 @@ public static class PermissionExtensions
         "scans.findings" => Permission.ScansFindings,
         "refactors.run" => Permission.RefactorsRun,
         "refactors.approve" => Permission.RefactorsApprove,
+        "marketplace.install" => Permission.MarketplaceInstall,
+        "marketplace.manage" => Permission.MarketplaceManage,
         _ => null,
     };
 }

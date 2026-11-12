@@ -419,8 +419,23 @@ public sealed class McpClientService(
             .GetRequiredService<IMcpSettingsService>();
         var conv = await db.Conversations
             .FirstOrDefaultAsync(c => c.Id == conversationId, ct);
-        return await settings.EffectiveForAsync(
-            "local", conv?.McpConfigJson, ct);
+        // SPEC-148: cadeia de escopos materializados pelo marketplace —
+        // system < org < user < local (último vence conflito de nome);
+        // "local" é o store legado single-tenant do usuário.
+        var owners = new List<string> { "system" };
+        if (conv?.OrgId is { } orgId)
+        {
+            owners.Add($"org:{orgId}");
+        }
+
+        if (!string.IsNullOrEmpty(conv?.CreatedByUserId))
+        {
+            owners.Add($"user:{conv.CreatedByUserId}");
+        }
+
+        owners.Add("local");
+        return await settings.EffectiveForOwnersAsync(
+            owners, conv?.McpConfigJson, ct);
     }
 
     private async Task AppendAsync(

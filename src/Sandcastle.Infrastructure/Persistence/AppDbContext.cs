@@ -82,6 +82,10 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// <summary>Skill documents.</summary>
     public DbSet<SkillRecord> Skills => Set<SkillRecord>();
 
+    /// <summary>SPEC-148: marketplace installs per scope.</summary>
+    public DbSet<InstalledSkillRecord> InstalledSkills =>
+        Set<InstalledSkillRecord>();
+
     /// <summary>Skills resolved into conversations (join).</summary>
     public DbSet<ConversationSkillRecord> ConversationSkills =>
         Set<ConversationSkillRecord>();
@@ -318,6 +322,9 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
                     break;
                 case AuditEventRecord a:
                     a.TimestampTicks = a.Timestamp.UtcTicks;
+                    break;
+                case InstalledSkillRecord i:
+                    i.InstalledAtTicks = i.InstalledAt.UtcTicks;
                     break;
                 case Sandcastle.Infrastructure.Automations.AutomationRecord a:
                     a.NextRunAtTicks = a.NextRunAt?.UtcTicks;

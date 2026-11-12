@@ -1388,6 +1388,67 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations
                     b.ToTable("insight_reports", (string)null);
                 });
 
+            modelBuilder.Entity("Sandcastle.Infrastructure.Persistence.InstalledSkillRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("enabled");
+
+                    b.Property<string>("EntryId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("entry_id");
+
+                    b.Property<DateTimeOffset>("InstalledAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("installed_at");
+
+                    b.Property<long>("InstalledAtTicks")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("installed_at_ticks");
+
+                    b.Property<string>("InstalledBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("installed_by");
+
+                    b.Property<string>("MetaJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("meta_json");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("scope");
+
+                    b.Property<string>("ScopeId")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("scope_id");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_installed_skills");
+
+                    b.HasIndex("Scope", "ScopeId", "EntryId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_installed_skills_scope_scope_id_entry_id");
+
+                    b.ToTable("installed_skills", (string)null);
+                });
+
             modelBuilder.Entity("Sandcastle.Infrastructure.Persistence.IpAccessRuleRecord", b =>
                 {
                     b.Property<Guid>("Id")

@@ -16,6 +16,9 @@ namespace Sandcastle.Infrastructure.Skills;
 public sealed partial class SkillService(AppDbContext db) : ISkillService
 {
     private const string Builtin = "builtin";
+
+    /// <summary>SPEC-148: skills materializadas pelo marketplace (read-only aqui).</summary>
+    private const string MarketplaceSource = "marketplace";
     private const int MaxNameLength = 128;
     private const int MaxDescriptionLength = 1024;
     private const int MaxContentBytes = 32 * 1024;
@@ -82,7 +85,8 @@ public sealed partial class SkillService(AppDbContext db) : ISkillService
     {
         var r = await db.Skills.FindAsync([id], ct);
         if (r is null || !Visible(r, ownerId, null) ||
-            r.Source == Builtin)
+            r.Source == Builtin ||
+            r.Source == MarketplaceSource)
         {
             return null;
         }
@@ -122,6 +126,7 @@ public sealed partial class SkillService(AppDbContext db) : ISkillService
     {
         var r = await db.Skills.FindAsync([id], ct);
         if (r is null || r.Source == Builtin ||
+            r.Source == MarketplaceSource ||
             (r.OwnerId is not null && r.OwnerId != ownerId))
         {
             return false;
@@ -251,6 +256,7 @@ public sealed partial class SkillService(AppDbContext db) : ISkillService
         {
             Builtin => SkillSource.Builtin,
             "org" => SkillSource.Org,
+            MarketplaceSource => SkillSource.Marketplace,
             _ => SkillSource.User,
         },
         Enabled = r.Enabled,

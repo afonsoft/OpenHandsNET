@@ -362,6 +362,7 @@ internal static class ProgramParts
         app.MapSandboxSnapshotEndpoints();
         app.MapUploadEndpoints();
         app.MapSkillEndpoints();
+        app.MapMarketplaceEndpoints();
         app.MapAutomationEndpoints();
         app.MapHookEndpoints();
         app.MapMcpEndpoints();

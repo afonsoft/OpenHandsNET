@@ -28,4 +28,15 @@ public interface IMcpSettingsService
     Task<IReadOnlyList<McpServerConfig>> EffectiveForAsync(
         string ownerId, string? conversationOverrideJson,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// SPEC-148: config efetiva multi-owner — mescla as linhas dos owners
+    /// na ordem dada (o último vence conflitos de nome) e aplica o merge
+    /// builtin. Usado para a cadeia
+    /// <c>system → org:{id} → user:{id} → local</c> dos installs de
+    /// marketplace.
+    /// </summary>
+    Task<IReadOnlyList<McpServerConfig>> EffectiveForOwnersAsync(
+        IReadOnlyList<string> ownerIds, string? conversationOverrideJson,
+        CancellationToken ct = default);
 }
