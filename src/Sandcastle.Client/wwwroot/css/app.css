@@ -1174,3 +1174,42 @@ details.ev-details summary { cursor: pointer; color: var(--sc-fg-dim); font-size
 .scan-finding-actions {
     display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
 }
+
+/* SPEC-148: skills marketplace — catalog grid, detail head, install row. */
+.mkt-tabs { margin-bottom: 12px; }
+.mkt-toolbar {
+    display: flex; gap: 8px; align-items: center;
+    flex-wrap: wrap; margin: 12px 0;
+}
+.mkt-toolbar input { max-width: 280px; }
+.mkt-grid {
+    display: grid; gap: 12px; margin: 12px 0;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+.mkt-card {
+    display: flex; flex-direction: column; gap: 8px;
+    background: var(--sc-bg-alt); border: 1px solid var(--sc-border);
+    border-radius: var(--sc-radius-lg); padding: 14px 16px;
+}
+.mkt-card-head { display: flex; align-items: center; gap: 8px; }
+.mkt-name { font-weight: 600; color: var(--sc-fg); flex: 1; }
+.mkt-ver { color: var(--sc-fg-dim); font-size: 12px; font-family: var(--sc-mono); }
+.mkt-desc { color: var(--sc-fg-dim); font-size: 13px; margin: 0; }
+.mkt-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.mkt-inst { margin-right: 6px; }
+.mkt-install { display: flex; gap: 8px; align-items: center; margin-top: auto; }
+.mkt-install select { max-width: 220px; }
+.mkt-actions { display: flex; gap: 6px; }
+.mkt-detail-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mkt-detail-head .mkt-name { margin: 0; }
+.mkt-perms {
+    border: 1px solid var(--sc-border); border-radius: 8px;
+    padding: 10px 14px; margin: 12px 0; max-width: 640px;
+}
+.mkt-perms h3 { margin: 0 0 6px; font-size: 13px; }
+.mkt-perms ul { margin: 0 0 6px 18px; }
+.mkt-kind-skill { color: var(--sc-accent); border-color: var(--sc-accent); }
+.mkt-kind-mcp { color: var(--sc-purple); border-color: var(--sc-purple); }
+.mkt-kind-agent { color: var(--sc-green); border-color: var(--sc-green); }
+.mkt-kind-hook { color: var(--sc-yellow); border-color: var(--sc-yellow); }
+.mkt-kind-bundle { color: var(--sc-fg); border-color: var(--sc-fg-dim); }

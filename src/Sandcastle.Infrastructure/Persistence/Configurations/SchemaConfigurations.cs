@@ -38,6 +38,24 @@ public sealed class SkillConfiguration : IEntityTypeConfiguration<SkillRecord>
 }
 
 /// <inheritdoc />
+public sealed class InstalledSkillConfiguration
+    : IEntityTypeConfiguration<InstalledSkillRecord>
+{
+    /// <inheritdoc />
+    public void Configure(EntityTypeBuilder<InstalledSkillRecord> b)
+    {
+        b.ToTable("installed_skills");
+        b.HasKey(e => e.Id);
+        b.Property(e => e.Scope).HasMaxLength(10);
+        b.Property(e => e.ScopeId).HasMaxLength(64);
+        b.Property(e => e.EntryId).HasMaxLength(64);
+        b.Property(e => e.Version).HasMaxLength(32);
+        b.Property(e => e.InstalledBy).HasMaxLength(64);
+        b.HasIndex(e => new { e.Scope, e.ScopeId, e.EntryId }).IsUnique();
+    }
+}
+
+/// <inheritdoc />
 public sealed class ConversationSkillConfiguration
     : IEntityTypeConfiguration<ConversationSkillRecord>
 {

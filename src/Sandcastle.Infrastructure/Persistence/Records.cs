@@ -53,6 +53,28 @@ public sealed class SkillRecord
     public DateTimeOffset UpdatedAt { get; set; }
 }
 
+/// <summary>
+/// SPEC-148 RF-002: installed marketplace entry — <see cref="Scope"/> =
+/// <c>system|org|user</c>; <see cref="ScopeId"/> = user id (user scope) or
+/// org id (org scope), null for system. Toggle via <see cref="Enabled"/>
+/// keeps the row; materialization back-refs live in
+/// <see cref="MetaJson"/>.
+/// </summary>
+public sealed class InstalledSkillRecord
+{
+    public required Guid Id { get; set; }
+    public required string Scope { get; set; }
+    public string? ScopeId { get; set; }
+    public required string EntryId { get; set; }
+    public required string Version { get; set; }
+    public bool Enabled { get; set; } = true;
+    public string? InstalledBy { get; set; }
+    public DateTimeOffset InstalledAt { get; set; }
+    /// <summary>Ticks de <see cref="InstalledAt"/> — SQLite ordering.</summary>
+    public long InstalledAtTicks { get; set; }
+    public string? MetaJson { get; set; }
+}
+
 /// <summary>Skill resolved into a conversation at SETTING_UP_SKILLS (SPEC-11 RF-005).</summary>
 public sealed class ConversationSkillRecord
 {

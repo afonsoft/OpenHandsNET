@@ -433,6 +433,25 @@ public static class DependencyInjection
             c.DefaultRequestHeaders.UserAgent.ParseAdd(
                 "Sandcastle/1.0 web_search");
         });
+        // SPEC-148: marketplace — registry (bundled/remote) + install
+        // pipeline materializando nos stores que o agente já lê.
+        services.Configure<
+            Sandcastle.Infrastructure.Marketplace.MarketplaceOptions>(
+            configuration.GetSection(
+                Sandcastle.Infrastructure.Marketplace
+                    .MarketplaceOptions.SectionName));
+        services.AddSingleton<
+            Sandcastle.Application.Marketplace.IMarketplaceRegistry,
+            Sandcastle.Infrastructure.Marketplace.MarketplaceRegistry>();
+        services.AddScoped<
+            Sandcastle.Application.Marketplace.IMarketplaceService,
+            Sandcastle.Infrastructure.Marketplace.MarketplaceService>();
+        services.AddHttpClient("marketplace", c =>
+        {
+            c.Timeout = TimeSpan.FromSeconds(20);
+            c.DefaultRequestHeaders.UserAgent.ParseAdd(
+                "Sandcastle/1.0 marketplace");
+        });
         services.AddScoped<Sandcastle.Application.Hooks.IHookService,
             Sandcastle.Infrastructure.Hooks.HookService>();
         // SPEC-127: hooks de arquivo (.openhands/hooks/*.hook.json) —

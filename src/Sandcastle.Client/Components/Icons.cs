@@ -76,6 +76,8 @@ public static class Icons
             ["mic"] = "<rect x='9' y='3' width='6' height='11' rx='3'/><path d='M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6'/>",
             ["sliders"] = "<path d='M6 4v10M6 18v2M12 4v2M12 10v10M18 4v4M18 12v8'/><circle cx='6' cy='16' r='2'/><circle cx='12' cy='8' r='2'/><circle cx='18' cy='10' r='2'/>",
             ["link-external"] = "<path d='M14 4h6v6M20 4 11 13M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6'/>",
+            // SPEC-148 RF-004: marketplace — catálogo de extensões.
+            ["package"] = "<path d='m7.5 4.27 9 5.15'/><path d='M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73l-7 4'/><path d='m3.3 7 8.7 5 8.7-5'/><path d='M12 22V12'/>",
         };
 
     /// <summary>Inner markup do ícone ou fallback <c>info</c>.</summary>

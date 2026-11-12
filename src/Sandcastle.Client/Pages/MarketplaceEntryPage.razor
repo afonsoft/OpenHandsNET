@@ -1,0 +1,245 @@
+@page "/marketplace/entries/{Id}"
+@using Sandcastle.Client.Services
+@inject SandcastleApiClient Api
+@inject LocalizationService L
+@inject ToastService Toasts
+@inject DialogService Dialogs
+@inject AdminState Admin
+
+<PageTitle>@(_e?.Name ?? L["mkt.title"]) — Sandcastle</PageTitle>
+
+<p><a href="/marketplace">← @L["mkt.back"]</a></p>
+
+@if (_e is null)
+{
+    <p><em>@(_notFound ? L["mkt.not_found"] : L["common.loading"])</em></p>
+}
+else
+{
+    @* SPEC-148 RF-004: detalhe — readme renderizado, perms declaradas,
+       changelog e install por escopo permitido. *@
+    <div class="mkt-detail-head">
+        <span class="badge mkt-kind-@MarketplacePage.KindClass(_e.Kind)">@_e.Kind</span>
+        <h2 class="mkt-name">@_e.Name</h2>
+        <span class="mkt-ver">v@_e.Version</span>
+        @if (_e.Author is { } a)
+        {
+            <span class="chip">@a</span>
+        }
+        @if (_e.UpdateAvailable)
+        {
+            <span class="badge working">@L["mkt.update_available"]</span>
+        }
+    </div>
+    @if (_e.Description is { } desc)
+    {
+        <p class="sub">@desc</p>
+    }
+    @if (_e.Tags is { Count: > 0 } tags)
+    {
+        <div class="mkt-tags">
+            @foreach (var t in tags)
+            {
+                <span class="chip">@t</span>
+            }
+        </div>
+    }
+    @if (_e.PermissionsRequired is { Count: > 0 } perms)
+    {
+        <div class="mkt-perms">
+            <h3>@L["mkt.permissions_required"]</h3>
+            <ul>
+                @foreach (var p in perms)
+                {
+                    <li><code>@p</code></li>
+                }
+            </ul>
+            <p class="sub">@L["mkt.perms_hint"]</p>
+        </div>
+    }
+    @if (_e.EntryIds is { Count: > 0 } members)
+    {
+        <div class="mkt-perms">
+            <h3>@L["mkt.bundle_members"]</h3>
+            <ul>
+                @foreach (var m in members)
+                {
+                    <li><a href="/marketplace/entries/@m"><code>@m</code></a></li>
+                }
+            </ul>
+        </div>
+    }
+    @if (_e.MinAppVersion is { } min)
+    {
+        <p class="sub">@L.T("mkt.min_app_version", ("version", min))</p>
+    }
+    @if (_e.ChangelogUrl is { } url)
+    {
+        <p><a href="@url" target="_blank" rel="noopener noreferrer">
+            @L["mkt.changelog"]</a></p>
+    }
+
+    <div class="mkt-install">
+        <select aria-label="@L["mkt.scope"]" @bind="_scope">
+            @foreach (var o in ScopeOptions())
+            {
+                <option value="@o.Value">@o.Label</option>
+            }
+        </select>
+        <button class="btn btn-sm btn-primary"
+                disabled="@(_busy || !ScopeOptions().Any())"
+                @onclick="InstallAsync">
+            @(_busy ? L["mkt.installing"] : L["mkt.install"])
+        </button>
+        @foreach (var i in _e.Installed ?? [])
+        {
+            <span class="badge finished">
+                @L.T("mkt.installed_scope", ("scope", ScopeLabel(i)))
+            </span>
+        }
+    </div>
+    @if (_error is not null)
+    {
+        <p class="text-danger">@_error</p>
+    }
+
+    @if (_e.Readme is { } readme)
+    {
+        <h3>@L["mkt.readme"]</h3>
+        <div class="md">@MarkdownService.Render(readme)</div>
+    }
+}
+
+@code {
+    /// <summary>Entry id da rota.</summary>
+    [Parameter] public string? Id { get; set; }
+
+    private SandcastleApiClient.MarketplaceEntryDto? _e;
+    private List<SandcastleApiClient.OrgSummaryDto> _orgs = [];
+    private bool _isSuperAdmin;
+    private bool _notFound;
+    private bool _busy;
+    private string _scope = "user";
+    private string? _error;
+
+    /// <inheritdoc />
+    protected override async Task OnParametersSetAsync()
+    {
+        _e = null;
+        _notFound = false;
+        _error = null;
+        _isSuperAdmin = await Admin.EnsureLoadedAsync();
+        _orgs = (await Api.ListMyOrgsAsync())
+            .Where(o => o.Role is "owner" or "admin").ToList();
+        try
+        {
+            _e = await Api.GetMarketplaceEntryAsync(Id ?? "");
+        }
+        catch (HttpRequestException)
+        {
+            _notFound = true;
+            return;
+        }
+
+        _notFound = _e is null;
+        if (_e is not null)
+        {
+            _scope = ScopeOptions().FirstOrDefault().Value ?? "user";
+        }
+    }
+
+    private IEnumerable<(string Value, string Label)> ScopeOptions()
+    {
+        if (_e is null)
+        {
+            yield break;
+        }
+
+        var installedScopes = (_e.Installed ?? [])
+            .Select(i => $"{i.Scope}:{i.ScopeId ?? ""}")
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (!installedScopes.Contains("user:"))
+        {
+            yield return ("user", L["mkt.scope_user"]);
+        }
+
+        foreach (var o in _orgs)
+        {
+            if (!installedScopes.Contains($"org:{o.Id}"))
+            {
+                yield return ($"org:{o.Id}",
+                    L.T("mkt.scope_org_named",
+                        ("name", o.Name ?? o.Id.ToString()[..8])));
+            }
+        }
+
+        if (_isSuperAdmin && !installedScopes.Contains("system:"))
+        {
+            yield return ("system", L["mkt.scope_system"]);
+        }
+    }
+
+    private async Task InstallAsync()
+    {
+        if (_e is null)
+        {
+            return;
+        }
+
+        _error = null;
+        var scope = _scope.Split(':')[0];
+        var scopeId = _scope.StartsWith("org:", StringComparison.Ordinal)
+            ? _scope[4..] : null;
+        var accept = false;
+        if (_e.PermissionsRequired is { Count: > 0 } perms)
+        {
+            accept = await Dialogs.ConfirmAsync(
+                L.T("mkt.perms_confirm",
+                    ("perms", string.Join(", ", perms))));
+            if (!accept)
+            {
+                return;
+            }
+        }
+
+        _busy = true;
+        try
+        {
+            var (status, _, detail) = await Api.InstallMarketplaceAsync(
+                _e.Id, scope, scopeId, acceptPermissions: accept);
+            if (status is >= 200 and < 300)
+            {
+                Toasts.Success(L.T("mkt.installed", ("name", _e.Name)));
+                _e = await Api.GetMarketplaceEntryAsync(_e.Id);
+            }
+            else
+            {
+                _error = status switch
+                {
+                    403 => L["mkt.err_forbidden"],
+                    409 => L["mkt.err_already"],
+                    422 => L["mkt.err_validation"],
+                    502 => L["mkt.err_registry"],
+                    _ => L.T("mkt.err_generic",
+                        ("detail", detail ?? $"{status}")),
+                };
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private string ScopeLabel(
+        SandcastleApiClient.MarketplaceScopeInstallDto i) =>
+        i.Scope switch
+        {
+            "user" => L["mkt.scope_user"],
+            "org" => L.T("mkt.scope_org_named",
+                ("name", _orgs.FirstOrDefault(
+                    o => o.Id.ToString() == i.ScopeId)?.Name
+                    ?? i.ScopeId?[..8] ?? "?")),
+            _ => L["mkt.scope_system"],
+        };
+}

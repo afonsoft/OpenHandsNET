@@ -18,6 +18,12 @@ public enum SkillSource
     /// the workspace per run — never persisted.
     /// </summary>
     Repo = 3,
+
+    /// <summary>
+    /// SPEC-148: materialized by a marketplace install — managed
+    /// exclusively via the marketplace endpoints (read-only here).
+    /// </summary>
+    Marketplace = 4,
 }
 
 /// <summary>Trigger kinds (SPEC-11 RF-002).</summary>

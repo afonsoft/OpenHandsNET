@@ -136,6 +136,13 @@
                 <Icon Name="sparkles" Size="16" />
                 <span class="txt">@L["sidebar.skills_mcp"]</span>
             </a>
+            @* SPEC-148 RF-004: marketplace — catálogo instalável de
+               skills/agents/mcp/hooks (browse + installed). *@
+            <a class="sb-item @(IsActive("/marketplace") ? "active" : "")"
+               href="/marketplace" title="@L["sidebar.marketplace"]">
+                <Icon Name="package" Size="16" />
+                <span class="txt">@L["sidebar.marketplace"]</span>
+            </a>
             @* SPEC-130 RF-001: engrenagem abre o SettingsModal sobre a
                conversa; /settings segue como deep-link direto. *@
             <button type="button" class="sb-item"

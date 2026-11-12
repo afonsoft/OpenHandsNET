@@ -51,6 +51,19 @@ app.Configure(config =>
             .WithDescription("SPEC-124: sobe o servidor MCP stdio "
                 + "(sandcastle-mcp) p/ agentes externos");
     });
+    config.AddBranch("marketplace", b =>
+    {
+        b.SetDescription("SPEC-148: catálogo instalável — skills/"
+            + "agents/mcp/hooks por escopo (user|org|system)");
+        b.AddCommand<MarketplaceListCommand>("list")
+            .WithDescription("catálogo [--kind] [-q] | --installed [--scope]");
+        b.AddCommand<MarketplaceInstallCommand>("install")
+            .WithDescription("<entry> [--scope] [--org] [--version] [--yes]");
+        b.AddCommand<MarketplaceRemoveCommand>("remove")
+            .WithDescription("<installed-id|entry-id> [--scope] [--org]");
+        b.AddCommand<MarketplaceUpgradeCommand>("upgrade")
+            .WithDescription("<installed-id|entry-id> [--scope] [--org]");
+    });
     config.AddBranch("conversations", b =>
     {
         b.AddCommand<ConversationsListCommand>("list");

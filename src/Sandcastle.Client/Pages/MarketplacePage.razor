@@ -1,0 +1,408 @@
+@page "/marketplace"
+@using Sandcastle.Client.Services
+@inject SandcastleApiClient Api
+@inject LocalizationService L
+@inject ToastService Toasts
+@inject DialogService Dialogs
+@inject AdminState Admin
+
+<PageTitle>@L["mkt.title"] — Sandcastle</PageTitle>
+
+<h2>@L["mkt.title"]</h2>
+<p class="sub">@L["mkt.subtitle"]</p>
+
+@* SPEC-148 RF-004: catálogo instalável — browse (grid + kind badges +
+   install por escopo) e installed (toggle/upgrade/remove). *@
+<div class="tab-bar mkt-tabs" role="tablist">
+    <button role="tab" aria-selected="@(_tab == "browse")"
+            class="@(_tab == "browse" ? "active" : "")"
+            @onclick='() => _tab = "browse"'>@L["mkt.tab_browse"]</button>
+    <button role="tab" aria-selected="@(_tab == "installed")"
+            class="@(_tab == "installed" ? "active" : "")"
+            @onclick='() => _tab = "installed"'>@L["mkt.tab_installed"]</button>
+</div>
+
+@if (_tab == "browse")
+{
+    <div class="mkt-toolbar">
+        <input aria-label="@L["common.search"]" placeholder="@L["mkt.search_placeholder"]"
+               @bind="_q" @bind:event="oninput" @onkeyup="OnSearchKeyAsync" />
+        <select aria-label="@L["mkt.filter_kind"]" @bind="_kind" @bind:after="ReloadAsync">
+            <option value="">@L["mkt.kind_all"]</option>
+            <option value="skill">@L["mkt.kind_skill"]</option>
+            <option value="mcp-server">@L["mkt.kind_mcp"]</option>
+            <option value="agent">@L["mkt.kind_agent"]</option>
+            <option value="hook">@L["mkt.kind_hook"]</option>
+            <option value="bundle">@L["mkt.kind_bundle"]</option>
+        </select>
+        <button class="btn btn-sm" @onclick="ReloadAsync">@L["common.refresh"]</button>
+    </div>
+
+    @if (_entries is null)
+    {
+        <p><em>@L["common.loading"]</em></p>
+    }
+    else if (_entries.Count == 0)
+    {
+        <p class="sub">@L["mkt.empty"]</p>
+    }
+    else
+    {
+        <div class="mkt-grid">
+            @foreach (var e in _entries)
+            {
+                <article class="mkt-card">
+                    <div class="mkt-card-head">
+                        <span class="badge mkt-kind-@KindClass(e.Kind)">@e.Kind</span>
+                        <a class="mkt-name" href="/marketplace/entries/@e.Id">@e.Name</a>
+                        <span class="mkt-ver">v@e.Version</span>
+                    </div>
+                    @if (e.Description is { } d)
+                    {
+                        <p class="mkt-desc">@d</p>
+                    }
+                    @if (e.Tags is { Count: > 0 } tags)
+                    {
+                        <div class="mkt-tags">
+                            @foreach (var t in tags)
+                            {
+                                <span class="chip">@t</span>
+                            }
+                        </div>
+                    }
+                    @foreach (var i in e.Installed ?? [])
+                    {
+                        <span class="badge finished mkt-inst">
+                            @L.T("mkt.installed_scope", ("scope", ScopeLabel(i)))
+                        </span>
+                    }
+                    @if (e.UpdateAvailable)
+                    {
+                        <span class="badge working mkt-inst">@L["mkt.update_available"]</span>
+                    }
+                    <div class="mkt-install">
+                        <select aria-label="@L["mkt.scope"]"
+                                @bind="_scopeFor[e.Id]">
+                            @foreach (var o in ScopeOptions(e))
+                            {
+                                <option value="@o.Value">@o.Label</option>
+                            }
+                        </select>
+                        <button class="btn btn-sm btn-primary"
+                                disabled="@(_busy == e.Id || !ScopeOptions(e).Any())"
+                                @onclick="() => InstallAsync(e)">
+                            @(_busy == e.Id ? L["mkt.installing"] : L["mkt.install"])
+                        </button>
+                    </div>
+                    @if (_errors.TryGetValue(e.Id, out var err))
+                    {
+                        <p class="text-danger">@err</p>
+                    }
+                </article>
+            }
+        </div>
+    }
+}
+else
+{
+    <div class="mkt-toolbar">
+        <select aria-label="@L["mkt.filter_scope"]" @bind="_scopeFilter"
+                @bind:after="LoadInstalledAsync">
+            <option value="">@L["mkt.scope_all"]</option>
+            <option value="user">@L["mkt.scope_user"]</option>
+            <option value="org">@L["mkt.scope_org"]</option>
+            <option value="system">@L["mkt.scope_system"]</option>
+        </select>
+        <button class="btn btn-sm" @onclick="LoadInstalledAsync">@L["common.refresh"]</button>
+    </div>
+
+    @if (_installed is null)
+    {
+        <p><em>@L["common.loading"]</em></p>
+    }
+    else if (_installed.Count == 0)
+    {
+        <p class="sub">@L["mkt.installed_empty"]</p>
+    }
+    else
+    {
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>@L["mkt.col_entry"]</th>
+                    <th>@L["mkt.scope"]</th>
+                    <th>@L["mkt.col_version"]</th>
+                    <th>@L["mkt.col_enabled"]</th>
+                    <th>@L["mkt.col_actions"]</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var i in _installed)
+                {
+                    <tr>
+                        <td><a href="/marketplace/entries/@i.EntryId"><code>@i.EntryId</code></a></td>
+                        <td>@ScopeLabel(i.Scope, i.ScopeId)</td>
+                        <td>
+                            v@i.Version
+                            @if (i.UpdateAvailable)
+                            {
+                                <span class="badge working">@L["mkt.update_available"]</span>
+                            }
+                        </td>
+                        <td>
+                            <input type="checkbox" checked="@i.Enabled"
+                                   aria-label="@L["mkt.col_enabled"]"
+                                   disabled="@(!CanManage(i))"
+                                   @onchange="() => ToggleAsync(i)" />
+                        </td>
+                        <td class="mkt-actions">
+                            @if (i.UpdateAvailable)
+                            {
+                                <button class="btn btn-sm"
+                                        disabled="@(_busy == i.EntryId || !CanManage(i))"
+                                        @onclick="() => UpgradeAsync(i)">
+                                    @L["mkt.upgrade"]</button>
+                            }
+                            <button class="btn btn-sm"
+                                    disabled="@(_busy == i.EntryId || !CanManage(i))"
+                                    @onclick="() => RemoveAsync(i)">
+                                @L["common.delete"]</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private string _tab = "browse";
+    private string _q = "";
+    private string _kind = "";
+    private string _scopeFilter = "";
+    private string? _busy;
+    private bool _isSuperAdmin;
+    private List<SandcastleApiClient.MarketplaceEntryDto>? _entries;
+    private List<SandcastleApiClient.InstalledSkillDto>? _installed;
+    private List<SandcastleApiClient.OrgSummaryDto> _orgs = [];
+    private readonly Dictionary<string, string> _scopeFor = new();
+    private readonly Dictionary<string, string> _errors = new();
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        _isSuperAdmin = await Admin.EnsureLoadedAsync();
+        _orgs = (await Api.ListMyOrgsAsync())
+            .Where(o => o.Role is "owner" or "admin").ToList();
+        await ReloadAsync();
+        await LoadInstalledAsync();
+    }
+
+    private async Task OnSearchKeyAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await ReloadAsync();
+        }
+    }
+
+    private async Task ReloadAsync()
+    {
+        _entries = (await Api.ListMarketplaceEntriesAsync(
+            string.IsNullOrWhiteSpace(_q) ? null : _q,
+            string.IsNullOrEmpty(_kind) ? null : _kind)).ToList();
+        foreach (var e in _entries)
+        {
+            _scopeFor.TryAdd(e.Id, DefaultScope(e));
+        }
+    }
+
+    private async Task LoadInstalledAsync() =>
+        _installed = (await Api.ListMarketplaceInstalledAsync(
+            string.IsNullOrEmpty(_scopeFilter) ? null : _scopeFilter)).ToList();
+
+    /// <summary>Scopes que o caller pode instalar (user sempre; orgs onde
+    /// admin+; system só superadmin) — menos os já instalados.</summary>
+    private IEnumerable<(string Value, string Label)> ScopeOptions(
+        SandcastleApiClient.MarketplaceEntryDto e)
+    {
+        var installedScopes = (e.Installed ?? [])
+            .Select(i => $"{i.Scope}:{i.ScopeId ?? ""}")
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (!installedScopes.Contains("user:"))
+        {
+            yield return ("user", L["mkt.scope_user"]);
+        }
+
+        foreach (var o in _orgs)
+        {
+            if (!installedScopes.Contains($"org:{o.Id}"))
+            {
+                yield return ($"org:{o.Id}",
+                    L.T("mkt.scope_org_named", ("name", o.Name ?? o.Id.ToString()[..8])));
+            }
+        }
+
+        if (_isSuperAdmin && !installedScopes.Contains("system:"))
+        {
+            yield return ("system", L["mkt.scope_system"]);
+        }
+    }
+
+    private string DefaultScope(SandcastleApiClient.MarketplaceEntryDto e) =>
+        ScopeOptions(e).FirstOrDefault().Value ?? "user";
+
+    /// <summary>Install — permissions_required exigem aceite explícito
+    /// via dialog (SPEC-148 §3: 422 sem accept_permissions).</summary>
+    private async Task InstallAsync(
+        SandcastleApiClient.MarketplaceEntryDto e)
+    {
+        _errors.Remove(e.Id);
+        var sel = _scopeFor.GetValueOrDefault(e.Id) ?? "user";
+        var scope = sel.Split(':')[0];
+        var scopeId = sel.StartsWith("org:", StringComparison.Ordinal)
+            ? sel[4..] : null;
+        var accept = false;
+        if (e.PermissionsRequired is { Count: > 0 } perms)
+        {
+            accept = await Dialogs.ConfirmAsync(
+                L.T("mkt.perms_confirm",
+                    ("perms", string.Join(", ", perms))));
+            if (!accept)
+            {
+                return;
+            }
+        }
+
+        _busy = e.Id;
+        try
+        {
+            var (status, _, detail) = await Api.InstallMarketplaceAsync(
+                e.Id, scope, scopeId, acceptPermissions: accept);
+            if (status is >= 200 and < 300)
+            {
+                Toasts.Success(L.T("mkt.installed", ("name", e.Name)));
+                await ReloadAsync();
+                await LoadInstalledAsync();
+            }
+            else
+            {
+                _errors[e.Id] = status switch
+                {
+                    403 => L["mkt.err_forbidden"],
+                    409 => L["mkt.err_already"],
+                    422 => L["mkt.err_validation"],
+                    502 => L["mkt.err_registry"],
+                    _ => L.T("mkt.err_generic", ("detail", detail ?? $"{status}")),
+                };
+            }
+        }
+        finally
+        {
+            _busy = null;
+        }
+    }
+
+    private async Task ToggleAsync(SandcastleApiClient.InstalledSkillDto i)
+    {
+        if (!await Api.SetMarketplaceEnabledAsync(i.Id, !i.Enabled))
+        {
+            Toasts.Error(L.T("mkt.err_generic", ("detail", "toggle")));
+        }
+
+        await LoadInstalledAsync();
+    }
+
+    private async Task UpgradeAsync(SandcastleApiClient.InstalledSkillDto i)
+    {
+        _busy = i.EntryId;
+        try
+        {
+            var (status, _) = await Api.UpgradeMarketplaceAsync(i.Id);
+            if (status is >= 200 and < 300)
+            {
+                Toasts.Success(L.T("mkt.upgraded", ("name", i.EntryId)));
+            }
+            else
+            {
+                Toasts.Error(L.T("mkt.err_generic",
+                    ("detail", $"upgrade {status}")));
+            }
+
+            await ReloadAsync();
+            await LoadInstalledAsync();
+        }
+        finally
+        {
+            _busy = null;
+        }
+    }
+
+    private async Task RemoveAsync(SandcastleApiClient.InstalledSkillDto i)
+    {
+        if (!await Dialogs.ConfirmAsync(
+                L.T("mkt.remove_confirm", ("name", i.EntryId)),
+                danger: true))
+        {
+            return;
+        }
+
+        _busy = i.EntryId;
+        try
+        {
+            if (await Api.RemoveMarketplaceAsync(i.Id))
+            {
+                Toasts.Success(L.T("mkt.removed", ("name", i.EntryId)));
+            }
+            else
+            {
+                Toasts.Error(L.T("mkt.err_generic", ("detail", "remove")));
+            }
+
+            await ReloadAsync();
+            await LoadInstalledAsync();
+        }
+        finally
+        {
+            _busy = null;
+        }
+    }
+
+    private string ScopeLabel(
+        SandcastleApiClient.MarketplaceScopeInstallDto i) =>
+        ScopeLabel(i.Scope, i.ScopeId);
+
+    /// <summary>Espelha CanManageRowAsync do endpoint: user→dono,
+    /// org→manage (owner/admin na org), system→superadmin.</summary>
+    private bool CanManage(SandcastleApiClient.InstalledSkillDto i) =>
+        i.Scope switch
+        {
+            "user" => true, // rows user-scope só aparecem p/ o dono
+            "org" => _isSuperAdmin || _orgs.Any(
+                o => o.Id.ToString() == i.ScopeId),
+            _ => _isSuperAdmin,
+        };
+
+    private string ScopeLabel(string scope, string? scopeId) => scope switch
+    {
+        "user" => L["mkt.scope_user"],
+        "org" => L.T("mkt.scope_org_named",
+            ("name", OrgName(scopeId))),
+        _ => L["mkt.scope_system"],
+    };
+
+    private string OrgName(string? scopeId) =>
+        _orgs.FirstOrDefault(
+            o => o.Id.ToString() == scopeId)?.Name
+        ?? scopeId?[..8] ?? "?";
+
+    internal static string KindClass(string kind) => kind switch
+    {
+        "mcp-server" => "mcp",
+        "agent" => "agent",
+        "hook" => "hook",
+        "bundle" => "bundle",
+        _ => "skill",
+    };
+}

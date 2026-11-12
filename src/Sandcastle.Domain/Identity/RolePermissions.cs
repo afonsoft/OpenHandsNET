@@ -24,6 +24,8 @@ public static class RolePermissions
         Permission.ScansFindings,
         // SPEC-144: member cria/executa refactors — aprovação fica admin+.
         Permission.RefactorsRun,
+        // SPEC-148: member instala entries no próprio user scope.
+        Permission.MarketplaceInstall,
     ];
 
     private static readonly Permission[] Admin =
@@ -48,6 +50,8 @@ public static class RolePermissions
         // SPEC-144 §9: aprovação de plano de refactor exige admin+
         // (plano é untrusted até revisão humana).
         Permission.RefactorsApprove,
+        // SPEC-148: admin+ instala/gerencia entries no scope da org.
+        Permission.MarketplaceManage,
     ];
 
     private static readonly Permission[] Owner =
@@ -69,6 +73,10 @@ public static class RolePermissions
         Permission.ManageOrgQuota,
         Permission.CreateSignupLink,
         Permission.ManageOauthProviders,
+        // SPEC-148: system scope = bundle da plataforma (só superadmin);
+        // install é incluído pois o super-role não herda org perms.
+        Permission.MarketplaceInstall,
+        Permission.MarketplaceManage,
     ];
 
     /// <summary>Permissions for an org role name (owner|admin|member). Empty for unknown roles.</summary>
