@@ -8,7 +8,7 @@
 | Type | `Feature / Agent orchestration + Security` |
 | Stack | `.NET 10 · delegate (SPEC-62) · EF Core · SignalR` |
 | Repository | `afonsoft/sandcastle` |
-| Status | `Approved` |
+| Status | `Done` |
 | Ticket | `GAP-SCAN-FINDINGS` (docs/research/2026-11-competitive-gap-analysis.md §G4) |
 | Depends on | `62` (delegate), `52` (SCM/PR), `60` (indexação — réusável p/ partição) |
 | Reference | Devin Code Scans / Security 2.0 (findings pipeline, Agentic MapReduce) — conceitos apenas |
