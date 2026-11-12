@@ -53,6 +53,77 @@ public sealed class UsageBudgetService(
             periodStart, periodEnd, byModel);
     }
 
+    /// <inheritdoc />
+    public async Task<Application.Agent.LlmUsageBreakdown> GetLlmUsageAsync(
+        Guid userId, Guid? orgId, bool orgScope, CancellationToken ct)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var periodStart = new DateTimeOffset(
+            now.Year, now.Month, 1, 0, 0, 0, TimeSpan.Zero);
+        var periodEnd = periodStart.AddMonths(1);
+
+        var convIds = orgScope && orgId is { } oid
+            ? db.Conversations.AsNoTracking()
+                .Where(c => c.OrgId == oid).Select(c => c.Id)
+            : db.Conversations.AsNoTracking()
+                .Where(c => c.CreatedByUserId == userId.ToString())
+                .Select(c => c.Id);
+        var payloads = await db.Events.AsNoTracking()
+            .Where(e => e.Kind == "TokenEvent"
+                && e.TimestampTicks >= periodStart.UtcTicks
+                && e.TimestampTicks < periodEnd.UtcTicks
+                && convIds.Contains(e.ConversationId))
+            .Select(e => e.Payload)
+            .ToListAsync(ct);
+
+        var acc = new Dictionary<(string Role, string Model),
+            (long Tokens, decimal Cost)>();
+        foreach (var payload in payloads)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(payload);
+                var root = doc.RootElement;
+                var role = root.TryGetProperty("role", out var r)
+                    ? r.GetString() ?? "unknown" : "unknown";
+                var model = root.TryGetProperty("model", out var m)
+                    ? m.GetString() ?? "unknown" : "unknown";
+                long tokens = 0;
+                decimal cost = 0m;
+                if (root.TryGetProperty("prompt_tokens", out var p)
+                    && p.ValueKind == JsonValueKind.Number)
+                {
+                    tokens += p.GetInt64();
+                }
+                if (root.TryGetProperty("completion_tokens", out var c)
+                    && c.ValueKind == JsonValueKind.Number)
+                {
+                    tokens += c.GetInt64();
+                }
+                if (root.TryGetProperty("cost_usd", out var cu)
+                    && cu.ValueKind == JsonValueKind.Number)
+                {
+                    cost = cu.GetDecimal();
+                }
+
+                var key = (role, model);
+                var cur = acc.GetValueOrDefault(key);
+                acc[key] = (cur.Tokens + tokens, cur.Cost + cost);
+            }
+            catch (JsonException)
+            {
+                continue;
+            }
+        }
+
+        return new Application.Agent.LlmUsageBreakdown(
+            "role", now.ToString("yyyy-MM"),
+            [.. acc.Select(kv => new Application.Agent.LlmUsageRow(
+                    kv.Key.Role, kv.Key.Model,
+                    kv.Value.Tokens, kv.Value.Cost))
+                .OrderByDescending(r => r.Tokens)]);
+    }
+
     /// <summary>
     /// Agrupa <c>TokenEvent</c>s por modelo sobre as conversas que
     /// casam com <paramref name="convFilter"/> no período

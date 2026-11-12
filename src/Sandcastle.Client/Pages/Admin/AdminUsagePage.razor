@@ -62,6 +62,32 @@ else
             <pre class="admin-limits">@(
                 pl.TryGetProperty("limits", out var l) ? l.GetRawText() : "{}")</pre>
         }
+
+        @* SPEC-149 RF-004: breakdown role×model da org. *@
+        @if (_byRole is { } br
+            && br.TryGetProperty("rows", out var rows)
+            && rows.ValueKind is JsonValueKind.Array
+            && rows.GetArrayLength() > 0)
+        {
+            <h3>@L["usage.by_role"]</h3>
+            <table class="budget-models">
+                <thead>
+                    <tr><th>@L["usage.role"]</th>
+                        <th>@L["usage.model"]</th>
+                        <th>@L["usage.tokens"]</th>
+                        <th>@L["usage.cost"]</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in rows.EnumerateArray())
+                    {
+                        <tr><td>@Str(r, "role")</td>
+                            <td>@Str(r, "model")</td>
+                            <td>@Num(r, "tokens")</td>
+                            <td>$@Num(r, "cost_usd")</td></tr>
+                    }
+                </tbody>
+            </table>
+        }
     </div>
 }
 
@@ -70,6 +96,7 @@ else
     private string? _orgId;
     private JsonElement? _usage;
     private JsonElement? _plan;
+    private JsonElement? _byRole; // SPEC-149
 
     protected override async Task LoadAsync() =>
         _orgs = await Api.ListOrgsAsync();
@@ -84,6 +111,7 @@ else
         Error = null;
         _usage = await Api.GetOrgUsageAsync(_orgId);
         _plan = await Api.GetOrgPlanAsync(_orgId);
+        _byRole = await Api.GetLlmUsageByRoleAsync(_orgId); // SPEC-149
     }
 
     private static string? Str(JsonElement e, string prop) =>

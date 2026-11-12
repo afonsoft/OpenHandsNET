@@ -45,7 +45,8 @@ public static class BuiltinAdvisor
 
             var verdict = await advisor.ConsultAsync(
                 Str(a, "context") ?? "(sem contexto adicional)",
-                question, ct);
+                question, ct,
+                new LlmRouteContext(ctx.ConversationId));
             if (verdict is null)
             {
                 return ToolResult.Error(

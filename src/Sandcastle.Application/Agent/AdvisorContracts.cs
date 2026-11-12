@@ -18,7 +18,8 @@ public interface IAdvisorService
     /// curto + modelo + latência) ou null em falha/inerte.
     /// </summary>
     Task<AdvisorVerdict?> ConsultAsync(
-        string context, string question, CancellationToken ct);
+        string context, string question, CancellationToken ct,
+        LlmRouteContext? routeCtx = null);
 }
 
 /// <summary>Parecer do advisor + metadados da consulta.</summary>

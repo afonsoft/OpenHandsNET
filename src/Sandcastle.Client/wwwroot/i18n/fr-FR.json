@@ -760,5 +760,10 @@
   "mkt.err_already": "Déjà installé dans cette portée.",
   "mkt.err_validation": "La validation de l'installation a échoué (vérifiez version/permissions).",
   "mkt.err_registry": "Registry inaccessible.",
-  "mkt.err_generic": "Erreur marketplace : {{detail}}"
+  "mkt.err_generic": "Erreur marketplace : {{detail}}",
+  "usage.by_role": "Utilisation par rôle",
+  "usage.role": "rôle",
+  "admin.routing_title": "Règles de routage",
+  "admin.routing_hint": "Candidats de modèle ordonnés par rôle (JSON routing_rules_v1). Document vide = pass-through.",
+  "admin.routing_json": "JSON des règles de routage"
 }

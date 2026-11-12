@@ -606,9 +606,20 @@ public static class DependencyInjection
         services.AddSingleton<
             Sandcastle.Application.Agent.IModelCatalog,
             Sandcastle.Infrastructure.Agent.Routing.OmniRouteModelCatalog>();
+        // SPEC-149: router é o choke point único — circuit breaker e
+        // cursor de weight são estado compartilhado (singletons);
+        // rules/budget/audit resolvem-se por escopo em cada chamada.
+        services.AddSingleton<
+            Sandcastle.Infrastructure.Agent.Routing.LlmCircuitBreaker>();
         services.AddSingleton<
             Sandcastle.Application.Agent.IModelRouter,
             Sandcastle.Infrastructure.Agent.Routing.ModelRouter>();
+        services.AddScoped<
+            Sandcastle.Application.Agent.IRoutingRulesService,
+            Sandcastle.Infrastructure.Agent.Routing.RoutingRulesService>();
+        services.Configure<Sandcastle.Application.Agent.RouterOptions>(
+            configuration.GetSection(
+                Sandcastle.Application.Agent.RouterOptions.Section));
         // SPEC-22: context engine — meter/condenser/builder scoped por run.
         services.AddScoped<
             Sandcastle.Application.Agent.IContextMeter,

@@ -267,6 +267,11 @@ internal sealed class FakeScanRouter : IModelRouter
     public Task<ModelSelection?> NextFallbackAsync(
         ModelSelection current, LlmErrorKind kind, CancellationToken ct) =>
         Task.FromResult<ModelSelection?>(null);
+
+    public Task<ModelSelection?> ResolveAsync(
+        LlmRole role, LlmRouteContext ctx, CancellationToken ct) =>
+        Task.FromResult<ModelSelection?>(new ModelSelection(
+            "scan-mock", "mock", null, 0, null));
 }
 
 /// <summary>Audit sink that records action names.</summary>

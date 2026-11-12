@@ -760,5 +760,10 @@
   "mkt.err_already": "このスコープにはすでにインストール済みです。",
   "mkt.err_validation": "インストール検証に失敗しました（バージョン・権限を確認）。",
   "mkt.err_registry": "レジストリに接続できません。",
-  "mkt.err_generic": "マーケットプレイスエラー: {{detail}}"
+  "mkt.err_generic": "マーケットプレイスエラー: {{detail}}",
+  "usage.by_role": "ロール別使用量",
+  "usage.role": "ロール",
+  "admin.routing_title": "ルーティングルール",
+  "admin.routing_hint": "ロールごとの順序付きモデル候補（JSON routing_rules_v1）。空のドキュメント = パススルー。",
+  "admin.routing_json": "ルーティングルール JSON"
 }

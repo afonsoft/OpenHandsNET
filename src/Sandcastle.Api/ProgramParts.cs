@@ -356,6 +356,7 @@ internal static class ProgramParts
         app.MapMiscEndpoints();
         app.MapUserEndpoints();
         app.MapUsageEndpoints();
+        app.MapLlmEndpoints(); // SPEC-149
         app.MapWebhookEndpoints();
         app.MapGitEndpoints();
         app.MapCheckpointEndpoints();

@@ -760,5 +760,10 @@
   "mkt.err_already": "Bereits in diesem Scope installiert.",
   "mkt.err_validation": "Installationsprüfung fehlgeschlagen (Version/Berechtigungen prüfen).",
   "mkt.err_registry": "Registry nicht erreichbar.",
-  "mkt.err_generic": "Marketplace-Fehler: {{detail}}"
+  "mkt.err_generic": "Marketplace-Fehler: {{detail}}",
+  "usage.by_role": "Nutzung nach Rolle",
+  "usage.role": "Rolle",
+  "admin.routing_title": "Routing-Regeln",
+  "admin.routing_hint": "Geordnete Modellkandidaten pro Rolle (JSON routing_rules_v1). Leeres Dokument = Pass-through.",
+  "admin.routing_json": "JSON der Routing-Regeln"
 }

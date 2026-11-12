@@ -760,5 +760,10 @@
   "mkt.err_already": "Already installed in this scope.",
   "mkt.err_validation": "Install validation failed (check version/permissions).",
   "mkt.err_registry": "Registry unreachable.",
-  "mkt.err_generic": "Marketplace error: {{detail}}"
+  "mkt.err_generic": "Marketplace error: {{detail}}",
+  "usage.by_role": "Usage by role",
+  "usage.role": "role",
+  "admin.routing_title": "Routing rules",
+  "admin.routing_hint": "Ordered model candidates per role (JSON routing_rules_v1). Empty document = pass-through.",
+  "admin.routing_json": "routing rules JSON"
 }

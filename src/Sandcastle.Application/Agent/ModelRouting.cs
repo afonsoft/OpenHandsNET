@@ -30,13 +30,19 @@ public enum ModelRole
 /// Effective model chosen for one call (SPEC-23 RF-002):
 /// resolved id, advertised provider/context window, the attempt ordinal for
 /// this selection, and which model it fell back from.
+/// SPEC-149: <see cref="ApiKeyRef"/> (fonte da credencial — nunca a chave),
+/// <see cref="Reason"/> (por que o router escolheu) e <see cref="Route"/>
+/// (snapshot do plano para fallback) tornam a seleção auditável.
 /// </summary>
 public sealed record ModelSelection(
     string Model,
     string? Provider,
     int? ContextWindow,
     int Attempt,
-    string? FallbackFrom);
+    string? FallbackFrom,
+    string? ApiKeyRef = null,
+    string? Reason = null,
+    RoutePlan? Route = null);
 
 /// <summary>Error classification driving turn recovery (SPEC-23 RF-003).</summary>
 public enum LlmErrorKind
@@ -119,4 +125,16 @@ public interface IModelRouter
     /// </summary>
     Task<ModelSelection?> NextFallbackAsync(
         ModelSelection current, LlmErrorKind kind, CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-149 RF-001: canonical choke point — resolves
+    /// <paramref name="role"/> against org routing rules (circuit → budget
+    /// → weight), admin policy (allowlist/deny/residency) and the user pin
+    /// (<see cref="LlmRoles.IsPinnable"/> roles only). Returns
+    /// <c>null</c> when no candidate is eligible — callers surface
+    /// <c>llm_no_route</c> (503 semantics), never a silent arbitrary model.
+    /// No rules ⇒ pass-through idêntico ao comportamento atual.
+    /// </summary>
+    Task<ModelSelection?> ResolveAsync(
+        LlmRole role, LlmRouteContext ctx, CancellationToken ct);
 }

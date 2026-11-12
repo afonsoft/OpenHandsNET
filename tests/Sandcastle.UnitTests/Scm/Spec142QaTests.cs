@@ -1265,6 +1265,11 @@ public sealed class Spec142QaTests : IAsyncDisposable
             ModelSelection current, LlmErrorKind kind,
             CancellationToken ct) =>
             Task.FromResult<ModelSelection?>(null);
+
+        public Task<ModelSelection?> ResolveAsync(
+            LlmRole role, LlmRouteContext ctx, CancellationToken ct) =>
+            Task.FromResult<ModelSelection?>(new ModelSelection(
+                "qa-model", "mock", null, 0, null));
     }
 
     private sealed class FakeMeter : IUsageMeter

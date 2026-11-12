@@ -13,7 +13,8 @@ namespace Sandcastle.Infrastructure.Agent;
 /// Fail-open: qualquer falha do provider devolve null (o run continua).
 /// </summary>
 public sealed class AdvisorService(
-    IAgentLlmProvider llm, IOptions<AgentLlmOptions> options)
+    IAgentLlmProvider llm, IOptions<AgentLlmOptions> options,
+    IModelRouter? router = null)
     : IAdvisorService
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
@@ -26,14 +27,22 @@ public sealed class AdvisorService(
 
     /// <inheritdoc />
     public async Task<AdvisorVerdict?> ConsultAsync(
-        string context, string question, CancellationToken ct)
+        string context, string question, CancellationToken ct,
+        LlmRouteContext? routeCtx = null)
     {
         if (!Enabled)
         {
             return null;
         }
 
-        var model = options.Value.AdvisorModel!;
+        // SPEC-149: advisor é a role critic — rules da org vencem quando
+        // configuradas; sem rules o AdvisorModel passa (comportamento atual).
+        var model = router is not null
+            ? (await router.ResolveAsync(LlmRole.Critic,
+                routeCtx ?? new LlmRouteContext(
+                    PreferredModel: options.Value.AdvisorModel), ct))
+                ?.Model ?? options.Value.AdvisorModel!
+            : options.Value.AdvisorModel!;
         var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {

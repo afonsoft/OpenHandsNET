@@ -760,5 +760,10 @@
   "mkt.err_already": "此作用域已安装。",
   "mkt.err_validation": "安装验证失败（请检查版本/权限）。",
   "mkt.err_registry": "无法连接注册表。",
-  "mkt.err_generic": "应用市场错误：{{detail}}"
+  "mkt.err_generic": "应用市场错误：{{detail}}",
+  "usage.by_role": "按角色的用量",
+  "usage.role": "角色",
+  "admin.routing_title": "路由规则",
+  "admin.routing_hint": "每个角色的有序模型候选（JSON routing_rules_v1）。空文档 = 直通。",
+  "admin.routing_json": "路由规则 JSON"
 }

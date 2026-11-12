@@ -19,7 +19,8 @@ namespace Sandcastle.Infrastructure.Agent.Security;
 /// (fail-safe para padrões locais).
 /// </summary>
 public sealed class SmartPermissionJudge(
-    IAgentLlmProvider llm, IMemoryCache cache) : ISecurityAnalyzer
+    IAgentLlmProvider llm, IMemoryCache cache,
+    IModelRouter? router = null) : ISecurityAnalyzer
 {
     private static readonly PatternSecurityAnalyzer Fallback = new();
     private static readonly TimeSpan RegexTimeout =
@@ -77,9 +78,15 @@ public sealed class SmartPermissionJudge(
                     + $"arguments={payload}\n</untrusted_{nonce}>"
                 : FallbackInlinePrompt + haystack;
             var text = new StringBuilder();
+            // SPEC-149: juiz é a role critic — passa pelo choke point
+            // (sem org ctx aqui; rules engajam quando disponíveis).
+            var model = router is null ? null
+                : (await router.ResolveAsync(LlmRole.Critic,
+                    new LlmRouteContext(), ct))?.Model;
             await foreach (var chunk in llm.ChatStreamAsync(
                 [LlmMessage.User(prompt)], [],
-                new LlmOptions(MaxTokens: 128, Temperature: 0), ct))
+                new LlmOptions(Model: model, MaxTokens: 128,
+                    Temperature: 0), ct))
             {
                 if (chunk is TextDelta delta)
                 {

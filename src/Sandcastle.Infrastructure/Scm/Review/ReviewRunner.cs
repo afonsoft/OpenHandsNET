@@ -165,8 +165,13 @@ public sealed class ReviewRunner( // NOSONAR S107 — SPEC-104 (decisão aprovad
 
         // 5) LLM → findings estruturados.
         var prompt = BuildPrompt(run, prTitle, files.Count, diffText, rules);
-        var model = (await router.SelectAsync(Guid.Empty,
-            ModelRole.Reviewer, o.Model, ct)).Model;
+        // SPEC-149: review resolve via router com o org do run —
+        // rules/política/circuito passam a valer para o worker.
+        var model = (await router.ResolveAsync(LlmRole.Review,
+            new LlmRouteContext(OrgId: run.OrgId,
+                PreferredModel: o.Model), ct))?.Model
+            ?? throw new LlmNoRouteException(
+                "review", "no eligible candidate");
         var response = await CompleteAsync(prompt, model, o, ct);
 
         // 6) validação: path/line precisam existir no diff (dropa alucinação).

@@ -164,8 +164,12 @@ public sealed class WikiRunner( // NOSONAR S107 — DI ctor (bundle)
         }
 
         // 6) gera página por tópico.
-        var model = (await router.SelectAsync(
-            Guid.Empty, ModelRole.Summarizer, o.Model, ct)).Model;
+        // SPEC-149: geração de páginas usa a role summarizer com org.
+        var model = (await router.ResolveAsync(LlmRole.Summarizer,
+            new LlmRouteContext(OrgId: run.OrgId,
+                PreferredModel: o.Model), ct))?.Model
+            ?? throw new LlmNoRouteException(
+                "summarizer", "no eligible candidate");
         var pages = new List<WikiPageRecord>();
         var invalidTotal = 0;
         var promptTokens = 0L;
