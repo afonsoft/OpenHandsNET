@@ -370,6 +370,12 @@
                     }
                 }
                 break;
+            case ComposerSlash.CommandKind.Scan:
+                // SPEC-143: /scan <goal @repo> → /scans com o form
+                // preenchido (@repo vira repositories[] na página).
+                Nav.NavigateTo("/scans" + (args.Length == 0
+                    ? "" : $"?goal={Uri.EscapeDataString(args)}"));
+                break;
             default: // Skill — expande no composer p/ revisão antes do envio.
                 await SetTextAsync(ComposerSlash.Expand(cmd, args));
                 break;

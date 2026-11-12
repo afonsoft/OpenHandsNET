@@ -26,6 +26,15 @@ public sealed class AutomationRecord : IOrgScoped
     public string? LlmModel { get; set; }
     /// <summary>Repo alvo opcional (mesmo campo do start-task).</summary>
     public string? SelectedRepository { get; set; }
+    /// <summary><c>task|scan</c> — SPEC-143 (default <c>task</c>).</summary>
+    public required string Kind { get; set; } = "task";
+
+    /// <summary>
+    /// SPEC-143: config do kind=scan — JSON
+    /// <c>{"repositories":[],"profile":"","effort":""}</c> (prompt = goal).
+    /// </summary>
+    public string? ScanConfigJson { get; set; }
+
     /// <summary><c>interval|daily|weekly|once</c>.</summary>
     public required string ScheduleKind { get; set; }
     /// <summary>HH:mm UTC (daily/weekly).</summary>
@@ -96,6 +105,10 @@ public sealed class AutomationRecordConfiguration
     {
         b.ToTable("automations");
         b.HasKey(e => e.Id);
+        // SPEC-143: kind=task|scan — default "task" backfills linhas
+        // existentes na migration.
+        b.Property(e => e.Kind).HasMaxLength(20)
+            .HasDefaultValue("task");
         // scheduler varre (Enabled, NextRunAtTicks) a cada tick.
         b.HasIndex(e => new { e.Enabled, e.NextRunAtTicks });
         b.HasIndex(e => e.CreatedByUserId);

@@ -113,6 +113,12 @@
                 <Icon Name="file" Size="16" />
                 <span class="txt">@L["sidebar.wiki"]</span>
             </a>
+            @* SPEC-143 RF-005: code scans — findings triáveis + fix. *@
+            <a class="sb-item @(IsActive("/scans") ? "active" : "")"
+               href="/scans" title="@L["sidebar.scans"]">
+                <Icon Name="search" Size="16" />
+                <span class="txt">@L["sidebar.scans"]</span>
+            </a>
             <div class="sb-label">@L["sidebar.general"]</div>
             <a class="sb-item @(IsActive("/automations") ? "active" : "")"
                href="/automations" title="@L["sidebar.automations"]">

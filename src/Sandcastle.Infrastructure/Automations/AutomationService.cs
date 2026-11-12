@@ -25,7 +25,9 @@ public sealed class AutomationService(
     IAppConversationService conversations,
     IEventService events,
     IAuditService? audit = null,
-    ILogger<AutomationService>? logger = null) : IAutomationService
+    ILogger<AutomationService>? logger = null,
+    // SPEC-143: kind=scan dispara IScanService (não conversa solta).
+    Application.Scans.IScanService? scans = null) : IAutomationService
 {
     /// <summary>Tamanho máximo do prompt (SPEC-47 RF-003).</summary>
     public const int MaxPromptChars = 8192;
@@ -37,21 +39,26 @@ public sealed class AutomationService(
         r.Id, r.OrgId, r.CreatedByUserId, r.Name, r.Prompt, r.LlmModel,
         r.SelectedRepository, r.ScheduleKind, r.ScheduleTimeUtc,
         r.IntervalMinutes, r.Weekday, r.Enabled, r.NextRunAt, r.LastRunAt,
-        r.CreatedAt, r.UpdatedAt);
+        r.CreatedAt, r.UpdatedAt, r.Kind, r.ScanConfigJson);
 
     private static AutomationRunInfo ToRunInfo(AutomationRunRecord r) => new(
         r.Id, r.AutomationId, r.StartedAt, r.FinishedAt, r.Status,
         r.ConversationId, r.Error);
 
-    /// <summary>Validação de upsert (SPEC-47 RF-003).</summary>
+    /// <summary>Validação de upsert (SPEC-47 RF-003 + SPEC-143 kind).</summary>
     public static string? Validate(
         string? name, string? prompt, string? scheduleKind,
         string? scheduleTimeUtc, int? intervalMinutes,
-        DateTimeOffset? nextRunAt)
+        DateTimeOffset? nextRunAt, string? kind = null)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
             return "name required";
+        }
+
+        if (kind is not null && !AutomationKinds.All.Contains(kind))
+        {
+            return "kind must be task|scan";
         }
 
         if (string.IsNullOrWhiteSpace(prompt))
@@ -85,6 +92,103 @@ public sealed class AutomationService(
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// SPEC-143: config persistida de uma automation kind=scan — repos +
+    /// profile + effort (goal = <see cref="AutomationRecord.Prompt"/>).
+    /// </summary>
+    public sealed record AutomationScanConfig(
+        IReadOnlyList<string> Repositories,
+        string? Profile,
+        string? Effort)
+    {
+        /// <summary>Parse defensivo do JSON persistido.</summary>
+        public static AutomationScanConfig? Parse(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return null;
+            }
+
+            try
+            {
+                var doc = System.Text.Json.JsonDocument.Parse(json);
+                var root = doc.RootElement;
+                var repos = root.TryGetProperty("repositories", out var r)
+                    && r.ValueKind == System.Text.Json.JsonValueKind.Array
+                    ? r.EnumerateArray()
+                        .Where(e => e.ValueKind
+                            == System.Text.Json.JsonValueKind.String)
+                        .Select(e => e.GetString()!)
+                        .ToList()
+                    : [];
+                return new AutomationScanConfig(repos,
+                    root.TryGetProperty("profile", out var p)
+                        ? p.GetString() : null,
+                    root.TryGetProperty("effort", out var e2)
+                        ? e2.GetString() : null);
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>Serializa para a coluna scan_config_json.</summary>
+        public string ToJson() => System.Text.Json.JsonSerializer
+            .Serialize(new
+            {
+                repositories = Repositories,
+                profile = Profile,
+                effort = Effort,
+            });
+    }
+
+    /// <summary>
+    /// Monta o <c>scan_config_json</c> do upsert: kind=scan exige ≥1 repo
+    /// (Repositories ou SelectedRepository) e valida profile/effort.
+    /// Retorna (json, null) ou (null, erro).
+    /// </summary>
+    internal static (string? Json, string? Error) BuildScanConfig(
+        string kind, AutomationUpsert req, AutomationRecord? existing = null)
+    {
+        if (kind != AutomationKinds.Scan)
+        {
+            return (null, null);
+        }
+
+        var single = req.SelectedRepository
+            ?? existing?.SelectedRepository;
+        var repos = req.Repositories
+            ?? AutomationScanConfig.Parse(existing?.ScanConfigJson)
+                ?.Repositories
+            ?? (single is { Length: > 0 }
+                ? [single]
+                : (IReadOnlyList<string>?)null);
+        if (repos is not { Count: > 0 })
+        {
+            return (null, "scan automation requires repositories[] "
+                + "or selected_repository");
+        }
+
+        var profile = req.ScanProfile
+            ?? AutomationScanConfig.Parse(existing?.ScanConfigJson)?.Profile;
+        var effort = req.ScanEffort
+            ?? AutomationScanConfig.Parse(existing?.ScanConfigJson)?.Effort;
+        if (Application.Scans.ScanProfiles.Normalize(profile) is null)
+        {
+            return (null, $"invalid scan profile '{profile}'");
+        }
+        if (Application.Scans.ScanEfforts.Normalize(effort) is null)
+        {
+            return (null, $"invalid scan effort '{effort}'");
+        }
+
+        return (new AutomationScanConfig(
+            repos.Where(r => !string.IsNullOrWhiteSpace(r))
+                .Select(r => r.Trim()).ToList(),
+            profile, effort).ToJson(), null);
     }
 
     private static void Reschedule(AutomationRecord a, DateTimeOffset now)
@@ -125,11 +229,20 @@ public sealed class AutomationService(
         CancellationToken ct)
     {
         var kind = req.ScheduleKind?.Trim().ToLowerInvariant() ?? "";
+        var autoKind = req.Kind?.Trim().ToLowerInvariant()
+            ?? AutomationKinds.Task;
         var error = Validate(req.Name, req.Prompt, kind,
-            req.ScheduleTimeUtc, req.IntervalMinutes, req.NextRunAt);
+            req.ScheduleTimeUtc, req.IntervalMinutes, req.NextRunAt,
+            autoKind);
         if (error is not null)
         {
             return (null, error);
+        }
+
+        var (scanConfig, scanErr) = BuildScanConfig(autoKind, req);
+        if (scanErr is not null)
+        {
+            return (null, scanErr);
         }
 
         var now = DateTimeOffset.UtcNow;
@@ -142,6 +255,8 @@ public sealed class AutomationService(
             Prompt = req.Prompt!,
             LlmModel = req.LlmModel,
             SelectedRepository = req.SelectedRepository,
+            Kind = autoKind,
+            ScanConfigJson = scanConfig,
             ScheduleKind = kind,
             ScheduleTimeUtc = req.ScheduleTimeUtc,
             IntervalMinutes = req.IntervalMinutes ?? 0,
@@ -171,12 +286,13 @@ public sealed class AutomationService(
         }
 
         var kind = req.ScheduleKind?.Trim().ToLowerInvariant() ?? rec.ScheduleKind;
+        var autoKind = req.Kind?.Trim().ToLowerInvariant() ?? rec.Kind;
         var time = req.ScheduleTimeUtc ?? rec.ScheduleTimeUtc;
         var interval = req.IntervalMinutes ?? rec.IntervalMinutes;
         var next = req.NextRunAt ?? rec.NextRunAt;
         var error = Validate(
             req.Name ?? rec.Name, req.Prompt ?? rec.Prompt, kind, time,
-            interval, next);
+            interval, next, autoKind);
         if (error is not null)
         {
             return (null, error);
@@ -189,6 +305,20 @@ public sealed class AutomationService(
         {
             rec.SelectedRepository = req.SelectedRepository;
         }
+
+        rec.Kind = autoKind;
+        if (autoKind == AutomationKinds.Scan)
+        {
+            var (scanConfig, scanErr) = BuildScanConfig(
+                autoKind, req, rec);
+            if (scanErr is not null)
+            {
+                return (null, scanErr);
+            }
+
+            rec.ScanConfigJson = scanConfig;
+        }
+
         rec.ScheduleKind = kind;
         rec.ScheduleTimeUtc = time;
         rec.IntervalMinutes = interval;
@@ -282,24 +412,53 @@ public sealed class AutomationService(
         try
         {
             var ownerId = Guid.Parse(rec.CreatedByUserId);
-            var task = await conversations.CreateForUserAsync(
-                ownerId, rec.OrgId,
-                new CreateConversationRequest(
-                    new InitialMessage("user", [rec.Prompt], Run: true),
-                    rec.SelectedRepository, null, rec.LlmModel, null),
-                ct);
-            run.ConversationId = task.AppConversationId;
-            run.FinishedAt = DateTimeOffset.UtcNow;
-
-            // SPEC-47 RF-006: origem automation:{id} no stream da conversa.
-            if (run.ConversationId is { } convId)
+            if (rec.Kind == AutomationKinds.Scan && scans is not null)
             {
-                await events.AppendAsync(convId, new AgentDiagnosticEvent
+                // SPEC-143: kind=scan → POST /scans equivalente. O run
+                // resolve imediato (succeeded) — o scan tem lifecycle
+                // próprio (queued → running → completed).
+                var cfg = AutomationScanConfig.Parse(rec.ScanConfigJson)
+                    ?? throw new InvalidOperationException(
+                        "scan automation missing scan_config_json");
+                var (created, scanErr) = await scans.CreateAsync(
+                    new Application.Scans.CreateScanRequest(
+                        cfg.Repositories, rec.Prompt,
+                        cfg.Profile, cfg.Effort),
+                    ownerId, rec.OrgId,
+                    Application.Scans.ScanTriggers.Automation, ct);
+                if (created is null)
                 {
-                    Severity = "info",
-                    Code = "automation",
-                    Message = $"fired by automation:{rec.Id} ({rec.Name})",
-                }, CancellationToken.None);
+                    throw new InvalidOperationException(
+                        scanErr ?? "scan creation failed");
+                }
+
+                run.ConversationId = created.CoordinatorConversationId;
+                run.Status = "succeeded";
+                run.FinishedAt = DateTimeOffset.UtcNow;
+            }
+            else
+            {
+                var task = await conversations.CreateForUserAsync(
+                    ownerId, rec.OrgId,
+                    new CreateConversationRequest(
+                        new InitialMessage("user", [rec.Prompt], Run: true),
+                        rec.SelectedRepository, null, rec.LlmModel, null),
+                    ct);
+                run.ConversationId = task.AppConversationId;
+                run.FinishedAt = DateTimeOffset.UtcNow;
+
+                // SPEC-47 RF-006: origem automation:{id} no stream da
+                // conversa.
+                if (run.ConversationId is { } convId)
+                {
+                    await events.AppendAsync(convId, new AgentDiagnosticEvent
+                    {
+                        Severity = "info",
+                        Code = "automation",
+                        Message =
+                            $"fired by automation:{rec.Id} ({rec.Name})",
+                    }, CancellationToken.None);
+                }
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

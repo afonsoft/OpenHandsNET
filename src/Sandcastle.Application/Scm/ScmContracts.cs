@@ -211,7 +211,9 @@ public sealed record ScmPullRequest(
     int Number,
     string State,
     string HeadSha,
-    string Title);
+    string Title,
+    // SPEC-143: merged flag (providers distinguish closed ≠ merged).
+    bool Merged = false);
 
 /// <summary>
 /// SPEC-140 RF-002: um arquivo do diff de um PR (forma unificada).
