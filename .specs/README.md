@@ -141,3 +141,11 @@ Aprovadas em 2026-11-10 pelo usuário — Epic acompanha no GitHub.
 | 145 | repo-wiki-mcp | Delivered · PR #420 | #410 |
 | 146 | multi-repo-conversations | Delivered · PR #421 | #411 |
 | 147 | product-polish | Delivered · PR #413 | #412 |
+
+### Próxima onda (Onda D — ecossistema) — Draft
+
+| SPEC | Título | Status | Ticket |
+|---|---|---|---|
+| 148 | skills-marketplace | Draft | GAP-MARKETPLACE |
+| 149 | model-router | Draft | GAP-MODEL-ROUTER |
+| 150 | cli-handoff | Draft | GAP-CLI-HANDOFF |
