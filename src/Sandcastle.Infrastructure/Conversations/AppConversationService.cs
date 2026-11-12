@@ -178,10 +178,17 @@ public sealed class AppConversationService( // NOSONAR S107 — SPEC-104 (decis�
             q = q.Where(r => r.CreatedAtTicks >= gte);
         }
 
-        if (CursorPaginator.TryDecode(query.PageId, out var ticks, out var id))
+        if (CursorPaginator.TryDecode(query.PageId, out var ticks, out var raw)
+            && Guid.TryParse(raw, out _))
         {
+            // Sqlite persiste Guid como TEXT uppercase; PG serializa uuid
+            // lowercase — normalizar os dois lados via LOWER() mantém o
+            // tie-break consistente com o ORDER BY id (transformação
+            // monótona dentro do domínio de storage de cada provider).
+            var id = raw.ToLowerInvariant();
             q = q.Where(r => r.CreatedAtTicks < ticks
-                || (r.CreatedAtTicks == ticks && string.Compare(r.Id.ToString(), id) < 0));
+                || (r.CreatedAtTicks == ticks
+                    && string.Compare(r.Id.ToString().ToLower(), id) < 0));
         }
 
         var limit = Math.Clamp(query.Limit, 1, 100);

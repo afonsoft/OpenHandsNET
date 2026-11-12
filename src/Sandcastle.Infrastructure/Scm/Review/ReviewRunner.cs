@@ -49,11 +49,9 @@ public sealed class ReviewRunner( // NOSONAR S107 — SPEC-104 (decisão aprovad
     {
         var run = await db.ReviewRuns.IgnoreQueryFilters()
             .FirstOrDefaultAsync(r => r.Id == reviewRunId, ct);
-        if (run is null
-            || run.Status is not (ReviewRunStatuses.Queued
-                or ReviewRunStatuses.Running))
+        if (run is null || run.Status != ReviewRunStatuses.Queued)
         {
-            return;
+            return; // só queued executa — entrada duplicada/terminal é no-op
         }
 
         var connectionRecord = await db.ScmConnections.IgnoreQueryFilters()
@@ -65,9 +63,22 @@ public sealed class ReviewRunner( // NOSONAR S107 — SPEC-104 (decisão aprovad
             return;
         }
 
+        // Claim atômico queued→running: o reconcile de boot pode re-
+        // enfileirar um run que também já estava no canal — só o
+        // primeiro claim executa (idempotente contra double-enqueue).
+        var now = DateTimeOffset.UtcNow;
+        var claimed = await db.ReviewRuns.IgnoreQueryFilters()
+            .Where(r => r.Id == run.Id
+                && r.Status == ReviewRunStatuses.Queued)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.Status, ReviewRunStatuses.Running)
+                .SetProperty(r => r.StartedAt, now), ct);
+        if (claimed == 0)
+        {
+            return;
+        }
         run.Status = ReviewRunStatuses.Running;
-        run.StartedAt = DateTimeOffset.UtcNow;
-        await db.SaveChangesAsync(ct);
+        run.StartedAt = now;
 
         var connection = ScmConnectionService.ToModel(connectionRecord);
         try

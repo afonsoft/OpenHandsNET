@@ -4,6 +4,7 @@ using System.Text.Json;
 
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -11,6 +12,7 @@ using Sandcastle.Application.Agent;
 using Sandcastle.Application.Ask;
 using Sandcastle.Application.Contracts;
 using Sandcastle.Application.Conversations;
+using Sandcastle.Application.Coordination;
 using Sandcastle.Application.Identity;
 using Sandcastle.Application.Indexing;
 using Sandcastle.Application.Scm;
@@ -745,6 +747,130 @@ public sealed class Spec145RepoWikiTests : IAsyncDisposable
         // excluído do plano de arquivos (não entra nos prompts de fontes)
         llm.Prompts.ShouldAllBe(p => !p.Contains("docs/README.md")
             || p.Contains("file_list"));
+    }
+
+    // ---- worker: reconcile de órfãos no boot ------------------------------
+
+    [Fact]
+    public async Task Worker_requeues_orphan_queued_run_on_start()
+    {
+        // Hygiene (#424-followup): a fila é in-process — run `queued` de
+        // um processo anterior volta ao canal no boot do worker.
+        var run = new WikiRunRecord
+        {
+            Id = Guid.NewGuid(),
+            OrgId = _orgId,
+            Repository = "afonsoft/demo",
+            Branch = "main",
+            Effort = "low",
+            Status = WikiRunStatuses.Queued,
+            CreatedAt = DateTimeOffset.UtcNow,
+        };
+        _db.WikiRuns.Add(run);
+        await _db.SaveChangesAsync();
+
+        var runner = new RecordingRunner();
+        await using var sp = WorkerProvider(runner);
+        var worker = new WikiRunWorker(new WikiDispatcher(),
+            sp.GetRequiredService<IServiceScopeFactory>(),
+            new NullDistributedLock(),
+            NullLogger<WikiRunWorker>.Instance);
+
+        using var cts = new CancellationTokenSource(
+            TimeSpan.FromSeconds(15));
+        await worker.StartAsync(cts.Token);
+        try
+        {
+            (await runner.Next.WaitAsync(cts.Token)).ShouldBe(run.Id);
+        }
+        finally
+        {
+            await worker.StopAsync(CancellationToken.None);
+        }
+    }
+
+    [Fact]
+    public async Task Worker_fails_interrupted_running_run_as_worker_restart()
+    {
+        // `running` no boot = interrompido — failed + worker_restart.
+        var run = new WikiRunRecord
+        {
+            Id = Guid.NewGuid(),
+            OrgId = _orgId,
+            Repository = "afonsoft/demo",
+            Branch = "main",
+            Effort = "low",
+            Status = WikiRunStatuses.Running,
+            CreatedAt = DateTimeOffset.UtcNow,
+        };
+        _db.WikiRuns.Add(run);
+        await _db.SaveChangesAsync();
+
+        var runner = new RecordingRunner();
+        await using var sp = WorkerProvider(runner);
+        var worker = new WikiRunWorker(new WikiDispatcher(),
+            sp.GetRequiredService<IServiceScopeFactory>(),
+            new NullDistributedLock(),
+            NullLogger<WikiRunWorker>.Instance);
+
+        using var cts = new CancellationTokenSource(
+            TimeSpan.FromSeconds(15));
+        await worker.StartAsync(cts.Token);
+        try
+        {
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+            while (true)
+            {
+                _db.ChangeTracker.Clear();
+                var row = await _db.WikiRuns.IgnoreQueryFilters()
+                    .SingleAsync(r => r.Id == run.Id);
+                if (row.Status == WikiRunStatuses.Failed)
+                {
+                    row.Error.ShouldBe("worker_restart");
+                    row.FinishedAt.ShouldNotBeNull();
+                    break;
+                }
+                (DateTime.UtcNow < deadline).ShouldBeTrue(
+                    "interrupted run was not reconciled");
+                await Task.Delay(50, cts.Token);
+            }
+            runner.Calls.ShouldBeEmpty();
+        }
+        finally
+        {
+            await worker.StopAsync(CancellationToken.None);
+        }
+    }
+
+    /// <summary>
+    /// Scopes do worker: DbContext scoped na mesma conexão do teste +
+    /// runner fake — espelha o grafo de DI real.
+    /// </summary>
+    private ServiceProvider WorkerProvider(IWikiRunner runner)
+    {
+        var sc = new ServiceCollection();
+        sc.AddDbContext<AppDbContext>(o => o.UseSqlite(_conn)
+            .UseSnakeCaseNamingConvention());
+        sc.AddScoped(_ => runner);
+        return sc.BuildServiceProvider();
+    }
+
+    private sealed class RecordingRunner : IWikiRunner
+    {
+        private readonly TaskCompletionSource<Guid> _next =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public List<Guid> Calls { get; } = [];
+        public Task<Guid> Next => _next.Task;
+
+        public Task RunAsync(Guid wikiRunId, CancellationToken ct)
+        {
+            lock (Calls)
+            {
+                Calls.Add(wikiRunId);
+            }
+            _next.TrySetResult(wikiRunId);
+            return Task.CompletedTask;
+        }
     }
 
     // ---- wiki service ------------------------------------------------------

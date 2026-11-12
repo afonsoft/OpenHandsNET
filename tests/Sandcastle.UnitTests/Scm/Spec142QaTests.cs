@@ -4,11 +4,13 @@ using System.Text.Json;
 
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using Sandcastle.Application.Agent;
 using Sandcastle.Application.Artifacts;
+using Sandcastle.Application.Coordination;
 using Sandcastle.Application.Git;
 using Sandcastle.Application.Identity;
 using Sandcastle.Application.Sandbox;
@@ -747,6 +749,148 @@ public sealed class Spec142QaTests : IAsyncDisposable
         (await Service().GetAsync(
             Guid.NewGuid(), run.Id, CancellationToken.None))
             .ShouldBeNull(); // outra org — ACL
+    }
+
+    [Fact]
+    public async Task Search_paginates_guid_boundary_without_duplicates()
+    {
+        // #424: SQLite persiste Guid TEXT uppercase e o cursor carrega
+        // lowercase — com CreatedAt idêntico toda quebra de página cai no
+        // tie-break por id; sem normalização a linha do cursor repete.
+        var at = DateTimeOffset.UtcNow;
+        var seeded = new List<Guid>();
+        for (var i = 0; i < 5; i++)
+        {
+            var run = new QaRunRecord
+            {
+                Id = Guid.NewGuid(),
+                OrgId = _orgId,
+                ConnectionId = _connectionId,
+                Repository = "afonsoft/demo",
+                PrNumber = 7,
+                HeadSha = $"head-{i}",
+                Status = QaRunStatuses.Completed,
+                Trigger = "webhook",
+                CreatedAt = at,
+            };
+            _db.QaRuns.Add(run);
+            seeded.Add(run.Id);
+        }
+        await _db.SaveChangesAsync();
+
+        var seen = new List<Guid>();
+        string? cursor = null;
+        do
+        {
+            var page = await Service().SearchAsync(_orgId, null, null, null,
+                cursor, 2, CancellationToken.None);
+            seen.AddRange(page.Items.Select(r => r.Id));
+            cursor = page.NextPageId;
+        }
+        while (cursor is not null);
+
+        seen.ShouldBe(seeded, ignoreOrder: true);
+    }
+
+    // ---- worker: reconcile de órfãos no boot ------------------------------
+
+    [Fact]
+    public async Task Worker_requeues_orphan_queued_run_on_start()
+    {
+        // Hygiene (#424-followup): a fila é in-process — run `queued` de
+        // um processo anterior volta ao canal no boot do worker.
+        var run = await SeedRunAsync();
+        var runner = new RecordingRunner();
+        await using var sp = WorkerProvider(runner);
+        var worker = new QaRunWorker(new QaDispatcher(),
+            sp.GetRequiredService<IServiceScopeFactory>(),
+            new NullDistributedLock(),
+            NullLogger<QaRunWorker>.Instance);
+
+        using var cts = new CancellationTokenSource(
+            TimeSpan.FromSeconds(15));
+        await worker.StartAsync(cts.Token);
+        try
+        {
+            (await runner.Next.WaitAsync(cts.Token)).ShouldBe(run.Id);
+        }
+        finally
+        {
+            await worker.StopAsync(CancellationToken.None);
+        }
+    }
+
+    [Fact]
+    public async Task Worker_fails_interrupted_running_run_as_worker_restart()
+    {
+        // `running` no boot = interrompido — failed + worker_restart
+        // (re-execução cega podia duplicar comentário/status no PR).
+        var run = await SeedRunAsync(status: QaRunStatuses.Running);
+        var runner = new RecordingRunner();
+        await using var sp = WorkerProvider(runner);
+        var worker = new QaRunWorker(new QaDispatcher(),
+            sp.GetRequiredService<IServiceScopeFactory>(),
+            new NullDistributedLock(),
+            NullLogger<QaRunWorker>.Instance);
+
+        using var cts = new CancellationTokenSource(
+            TimeSpan.FromSeconds(15));
+        await worker.StartAsync(cts.Token);
+        try
+        {
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+            while (true)
+            {
+                _db.ChangeTracker.Clear();
+                var row = await _db.QaRuns.IgnoreQueryFilters()
+                    .SingleAsync(r => r.Id == run.Id);
+                if (row.Status == QaRunStatuses.Failed)
+                {
+                    row.Error.ShouldBe("worker_restart");
+                    row.FinishedAt.ShouldNotBeNull();
+                    break;
+                }
+                (DateTime.UtcNow < deadline).ShouldBeTrue(
+                    "interrupted run was not reconciled");
+                await Task.Delay(50, cts.Token);
+            }
+            runner.Calls.ShouldBeEmpty();
+        }
+        finally
+        {
+            await worker.StopAsync(CancellationToken.None);
+        }
+    }
+
+    /// <summary>
+    /// Scopes do worker: DbContext scoped na mesma conexão do teste +
+    /// runner fake — espelha o grafo de DI real.
+    /// </summary>
+    private ServiceProvider WorkerProvider(IQaRunner runner)
+    {
+        var sc = new ServiceCollection();
+        sc.AddDbContext<AppDbContext>(o => o.UseSqlite(_conn)
+            .UseSnakeCaseNamingConvention());
+        sc.AddScoped(_ => runner);
+        return sc.BuildServiceProvider();
+    }
+
+    private sealed class RecordingRunner : IQaRunner
+    {
+        private readonly TaskCompletionSource<Guid> _next =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public List<Guid> Calls { get; } = [];
+        public Task<Guid> Next => _next.Task;
+
+        public Task RunAsync(Guid qaRunId, CancellationToken ct)
+        {
+            lock (Calls)
+            {
+                Calls.Add(qaRunId);
+            }
+            _next.TrySetResult(qaRunId);
+            return Task.CompletedTask;
+        }
     }
 
     // ---- internals --------------------------------------------------------

@@ -2,10 +2,12 @@ using System.Text.Json.Nodes;
 
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using Sandcastle.Application.Agent;
+using Sandcastle.Application.Coordination;
 using Sandcastle.Application.Identity;
 using Sandcastle.Application.Scm;
 using Sandcastle.Infrastructure.Agent;
@@ -387,6 +389,150 @@ public sealed class Spec140ReviewRunnerTests : IAsyncDisposable
         patched!.Status.ShouldBe(ReviewFindingStatuses.Dismissed);
         (await svc.UpdateFindingStatusAsync(_orgId, runId, fid,
             "bogus", CancellationToken.None)).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Search_paginates_guid_boundary_without_duplicates()
+    {
+        // #424: SQLite persiste Guid TEXT uppercase e o cursor carrega
+        // lowercase — com CreatedAt idêntico toda quebra de página cai no
+        // tie-break por id; sem normalização a linha do cursor repete.
+        var at = DateTimeOffset.UtcNow;
+        var seeded = new List<Guid>();
+        for (var i = 0; i < 5; i++)
+        {
+            var run = new ReviewRunRecord
+            {
+                Id = Guid.NewGuid(),
+                OrgId = _orgId,
+                ConnectionId = _connectionId,
+                Repository = "afonsoft/demo",
+                PrNumber = 7,
+                HeadSha = $"head-{i}",
+                Status = ReviewRunStatuses.Completed,
+                Trigger = "webhook",
+                CreatedAt = at,
+            };
+            _db.ReviewRuns.Add(run);
+            seeded.Add(run.Id);
+        }
+        await _db.SaveChangesAsync();
+
+        var svc = Service();
+        var seen = new List<Guid>();
+        string? cursor = null;
+        do
+        {
+            var page = await svc.SearchAsync(_orgId, null, null, null,
+                cursor, 2, CancellationToken.None);
+            seen.AddRange(page.Items.Select(r => r.Id));
+            cursor = page.NextPageId;
+        }
+        while (cursor is not null);
+
+        seen.ShouldBe(seeded, ignoreOrder: true);
+    }
+
+    // ---- worker: reconcile de órfãos no boot ------------------------------
+
+    [Fact]
+    public async Task Worker_requeues_orphan_queued_run_on_start()
+    {
+        // Hygiene (#424-followup): a fila é in-process — run `queued` de
+        // um processo anterior volta ao canal no boot do worker.
+        var runId = await SeedRunAsync();
+        var runner = new RecordingRunner();
+        await using var sp = WorkerProvider(runner);
+        var worker = new ReviewRunWorker(new ReviewDispatcher(),
+            sp.GetRequiredService<IServiceScopeFactory>(),
+            new NullDistributedLock(),
+            NullLogger<ReviewRunWorker>.Instance);
+
+        using var cts = new CancellationTokenSource(
+            TimeSpan.FromSeconds(15));
+        await worker.StartAsync(cts.Token);
+        try
+        {
+            (await runner.Next.WaitAsync(cts.Token)).ShouldBe(runId);
+        }
+        finally
+        {
+            await worker.StopAsync(CancellationToken.None);
+        }
+    }
+
+    [Fact]
+    public async Task Worker_fails_interrupted_running_run_as_worker_restart()
+    {
+        // `running` no boot = interrompido — failed + worker_restart
+        // (re-execução cega podia duplicar efeitos externos).
+        var runId = await SeedRunAsync(
+            status: ReviewRunStatuses.Running);
+        var runner = new RecordingRunner();
+        await using var sp = WorkerProvider(runner);
+        var worker = new ReviewRunWorker(new ReviewDispatcher(),
+            sp.GetRequiredService<IServiceScopeFactory>(),
+            new NullDistributedLock(),
+            NullLogger<ReviewRunWorker>.Instance);
+
+        using var cts = new CancellationTokenSource(
+            TimeSpan.FromSeconds(15));
+        await worker.StartAsync(cts.Token);
+        try
+        {
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+            while (true)
+            {
+                _db.ChangeTracker.Clear();
+                var run = await _db.ReviewRuns.IgnoreQueryFilters()
+                    .SingleAsync(r => r.Id == runId);
+                if (run.Status == ReviewRunStatuses.Failed)
+                {
+                    run.Error.ShouldBe("worker_restart");
+                    run.FinishedAt.ShouldNotBeNull();
+                    break;
+                }
+                (DateTime.UtcNow < deadline).ShouldBeTrue(
+                    "interrupted run was not reconciled");
+                await Task.Delay(50, cts.Token);
+            }
+            runner.Calls.ShouldBeEmpty();
+        }
+        finally
+        {
+            await worker.StopAsync(CancellationToken.None);
+        }
+    }
+
+    /// <summary>
+    /// Scopes do worker: DbContext scoped na mesma conexão do teste +
+    /// runner fake — espelha o grafo de DI real.
+    /// </summary>
+    private ServiceProvider WorkerProvider(IReviewRunner runner)
+    {
+        var sc = new ServiceCollection();
+        sc.AddDbContext<AppDbContext>(o => o.UseSqlite(_conn)
+            .UseSnakeCaseNamingConvention());
+        sc.AddScoped(_ => runner);
+        return sc.BuildServiceProvider();
+    }
+
+    private sealed class RecordingRunner : IReviewRunner
+    {
+        private readonly TaskCompletionSource<Guid> _next =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public List<Guid> Calls { get; } = [];
+        public Task<Guid> Next => _next.Task;
+
+        public Task RunAsync(Guid reviewRunId, CancellationToken ct)
+        {
+            lock (Calls)
+            {
+                Calls.Add(reviewRunId);
+            }
+            _next.TrySetResult(reviewRunId);
+            return Task.CompletedTask;
+        }
     }
 
     public async ValueTask DisposeAsync()

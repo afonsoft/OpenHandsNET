@@ -62,11 +62,16 @@ public sealed class StartTaskService : IStartTaskService
             q = q.Where(r => r.Status == s);
         }
 
-        if (AppConversationService.TryDecodeCursor(pageId, out var ticks, out var id))
+        if (AppConversationService.TryDecodeCursor(
+                pageId, out var ticks, out var raw)
+            && Guid.TryParse(raw, out _))
         {
+            // Mesma normalização de AppConversationService.SearchAsync —
+            // Guid persiste TEXT uppercase no Sqlite (#424).
+            var id = raw.ToLowerInvariant();
             q = q.Where(r => r.CreatedAtTicks < ticks
                 || (r.CreatedAtTicks == ticks
-                    && string.Compare(r.Id.ToString(), id) < 0));
+                    && string.Compare(r.Id.ToString().ToLower(), id) < 0));
         }
 
         return (await q.OrderByDescending(r => r.CreatedAtTicks)
