@@ -8,7 +8,7 @@
 | Type | `Feature / CLI + API` |
 | Stack | `.NET 10 · sandcastle CLI (Spectre) · RuntimeApi · conversation resume` |
 | Repository | `afonsoft/sandcastle` |
-| Status | `Draft` |
+| Status | `Approved` |
 | Ticket | `GAP-CLI-HANDOFF` (docs/research/2026-11-competitive-gap-analysis.md §2.3) |
 | Depends on | `04` (start-task), `12` (git), `124` (MCP/CLI), `145` (clone provider) |
 | Reference | Devin `handoff`/`pickup`/`ssh` (CLI↔cloud task transfer) — conceitos apenas |

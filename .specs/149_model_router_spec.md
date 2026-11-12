@@ -8,7 +8,7 @@
 | Type | `Feature / LLM gateway` |
 | Stack | `.NET 10 · BYOK gateway (SPEC-134) · usage metering` |
 | Repository | `afonsoft/sandcastle` |
-| Status | `Draft` |
+| Status | `Approved` |
 | Ticket | `GAP-MODEL-ROUTER` (docs/research/2026-11-competitive-gap-analysis.md §2.1 — OH Ent 0.103) |
 | Depends on | `134` (BYOK/model picker), `20` (usage/quotas) |
 | Reference | OpenHands Enterprise Model Routing (0.103.0) — conceitos apenas |

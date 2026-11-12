@@ -142,10 +142,10 @@ Aprovadas em 2026-11-10 pelo usuário — Epic acompanha no GitHub.
 | 146 | multi-repo-conversations | Delivered · PR #421 | #411 |
 | 147 | product-polish | Delivered · PR #413 | #412 |
 
-### Próxima onda (Onda D — ecossistema) — Draft
+### Próxima onda (Onda D — ecossistema) — Approved
 
 | SPEC | Título | Status | Ticket |
 |---|---|---|---|
-| 148 | skills-marketplace | Draft | GAP-MARKETPLACE |
-| 149 | model-router | Draft | GAP-MODEL-ROUTER |
-| 150 | cli-handoff | Draft | GAP-CLI-HANDOFF |
+| 148 | skills-marketplace | Approved | GAP-MARKETPLACE |
+| 149 | model-router | Approved | GAP-MODEL-ROUTER |
+| 150 | cli-handoff | Approved | GAP-CLI-HANDOFF |
