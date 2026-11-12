@@ -1,5 +1,40 @@
 # memory.md — estado corrente (max 100 linhas)
 
+## Sessão 2026-11-12 — SPEC-143 code-scans (issue #408)
+
+- Branch `feature/spec-143-code-scans`. Pipeline completo: `/scan` +
+  `POST /api/v1/scans` (202 + coordinator conv) → `ScanWorker`/
+  `IScanDispatcher` (channel) → `ScanOrchestrator` fan-out read-only por
+  partições de diretório (`ScanPartitioner` bin-pack por file count,
+  ignora bin/obj/node_modules/.git/.vs/.idea/dist/build) → filhos
+  `agent_type=scan-worker` via `IDelegationService` (herda
+  `ScanPermissions.ReadOnly`, depth+sibling cap só-ativos) → coleta
+  MessageEvents → `ScanFindingParser` (`scan_finding_v1` fenced block +
+  trailing-JSON fallback, caps + injection hygiene) → `ScanDeduplicator`
+  (repo+path+line-proximity+kind; severidade > descrição > confidence) →
+  persist `scans`/`scan_findings` com redaction. Fix explícito:
+  `POST /scan-findings/{id}/fix` (assign-first → 409 dupe, conversa
+  scan-fix com escrita/PR) + `fix-bulk` cap; reconciliação
+  assigned→pr_open→merged (`ScmPullRequest.Merged` adicionado aos 4
+  providers). Automation `kind=scan` (`scan_config_json`, default "task"
+  backfill) dispara `IScanService` (run succeeded imediato — lifecycle
+  próprio). Permissões `scans.run`/`scans.manage`/`scans.findings`
+  (member run+findings, admin manage). `ModelRole.Analysis`. Dual
+  migrations SQLite+Postgres ok. UI `/scans` + `/scans/{id}` + sidebar +
+  slash `/scan` + i18n 61 keys ×8. `SwarmOrchestrator` stub deletado.
+- **Bug real encontrado pelos testes**: `string.Compare(id.ToString(), cursor)`
+  é quebrado no SQLite — Microsoft.Data.Sqlite persiste/bindinga Guid como
+  TEXT **uppercase**, cursor encoda `ToString()` **lowercase** → a linha-
+  cursor duplica na página seguinte (binário collation `UPPER < lower`).
+  Fix em `ScanService`: `string.Compare(s.Id.ToString().ToLower(), id)`
+  com `id.ToLowerInvariant()` (LOWER() monótono, consistente nos 2
+  providers — uuid PG serializa lowercase). **Mesmo padrão latent-bug em
+  AppConversationService.cs:184, ReviewService.cs, QaService.cs,
+  AutofixService.cs** — follow-up fora do escopo SPEC-143.
+- Verde: 48 unit Scans + 5 endpoint integration + 6 automation-scan;
+  build 0/0; format clean; guards i18n/css/a11y/mcp-golden OK.
+- Pendente fim: suite full, commit/push/PR, labels #408, archive spec.
+
 ## Sessão 2026-11-11 (cont. 4) — SPEC-146 multi-repo-conversations (issue #411)
 
 - **WIP herdado** (sessão anterior, uncommitted em `main`, ~2.1k linhas)
