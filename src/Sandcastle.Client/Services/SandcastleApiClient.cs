@@ -1141,6 +1141,115 @@ public sealed class SandcastleApiClient(HttpClient http)
         GetOrNull<WikiRunDto>(
             $"/api/v1/repos/{Uri.EscapeDataString(repository)}"
             + $"/wiki/runs/{runId}", ct);
+
+    // ---- SPEC-143: code scans ---------------------------------------------
+
+    /// <summary>
+    /// POST /scans {repositories[], goal, profile?, effort?} → 202.
+    /// null = 4xx (validação/quota — mensagem fica no catch da página).
+    /// </summary>
+    public async Task<ScanCreatedDto?> CreateScanAsync(
+        IReadOnlyList<string> repositories, string goal,
+        string? profile, string? effort, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync("/api/v1/scans", new
+        {
+            repositories,
+            goal,
+            profile,
+            effort,
+        }, Json, ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            return null;
+        }
+        return await resp.Content
+            .ReadFromJsonAsync<ScanCreatedDto>(Json, ct);
+    }
+
+    /// <summary>GET /scans (status/cursor/limit query) — lista cursada.</summary>
+    public Task<ScanPageDto?> ListScansAsync(
+        string? status = null, string? cursor = null, int limit = 50,
+        CancellationToken ct = default)
+    {
+        var path = $"/api/v1/scans?limit={limit}"
+            + (string.IsNullOrEmpty(status)
+                ? "" : $"&status={Uri.EscapeDataString(status)}")
+            + (string.IsNullOrEmpty(cursor)
+                ? "" : $"&cursor={Uri.EscapeDataString(cursor)}");
+        return GetOrNull<ScanPageDto>(path, ct);
+    }
+
+    /// <summary>GET /scans/{id} — detalhe + contagens por severidade.</summary>
+    public Task<ScanDto?> GetScanAsync(
+        Guid id, CancellationToken ct = default) =>
+        GetOrNull<ScanDto>($"/api/v1/scans/{id}", ct);
+
+    /// <summary>GET /scans/{id}/findings — RF-004 filters + cursor.</summary>
+    public Task<ScanFindingPageDto?> GetScanFindingsAsync(
+        Guid scanId, string? repository = null, string? severity = null,
+        string? status = null, string? remediationState = null,
+        string? q = null, string? after = null, int first = 200,
+        CancellationToken ct = default)
+    {
+        var path = $"/api/v1/scans/{scanId}/findings?first={first}"
+            + (string.IsNullOrEmpty(repository)
+                ? "" : $"&repository={Uri.EscapeDataString(repository)}")
+            + (string.IsNullOrEmpty(severity)
+                ? "" : $"&severity={Uri.EscapeDataString(severity)}")
+            + (string.IsNullOrEmpty(status)
+                ? "" : $"&status={Uri.EscapeDataString(status)}")
+            + (string.IsNullOrEmpty(remediationState)
+                ? "" : $"&remediation_state={Uri.EscapeDataString(remediationState)}")
+            + (string.IsNullOrEmpty(q)
+                ? "" : $"&q={Uri.EscapeDataString(q)}")
+            + (string.IsNullOrEmpty(after)
+                ? "" : $"&after={Uri.EscapeDataString(after)}");
+        return GetOrNull<ScanFindingPageDto>(path, ct);
+    }
+
+    /// <summary>PATCH /scan-findings/{id} {status} — triagem.</summary>
+    public async Task<ScanFindingDto?> PatchScanFindingAsync(
+        Guid id, string status, CancellationToken ct = default)
+    {
+        var resp = await http.PatchAsJsonAsync(
+            $"/api/v1/scan-findings/{id}", new { status }, Json, ct);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content
+                .ReadFromJsonAsync<ScanFindingDto>(Json, ct)
+            : null;
+    }
+
+    /// <summary>
+    /// POST /scan-findings/{id}/fix — 202 {finding_id, conversation_id}
+    /// ou null (404/409 — a página decide o toast).
+    /// </summary>
+    public async Task<ScanFixResultDto?> FixScanFindingAsync(
+        Guid id, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsync(
+            $"/api/v1/scan-findings/{id}/fix", null, ct);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content
+                .ReadFromJsonAsync<ScanFixResultDto>(Json, ct)
+            : null;
+    }
+
+    /// <summary>POST /scan-findings/fix-bulk {ids[]} — 202 items[].</summary>
+    public async Task<IReadOnlyList<ScanFixResultDto>?>
+        FixScanFindingsBulkAsync(
+            IReadOnlyList<Guid> ids, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync(
+            "/api/v1/scan-findings/fix-bulk", new { ids }, Json, ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            return null;
+        }
+        var page = await resp.Content
+            .ReadFromJsonAsync<ScanFixBulkDto>(Json, ct);
+        return page?.Items;
+    }
 }
 
 /// <summary>SPEC-147 RF-004: resposta de <c>/usage/budget</c>.</summary>
@@ -1182,6 +1291,45 @@ public sealed record WikiRunDto(
     Guid Id, Guid? OrgId, string Repository, string Branch,
     string? CommitSha, string Effort, string Status, string? StatsJson,
     string? Error, DateTimeOffset CreatedAt, DateTimeOffset? FinishedAt);
+
+/// <summary>SPEC-143: resposta 202 do POST /scans.</summary>
+public sealed record ScanCreatedDto(
+    Guid ScanId, Guid? ConversationId,
+    Guid? CoordinatorConversationId, string Status);
+
+/// <summary>SPEC-143: página de scans.</summary>
+public sealed record ScanPageDto(
+    IReadOnlyList<ScanDto> Items, string? NextPageId);
+
+/// <summary>SPEC-143: scan na listagem/detalhe.</summary>
+public sealed record ScanDto(
+    Guid Id, Guid? OrgId, IReadOnlyList<string> Repositories,
+    string Goal, string Profile, string Effort, string Status,
+    string Trigger, Guid? CoordinatorConversationId,
+    int FindingsCount, IReadOnlyDictionary<string, int> SeverityCounts,
+    string? Error, DateTimeOffset CreatedAt,
+    DateTimeOffset? FinishedAt);
+
+/// <summary>SPEC-143: página de findings.</summary>
+public sealed record ScanFindingPageDto(
+    IReadOnlyList<ScanFindingDto> Items, string? NextPageId);
+
+/// <summary>SPEC-143: finding triável.</summary>
+public sealed record ScanFindingDto(
+    Guid Id, Guid ScanId, Guid? OrgId, string Repository, string Path,
+    int? StartLine, int? EndLine, string Kind, string Severity,
+    double? Confidence, string? Title, string Description,
+    string? RemediationHint, string Status, string RemediationState,
+    Guid? ConversationId, string? PrUrl, string? Payoff,
+    DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
+
+/// <summary>SPEC-143: resultado de um fix (item do bulk também).</summary>
+public sealed record ScanFixResultDto(
+    Guid FindingId, Guid? ConversationId, string? Error);
+
+/// <summary>SPEC-143: envelope 202 do fix-bulk.</summary>
+public sealed record ScanFixBulkDto(
+    IReadOnlyList<ScanFixResultDto> Items);
 
 /// <summary>SPEC-63: sugestão de knowledge na fila.</summary>
 public sealed record KnowledgeSuggestionItem(

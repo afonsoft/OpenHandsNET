@@ -139,6 +139,14 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("integer")
                         .HasColumnName("interval_minutes");
 
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("task")
+                        .HasColumnName("kind");
+
                     b.Property<DateTimeOffset?>("LastRunAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_run_at");
@@ -168,6 +176,10 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations.Postgres
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("prompt");
+
+                    b.Property<string>("ScanConfigJson")
+                        .HasColumnType("text")
+                        .HasColumnName("scan_config_json");
 
                     b.Property<string>("ScheduleKind")
                         .IsRequired()
@@ -2595,6 +2607,234 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations.Postgres
                         .HasName("pk_sandbox_specs");
 
                     b.ToTable("sandbox_specs", (string)null);
+                });
+
+            modelBuilder.Entity("Sandcastle.Infrastructure.Scans.ScanFindingRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<double?>("Confidence")
+                        .HasColumnType("double precision")
+                        .HasColumnName("confidence");
+
+                    b.Property<Guid?>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("CreatedAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_at_ticks");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<int?>("EndLine")
+                        .HasColumnType("integer")
+                        .HasColumnName("end_line");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("path");
+
+                    b.Property<string>("Payoff")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("payoff");
+
+                    b.Property<string>("PrUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("pr_url");
+
+                    b.Property<string>("RemediationHint")
+                        .HasColumnType("text")
+                        .HasColumnName("remediation_hint");
+
+                    b.Property<string>("RemediationState")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("remediation_state");
+
+                    b.Property<string>("Repository")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("repository");
+
+                    b.Property<Guid>("ScanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("scan_id");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("severity");
+
+                    b.Property<Guid?>("SourceConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_conversation_id");
+
+                    b.Property<int?>("StartLine")
+                        .HasColumnType("integer")
+                        .HasColumnName("start_line");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_scan_findings");
+
+                    b.HasIndex("CreatedAtTicks")
+                        .IsDescending()
+                        .HasDatabaseName("ix_scan_findings_created_at_ticks");
+
+                    b.HasIndex("Path")
+                        .HasDatabaseName("ix_scan_findings_path");
+
+                    b.HasIndex("RemediationState")
+                        .HasDatabaseName("ix_scan_findings_remediation_state");
+
+                    b.HasIndex("ScanId")
+                        .HasDatabaseName("ix_scan_findings_scan_id");
+
+                    b.HasIndex("OrgId", "Status")
+                        .HasDatabaseName("ix_scan_findings_org_id_status");
+
+                    b.HasIndex("Repository", "Severity")
+                        .HasDatabaseName("ix_scan_findings_repository_severity");
+
+                    b.ToTable("scan_findings", (string)null);
+                });
+
+            modelBuilder.Entity("Sandcastle.Infrastructure.Scans.ScanRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("CoordinatorConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("coordinator_conversation_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("CreatedAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_at_ticks");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Effort")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("effort");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("error");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finished_at");
+
+                    b.Property<string>("Goal")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("goal");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Profile")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("profile");
+
+                    b.Property<string>("RepositoriesJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("repositories_json");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("StatsJson")
+                        .HasColumnType("text")
+                        .HasColumnName("stats_json");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Trigger")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("trigger");
+
+                    b.HasKey("Id")
+                        .HasName("pk_scans");
+
+                    b.HasIndex("CoordinatorConversationId")
+                        .HasDatabaseName("ix_scans_coordinator_conversation_id");
+
+                    b.HasIndex("CreatedAtTicks")
+                        .IsDescending()
+                        .HasDatabaseName("ix_scans_created_at_ticks");
+
+                    b.HasIndex("OrgId", "Status")
+                        .HasDatabaseName("ix_scans_org_id_status");
+
+                    b.ToTable("scans", (string)null);
                 });
 
             modelBuilder.Entity("Sandcastle.Infrastructure.Scm.AutofixAttemptRecord", b =>

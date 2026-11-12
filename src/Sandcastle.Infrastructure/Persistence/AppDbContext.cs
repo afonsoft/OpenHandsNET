@@ -252,6 +252,14 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// <summary>SPEC-60 RF-001: Unidades de código (chunks/symbols) indexadas.</summary>
     public DbSet<CodeUnitRecord> CodeUnits => Set<CodeUnitRecord>();
 
+    /// <summary>SPEC-143: code scans — coordinator fan-out runs.</summary>
+    public DbSet<Sandcastle.Infrastructure.Scans.ScanRecord>
+        Scans => Set<Sandcastle.Infrastructure.Scans.ScanRecord>();
+
+    /// <summary>SPEC-143: code scans — triaged findings.</summary>
+    public DbSet<Sandcastle.Infrastructure.Scans.ScanFindingRecord>
+        ScanFindings => Set<Sandcastle.Infrastructure.Scans.ScanFindingRecord>();
+
     /// <summary>SPEC-61 RF-001: Diagnósticos pós-sessão de conversas.</summary>
     public DbSet<SessionInsightRecord> SessionInsights => Set<SessionInsightRecord>();
 
@@ -330,6 +338,12 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
                 case WikiPageRecord p:
                     p.CreatedAtTicks = p.CreatedAt.UtcTicks;
                     p.UpdatedAtTicks = p.UpdatedAt.UtcTicks;
+                    break;
+                case Sandcastle.Infrastructure.Scans.ScanRecord s:
+                    s.CreatedAtTicks = s.CreatedAt.UtcTicks;
+                    break;
+                case Sandcastle.Infrastructure.Scans.ScanFindingRecord f:
+                    f.CreatedAtTicks = f.CreatedAt.UtcTicks;
                     break;
             }
         }
@@ -411,6 +425,12 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
                 !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
         modelBuilder.Entity<Sandcastle.Infrastructure.BrowserProfiles.BrowserProfileRecord>()
             .HasIndex(p => new { p.OwnerId, p.Domain }).IsUnique();
+        modelBuilder.Entity<Sandcastle.Infrastructure.Scans.ScanRecord>()
+            .HasQueryFilter(r =>
+                !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
+        modelBuilder.Entity<Sandcastle.Infrastructure.Scans.ScanFindingRecord>()
+            .HasQueryFilter(r =>
+                !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
     }
 }
 

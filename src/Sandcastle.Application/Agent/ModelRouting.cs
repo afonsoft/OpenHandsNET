@@ -21,6 +21,9 @@ public enum ModelRole
 
     /// <summary>PR auto-review pipeline (SPEC-140) — dedicated review model.</summary>
     Reviewer,
+
+    /// <summary>Analysis passes (SPEC-143 scan dedup) — dedicated analysis model.</summary>
+    Analysis,
 }
 
 /// <summary>

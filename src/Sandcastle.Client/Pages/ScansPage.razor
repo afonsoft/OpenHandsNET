@@ -1,0 +1,243 @@
+@page "/scans"
+@using Sandcastle.Client.Services
+@inject SandcastleApiClient Api
+@inject LocalizationService L
+@inject ToastService Toasts
+@inject NavigationManager Nav
+
+<PageTitle>@L["scans.title"] — Sandcastle</PageTitle>
+
+<h2>@L["scans.title"]</h2>
+<p class="sub">@L["scans.subtitle"]</p>
+
+@* SPEC-143: novo scan — goal + repos (csv) + profile + effort.
+   /scan <goal @repo> do composer chega via ?goal=. *@
+<details class="scan-new" open="@_openForm">
+    <summary>@L["scans.new"]</summary>
+    <div class="scan-form">
+        <textarea aria-label="@L["scans.goal"]"
+                  placeholder="@L["scans.goal_placeholder"]"
+                  @bind="_goal" rows="3" style="width:100%"></textarea>
+        <input aria-label="@L["scans.repositories"]"
+               placeholder="@L["scans.repositories_placeholder"]"
+               @bind="_repos" @bind:event="oninput" />
+        <select aria-label="@L["scans.profile"]" @bind="_profile">
+            <option value="security">@L["scans.profile_security"]</option>
+            <option value="performance">@L["scans.profile_performance"]</option>
+            <option value="dead-code">@L["scans.profile_dead_code"]</option>
+            <option value="coverage-gaps">@L["scans.profile_coverage_gaps"]</option>
+            <option value="a11y">@L["scans.profile_a11y"]</option>
+            <option value="custom">@L["scans.profile_custom"]</option>
+        </select>
+        <select aria-label="@L["scans.effort"]" @bind="_effort">
+            <option value="low">@L["scans.effort_low"]</option>
+            <option value="medium">@L["scans.effort_medium"]</option>
+            <option value="high">@L["scans.effort_high"]</option>
+        </select>
+        <button class="primary" @onclick="CreateAsync"
+                disabled="@(_busy || _goal.Trim().Length == 0 || ParseRepos().Count == 0)">
+            @(_busy ? L["scans.starting"] : L["scans.run"])
+        </button>
+        @if (_error is not null)
+        {
+            <p class="text-danger">@_error</p>
+        }
+    </div>
+</details>
+
+<div class="scan-toolbar">
+    <select aria-label="@L["scans.filter_status"]" @bind="_statusFilter"
+            @bind:after="ReloadAsync">
+        <option value="">@L["scans.status_all"]</option>
+        <option value="queued">@L["scans.status_queued"]</option>
+        <option value="running">@L["scans.status_running"]</option>
+        <option value="completed">@L["scans.status_completed"]</option>
+        <option value="failed">@L["scans.status_failed"]</option>
+        <option value="cancelled">@L["scans.status_cancelled"]</option>
+    </select>
+    <button @onclick="ReloadAsync">@L["common.refresh"]</button>
+</div>
+
+@if (_scans is null)
+{
+    <p><em>@L["common.loading"]</em></p>
+}
+else if (_scans.Count == 0)
+{
+    <p class="sub">@L["scans.empty"]</p>
+}
+else
+{
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>@L["scans.goal"]</th>
+                <th>@L["scans.repositories"]</th>
+                <th>@L["scans.profile"]</th>
+                <th>@L["scans.status"]</th>
+                <th>@L["scans.findings"]</th>
+                <th>@L["scans.created"]</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in _scans)
+            {
+                <tr>
+                    <td><a href="/scans/@s.Id">@s.Goal</a></td>
+                    <td>@string.Join(", ", s.Repositories)</td>
+                    <td>@s.Profile / @s.Effort</td>
+                    <td><span class="badge @StatusClass(s.Status)">@s.Status</span></td>
+                    <td>
+                        @s.FindingsCount
+                        @foreach (var kv in s.SeverityCounts
+                            .OrderByDescending(k => SeverityRank(k.Key)))
+                        {
+                            <span class="badge @SeverityClass(kv.Key)">
+                                @kv.Key @kv.Value</span>
+                        }
+                    </td>
+                    <td>@s.CreatedAt.LocalDateTime.ToString("g")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (_nextCursor is not null)
+    {
+        <button @onclick="LoadMoreAsync">@L["common.load_more"]</button>
+    }
+}
+
+@code {
+    private List<ScanDto>? _scans;
+    private string? _nextCursor;
+    private string _goal = "";
+    private string _repos = "";
+    private string _profile = "security";
+    private string _effort = "medium";
+    private string _statusFilter = "";
+    private bool _busy;
+    private bool _openForm;
+    private string? _error;
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        // /scan <goal @repo> do composer → ?goal= pré-preenche o form.
+        var uri = new Uri(Nav.Uri);
+        var q = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        var goal = q.Get("goal");
+        if (!string.IsNullOrWhiteSpace(goal))
+        {
+            _openForm = true;
+            var (cleanGoal, repos) = SplitMentions(goal);
+            _goal = cleanGoal;
+            _repos = string.Join(", ", repos);
+        }
+        await ReloadAsync();
+    }
+
+    /// <summary>
+    /// Extrai menções <c>@org/repo</c> do goal — viram repositories[]
+    /// (SPEC-143: "/scan &lt;descrição&gt;" com @repo no composer).
+    /// </summary>
+    internal static (string Goal, List<string> Repos) SplitMentions(
+        string raw)
+    {
+        var repos = new List<string>();
+        var rest = new List<string>();
+        foreach (var tok in raw.Split(' ',
+            StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (tok.StartsWith('@') && tok.Length > 1
+                && tok[1..].Contains('/'))
+            {
+                repos.Add(tok[1..].TrimEnd('.', ',', ';'));
+            }
+            else
+            {
+                rest.Add(tok);
+            }
+        }
+        return (string.Join(' ', rest), repos);
+    }
+
+    private List<string> ParseRepos() => _repos
+        .Split(',', StringSplitOptions.RemoveEmptyEntries
+            | StringSplitOptions.TrimEntries)
+        .Select(r => r.TrimStart('@'))
+        .Where(r => r.Contains('/'))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    private async Task CreateAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var created = await Api.CreateScanAsync(
+                ParseRepos(), _goal.Trim(), _profile, _effort);
+            if (created is null)
+            {
+                _error = L["scans.create_failed"];
+                return;
+            }
+            Toasts.Success(L["scans.started"]);
+            Nav.NavigateTo($"/scans/{created.ScanId}");
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ReloadAsync()
+    {
+        _scans = null;
+        _nextCursor = null;
+        var page = await Api.ListScansAsync(
+            string.IsNullOrEmpty(_statusFilter) ? null : _statusFilter);
+        _scans = page?.Items.ToList() ?? [];
+        _nextCursor = page?.NextPageId;
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        if (_scans is null || _nextCursor is null)
+        {
+            return;
+        }
+        var page = await Api.ListScansAsync(
+            string.IsNullOrEmpty(_statusFilter) ? null : _statusFilter,
+            _nextCursor);
+        if (page is not null)
+        {
+            _scans.AddRange(page.Items);
+            _nextCursor = page.NextPageId;
+        }
+    }
+
+    internal static string StatusClass(string status) => status switch
+    {
+        "completed" => "finished",
+        "failed" => "error",
+        "running" => "running",
+        _ => "idle",
+    };
+
+    internal static int SeverityRank(string sev) => sev switch
+    {
+        "critical" => 5,
+        "high" => 4,
+        "medium" => 3,
+        "low" => 2,
+        _ => 1,
+    };
+
+    internal static string SeverityClass(string sev) => sev switch
+    {
+        "critical" or "high" => "error",
+        "medium" => "working",
+        _ => "idle",
+    };
+}

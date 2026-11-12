@@ -18,6 +18,20 @@ public static class AutomationScheduleKinds
         { Interval, Daily, Weekly, Once };
 }
 
+/// <summary>Automation kinds aceitos (SPEC-143 RF-004).</summary>
+public static class AutomationKinds
+{
+    /// <summary>Dispara uma conversa com o prompt (default).</summary>
+    public const string Task = "task";
+
+    /// <summary>Dispara um code scan (POST /scans equivalente).</summary>
+    public const string Scan = "scan";
+
+    /// <summary>Todos os kinds válidos.</summary>
+    public static readonly IReadOnlySet<string> All =
+        new HashSet<string>(StringComparer.Ordinal) { Task, Scan };
+}
+
 /// <summary>Automation DTO (SPEC-47 RF-003).</summary>
 public sealed record AutomationInfo(
     Guid Id, Guid? OrgId, string? CreatedByUserId, string Name,
@@ -25,7 +39,9 @@ public sealed record AutomationInfo(
     string ScheduleKind, string? ScheduleTimeUtc, int IntervalMinutes,
     int? Weekday, bool Enabled, DateTimeOffset? NextRunAt,
     DateTimeOffset? LastRunAt, DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    // SPEC-143: task|scan + config do scan (null para task).
+    string? Kind = null, string? ScanConfigJson = null);
 
 /// <summary>Run de uma automation (SPEC-47 RF-002/RF-003).</summary>
 public sealed record AutomationRunInfo(
@@ -43,7 +59,12 @@ public sealed record AutomationUpsert(
     string? Name, string? Prompt, string? LlmModel,
     string? SelectedRepository, string? ScheduleKind,
     string? ScheduleTimeUtc, int? IntervalMinutes, int? Weekday,
-    bool? Enabled, DateTimeOffset? NextRunAt);
+    bool? Enabled, DateTimeOffset? NextRunAt,
+    // SPEC-143: kind=scan — prompt vira o goal; repos/profile/effort
+    // alimentam ScanConfigJson (Repositories cai p/ SelectedRepository
+    // quando omitido).
+    string? Kind = null, IReadOnlyList<string>? Repositories = null,
+    string? ScanProfile = null, string? ScanEffort = null);
 
 /// <summary>
 /// Cálculo do próximo disparo (UTC) — puro e testável

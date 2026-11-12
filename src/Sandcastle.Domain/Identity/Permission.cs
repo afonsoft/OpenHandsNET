@@ -39,6 +39,9 @@ public enum Permission
     ManageOauthProviders,
     IndexingManage,
     WikiRead,
+    ScansRun,
+    ScansManage,
+    ScansFindings,
 }
 
 public static class PermissionExtensions
@@ -78,6 +81,9 @@ public static class PermissionExtensions
         Permission.ManageOauthProviders => "manage_oauth_providers",
         Permission.IndexingManage => "indexing.manage",
         Permission.WikiRead => "wiki.read",
+        Permission.ScansRun => "scans.run",
+        Permission.ScansManage => "scans.manage",
+        Permission.ScansFindings => "scans.findings",
         _ => throw new ArgumentOutOfRangeException(nameof(permission)),
     };
 
@@ -116,6 +122,9 @@ public static class PermissionExtensions
         "manage_oauth_providers" => Permission.ManageOauthProviders,
         "indexing.manage" => Permission.IndexingManage,
         "wiki.read" => Permission.WikiRead,
+        "scans.run" => Permission.ScansRun,
+        "scans.manage" => Permission.ScansManage,
+        "scans.findings" => Permission.ScansFindings,
         _ => null,
     };
 }

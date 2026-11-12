@@ -109,6 +109,12 @@
               "string"
             ]
           },
+          "kind": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "llm_model": {
             "type": [
               "null",
@@ -129,6 +135,27 @@
             ]
           },
           "prompt": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "repositories": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "scan_effort": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "scan_profile": {
             "type": [
               "null",
               "string"
@@ -425,6 +452,45 @@
         },
         "type": "object"
       },
+      "CreateScanRequest": {
+        "description": "Payload of \u0060POST /api/v1/scans\u0060 (SPEC-143 RF-001).",
+        "properties": {
+          "effort": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "goal": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "profile": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "repositories": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          }
+        },
+        "required": [
+          "repositories",
+          "goal",
+          "profile",
+          "effort"
+        ],
+        "type": "object"
+      },
       "CreateSkillRequest": {
         "description": "POST body.",
         "properties": {
@@ -513,6 +579,25 @@
         },
         "required": [
           "path"
+        ],
+        "type": "object"
+      },
+      "FixScanFindingsBulkRequest": {
+        "description": "Body do fix-bulk {ids[]}.",
+        "properties": {
+          "ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          }
+        },
+        "required": [
+          "ids"
         ],
         "type": "object"
       },
@@ -867,6 +952,21 @@
             ]
           }
         },
+        "type": "object"
+      },
+      "PatchScanFindingRequest": {
+        "description": "Body do PATCH de triagem.",
+        "properties": {
+          "status": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ],
         "type": "object"
       },
       "PermissionRuleDto": {
@@ -8084,6 +8184,161 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_id}/scan-findings": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scan_id",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "repository",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "severity",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "remediation_state",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "first",
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/orgs/{org_id:guid}/scan-findings",
+        "tags": [
+          "Scans"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_id}/scans": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/orgs/{org_id:guid}/scans",
+        "tags": [
+          "Scans"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_id}/scim-tokens": {
       "get": {
         "parameters": [
@@ -9575,6 +9830,328 @@
         "summary": "GET /api/v1/sandboxes/{id:guid}/surfaces/{port:int}/{**rest}",
         "tags": [
           "Sandboxes"
+        ]
+      }
+    },
+    "/api/v1/scan-findings/fix-bulk": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FixScanFindingsBulkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "POST /api/v1/scan-findings/fix-bulk",
+        "tags": [
+          "Scans"
+        ]
+      }
+    },
+    "/api/v1/scan-findings/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/scan-findings/{id:guid}",
+        "tags": [
+          "Scans"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchScanFindingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "PATCH /api/v1/scan-findings/{id:guid}",
+        "tags": [
+          "Scans"
+        ]
+      }
+    },
+    "/api/v1/scan-findings/{id}/fix": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "POST /api/v1/scan-findings/{id:guid}/fix",
+        "tags": [
+          "Scans"
+        ]
+      }
+    },
+    "/api/v1/scans": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/scans/",
+        "tags": [
+          "Scans"
+        ]
+      },
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateScanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "POST /api/v1/scans/",
+        "tags": [
+          "Scans"
+        ]
+      }
+    },
+    "/api/v1/scans/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/scans/{id:guid}",
+        "tags": [
+          "Scans"
+        ]
+      }
+    },
+    "/api/v1/scans/{id}/findings": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "repository",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "severity",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "remediation_state",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "first",
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/scans/{id:guid}/findings",
+        "tags": [
+          "Scans"
         ]
       }
     },
@@ -11481,6 +12058,9 @@
     },
     {
       "name": "OpenAI Gateway"
+    },
+    {
+      "name": "Scans"
     },
     {
       "name": "FrameworkAssetsEndpoints"

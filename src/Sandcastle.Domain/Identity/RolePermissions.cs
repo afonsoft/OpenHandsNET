@@ -19,6 +19,9 @@ public static class RolePermissions
         Permission.ViewLlmSettings,
         Permission.ViewAutomations,
         Permission.WikiRead,
+        // SPEC-143: member dispara scans e triagia findings.
+        Permission.ScansRun,
+        Permission.ScansFindings,
     ];
 
     private static readonly Permission[] Admin =
@@ -38,6 +41,8 @@ public static class RolePermissions
         Permission.ProvisionUser,
         Permission.ViewOrgConversations,
         Permission.IndexingManage,
+        // SPEC-143: admin gerencia schedules/lifecycle de scans.
+        Permission.ScansManage,
     ];
 
     private static readonly Permission[] Owner =

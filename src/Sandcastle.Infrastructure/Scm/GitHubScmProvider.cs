@@ -96,8 +96,10 @@ public sealed class GitHubScmProvider(
         try
         {
             var pr = await client.PullRequest.Get(owner, name, number);
+            // SPEC-143: reconciliação merged precisa diferenciar
+            // closed ≠ merged (Octokit expõe Merged no GET).
             return new ScmPullRequest(pr.HtmlUrl, pr.Number,
-                pr.State.StringValue, pr.Head.Sha, pr.Title);
+                pr.State.StringValue, pr.Head.Sha, pr.Title, pr.Merged);
         }
         catch (NotFoundException)
         {

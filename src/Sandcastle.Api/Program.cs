@@ -117,6 +117,20 @@ builder.Services.AddScoped<Sandcastle.Application.Wiki.IWikiService,
 builder.Services.AddHostedService<Sandcastle.Infrastructure.Wiki.WikiRunWorker>();
 builder.Services.AddScoped<Sandcastle.Application.Insights.ISessionInsightService, Sandcastle.Infrastructure.Insights.SessionInsightService>();
 builder.Services.AddScoped<Sandcastle.Application.Delegation.IDelegationService, Sandcastle.Infrastructure.Delegation.DelegationService>();
+// SPEC-143: code scans — service (CRUD/findings/fix), orquestrador real
+// (partição → delegate read-only → coleta/dedup), fila + worker
+// (também reconcilia remediation pr_open/merged).
+builder.Services.Configure<Sandcastle.Infrastructure.Scans.ScanOptions>(
+    builder.Configuration.GetSection(
+        Sandcastle.Infrastructure.Scans.ScanOptions.Section));
+builder.Services.AddSingleton<Sandcastle.Infrastructure.Scans.ScanDispatcher>();
+builder.Services.AddScoped<Sandcastle.Application.Scans.IScanDispatcher>(
+    sp => sp.GetRequiredService<Sandcastle.Infrastructure.Scans.ScanDispatcher>());
+builder.Services.AddHostedService<Sandcastle.Infrastructure.Scans.ScanWorker>();
+builder.Services.AddScoped<Sandcastle.Application.Scans.IScanService,
+    Sandcastle.Infrastructure.Scans.ScanService>();
+builder.Services.AddScoped<Sandcastle.Application.Scans.IScanOrchestrator,
+    Sandcastle.Infrastructure.Scans.ScanOrchestrator>();
 builder.Services.AddScoped<Sandcastle.Application.Identity.ICurrentUserAccessor,
     Sandcastle.Api.Auth.HttpCurrentUserAccessor>();
 

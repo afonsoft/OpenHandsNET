@@ -1,0 +1,326 @@
+@page "/scans/{Id:guid}"
+@using Sandcastle.Client.Services
+@inject SandcastleApiClient Api
+@inject LocalizationService L
+@inject ToastService Toasts
+@implements IDisposable
+
+<PageTitle>@L["scans.detail_title"] — Sandcastle</PageTitle>
+
+@if (_scan is null)
+{
+    <p><em>@L["common.loading"]</em></p>
+}
+else
+{
+    <h2>@_scan.Goal</h2>
+    <p class="sub">
+        <span class="badge @ScansPage.StatusClass(_scan.Status)">
+            @_scan.Status</span>
+        @_scan.Profile / @_scan.Effort —
+        @string.Join(", ", _scan.Repositories)
+        @if (_scan.CoordinatorConversationId is { } conv)
+        {
+            <a href="/conversations/@conv">@L["scans.coordinator"]</a>
+        }
+    </p>
+    @if (_scan.Error is not null)
+    {
+        <p class="text-danger">@_scan.Error</p>
+    }
+
+    @* SPEC-143 RF-004: filtros server-side + bulk fix. *@
+    <div class="scan-toolbar">
+        <select aria-label="@L["scans.filter_severity"]" @bind="_severity">
+            <option value="">@L["scans.severity_all"]</option>
+            <option value="critical">critical</option>
+            <option value="high">high</option>
+            <option value="medium">medium</option>
+            <option value="low">low</option>
+            <option value="info">info</option>
+        </select>
+        <select aria-label="@L["scans.filter_status"]" @bind="_status">
+            <option value="">@L["scans.status_all"]</option>
+            <option value="open">@L["scans.finding_open"]</option>
+            <option value="reviewed">@L["scans.finding_reviewed"]</option>
+            <option value="dismissed">@L["scans.finding_dismissed"]</option>
+        </select>
+        <input aria-label="@L["scans.filter_query"]"
+               placeholder="@L["scans.filter_query_placeholder"]"
+               @bind="_q" @bind:event="oninput" />
+        <button @onclick="LoadFindingsAsync">@L["scans.apply_filters"]</button>
+        <button class="primary" @onclick="FixBulkAsync"
+                disabled="@(_selected.Count == 0 || _fixing)">
+            @L.T("scans.fix_bulk", ("n", _selected.Count.ToString()))
+        </button>
+    </div>
+
+    @if (_findings is null)
+    {
+        <p><em>@L["common.loading"]</em></p>
+    }
+    else if (_findings.Count == 0)
+    {
+        <p class="sub">@L["scans.no_findings"]</p>
+    }
+    else
+    {
+        @foreach (var group in Grouped())
+        {
+            <h3>@GroupLabel(group.Key) (@group.Count())</h3>
+            <ul class="scan-findings">
+                @foreach (var f in group)
+                {
+                    <li class="scan-finding">
+                        <div class="scan-finding-head">
+                            <input type="checkbox"
+                                   checked="@_selected.Contains(f.Id)"
+                                   aria-label="@L["scans.select_finding"]"
+                                   @onchange="e => Toggle(f.Id, e)"/>
+                            <span class="badge @ScansPage.SeverityClass(
+                                f.Severity)">@f.Severity</span>
+                            <span class="badge idle">@f.Kind</span>
+                            <strong>@(f.Title ?? f.Path)</strong>
+                            <code>@f.Path@(f.StartLine is { } sl
+                                ? $":{sl}" : "")</code>
+                            <span class="badge idle">@f.Status</span>
+                        </div>
+                        <p class="sub">@f.Description</p>
+                        @if (f.RemediationHint is not null)
+                        {
+                            <p class="sub"><em>@f.RemediationHint</em></p>
+                        }
+                        <div class="scan-finding-actions">
+                            @if (f.RemediationState == "unassigned")
+                            {
+                                <button class="primary"
+                                        @onclick="() => FixAsync(f.Id)"
+                                        disabled="@_fixing">
+                                    @L["scans.fix_with"]
+                                </button>
+                            }
+                            else if (f.RemediationState == "pr_open"
+                                && f.PrUrl is not null)
+                            {
+                                <a href="@f.PrUrl" target="_blank"
+                                   rel="noopener">@L["scans.open_pr"]</a>
+                            }
+                            else if (f.ConversationId is { } fc)
+                            {
+                                <a href="/conversations/@fc">
+                                    @L["scans.open_fix_conv"]</a>
+                            }
+                            @if (f.Status == "open")
+                            {
+                                <button
+                                    @onclick='() => TriageAsync(f, "reviewed")'>
+                                    @L["scans.mark_reviewed"]</button>
+                                <button
+                                    @onclick='() => TriageAsync(f, "dismissed")'>
+                                    @L["scans.mark_dismissed"]</button>
+                            }
+                            else
+                            {
+                                <button
+                                    @onclick='() => TriageAsync(f, "open")'>
+                                    @L["scans.mark_open"]</button>
+                            }
+                        </div>
+                    </li>
+                }
+            </ul>
+        }
+        @if (_next is not null)
+        {
+            <button @onclick="LoadMoreAsync">@L["common.load_more"]</button>
+        }
+    }
+}
+
+@code {
+    /// <summary>Scan id da rota.</summary>
+    [Parameter] public Guid Id { get; set; }
+
+    private ScanDto? _scan;
+    private List<ScanFindingDto>? _findings;
+    private readonly HashSet<Guid> _selected = [];
+    private string? _next;
+    private string _severity = "";
+    private string _status = "";
+    private string _q = "";
+    private bool _fixing;
+    private CancellationTokenSource _poll = new();
+
+    private static readonly string[] StateOrder =
+        ["unassigned", "assigned", "pr_open", "merged"];
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        _scan = await Api.GetScanAsync(Id);
+        await LoadFindingsAsync();
+        _ = PollWhileRunningAsync();
+    }
+
+    /// <summary>Re-lê o scan até terminal → refresh findings uma vez.</summary>
+    private async Task PollWhileRunningAsync()
+    {
+        while (_scan is { Status: "queued" or "running" }
+            && !_poll.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(4), _poll.Token);
+                _scan = await Api.GetScanAsync(Id, _poll.Token)
+                    ?? _scan;
+                if (_scan.Status is "completed" or "failed")
+                {
+                    await LoadFindingsAsync();
+                }
+                await InvokeAsync(StateHasChanged);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception)
+            {
+                return; // poll best-effort
+            }
+        }
+    }
+
+    private async Task LoadFindingsAsync()
+    {
+        _findings = null;
+        _next = null;
+        _selected.Clear();
+        var page = await Api.GetScanFindingsAsync(Id,
+            severity: NullIfEmpty(_severity),
+            status: NullIfEmpty(_status),
+            q: NullIfEmpty(_q));
+        _findings = page?.Items.ToList() ?? [];
+        _next = page?.NextPageId;
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        if (_findings is null || _next is null)
+        {
+            return;
+        }
+        var page = await Api.GetScanFindingsAsync(Id,
+            severity: NullIfEmpty(_severity),
+            status: NullIfEmpty(_status),
+            q: NullIfEmpty(_q), after: _next);
+        if (page is not null)
+        {
+            _findings.AddRange(page.Items);
+            _next = page.NextPageId;
+        }
+    }
+
+    private IEnumerable<IGrouping<string, ScanFindingDto>> Grouped() =>
+        (_findings ?? [])
+            .GroupBy(f => f.RemediationState)
+            .OrderBy(g => Array.IndexOf(StateOrder, g.Key) is var i
+                && i >= 0 ? i : StateOrder.Length);
+
+    private string GroupLabel(string state) => state switch
+    {
+        "unassigned" => L["scans.group_unassigned"],
+        "assigned" => L["scans.group_assigned"],
+        "pr_open" => L["scans.group_pr_open"],
+        "merged" => L["scans.group_merged"],
+        _ => state,
+    };
+
+    private void Toggle(Guid id, ChangeEventArgs e)
+    {
+        if (e.Value is true)
+        {
+            _selected.Add(id);
+        }
+        else
+        {
+            _selected.Remove(id);
+        }
+    }
+
+    private async Task TriageAsync(ScanFindingDto f, string status)
+    {
+        var updated = await Api.PatchScanFindingAsync(f.Id, status);
+        if (updated is null)
+        {
+            Toasts.Error(L["scans.triage_failed"]);
+            return;
+        }
+        var i = _findings?.FindIndex(x => x.Id == f.Id) ?? -1;
+        if (i >= 0)
+        {
+            _findings![i] = updated;
+        }
+    }
+
+    /// <summary>"Fix with Sandcastle" — sempre ação explícita.</summary>
+    private async Task FixAsync(Guid id)
+    {
+        _fixing = true;
+        try
+        {
+            var r = await Api.FixScanFindingAsync(id);
+            if (r is null)
+            {
+                Toasts.Error(L["scans.fix_failed"]);
+                return;
+            }
+            Toasts.Success(L["scans.fix_started"]);
+            await LoadFindingsAsync();
+        }
+        finally
+        {
+            _fixing = false;
+        }
+    }
+
+    private async Task FixBulkAsync()
+    {
+        _fixing = true;
+        try
+        {
+            var items = await Api.FixScanFindingsBulkAsync(
+                _selected.ToList());
+            if (items is null)
+            {
+                Toasts.Error(L["scans.fix_failed"]);
+                return;
+            }
+            var failed = items.Count(i => i.Error is not null);
+            if (failed > 0)
+            {
+                Toasts.Warn(L.T("scans.fix_bulk_partial",
+                    ("n", failed.ToString())));
+            }
+            else
+            {
+                Toasts.Success(L.T("scans.fix_bulk_started",
+                    ("n", items.Count.ToString())));
+            }
+            await LoadFindingsAsync();
+        }
+        finally
+        {
+            _fixing = false;
+        }
+    }
+
+    private static string? NullIfEmpty(string s) =>
+        string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        _poll.Cancel();
+        _poll.Dispose();
+    }
+}

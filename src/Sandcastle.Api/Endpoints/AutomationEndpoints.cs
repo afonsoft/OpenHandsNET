@@ -4,6 +4,7 @@ using Sandcastle.Api.Policies;
 using Sandcastle.Api.ProblemDetails;
 using Sandcastle.Application.Automations;
 using Sandcastle.Application.Identity;
+using Sandcastle.Infrastructure.Automations;
 
 namespace Sandcastle.Api.Endpoints;
 
@@ -197,7 +198,9 @@ public static class AutomationEndpoints
     private static AutomationUpsert ToUpsert(AutomationUpsertRequest r) =>
         new(r.Name, r.Prompt, r.LlmModel, r.SelectedRepository,
             r.ScheduleKind, r.ScheduleTimeUtc, r.IntervalMinutes,
-            r.Weekday, r.Enabled, r.NextRunAt);
+            r.Weekday, r.Enabled, r.NextRunAt,
+            // SPEC-143: kind=scan + scan config.
+            r.Kind, r.Repositories, r.ScanProfile, r.ScanEffort);
 
     private static object ToDto(AutomationInfo a) => new
     {
@@ -208,6 +211,16 @@ public static class AutomationEndpoints
         prompt = a.Prompt,
         llm_model = a.LlmModel,
         selected_repository = a.SelectedRepository,
+        kind = a.Kind ?? "task",
+        scan = AutomationService.AutomationScanConfig
+            .Parse(a.ScanConfigJson) is { } cfg
+            ? new
+            {
+                repositories = cfg.Repositories,
+                profile = cfg.Profile,
+                effort = cfg.Effort,
+            }
+            : null,
         schedule_kind = a.ScheduleKind,
         schedule_time_utc = a.ScheduleTimeUtc,
         interval_minutes = a.IntervalMinutes,
@@ -325,4 +338,7 @@ public sealed record AutomationUpsertRequest(
     string? SelectedRepository = null, string? ScheduleKind = null,
     string? ScheduleTimeUtc = null, int? IntervalMinutes = null,
     int? Weekday = null, bool? Enabled = null,
-    DateTimeOffset? NextRunAt = null);
+    DateTimeOffset? NextRunAt = null,
+    // SPEC-143: kind=scan — repositories[] + profile + effort.
+    string? Kind = null, IReadOnlyList<string>? Repositories = null,
+    string? ScanProfile = null, string? ScanEffort = null);

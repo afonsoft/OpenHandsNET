@@ -378,6 +378,7 @@ internal static class ProgramParts
         app.MapWikiEndpoints();
         app.MapSessionInsightEndpoints();
         app.MapDelegationEndpoints();
+        app.MapScanEndpoints();
         app.MapKnowledgeEndpoints();
         app.MapBrowserProfileEndpoints();
         app.MapHub<ConversationHub>("/hubs/conversations");

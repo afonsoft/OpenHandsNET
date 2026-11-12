@@ -24,6 +24,8 @@ public static class ComposerSlash
         New,
         /// <summary>SPEC-135 RF-004: desfaz o último turno (POST undo).</summary>
         Undo,
+        /// <summary>SPEC-143: abre /scans com o goal (args) preenchido.</summary>
+        Scan,
         /// <summary>Skill: expande o template p/ texto no composer.</summary>
         Skill,
     }
@@ -37,6 +39,8 @@ public static class ComposerSlash
             CommandKind.Compact),
         new("new", "Nova conversa", CommandKind.New),
         new("undo", "Desfaz o último turno", CommandKind.Undo),
+        new("scan", "Code scan (achados triáveis) — /scan <goal @repo>",
+            CommandKind.Scan),
     ];
 
     /// <summary>

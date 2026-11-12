@@ -23,6 +23,22 @@ public sealed class DelegationService : IDelegationService
     private const int MaxDepth = 2;
     private const int MaxSiblings = 8;
 
+    /// <summary>
+    /// SPEC-143: o cap de siblings conta só os filhos AINDA ATIVOS —
+    /// orquestradores (scan) fazem fan-out em ondas, reutilizando slots à
+    /// medida que os filhos terminam. Enum names + literais legados do
+    /// <see cref="WakeParentOnCompletionAsync"/>.
+    /// </summary>
+    private static readonly HashSet<string> TerminalStatuses = new(
+        StringComparer.Ordinal)
+    {
+        nameof(Domain.Conversations.ConversationExecutionStatus.Stopped),
+        nameof(Domain.Conversations.ConversationExecutionStatus.Finished),
+        nameof(Domain.Conversations.ConversationExecutionStatus.Error),
+        nameof(Domain.Conversations.ConversationExecutionStatus.Archived),
+        "COMPLETED", "FAILED", "STOPPED", "CANCELLED",
+    };
+
     public DelegationService(
         AppDbContext db,
         IAppConversationService conversations,
@@ -51,8 +67,12 @@ public sealed class DelegationService : IDelegationService
                 $"Maximum delegation depth ({MaxDepth}) reached.");
         }
 
-        var siblingCount = await _db.Conversations.CountAsync(
-            c => c.ParentConversationId == parentConversationId, ct);
+        // SPEC-143: só siblings ativos contam — filhos terminados
+        // (waves de scan) liberam slots do cap.
+        var activeCount = await _db.Conversations.CountAsync(
+            c => c.ParentConversationId == parentConversationId
+                && !TerminalStatuses.Contains(c.ExecutionStatus), ct);
+        var siblingCount = activeCount;
         if (siblingCount >= MaxSiblings)
         {
             throw new InvalidOperationException(
@@ -66,8 +86,7 @@ public sealed class DelegationService : IDelegationService
         var inheritedRules = Application.Agent.PermissionRules.Parse(
             parent.PermissionsJson);
 
-        var task = await _conversations.CreateAsync(
-            new CreateConversationRequest(
+        var createRequest = new CreateConversationRequest(
                 InitialMessage: new InitialMessage(
                     "user", [request.TaskDescription], Run: true),
                 SelectedRepository: request.SelectedRepository
@@ -78,8 +97,15 @@ public sealed class DelegationService : IDelegationService
                 ConfirmationMode: parent.ConfirmationMode,
                 SandboxProfile: parent.SandboxProfile,
                 Permissions: inheritedRules.Count > 0 ? inheritedRules : null,
-                Mode: parent.Mode),
-            ct);
+                Mode: parent.Mode);
+
+        // SPEC-143: fora de request HTTP (orquestradores) não há
+        // ICurrentUserAccessor — propaga o owner do pai para a filha via
+        // CreateForUserAsync, mantendo plan/quota enforcement.
+        var task = Guid.TryParse(parent.CreatedByUserId, out var ownerId)
+            ? await _conversations.CreateForUserAsync(
+                ownerId, parent.OrgId, createRequest, ct)
+            : await _conversations.CreateAsync(createRequest, ct);
 
         var childId = task.AppConversationId
             ?? throw new InvalidOperationException(

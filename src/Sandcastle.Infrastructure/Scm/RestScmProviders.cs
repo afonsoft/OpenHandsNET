@@ -237,14 +237,17 @@ public sealed class GitLabScmProvider(
             return null;
         }
         var m = mr.Value;
+        var state = m.GetProperty("state").GetString() ?? "";
         return new ScmPullRequest(
             m.GetProperty("web_url").GetString()!,
             m.GetProperty("iid").GetInt32(),
-            m.GetProperty("state").GetString() ?? "",
+            state,
             m.TryGetProperty("sha", out var sha)
                 ? sha.GetString() ?? "" : "",
             m.TryGetProperty("title", out var t)
-                ? t.GetString() ?? "" : "");
+                ? t.GetString() ?? "" : "",
+            // SPEC-143: GitLab diferencia merged ("merged" vs "closed").
+            state.Equals("merged", StringComparison.OrdinalIgnoreCase));
     }
 
     /// <inheritdoc />
@@ -482,13 +485,16 @@ public sealed class BitbucketScmProvider(
             return null;
         }
         var p = pr.Value;
+        var state = p.GetProperty("state").GetString() ?? "";
         return new ScmPullRequest(
             p.GetProperty("links").GetProperty("html")
                 .GetProperty("href").GetString()!,
             p.GetProperty("id").GetInt32(),
-            p.GetProperty("state").GetString() ?? "",
+            state,
             "", p.TryGetProperty("title", out var t)
-                ? t.GetString() ?? "" : "");
+                ? t.GetString() ?? "" : "",
+            // SPEC-143: Bitbucket usa "MERGED" como state terminal.
+            state.Equals("MERGED", StringComparison.OrdinalIgnoreCase));
     }
 
     /// <inheritdoc />
@@ -646,13 +652,16 @@ public sealed class AzureDevOpsScmProvider(
             return null;
         }
         var p = pr.Value;
+        var status = p.GetProperty("status").GetString() ?? "";
         return new ScmPullRequest(
             p.GetProperty("_links").GetProperty("web")
                 .GetProperty("href").GetString()!,
             p.GetProperty("pullRequestId").GetInt32(),
-            p.GetProperty("status").GetString() ?? "",
+            status,
             "", p.TryGetProperty("title", out var t)
-                ? t.GetString() ?? "" : "");
+                ? t.GetString() ?? "" : "",
+            // SPEC-143: AzDO usa "completed" para merge concluído.
+            status.Equals("completed", StringComparison.OrdinalIgnoreCase));
     }
 
     /// <inheritdoc />
