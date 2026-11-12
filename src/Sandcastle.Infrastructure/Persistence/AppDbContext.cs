@@ -260,6 +260,14 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<Sandcastle.Infrastructure.Scans.ScanFindingRecord>
         ScanFindings => Set<Sandcastle.Infrastructure.Scans.ScanFindingRecord>();
 
+    /// <summary>SPEC-144: batch refactors — approved plans.</summary>
+    public DbSet<Sandcastle.Infrastructure.Refactors.RefactorPlanRecord>
+        RefactorPlans => Set<Sandcastle.Infrastructure.Refactors.RefactorPlanRecord>();
+
+    /// <summary>SPEC-144: batch refactors — per-plan ordered batches.</summary>
+    public DbSet<Sandcastle.Infrastructure.Refactors.RefactorBatchRecord>
+        RefactorBatches => Set<Sandcastle.Infrastructure.Refactors.RefactorBatchRecord>();
+
     /// <summary>SPEC-61 RF-001: Diagnósticos pós-sessão de conversas.</summary>
     public DbSet<SessionInsightRecord> SessionInsights => Set<SessionInsightRecord>();
 
@@ -344,6 +352,9 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
                     break;
                 case Sandcastle.Infrastructure.Scans.ScanFindingRecord f:
                     f.CreatedAtTicks = f.CreatedAt.UtcTicks;
+                    break;
+                case Sandcastle.Infrastructure.Refactors.RefactorPlanRecord r:
+                    r.CreatedAtTicks = r.CreatedAt.UtcTicks;
                     break;
             }
         }

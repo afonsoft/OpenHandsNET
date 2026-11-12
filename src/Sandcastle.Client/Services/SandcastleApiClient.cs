@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -1250,6 +1251,81 @@ public sealed class SandcastleApiClient(HttpClient http)
             .ReadFromJsonAsync<ScanFixBulkDto>(Json, ct);
         return page?.Items;
     }
+
+    // ---- SPEC-144: batch refactors ------------------------------------------
+
+    /// <summary>
+    /// POST /refactors {repositories[], goal, strategy?, mode?,
+    /// max_concurrency?, batch_size_hint?} → 202. null = 4xx.
+    /// </summary>
+    public async Task<RefactorCreatedDto?> CreateRefactorAsync(
+        IReadOnlyList<string> repositories, string goal,
+        string? strategy = null, string? mode = null,
+        int? maxConcurrency = null, int? batchSizeHint = null,
+        CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync("/api/v1/refactors", new
+        {
+            repositories,
+            goal,
+            strategy,
+            mode,
+            max_concurrency = maxConcurrency,
+            batch_size_hint = batchSizeHint,
+        }, Json, ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            return null;
+        }
+        return await resp.Content
+            .ReadFromJsonAsync<RefactorCreatedDto>(Json, ct);
+    }
+
+    /// <summary>GET /refactors (status/cursor/limit) — lista cursada.</summary>
+    public Task<RefactorPageDto?> ListRefactorsAsync(
+        string? status = null, string? cursor = null, int limit = 50,
+        CancellationToken ct = default)
+    {
+        var path = $"/api/v1/refactors?limit={limit}"
+            + (string.IsNullOrEmpty(status)
+                ? "" : $"&status={Uri.EscapeDataString(status)}")
+            + (string.IsNullOrEmpty(cursor)
+                ? "" : $"&cursor={Uri.EscapeDataString(cursor)}");
+        return GetOrNull<RefactorPageDto>(path, ct);
+    }
+
+    /// <summary>GET /refactors/{id} — detalhe + progresso.</summary>
+    public Task<RefactorPlanDto?> GetRefactorAsync(
+        Guid id, CancellationToken ct = default) =>
+        GetOrNull<RefactorPlanDto>($"/api/v1/refactors/{id}", ct);
+
+    /// <summary>GET /refactors/{id}/batches — lotes ordenados por n.</summary>
+    public Task<RefactorBatchPageDto?> GetRefactorBatchesAsync(
+        Guid id, CancellationToken ct = default) =>
+        GetOrNull<RefactorBatchPageDto>(
+            $"/api/v1/refactors/{id}/batches", ct);
+
+    /// <summary>
+    /// POST /refactors/{id}/{action} — start|pause|resume|cancel.
+    /// Retorna o status code para a página decidir o toast (403 no
+    /// approval gate, 409 em estado inválido).
+    /// </summary>
+    public async Task<HttpStatusCode> RefactorActionAsync(
+        Guid id, string action, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsync(
+            $"/api/v1/refactors/{id}/{action}", null, ct);
+        return resp.StatusCode;
+    }
+
+    /// <summary>POST /refactors/{id}/batches/{n}/retry — 202.</summary>
+    public async Task<bool> RetryRefactorBatchAsync(
+        Guid id, int n, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsync(
+            $"/api/v1/refactors/{id}/batches/{n}/retry", null, ct);
+        return resp.IsSuccessStatusCode;
+    }
 }
 
 /// <summary>SPEC-147 RF-004: resposta de <c>/usage/budget</c>.</summary>
@@ -1330,6 +1406,39 @@ public sealed record ScanFixResultDto(
 /// <summary>SPEC-143: envelope 202 do fix-bulk.</summary>
 public sealed record ScanFixBulkDto(
     IReadOnlyList<ScanFixResultDto> Items);
+
+/// <summary>SPEC-144: resposta 202 do POST /refactors.</summary>
+public sealed record RefactorCreatedDto(
+    Guid PlanId, Guid? ConversationId,
+    Guid? PlannerConversationId, string Status);
+
+/// <summary>SPEC-144: página de planos de refactor.</summary>
+public sealed record RefactorPageDto(
+    IReadOnlyList<RefactorPlanDto> Items, string? NextPageId);
+
+/// <summary>SPEC-144: plano na listagem/detalhe (state_counts por estado).</summary>
+public sealed record RefactorPlanDto(
+    Guid Id, Guid? OrgId, IReadOnlyList<string> Repositories,
+    string Goal, string Strategy, string Mode, string? RequestedMode,
+    int MaxConcurrency, int? BatchSizeHint, string Status,
+    int BatchesTotal, IReadOnlyDictionary<string, int> StateCounts,
+    int ProgressPercent, Guid? PlannerConversationId,
+    Guid? CoordinatorConversationId, IReadOnlyList<string> Warnings,
+    string? Error, DateTimeOffset CreatedAt,
+    DateTimeOffset? FinishedAt);
+
+/// <summary>SPEC-144: página de batches (GET /refactors/{id}/batches).</summary>
+public sealed record RefactorBatchPageDto(
+    IReadOnlyList<RefactorBatchDto> Items);
+
+/// <summary>SPEC-144: batch de um plano (grafo + PR + filha).</summary>
+public sealed record RefactorBatchDto(
+    Guid Id, Guid PlanId, int N, string Repository,
+    IReadOnlyList<string> Files, IReadOnlyList<int> DependsOn,
+    string? Description, string Risk, string? VerifyCmd, string State,
+    string? PrUrl, int? PrNumber, Guid? ConversationId, int Attempts,
+    string? VerifyLogDigest, string? Error,
+    DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
 
 /// <summary>SPEC-63: sugestão de knowledge na fila.</summary>
 public sealed record KnowledgeSuggestionItem(

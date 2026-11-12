@@ -131,6 +131,22 @@ builder.Services.AddScoped<Sandcastle.Application.Scans.IScanService,
     Sandcastle.Infrastructure.Scans.ScanService>();
 builder.Services.AddScoped<Sandcastle.Application.Scans.IScanOrchestrator,
     Sandcastle.Infrastructure.Scans.ScanOrchestrator>();
+// SPEC-144: batch refactors — planner (grafo deps → lotes), executor
+// (deps + concurrency → delegate children → PR/lote), fila + worker
+// (também reconcilia pr_open/merged e feedback de PR).
+builder.Services.Configure<Sandcastle.Infrastructure.Refactors.RefactorOptions>(
+    builder.Configuration.GetSection(
+        Sandcastle.Infrastructure.Refactors.RefactorOptions.Section));
+builder.Services.AddSingleton<Sandcastle.Infrastructure.Refactors.RefactorDispatcher>();
+builder.Services.AddScoped<Sandcastle.Application.Refactors.IRefactorDispatcher>(
+    sp => sp.GetRequiredService<Sandcastle.Infrastructure.Refactors.RefactorDispatcher>());
+builder.Services.AddHostedService<Sandcastle.Infrastructure.Refactors.RefactorWorker>();
+builder.Services.AddScoped<Sandcastle.Application.Refactors.IRefactorService,
+    Sandcastle.Infrastructure.Refactors.RefactorService>();
+builder.Services.AddScoped<Sandcastle.Application.Refactors.IRefactorPlanner,
+    Sandcastle.Infrastructure.Refactors.RefactorPlanner>();
+builder.Services.AddScoped<Sandcastle.Application.Refactors.IBatchExecutor,
+    Sandcastle.Infrastructure.Refactors.BatchExecutor>();
 builder.Services.AddScoped<Sandcastle.Application.Identity.ICurrentUserAccessor,
     Sandcastle.Api.Auth.HttpCurrentUserAccessor>();
 

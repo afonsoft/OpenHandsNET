@@ -36,7 +36,9 @@ public sealed class GitHubWebhookService(
     Microsoft.Extensions.Options.IOptions<Qa.QaOptions>? qaOptions = null,
     IRepoIndexer? indexer = null,
     Microsoft.Extensions.Options.IOptions<Indexing.IndexingOptions>? indexingOptions = null,
-    IWikiService? wiki = null) : IScmWebhookService
+    IWikiService? wiki = null,
+    Application.Refactors.IRefactorService? refactors = null)
+    : IScmWebhookService
 {
     private const string Repository = "repository";
     private const string Comment = "comment";
@@ -121,6 +123,16 @@ public sealed class GitHubWebhookService(
                     ScmKind.GitHub, root, connection, repository, ct);
             }
 
+            // SPEC-144 RF-002: feedback em PR de lote (review/comment) →
+            // delegate_message na filha quando viva — aditivo ao fluxo de
+            // menção (não consome o evento).
+            if (eventType is "pull_request_review"
+                or "pull_request_review_comment" or "issue_comment")
+            {
+                await ForwardRefactorFeedbackAsync(
+                    eventType, root, connection, ct);
+            }
+
             var mention = ParseMention(eventType, root, installationId);
             if (mention is null || IsOwnBot(mention.CommentAuthor, connection))
             {
@@ -173,10 +185,128 @@ public sealed class GitHubWebhookService(
             root, connection, ct);
         var qaResult = await HandleQaPullRequestAsync(
             root, connection, ct);
+        var refactorResult = await HandleRefactorMergedAsync(
+            root, connection, ct);
         return reviewResult == ScmWebhookResult.Processed
             || qaResult == ScmWebhookResult.Processed
+            || refactorResult == ScmWebhookResult.Processed
                 ? ScmWebhookResult.Processed
                 : ScmWebhookResult.Ignored;
+    }
+
+    /// <summary>
+    /// SPEC-144 RF-002 — <c>pull_request</c> action <c>closed</c> com
+    /// <c>merged=true</c> marca o lote do PR como <c>merged</c> e
+    /// re-enfileira o plano (dependentes desbloqueiam).
+    /// </summary>
+    private async Task<ScmWebhookResult> HandleRefactorMergedAsync(
+        JsonElement root, ScmConnection connection, CancellationToken ct)
+    {
+        if (refactors is null || connection.OrgId is not { } orgId)
+        {
+            return ScmWebhookResult.Ignored;
+        }
+        if (!root.TryGetProperty(ActionProp, out var act)
+            || act.GetString() != "closed"
+            || !root.TryGetProperty("pull_request", out var pr))
+        {
+            return ScmWebhookResult.Ignored;
+        }
+        var merged = pr.TryGetProperty("merged", out var m)
+            && m.ValueKind == JsonValueKind.True;
+        if (!merged
+            || !pr.TryGetProperty(NumberProp, out var n))
+        {
+            return ScmWebhookResult.Ignored;
+        }
+        var repository = root.TryGetProperty(Repository, out var repo)
+            && repo.TryGetProperty("full_name", out var fn)
+                ? fn.GetString() : null;
+        if (repository is null)
+        {
+            return ScmWebhookResult.Ignored;
+        }
+
+        try
+        {
+            return await refactors.OnPullRequestMergedAsync(
+                orgId, repository, n.GetInt32(), ct)
+                ? ScmWebhookResult.Processed
+                : ScmWebhookResult.Ignored;
+        }
+        catch (Exception e)
+        {
+            logger.LogWarning(e,
+                "refactor merge hook failed ({Repo}#{Pr})",
+                repository, n.GetInt32());
+            return ScmWebhookResult.Ignored;
+        }
+    }
+
+    /// <summary>
+    /// SPEC-144 RF-002 — feedback de review/comment num PR de lote →
+    /// <c>delegate_message</c> na filha (rebase + re-verify) quando ela
+    /// ainda vive; deferral registrado caso contrário. Best-effort —
+    /// nunca altera o fluxo de menção.
+    /// </summary>
+    private async Task ForwardRefactorFeedbackAsync(
+        string eventType, JsonElement root, ScmConnection connection,
+        CancellationToken ct)
+    {
+        if (refactors is null || connection.OrgId is not { } orgId)
+        {
+            return;
+        }
+
+        try
+        {
+            var repository = root.TryGetProperty(Repository, out var repo)
+                && repo.TryGetProperty("full_name", out var fn)
+                    ? fn.GetString() : null;
+            if (repository is null)
+            {
+                return;
+            }
+
+            int? prNumber = null;
+            string? body = null;
+            if (eventType == "issue_comment")
+            {
+                if (root.TryGetProperty("issue", out var issue)
+                    && issue.TryGetProperty("pull_request", out _)
+                    && issue.TryGetProperty(NumberProp, out var inum))
+                {
+                    prNumber = inum.GetInt32();
+                }
+                body = root.TryGetProperty(Comment, out var c)
+                    && c.TryGetProperty("body", out var b)
+                        ? b.GetString() : null;
+            }
+            else if (root.TryGetProperty("pull_request", out var pr)
+                && pr.TryGetProperty(NumberProp, out var pnum))
+            {
+                prNumber = pnum.GetInt32();
+                body = eventType == "pull_request_review"
+                    ? root.TryGetProperty("review", out var rv)
+                        && rv.TryGetProperty("body", out var rb)
+                            ? rb.GetString() : null
+                    : root.TryGetProperty(Comment, out var c)
+                        && c.TryGetProperty("body", out var cb)
+                            ? cb.GetString() : null;
+            }
+
+            if (prNumber is not { } num || body is null)
+            {
+                return;
+            }
+
+            await refactors.OnPullRequestFeedbackAsync(
+                orgId, repository, num, body, ct);
+        }
+        catch (Exception e)
+        {
+            logger.LogDebug(e, "refactor feedback hook failed");
+        }
     }
 
     /// <summary>

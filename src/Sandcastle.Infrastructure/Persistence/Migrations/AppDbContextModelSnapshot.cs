@@ -2443,6 +2443,225 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations
                     b.ToTable("wiki_runs", (string)null);
                 });
 
+            modelBuilder.Entity("Sandcastle.Infrastructure.Refactors.RefactorBatchRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("attempts");
+
+                    b.Property<Guid?>("ConversationId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DependsOnJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("depends_on_json");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("error");
+
+                    b.Property<string>("FilesJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("files_json");
+
+                    b.Property<int>("N")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("n");
+
+                    b.Property<Guid>("PlanId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("plan_id");
+
+                    b.Property<int?>("PrNumber")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("pr_number");
+
+                    b.Property<string>("PrUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("pr_url");
+
+                    b.Property<string>("Repository")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("repository");
+
+                    b.Property<string>("Risk")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("risk");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("state");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("VerifyCommand")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("verify_command");
+
+                    b.Property<string>("VerifyLogDigest")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("verify_log_digest");
+
+                    b.HasKey("Id")
+                        .HasName("pk_refactor_batches");
+
+                    b.HasIndex("PlanId")
+                        .HasDatabaseName("ix_refactor_batches_plan_id");
+
+                    b.HasIndex("State")
+                        .HasDatabaseName("ix_refactor_batches_state");
+
+                    b.HasIndex("PlanId", "N")
+                        .IsUnique()
+                        .HasDatabaseName("ix_refactor_batches_plan_id_n");
+
+                    b.HasIndex("Repository", "PrNumber")
+                        .HasDatabaseName("ix_refactor_batches_repository_pr_number");
+
+                    b.ToTable("refactor_batches", (string)null);
+                });
+
+            modelBuilder.Entity("Sandcastle.Infrastructure.Refactors.RefactorPlanRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<int?>("BatchSizeHint")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("batch_size_hint");
+
+                    b.Property<Guid?>("CoordinatorConversationId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("coordinator_conversation_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("CreatedAtTicks")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("created_at_ticks");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("error");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("finished_at");
+
+                    b.Property<string>("Goal")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("goal");
+
+                    b.Property<int>("MaxConcurrency")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("max_concurrency");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("mode");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("PlanJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("plan_json");
+
+                    b.Property<Guid?>("PlannerConversationId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("planner_conversation_id");
+
+                    b.Property<string>("RepositoriesJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("repositories_json");
+
+                    b.Property<string>("RequestedMode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("requested_mode");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("StatsJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("stats_json");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Strategy")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("strategy");
+
+                    b.HasKey("Id")
+                        .HasName("pk_refactor_plans");
+
+                    b.HasIndex("CoordinatorConversationId")
+                        .HasDatabaseName("ix_refactor_plans_coordinator_conversation_id");
+
+                    b.HasIndex("CreatedAtTicks")
+                        .IsDescending()
+                        .HasDatabaseName("ix_refactor_plans_created_at_ticks");
+
+                    b.HasIndex("OrgId", "Status")
+                        .HasDatabaseName("ix_refactor_plans_org_id_status");
+
+                    b.ToTable("refactor_plans", (string)null);
+                });
+
             modelBuilder.Entity("Sandcastle.Infrastructure.Sandbox.SandboxRecord", b =>
                 {
                     b.Property<Guid>("Id")
