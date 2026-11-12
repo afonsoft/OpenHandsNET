@@ -444,8 +444,12 @@ public sealed class ScanOrchestrator(
     {
         try
         {
-            var model = (await router.SelectAsync(
-                Guid.Empty, ModelRole.Analysis, o.Model, ct)).Model;
+            // SPEC-149: dedup usa a role analysis com o org do scan.
+            var model = (await router.ResolveAsync(LlmRole.Analysis,
+                new LlmRouteContext(OrgId: scan.OrgId,
+                    PreferredModel: o.Model), ct))?.Model
+                ?? throw new LlmNoRouteException(
+                    "analysis", "no eligible candidate");
             var sb = new StringBuilder();
             for (var i = 0; i < kept.Count; i++)
             {

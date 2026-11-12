@@ -244,6 +244,11 @@ public sealed class Spec145RepoWikiTests : IAsyncDisposable
             ModelSelection current, LlmErrorKind kind,
             CancellationToken ct) =>
             Task.FromResult<ModelSelection?>(null);
+
+        public Task<ModelSelection?> ResolveAsync(
+            LlmRole role, LlmRouteContext ctx, CancellationToken ct) =>
+            Task.FromResult<ModelSelection?>(new ModelSelection(
+                "wiki-model", "mock", null, 0, null));
     }
 
     private sealed class FakeMeter : IUsageMeter

@@ -760,5 +760,10 @@
   "mkt.err_already": "Già installato in questo ambito.",
   "mkt.err_validation": "Validazione dell'installazione fallita (controlla versione/permessi).",
   "mkt.err_registry": "Registry irraggiungibile.",
-  "mkt.err_generic": "Errore marketplace: {{detail}}"
+  "mkt.err_generic": "Errore marketplace: {{detail}}",
+  "usage.by_role": "Utilizzo per ruolo",
+  "usage.role": "ruolo",
+  "admin.routing_title": "Regole di routing",
+  "admin.routing_hint": "Candidati di modello ordinati per ruolo (JSON routing_rules_v1). Documento vuoto = pass-through.",
+  "admin.routing_json": "JSON delle regole di routing"
 }

@@ -282,6 +282,29 @@
                             </tbody>
                         </table>
                     }
+                    @* SPEC-149 RF-004: breakdown por role×model — mesma
+                       fonte (TokenEvent) do card de budget. *@
+                    @if (_llmUsage is { Rows.Count: > 0 })
+                    {
+                        <h4>@L["usage.by_role"]</h4>
+                        <table class="budget-models">
+                            <thead>
+                                <tr><th>@L["usage.role"]</th>
+                                    <th>@L["usage.model"]</th>
+                                    <th>@L["usage.tokens"]</th>
+                                    <th>@L["usage.cost"]</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var r in _llmUsage.Rows)
+                                {
+                                    <tr><td>@r.Role</td>
+                                        <td>@r.Model</td>
+                                        <td>@FmtTokens(r.Tokens)</td>
+                                        <td>$@r.CostUsd.ToString("0.0000")</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
                 }
             }
             else if (_tab == "indexing")
@@ -370,6 +393,7 @@
     private bool _gitSaving;
     private bool _gitSaved;
     private UsageBudgetDto? _budget;
+    private LlmUsageBreakdownDto? _llmUsage; // SPEC-149
     private IndexingStatusDto? _indexing;
     private string _idxRepo = "";
     private string _idxBranch = "";
@@ -428,6 +452,7 @@
 
         // SPEC-147: budgets/indexing/git-author — cada um best-effort.
         try { _budget = await Api.GetUsageBudgetAsync(); } catch { }
+        try { _llmUsage = await Api.GetLlmUsageByRoleAsync(); } catch { } // SPEC-149
         try { _indexing = await Api.GetIndexingStatusAsync(); } catch { }
         try
         {

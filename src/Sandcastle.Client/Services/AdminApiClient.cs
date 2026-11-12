@@ -269,6 +269,53 @@ public sealed class AdminApiClient(HttpClient http)
             : (false, await DetailAsync(resp, ct));
     }
 
+    // ---- SPEC-149: routing rules + llm catalog/usage -----------------
+
+    /// <summary>GET /organizations/{id}/routing-rules — documento v1 (vazio = pass-through).</summary>
+    public async Task<JsonElement> GetRoutingRulesAsync(
+        string orgId, CancellationToken ct = default) =>
+        await GetAsync<JsonElement>(
+            $"/api/v1/organizations/{orgId}/routing-rules", ct);
+
+    /// <summary>
+    /// PUT do documento <c>routing_rules_v1</c> — valida JSON no client
+    /// e schema no server (400 → detail). Vazio ⇒ limpa (pass-through).
+    /// </summary>
+    public async Task<(bool Ok, string? Error)> PutRoutingRulesAsync(
+        string orgId, string rawJson, CancellationToken ct = default)
+    {
+        JsonElement doc;
+        try
+        {
+            doc = JsonSerializer.Deserialize<JsonElement>(
+                string.IsNullOrWhiteSpace(rawJson) ? "{}" : rawJson);
+        }
+        catch (JsonException e)
+        {
+            return (false, $"invalid JSON: {e.Message}");
+        }
+
+        var resp = Guard(await http.PutAsJsonAsync(
+            $"/api/v1/organizations/{orgId}/routing-rules",
+            doc, Json, ct));
+        return resp.IsSuccessStatusCode
+            ? (true, null)
+            : (false, await DetailAsync(resp, ct));
+    }
+
+    /// <summary>GET /llm/routes — catálogo provider×model do gateway.</summary>
+    public async Task<IReadOnlyList<JsonElement>> GetLlmRoutesAsync(
+        CancellationToken ct = default) =>
+        await GetAsync<List<JsonElement>>("/api/v1/llm/routes", ct) ?? [];
+
+    /// <summary>GET /usage/llm?by=role(&#38;org=) — breakdown role×model da org.</summary>
+    public async Task<JsonElement> GetLlmUsageByRoleAsync(
+        string? orgId, CancellationToken ct = default) =>
+        await GetAsync<JsonElement>(
+            "/api/v1/usage/llm?by=role"
+                + (string.IsNullOrEmpty(orgId) ? "" : $"&org={orgId}"),
+            ct);
+
     // ---- scm (SPEC-52) -----------------------------------------------------
 
     /// <summary>Conexões SCM da org.</summary>

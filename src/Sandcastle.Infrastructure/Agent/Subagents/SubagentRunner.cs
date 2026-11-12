@@ -47,6 +47,8 @@ public sealed class SubagentRunner(
         var filtered = new FilterToolRegistry(registry, allow);
         var schemas = filtered.All.Select(t => t.Schema).ToList();
         var router = services.GetService<IModelRouter>();
+        // SPEC-149: subagent herda o ctx da conversa pai (org via
+        // ContextForConversation no bridge SelectAsync).
         var selection = router is not null
             ? await router.SelectAsync(
                 conversationId, ModelRole.Subagent, null, ct)

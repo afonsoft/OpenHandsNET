@@ -34,4 +34,14 @@ public interface IUsageBudgetService
     /// </summary>
     Task<UsageBudget> GetBudgetAsync(
         Guid userId, Guid? orgId, bool orgScope, CancellationToken ct);
+
+    /// <summary>
+    /// SPEC-149 RF-004: <c>GET /usage/llm?by=role</c> — role×model
+    /// breakdown over <c>TokenEvent</c> payloads of the current period
+    /// (mesma fonte do <see cref="UsageBudget.ByModel"/> — sem schema
+    /// novo). Org scope exige <paramref name="orgId"/>; a checagem de
+    /// permissão é do endpoint.
+    /// </summary>
+    Task<Agent.LlmUsageBreakdown> GetLlmUsageAsync(
+        Guid userId, Guid? orgId, bool orgScope, CancellationToken ct);
 }

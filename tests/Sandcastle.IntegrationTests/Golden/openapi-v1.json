@@ -1414,6 +1414,126 @@
         ],
         "type": "object"
       },
+      "RouteCandidate": {
+        "description": "SPEC-149 RF-001: one candidate of a role\u0027s ordered routing list\n(\u0060routing_rules_v1\u0060). string? RouteCandidate.BudgetTier=\u0060cheap\u0060 gains\npriority when the org budget runs low; bool RouteCandidate.Internal marks\nproviders allowed under \u0060data_residency=internal-only\u0060.",
+        "properties": {
+          "api_key_ref": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "budget_tier": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "internal": {
+            "default": false,
+            "type": "boolean"
+          },
+          "max_cost_per_1m": {
+            "format": "double",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ]
+          },
+          "model": {
+            "type": "string"
+          },
+          "provider": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "weight": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "model"
+        ],
+        "type": "object"
+      },
+      "RoutingRulesDocument": {
+        "description": "SPEC-149 RF-001: org routing document stored under\n\u0060org_settings[\u0022routing_rules\u0022]\u0060. Empty/absent \u21D2 pass-through\n(comportamento id\u00EAntico ao de hoje \u2014 guardrail de compat).",
+        "properties": {
+          "allowed_models": {
+            "description": "Admin hard allowlist \u2014 empty = unrestricted.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "cheap_when_below_pct": {
+            "description": "Budget threshold % \u2014 below it, cheap candidates go first.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ]
+          },
+          "circuit_open_sec": {
+            "description": "Circuit-open cooldown seconds (per provider:model).",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ]
+          },
+          "data_residency": {
+            "description": "\u0060internal-only\u0060 \u21D2 external candidates never route.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "default_role_map": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Optional legacy\u2192canonical role remap.",
+            "type": "object"
+          },
+          "deny_models": {
+            "description": "Admin deny list \u2014 wins over everything.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "rules": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/RouteCandidate"
+              },
+              "type": "array"
+            },
+            "description": "role wire name \u2192 ordered candidate list.",
+            "type": "object"
+          },
+          "version": {
+            "description": "Schema version field.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "SandboxSpecDto": {
         "description": "SandboxSpec DTO (wire).",
         "properties": {
@@ -6837,6 +6957,25 @@
         ]
       }
     },
+    "/api/v1/llm/routes": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/llm/routes",
+        "tags": [
+          "Sandcastle.Api"
+        ]
+      }
+    },
     "/api/v1/marketplace/entries": {
       "get": {
         "parameters": [
@@ -8004,6 +8143,80 @@
           }
         },
         "summary": "PUT /api/v1/organizations/{org_id:guid}/quota",
+        "tags": [
+          "Sandcastle.Api"
+        ]
+      }
+    },
+    "/api/v1/organizations/{org_id}/routing-rules": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/organizations/{org_id:guid}/routing-rules",
+        "tags": [
+          "Sandcastle.Api"
+        ]
+      },
+      "put": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RoutingRulesDocument"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "PUT /api/v1/organizations/{org_id:guid}/routing-rules",
         "tags": [
           "Sandcastle.Api"
         ]
@@ -11752,6 +11965,41 @@
           }
         },
         "summary": "GET /api/v1/usage/budget",
+        "tags": [
+          "Sandcastle.Api"
+        ]
+      }
+    },
+    "/api/v1/usage/llm": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "by",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "org",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/usage/llm",
         "tags": [
           "Sandcastle.Api"
         ]

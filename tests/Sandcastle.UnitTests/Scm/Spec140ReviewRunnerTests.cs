@@ -675,6 +675,11 @@ public sealed class Spec140ReviewRunnerTests : IAsyncDisposable
             ModelSelection current, LlmErrorKind kind,
             CancellationToken ct) =>
             Task.FromResult<ModelSelection?>(null);
+
+        public Task<ModelSelection?> ResolveAsync(
+            LlmRole role, LlmRouteContext ctx, CancellationToken ct) =>
+            Task.FromResult<ModelSelection?>(new ModelSelection(
+                "review-model", "fake", 128_000, 1, null));
     }
 
     private sealed class FakeUsage : IUsageMeter

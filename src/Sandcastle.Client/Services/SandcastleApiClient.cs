@@ -1235,6 +1235,11 @@ public sealed class SandcastleApiClient(HttpClient http)
         CancellationToken ct = default) =>
         GetOrNull<IndexingStatusDto>("/api/v1/indexing/status", ct);
 
+    /// <summary>SPEC-149 RF-004: GET /usage/llm?by=role — breakdown role×model do caller.</summary>
+    public Task<LlmUsageBreakdownDto?> GetLlmUsageByRoleAsync(
+        CancellationToken ct = default) =>
+        GetOrNull<LlmUsageBreakdownDto>("/api/v1/usage/llm?by=role", ct);
+
     /// <summary>POST /repos/index — dispara indexação do repo (SPEC-60).</summary>
     public async Task<bool> TriggerRepoIndexAsync(
         string repository, string? branch, CancellationToken ct = default)
@@ -1483,6 +1488,14 @@ public sealed record ModelUsageDto(string Model, long Tokens, decimal CostUsd);
 /// <summary>SPEC-147 RF-005: resposta de <c>/indexing/status</c>.</summary>
 public sealed record IndexingStatusDto(
     int TotalConnected, int Indexed, int Indexing, int Failed);
+
+/// <summary>SPEC-149 RF-004: linha role×model de <c>/usage/llm</c>.</summary>
+public sealed record LlmUsageRowDto(
+    string Role, string Model, long Tokens, decimal CostUsd);
+
+/// <summary>SPEC-149 RF-004: resposta de <c>/usage/llm?by=role</c>.</summary>
+public sealed record LlmUsageBreakdownDto(
+    string By, string Period, IReadOnlyList<LlmUsageRowDto> Rows);
 
 /// <summary>SPEC-145: árvore de tópicos da wiki de um repo.</summary>
 public sealed record WikiTreeDto(

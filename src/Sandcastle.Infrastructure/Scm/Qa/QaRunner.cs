@@ -268,8 +268,12 @@ public sealed class QaRunner : IQaRunner
                 SecretRedactor.Redact(DiffIndex.Render(files)),
                 src, "diff", int.MaxValue / 4));
 
-        var model = (await _router.SelectAsync(Guid.Empty,
-            ModelRole.Reviewer, _options.Value.Model, ct)).Model;
+        // SPEC-149: qa-plan usa a role review com o org do run.
+        var model = (await _router.ResolveAsync(LlmRole.Review,
+            new LlmRouteContext(OrgId: run.OrgId,
+                PreferredModel: _options.Value.Model), ct))?.Model
+            ?? throw new LlmNoRouteException(
+                "review", "no eligible candidate");
         var text = new StringBuilder();
         LlmUsage? usage = null;
         await foreach (var chunk in _llm.ChatStreamAsync(

@@ -16,7 +16,8 @@ namespace Sandcastle.Infrastructure.Agent.Security;
 /// whatever patterns say).
 /// </summary>
 public sealed class LlmSecurityAnalyzer(
-    IAgentLlmProvider llm, IMemoryCache cache) : ISecurityAnalyzer
+    IAgentLlmProvider llm, IMemoryCache cache,
+    IModelRouter? router = null) : ISecurityAnalyzer
 {
     private static readonly PatternSecurityAnalyzer Fallback = new();
 
@@ -48,9 +49,14 @@ public sealed class LlmSecurityAnalyzer(
         try
         {
             var text = new StringBuilder();
+            // SPEC-149: analyzer é a role critic (choke point único).
+            var model = router is null ? null
+                : (await router.ResolveAsync(LlmRole.Critic,
+                    new LlmRouteContext(), ct))?.Model;
             await foreach (var chunk in llm.ChatStreamAsync(
                 [LlmMessage.User(Prompt + payload)], [],
-                new LlmOptions(MaxTokens: 8, Temperature: 0), ct))
+                new LlmOptions(Model: model, MaxTokens: 8,
+                    Temperature: 0), ct))
             {
                 if (chunk is TextDelta delta)
                 {

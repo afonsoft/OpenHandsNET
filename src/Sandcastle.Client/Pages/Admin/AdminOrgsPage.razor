@@ -126,6 +126,32 @@ else
                     @L["admin.save"]
                 </button>
             </div>
+
+            @* SPEC-149 RF-004: routing rules da org — JSON validado
+               (schema routing_rules_v1; vazio = pass-through). *@
+            <h3>@L["admin.routing_title"]</h3>
+            <p class="muted">@L["admin.routing_hint"]</p>
+            <div class="field">
+                <label for="org-routing">@L["admin.routing_json"]</label>
+                <textarea id="org-routing" rows="12"
+                          aria-label="@L["admin.routing_json"]"
+                          @bind="_routingJson"
+                          placeholder="{&quot;version&quot;:&quot;routing_rules_v1&quot;,&quot;rules&quot;:{}}"></textarea>
+            </div>
+            @if (_routingError is not null)
+            {
+                <p class="admin-error">@_routingError</p>
+            }
+            <div class="composer-actions">
+                <button class="btn btn-primary" @onclick="SaveRoutingAsync"
+                        disabled="@_saving">
+                    @L["admin.save"]
+                </button>
+                <button class="btn" @onclick="ClearRoutingAsync"
+                        disabled="@_saving">
+                    @L["admin.reset"]
+                </button>
+            </div>
         }
     </div>
 }
@@ -145,6 +171,9 @@ else
     private string _osGitEmail = "";
     private string _osCoauthor = "";
     private string _osSlackPing = "";
+    // SPEC-149: routing rules editor (JSON validado).
+    private string _routingJson = "";
+    private string? _routingError;
 
     protected override async Task LoadAsync() =>
         _orgs = await Api.ListOrgsAsync();
@@ -166,6 +195,13 @@ else
         _osCoauthor = st.GetValueOrDefault("coauthor_enabled") ?? "";
         _osSlackPing = st.GetValueOrDefault(
             "chatops_allow_group_mentions") ?? "";
+
+        var rr = await Api.GetRoutingRulesAsync(_orgId);
+        _routingJson = rr.ValueKind is JsonValueKind.Object
+            ? JsonSerializer.Serialize(rr,
+                new JsonSerializerOptions { WriteIndented = true })
+            : "{}";
+        _routingError = null;
         _loaded = true;
     }
 
@@ -244,6 +280,52 @@ else
             else
             {
                 Error = err;
+            }
+        }
+        finally { _saving = false; }
+    }
+
+    /// <summary>SPEC-149: salva o documento routing_rules_v1.</summary>
+    private async Task SaveRoutingAsync()
+    {
+        if (string.IsNullOrEmpty(_orgId)) { return; }
+        _saving = true;
+        _routingError = null;
+        try
+        {
+            var (ok, err) = await Api.PutRoutingRulesAsync(
+                _orgId, _routingJson);
+            if (ok)
+            {
+                Toasts.Success(L["admin.saved"]);
+                await LoadPolicyAsync();
+            }
+            else
+            {
+                _routingError = err;
+            }
+        }
+        finally { _saving = false; }
+    }
+
+    /// <summary>SPEC-149: reset ⇒ documento vazio ⇒ pass-through.</summary>
+    private async Task ClearRoutingAsync()
+    {
+        if (string.IsNullOrEmpty(_orgId)) { return; }
+        _saving = true;
+        _routingError = null;
+        try
+        {
+            var (ok, err) = await Api.PutRoutingRulesAsync(
+                _orgId, """{"version":"routing_rules_v1","rules":{}}""");
+            if (ok)
+            {
+                Toasts.Success(L["admin.saved"]);
+                await LoadPolicyAsync();
+            }
+            else
+            {
+                _routingError = err;
             }
         }
         finally { _saving = false; }

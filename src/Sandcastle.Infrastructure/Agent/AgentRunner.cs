@@ -294,9 +294,15 @@ public sealed class AgentRunner(
         // SPEC-23 RF-002: seleção por role + fallback chain. `selection`
         // acompanha o modelo efetivo (catalogo → janela/provider).
         var router = services.GetService<IModelRouter>();
+        // SPEC-149 RF-001: choke point único — role code carrega org +
+        // user pick do ctx. ResolveAsync null ⇒ rules ativas sem
+        // candidato elegível ⇒ llm_no_route (nunca modelo arbitrário).
         var selection = router is not null
-            ? await router.SelectAsync(conversationId, ModelRole.Worker,
-                conv.LlmModel, ct)
+            ? await router.ResolveAsync(LlmRole.Code,
+                new LlmRouteContext(conversationId, conv.OrgId,
+                    conv.CreatedByUserId, conv.LlmModel), ct)
+                ?? throw new LlmNoRouteException(
+                    "code", "no eligible candidate")
             : null;
         if (selection is not null)
         {
@@ -717,7 +723,7 @@ public sealed class AgentRunner(
             CompletionTokens = end.Usage.CompletionTokens,
             CostUsd = end.Usage.CostUsd,
             Model = st.Model,
-            Role = "worker",
+            Role = "code", // SPEC-149: wire name canônico da role
         }, ct);
         Telemetry.ScTelemetry.LlmTokens
             .WithLabels("prompt").Inc(end.Usage.PromptTokens);
@@ -1209,7 +1215,8 @@ public sealed class AgentRunner(
             var verdict = await advisor.ConsultAsync(
                 $"tool={call.Name} action={actionEvent.Action}",
                 "Is this action safe and on-scope for the task?",
-                ct);
+                ct, new LlmRouteContext(conversationId,
+                    st.Conv.OrgId, st.Conv.CreatedByUserId));
             if (verdict is not null)
             {
                 await st.Events.AppendAsync(conversationId,

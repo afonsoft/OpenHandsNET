@@ -760,5 +760,10 @@
   "mkt.err_already": "Já instalado neste escopo.",
   "mkt.err_validation": "Validação da instalação falhou (verifique versão/permissões).",
   "mkt.err_registry": "Registry inacessível.",
-  "mkt.err_generic": "Erro do marketplace: {{detail}}"
+  "mkt.err_generic": "Erro do marketplace: {{detail}}",
+  "usage.by_role": "Uso por role",
+  "usage.role": "role",
+  "admin.routing_title": "Regras de roteamento",
+  "admin.routing_hint": "Candidatos de modelo ordenados por role (JSON routing_rules_v1). Documento vazio = pass-through.",
+  "admin.routing_json": "JSON das regras de roteamento"
 }
