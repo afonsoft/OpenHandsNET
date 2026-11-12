@@ -8,7 +8,7 @@
 | Type | `Feature / Agent orchestration + SCM` |
 | Stack | `.NET 10 · delegate (SPEC-62) · git · PR per batch` |
 | Repository | `afonsoft/sandcastle` |
-| Status | `Approved` |
+| Status | `Delivered` |
 | Ticket | `GAP-REFACTOR-BATCH` (docs/research/2026-11-competitive-gap-analysis.md §G5) |
 | Depends on | `62` (delegate), `52` (PR create/status), `141` (autofix loop p/ CI dos lotes) |
 | Reference | OH Refactor SDK / Large Codebase SDK (dependency graph → batches → verify/fix → tracking); Devin stacked PRs — conceitos apenas |

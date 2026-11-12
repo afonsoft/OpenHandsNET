@@ -1,0 +1,221 @@
+@page "/refactors"
+@using Sandcastle.Client.Services
+@inject SandcastleApiClient Api
+@inject LocalizationService L
+@inject ToastService Toasts
+@inject NavigationManager Nav
+
+<PageTitle>@L["refactors.title"] — Sandcastle</PageTitle>
+
+<h2>@L["refactors.title"]</h2>
+<p class="sub">@L["refactors.subtitle"]</p>
+
+@* SPEC-144 RF-005: novo refactor — goal + repos (csv) + strategy +
+   mode + concurrency/batch hints. *@
+<details class="scan-new" open="@_openForm">
+    <summary>@L["refactors.new"]</summary>
+    <div class="scan-form">
+        <textarea aria-label="@L["refactors.goal"]"
+                  placeholder="@L["refactors.goal_placeholder"]"
+                  @bind="_goal" rows="3" style="width:100%"></textarea>
+        <input aria-label="@L["refactors.repositories"]"
+               placeholder="@L["scans.repositories_placeholder"]"
+               @bind="_repos" @bind:event="oninput" />
+        <select aria-label="@L["refactors.strategy"]" @bind="_strategy">
+            <option value="import-graph">
+                @L["refactors.strategy_import_graph"]</option>
+            <option value="directory">
+                @L["refactors.strategy_directory"]</option>
+        </select>
+        <select aria-label="@L["refactors.mode"]" @bind="_mode">
+            <option value="independent">
+                @L["refactors.mode_independent"]</option>
+            <option value="stacked">
+                @L["refactors.mode_stacked"]</option>
+        </select>
+        <input aria-label="@L["refactors.max_concurrency"]"
+               placeholder="@L["refactors.max_concurrency_placeholder"]"
+               @bind="_concurrency" />
+        <input aria-label="@L["refactors.batch_size"]"
+               placeholder="@L["refactors.batch_size_placeholder"]"
+               @bind="_batchSize" />
+        <button class="primary" @onclick="CreateAsync"
+                disabled="@(_busy || _goal.Trim().Length == 0 || ParseRepos().Count == 0)">
+            @(_busy ? L["refactors.starting"] : L["refactors.run"])
+        </button>
+        @if (_error is not null)
+        {
+            <p class="text-danger">@_error</p>
+        }
+    </div>
+</details>
+
+<div class="scan-toolbar">
+    <select aria-label="@L["scans.filter_status"]" @bind="_statusFilter"
+            @bind:after="ReloadAsync">
+        <option value="">@L["scans.status_all"]</option>
+        <option value="planning">@L["refactors.status_planning"]</option>
+        <option value="awaiting_approval">
+            @L["refactors.status_awaiting"]</option>
+        <option value="running">@L["scans.status_running"]</option>
+        <option value="paused">@L["refactors.status_paused"]</option>
+        <option value="completed">@L["scans.status_completed"]</option>
+        <option value="failed">@L["scans.status_failed"]</option>
+        <option value="cancelled">@L["scans.status_cancelled"]</option>
+    </select>
+    <button @onclick="ReloadAsync">@L["common.refresh"]</button>
+</div>
+
+@if (_plans is null)
+{
+    <p><em>@L["common.loading"]</em></p>
+}
+else if (_plans.Count == 0)
+{
+    <p class="sub">@L["refactors.empty"]</p>
+}
+else
+{
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>@L["refactors.goal"]</th>
+                <th>@L["refactors.repositories"]</th>
+                <th>@L["refactors.mode"]</th>
+                <th>@L["scans.status"]</th>
+                <th>@L["refactors.progress"]</th>
+                <th>@L["scans.created"]</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in _plans)
+            {
+                <tr>
+                    <td><a href="/refactors/@p.Id">@p.Goal</a></td>
+                    <td>@string.Join(", ", p.Repositories)</td>
+                    <td>@p.Mode / @p.Strategy</td>
+                    <td><span class="badge @StatusClass(p.Status)">
+                        @p.Status</span></td>
+                    <td>
+                        @if (p.BatchesTotal > 0)
+                        {
+                            <progress value="@p.ProgressPercent" max="100">
+                            </progress>
+                            <span>@p.ProgressPercent%
+                                (@p.StateCounts.GetValueOrDefault("merged")/@p.BatchesTotal)</span>
+                        }
+                        else
+                        {
+                            <span class="sub">—</span>
+                        }
+                    </td>
+                    <td>@p.CreatedAt.LocalDateTime.ToString("g")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (_nextCursor is not null)
+    {
+        <button @onclick="LoadMoreAsync">@L["common.load_more"]</button>
+    }
+}
+
+@code {
+    private List<RefactorPlanDto>? _plans;
+    private string? _nextCursor;
+    private string _goal = "";
+    private string _repos = "";
+    private string _strategy = "import-graph";
+    private string _mode = "independent";
+    private string _concurrency = "";
+    private string _batchSize = "";
+    private string _statusFilter = "";
+    private bool _busy;
+    private bool _openForm;
+    private string? _error;
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = new Uri(Nav.Uri);
+        var q = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        var goal = q.Get("goal");
+        if (!string.IsNullOrWhiteSpace(goal))
+        {
+            _openForm = true;
+            var (cleanGoal, repos) = ScansPage.SplitMentions(goal);
+            _goal = cleanGoal;
+            _repos = string.Join(", ", repos);
+        }
+        await ReloadAsync();
+    }
+
+    private List<string> ParseRepos() => _repos
+        .Split(',', StringSplitOptions.RemoveEmptyEntries
+            | StringSplitOptions.TrimEntries)
+        .Select(r => r.TrimStart('@'))
+        .Where(r => r.Contains('/'))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    private static int? ParseInt(string raw) =>
+        int.TryParse(raw.Trim(), out var n) && n > 0 ? n : null;
+
+    private async Task CreateAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var created = await Api.CreateRefactorAsync(
+                ParseRepos(), _goal.Trim(), _strategy, _mode,
+                ParseInt(_concurrency), ParseInt(_batchSize));
+            if (created is null)
+            {
+                _error = L["refactors.create_failed"];
+                return;
+            }
+            Toasts.Success(L["refactors.started"]);
+            Nav.NavigateTo($"/refactors/{created.PlanId}");
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ReloadAsync()
+    {
+        _plans = null;
+        _nextCursor = null;
+        var page = await Api.ListRefactorsAsync(
+            string.IsNullOrEmpty(_statusFilter) ? null : _statusFilter);
+        _plans = page?.Items.ToList() ?? [];
+        _nextCursor = page?.NextPageId;
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        if (_plans is null || _nextCursor is null)
+        {
+            return;
+        }
+        var page = await Api.ListRefactorsAsync(
+            string.IsNullOrEmpty(_statusFilter) ? null : _statusFilter,
+            _nextCursor);
+        if (page is not null)
+        {
+            _plans.AddRange(page.Items);
+            _nextCursor = page.NextPageId;
+        }
+    }
+
+    internal static string StatusClass(string status) => status switch
+    {
+        "completed" => "finished",
+        "failed" => "error",
+        "running" => "running",
+        "awaiting_approval" or "paused" => "working",
+        _ => "idle",
+    };
+}

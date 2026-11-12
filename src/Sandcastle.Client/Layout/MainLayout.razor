@@ -119,6 +119,12 @@
                 <Icon Name="search" Size="16" />
                 <span class="txt">@L["sidebar.scans"]</span>
             </a>
+            @* SPEC-144 RF-005: batch refactors — lotes com PR próprio. *@
+            <a class="sb-item @(IsActive("/refactors") ? "active" : "")"
+               href="/refactors" title="@L["sidebar.refactors"]">
+                <Icon Name="git-branch" Size="16" />
+                <span class="txt">@L["sidebar.refactors"]</span>
+            </a>
             <div class="sb-label">@L["sidebar.general"]</div>
             <a class="sb-item @(IsActive("/automations") ? "active" : "")"
                href="/automations" title="@L["sidebar.automations"]">

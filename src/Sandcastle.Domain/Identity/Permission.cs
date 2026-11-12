@@ -42,6 +42,8 @@ public enum Permission
     ScansRun,
     ScansManage,
     ScansFindings,
+    RefactorsRun,
+    RefactorsApprove,
 }
 
 public static class PermissionExtensions
@@ -84,6 +86,8 @@ public static class PermissionExtensions
         Permission.ScansRun => "scans.run",
         Permission.ScansManage => "scans.manage",
         Permission.ScansFindings => "scans.findings",
+        Permission.RefactorsRun => "refactors.run",
+        Permission.RefactorsApprove => "refactors.approve",
         _ => throw new ArgumentOutOfRangeException(nameof(permission)),
     };
 
@@ -125,6 +129,8 @@ public static class PermissionExtensions
         "scans.run" => Permission.ScansRun,
         "scans.manage" => Permission.ScansManage,
         "scans.findings" => Permission.ScansFindings,
+        "refactors.run" => Permission.RefactorsRun,
+        "refactors.approve" => Permission.RefactorsApprove,
         _ => null,
     };
 }

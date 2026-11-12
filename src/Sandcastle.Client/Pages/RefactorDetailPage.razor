@@ -1,0 +1,297 @@
+@page "/refactors/{Id:guid}"
+@using Sandcastle.Client.Services
+@inject SandcastleApiClient Api
+@inject LocalizationService L
+@inject ToastService Toasts
+@implements IDisposable
+
+<PageTitle>@L["refactors.detail_title"] — Sandcastle</PageTitle>
+
+@if (_plan is null)
+{
+    <p><em>@L["common.loading"]</em></p>
+}
+else
+{
+    <h2>@_plan.Goal</h2>
+    <p class="sub">
+        <span class="badge @RefactorsPage.StatusClass(_plan.Status)">
+            @_plan.Status</span>
+        @_plan.Strategy / @_plan.Mode —
+        @string.Join(", ", _plan.Repositories) —
+        @L["refactors.max_concurrency"]: @_plan.MaxConcurrency
+        @if (_plan.PlannerConversationId is { } pc)
+        {
+            <a href="/conversations/@pc">@L["refactors.planner_session"]</a>
+        }
+        @if (_plan.CoordinatorConversationId is { } cc)
+        {
+            <a href="/conversations/@cc">@L["refactors.coordinator_session"]</a>
+        }
+    </p>
+    @if (_plan.Error is not null)
+    {
+        <p class="text-danger">@_plan.Error</p>
+    }
+    @foreach (var w in _plan.Warnings)
+    {
+        <p class="sub"><em>@w</em></p>
+    }
+
+    @* SPEC-144 RF-005: progresso + aprovação/controles. *@
+    <div class="scan-toolbar">
+        @if (_plan.BatchesTotal > 0)
+        {
+            <progress value="@_plan.ProgressPercent" max="100"
+                      style="min-width:14rem"></progress>
+            <span>@_plan.ProgressPercent%
+                (@_plan.StateCounts.GetValueOrDefault("merged")/@_plan.BatchesTotal
+                @L["refactors.merged_of"])</span>
+        }
+        <span style="flex:1"></span>
+        @if (_plan.Status == "awaiting_approval")
+        {
+            <button class="primary" @onclick='() => ActAsync("start")'
+                    disabled="@_busy">
+                @L["refactors.approve_start"]</button>
+        }
+        @if (_plan.Status == "running")
+        {
+            <button @onclick='() => ActAsync("pause")' disabled="@_busy">
+                @L["refactors.pause"]</button>
+        }
+        @if (_plan.Status == "paused")
+        {
+            <button class="primary" @onclick='() => ActAsync("resume")'
+                    disabled="@_busy">
+                @L["refactors.resume"]</button>
+        }
+        @if (_plan.Status is "running" or "paused" or "awaiting_approval")
+        {
+            <button @onclick='() => ActAsync("cancel")' disabled="@_busy">
+                @L["refactors.cancel"]</button>
+        }
+        <button @onclick="ReloadAsync">@L["common.refresh"]</button>
+    </div>
+
+    @if (_batches is null)
+    {
+        <p><em>@L["common.loading"]</em></p>
+    }
+    else if (_batches.Count == 0)
+    {
+        <p class="sub">@L["refactors.no_batches"]</p>
+    }
+    else
+    {
+        @foreach (var group in Grouped())
+        {
+            <h3>@StateLabel(group.Key) (@group.Count())</h3>
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>@L["refactors.batch_files"]</th>
+                        <th>@L["refactors.depends_on"]</th>
+                        <th>@L["refactors.risk"]</th>
+                        <th>@L["scans.status"]</th>
+                        <th>@L["refactors.attempts"]</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var b in group)
+                    {
+                        <tr>
+                            <td>@b.N</td>
+                            <td>
+                                @(b.Description ?? $"{b.Files.Count} files")
+                                <span class="sub">@b.Repository</span>
+                            </td>
+                            <td>
+                                @(b.DependsOn.Count == 0
+                                    ? "—"
+                                    : string.Join(", ", b.DependsOn))
+                            </td>
+                            <td><span class="badge @RiskClass(b.Risk)">
+                                @b.Risk</span></td>
+                            <td><span class="badge @StateClass(b.State)">
+                                @b.State</span>
+                                @if (b.Error is not null)
+                                {
+                                    <span class="sub" title="@b.Error">
+                                        @Trim(b.Error)</span>
+                                }
+                            </td>
+                            <td>@b.Attempts</td>
+                            <td class="scan-finding-actions">
+                                @if (b.PrUrl is not null)
+                                {
+                                    <a href="@b.PrUrl" target="_blank"
+                                       rel="noopener">
+                                        @L["scans.open_pr"]</a>
+                                }
+                                @if (b.ConversationId is { } cid)
+                                {
+                                    <a href="/conversations/@cid">
+                                        @L["refactors.open_session"]</a>
+                                }
+                                @if (b.State == "failed")
+                                {
+                                    <button @onclick="() => RetryAsync(b.N)"
+                                            disabled="@_busy">
+                                        @L["refactors.retry"]</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+}
+
+@code {
+    /// <summary>Plan id da rota.</summary>
+    [Parameter] public Guid Id { get; set; }
+
+    private RefactorPlanDto? _plan;
+    private List<RefactorBatchDto>? _batches;
+    private bool _busy;
+    private readonly CancellationTokenSource _poll = new();
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+        _ = PollWhileActiveAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        _plan = await Api.GetRefactorAsync(Id);
+        var page = await Api.GetRefactorBatchesAsync(Id);
+        _batches = page?.Items.ToList() ?? [];
+    }
+
+    /// <summary>Re-lê plano+batches enquanto não-terminal.</summary>
+    private async Task PollWhileActiveAsync()
+    {
+        while (_plan is { Status: "planning" or "awaiting_approval"
+            or "running" or "paused" } && !_poll.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(4), _poll.Token);
+                await ReloadAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception)
+            {
+                return; // poll best-effort
+            }
+        }
+    }
+
+    private IEnumerable<IGrouping<string, RefactorBatchDto>> Grouped() =>
+        (_batches ?? [])
+            .GroupBy(b => b.State)
+            .OrderBy(g => Array.IndexOf(StateOrder, g.Key) is var i
+                && i >= 0 ? i : StateOrder.Length);
+
+    private static readonly string[] StateOrder =
+    [
+        "running", "verifying", "ready", "pending", "blocked",
+        "failed", "pr_open", "merged",
+    ];
+
+    private string StateLabel(string state) => state switch
+    {
+        "pending" => L["refactors.state_pending"],
+        "ready" => L["refactors.state_ready"],
+        "running" => L["refactors.state_running"],
+        "verifying" => L["refactors.state_verifying"],
+        "pr_open" => L["refactors.state_pr_open"],
+        "merged" => L["refactors.state_merged"],
+        "failed" => L["refactors.state_failed"],
+        "blocked" => L["refactors.state_blocked"],
+        _ => state,
+    };
+
+    internal static string StateClass(string state) => state switch
+    {
+        "merged" => "finished",
+        "failed" or "blocked" => "error",
+        "running" or "verifying" or "pr_open" => "running",
+        "ready" => "working",
+        _ => "idle",
+    };
+
+    internal static string RiskClass(string risk) => risk switch
+    {
+        "high" => "error",
+        "med" => "working",
+        _ => "idle",
+    };
+
+    private static string Trim(string s) =>
+        s.Length > 80 ? s[..80] + "…" : s;
+
+    private async Task ActAsync(string action)
+    {
+        _busy = true;
+        try
+        {
+            var code = await Api.RefactorActionAsync(Id, action);
+            if ((int)code == 403)
+            {
+                Toasts.Error(L["refactors.approve_forbidden"]);
+            }
+            else if ((int)code >= 400)
+            {
+                Toasts.Error(L["refactors.action_failed"]);
+            }
+            else
+            {
+                Toasts.Success(action == "start"
+                    ? L["refactors.started_run"]
+                    : L["refactors.action_done"]);
+            }
+            await ReloadAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task RetryAsync(int n)
+    {
+        _busy = true;
+        try
+        {
+            if (!await Api.RetryRefactorBatchAsync(Id, n))
+            {
+                Toasts.Error(L["refactors.retry_failed"]);
+                return;
+            }
+            Toasts.Success(L["refactors.retry_queued"]);
+            await ReloadAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        _poll.Cancel();
+        _poll.Dispose();
+    }
+}

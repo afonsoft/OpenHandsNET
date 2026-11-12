@@ -22,6 +22,8 @@ public static class RolePermissions
         // SPEC-143: member dispara scans e triagia findings.
         Permission.ScansRun,
         Permission.ScansFindings,
+        // SPEC-144: member cria/executa refactors — aprovação fica admin+.
+        Permission.RefactorsRun,
     ];
 
     private static readonly Permission[] Admin =
@@ -43,6 +45,9 @@ public static class RolePermissions
         Permission.IndexingManage,
         // SPEC-143: admin gerencia schedules/lifecycle de scans.
         Permission.ScansManage,
+        // SPEC-144 §9: aprovação de plano de refactor exige admin+
+        // (plano é untrusted até revisão humana).
+        Permission.RefactorsApprove,
     ];
 
     private static readonly Permission[] Owner =

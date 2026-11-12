@@ -137,7 +137,7 @@ Aprovadas em 2026-11-10 pelo usuário — Epic acompanha no GitHub.
 | 141 | ci-autofix-loop | Delivered · PR #416 | #406 |
 | 142 | qa-agent-evidence | Delivered · PR #418 | #407 |
 | 143 | code-scans | Delivered · PR #422 | #408 |
-| 144 | batch-refactor | Approved | GAP-REFACTOR-BATCH |
+| 144 | batch-refactor | Delivered · PR #423 | #409 |
 | 145 | repo-wiki-mcp | Delivered · PR #420 | #410 |
 | 146 | multi-repo-conversations | Delivered · PR #421 | #411 |
 | 147 | product-polish | Delivered · PR #413 | #412 |
