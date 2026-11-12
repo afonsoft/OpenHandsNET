@@ -147,5 +147,5 @@ Aprovadas em 2026-11-10 pelo usuário — Epic acompanha no GitHub.
 | SPEC | Título | Status | Ticket |
 |---|---|---|---|
 | 148 | skills-marketplace | Delivered · PR #431 | #428 |
-| 149 | model-router | Approved | GAP-MODEL-ROUTER |
+| 149 | model-router | Delivered · PR #432 | #429 |
 | 150 | cli-handoff | Approved | GAP-CLI-HANDOFF |
