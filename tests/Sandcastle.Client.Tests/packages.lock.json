@@ -232,8 +232,8 @@
       },
       "Microsoft.DotNet.HotReload.WebAssembly.Browser": {
         "type": "Transitive",
-        "resolved": "10.0.115",
-        "contentHash": "wv++IOkJ6cKmGgBRaygfo5ftwac7eWodWs3MmgBnQWu/ELmnJMEAutQy2Z3WAG0uyRwRtgHLfKVzwQfIr2svqw=="
+        "resolved": "10.0.114",
+        "contentHash": "/5vjMWPo2tTac0g8x6hh0fMu2OwU7rnUGhTeOtn52IwYzjLUGNWTde/jatpkNOsoufdZpgkpTdMV6EibfEoSTA=="
       },
       "Microsoft.Extensions.Caching.Abstractions": {
         "type": "Transitive",
@@ -515,7 +515,7 @@
           "Markdig": "[1.6.0, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.14, )",
           "Microsoft.AspNetCore.SignalR.Client": "[10.0.14, )",
-          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.115, )",
+          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.114, )",
           "Sandcastle.Application": "[1.0.0, )"
         }
       },

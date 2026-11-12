@@ -8,7 +8,7 @@
 | Type | `Feature / Agent extensibility + Admin` |
 | Stack | `.NET 10 · skills catalog (SPEC-95) · MCP · bundles` |
 | Repository | `afonsoft/sandcastle` |
-| Status | `Approved` |
+| Status | `Delivered` |
 | Ticket | `GAP-MARKETPLACE` (docs/research/2026-11-competitive-gap-analysis.md §P2) |
 | Depends on | `95` (agent_catalog + `*.agent.md` layered), `123` (skills/hooks), `59` (admin perms), `131` (builtin MCP merge) |
 | Reference | Devin plugins+marketplace (3 escopos: enterprise/org/user); OH `iterate` public skill — conceitos apenas |
