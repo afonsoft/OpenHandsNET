@@ -154,6 +154,6 @@ Aprovadas em 2026-11-10 pelo usuário — Epic acompanha no GitHub.
 
 | SPEC | Título | Status | Ticket |
 |---|---|---|---|
-| 151 | alert-integrations | Approved | GAP-ALERT-INTEGRATIONS |
+| 151 | alert-integrations | Delivered · PR #448 | GAP-ALERT-INTEGRATIONS |
 | 152 | benchmark-adapters | Approved | GAP-BENCHMARKS |
 | 153 | hybrid-runner | Approved | GAP-HYBRID-RUNNER |
