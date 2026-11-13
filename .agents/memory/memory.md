@@ -1,5 +1,28 @@
 # memory.md — estado corrente (max 100 linhas)
 
+## Sessão 2026-11-13 — SPEC-152 benchmark-adapters ENTREGUE (issue #446)
+
+- **PR #449** (branch `feature/spec-152-benchmark-adapters`). Harness
+  hermético de evals na pipeline real: `eval_task_v1` contract +
+  suites `swe-lite` (embedded ~20 authored), `terminal-bench-2`
+  (dataset dir + TomlReader próprio), `custom` (jsonl).
+- `eval_runs`/`eval_results` (dual migrations); `EvalWorker` canal +
+  `EvalRunner` por task (sandbox efêmero → setup_cmds → conversa
+  `agent_type=eval` c/ model pin + route_override → checker → verdict
+  + digest + tokens/cost). `IDbContextFactory` p/ paralelismo por task.
+- eval_mode hermético no `AgentRunner`/`ConversationStartWorker`:
+  sem SCM/ChatOps/ticket postbacks, confirm auto-approve, ask_user
+  sintético, cap `Eval:MaxTurns`, sem creds GH.
+- `/api/v1/evals` (create/dedup, list/get/results/cancel, estimate,
+  scorecard) c/ `perm:evals.run` admin+; guardrails MaxTasks/estimate
+  gate/daily cost cap. CLI `eval run|status|report|datasets fetch`
+  (SPEC-39 local preservado). Golden OpenAPI regen.
+- Testes: 49 unit + 8 integration; suites completas verdes.
+- Lições chave: `IDbContextFactory` não vem de graça c/ `AddDbContext`;
+  `DateTimeOffset` não compara no SQLite → `*Ticks` mirrors;
+  ExecuteUpdateAsync condicional p/ cancel race; seed tracked +
+  cross-ctx writes → `Entry().ReloadAsync()` em asserts.
+
 ## Sessão 2026-11-12 — SPEC-150 cli-handoff ENTREGUE (issue #430)
 
 - **PR #433 merged** (squash `eaba487`). Handoff local↔cloud:
