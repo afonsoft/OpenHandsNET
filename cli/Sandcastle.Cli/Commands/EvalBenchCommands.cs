@@ -325,7 +325,9 @@ public sealed class EvalDatasetsFetchCommand
     private static async Task<int> GitAsync(
         IReadOnlyList<string> args, CancellationToken ct)
     {
-        var psi = new ProcessStartInfo("git")
+        // SonarCloud S4036: resolve o binário em PATH p/ path
+        // absoluto (mesmo padrão de WorkspaceProvisioner/DoctorService).
+        var psi = new ProcessStartInfo(ResolveOnPath("git"))
         {
             RedirectStandardError = true,
             RedirectStandardOutput = true,
@@ -369,5 +371,21 @@ public sealed class EvalDatasetsFetchCommand
                 + "checkout manual em eval-cache/terminal-bench-2");
             return 1;
         }
+    }
+
+    /// <summary>Resolve <paramref name="cmd"/> p/ path absoluto via PATH.</summary>
+    private static string ResolveOnPath(string cmd)
+    {
+        foreach (var dir in (Environment.GetEnvironmentVariable("PATH")
+            ?? "").Split(Path.PathSeparator))
+        {
+            var full = Path.Combine(dir, cmd);
+            if (File.Exists(full))
+            {
+                return full;
+            }
+        }
+
+        return cmd;
     }
 }
