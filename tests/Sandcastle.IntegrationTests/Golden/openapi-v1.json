@@ -751,6 +751,116 @@
         ],
         "type": "object"
       },
+      "HandoffPackage": {
+        "description": "SPEC-150 RF-002 \u2014 package retornado por\n\u0060GET /api/v1/conversations/{id}/handoff-package\u0060 e cacheado em\n\u0060conversations.handoff_package_json\u0060 quando o sandbox morre.",
+        "properties": {
+          "base_sha": {
+            "description": "Base do diff (handoff base_sha ou merge-base).",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "binary_files": {
+            "description": "Arquivos bin\u00E1rios alterados (placeholder \u2014 blob nunca trafega).",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "diff_patch": {
+            "description": "Unified diff worktree vs base (sanitizado).",
+            "type": "string"
+          },
+          "generated_at": {
+            "description": "Gera\u00E7\u00E3o do package (UTC).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "head_branch": {
+            "description": "Branch de trabalho no sandbox.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "head_sha": {
+            "description": "HEAD do sandbox na gera\u00E7\u00E3o (invalida cache a cada commit).",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "repo": {
+            "description": "Reposit\u00F3rio da conversa.",
+            "type": "string"
+          },
+          "summary": {
+            "description": "Resumo do agente (\u00FAltimo work_summary / t\u00EDtulo).",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "repo",
+          "diff_patch"
+        ],
+        "type": "object"
+      },
+      "HandoffRequestDto": {
+        "description": "SPEC-150: POST /api/v1/conversations/handoff body \u2014 estado do working\ntree local empacotado pelo CLI (\u0060sandcastle handoff\u0060).",
+        "properties": {
+          "base_branch": {
+            "description": "Branch local de origem.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "base_sha": {
+            "description": "SHA base do working tree local.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "diff_patch": {
+            "description": "Unified diff do working tree vs base_sha.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "message": {
+            "description": "Mensagem/prompt do usu\u00E1rio (envelope SPEC-91 server-side).",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "metadata": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement",
+                "description": "Metadata do CLI (cli_version, stat, \u2026)."
+              }
+            ]
+          },
+          "repository": {
+            "description": "Reposit\u00F3rio (\u0060owner/repo\u0060 ou URL) com SCM connection.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "type": "object"
+      },
       "HookDto": {
         "description": "Hook config DTO (create/update).",
         "properties": {
@@ -2090,6 +2200,48 @@
         },
         "required": [
           "label"
+        ],
+        "type": "object"
+      },
+      "StartTaskDto": {
+        "description": "AppConversationStartTask DTO.",
+        "properties": {
+          "app_conversation_id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "sandbox_id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
         ],
         "type": "object"
       },
@@ -6059,6 +6211,165 @@
         "summary": "GET /api/v1/conversation/{id:guid}/events/search",
         "tags": [
           "Events"
+        ]
+      }
+    },
+    "/api/v1/conversations/handoff": {
+      "post": {
+        "description": "Creates a conversation from a unified diff of local uncommitted changes. Returns an async start task \u2014 normal creation quotas/permissions/budgets apply. 400: invalid repository/base_sha/patch; 403: forbidden (scope or plan policy); 409: conflict; 422: patch exceeds Handoff:MaxDiffKb.",
+        "operationId": "CreateHandoff",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandoffRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartTaskDto"
+                }
+              }
+            },
+            "description": "Accepted"
+          },
+          "400": {
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Hand off local working-tree changes to a new cloud conversation (SPEC-150)",
+        "tags": [
+          "Conversations"
+        ]
+      }
+    },
+    "/api/v1/conversations/{id}/handoff-package": {
+      "get": {
+        "description": "On-demand package of the live sandbox diff (uncommitted \u002B committed changes vs base), cached for Handoff:PackageTtlMin minutes; ?regenerate=1 bypasses. Dead sandboxes serve the last snapshot until it is invalidated by new HEAD.",
+        "operationId": "GetHandoffPackage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "regenerate",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffPackage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Handoff package \u2014 sandbox diff vs base (SPEC-150)",
+        "tags": [
+          "Conversations"
         ]
       }
     },

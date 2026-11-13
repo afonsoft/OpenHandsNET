@@ -520,6 +520,14 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("execution_status");
 
+                    b.Property<string>("HandoffMetaJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("handoff_meta_json");
+
+                    b.Property<string>("HandoffPackageJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("handoff_package_json");
+
                     b.Property<string>("LlmModel")
                         .HasColumnType("TEXT")
                         .HasColumnName("llm_model");

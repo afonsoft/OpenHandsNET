@@ -96,6 +96,20 @@ public sealed class ConversationRecord : IOrgScoped
     /// <summary>SPEC-55: URL do ticket.</summary>
     public string? TicketUrl { get; set; }
 
+    /// <summary>
+    /// SPEC-150: handoff metadata (JSON de <c>HandoffMeta</c>) — origem
+    /// local|cloud, base_sha, cli_version, diff_patch sanitizado e
+    /// applied_stats preenchido pelo worker após o <c>git apply</c>.
+    /// </summary>
+    public string? HandoffMetaJson { get; set; }
+
+    /// <summary>
+    /// SPEC-150: snapshot do handoff-package (JSON de
+    /// <c>HandoffPackage</c>) — último diff gerado; servido quando o
+    /// sandbox está morto e invalidado a cada novo HEAD.
+    /// </summary>
+    public string? HandoffPackageJson { get; set; }
+
     /// <summary>SPEC-62 RF-001: ID da conversa coordenadora/pai em delegações cross-sandbox.</summary>
     public Guid? ParentConversationId { get; set; }
 

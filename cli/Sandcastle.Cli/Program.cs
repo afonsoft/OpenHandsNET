@@ -14,6 +14,13 @@ app.Configure(config =>
     config.AddCommand<LogoutCommand>("logout");
     config.AddCommand<CloudCommand>("cloud")
         .WithDescription("cria conversa remota: -t|-f [[--repo]] [[--watch]]");
+    // SPEC-150: handoff local↔cloud.
+    config.AddCommand<HandoffCommand>("handoff")
+        .WithDescription("envia working tree p/ cloud: "
+            + "[--message] [--include-untracked] [--dry-run] [--open]");
+    config.AddCommand<PickupCommand>("pickup")
+        .WithDescription("traz conversa p/ local: <id> "
+            + "[--pr] [--force] [--yes] [--regenerate]");
     config.AddCommand<RunCommand>("run")
         .WithDescription("headless CI: --json --exit-on-finish --timeout-min");
     config.AddCommand<ServeCommand>("serve")

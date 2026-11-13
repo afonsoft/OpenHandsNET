@@ -969,7 +969,7 @@ public static class AppConversationEndpoints
             s, ignoreCase: true, out var d)
             ? d : Application.Agent.PermissionDecision.Ask;
 
-    private static StartTaskDto ToDto(AppConversationStartTask t) => new()
+    internal static StartTaskDto ToDto(AppConversationStartTask t) => new()
     {
         Id = t.Id.ToString(),
         Status = t.Status.ToString().ToUpperInvariant(),

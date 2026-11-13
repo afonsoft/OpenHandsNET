@@ -105,6 +105,8 @@ public sealed class AppConversationService( // NOSONAR S107 â€” SPEC-104 (decisÃ
                 ? System.Text.Json.JsonSerializer.Serialize(
                     names.Select(n => n.Trim()).Where(
                         n => n.Length > 0).ToList()) : null,
+            // SPEC-150: handoff metadata (patch aplicado no provisioning).
+            HandoffMetaJson = request.HandoffMetaJson,
             // Sinaliza ao worker que o agente deve iniciar ao chegar em READY.
             PendingKickoff = request.InitialMessage?.Run == true,
             ExecutionStatus = ConversationExecutionStatus.Starting.ToString(),
