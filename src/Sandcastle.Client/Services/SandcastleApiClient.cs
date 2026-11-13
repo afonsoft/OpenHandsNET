@@ -1518,6 +1518,156 @@ public sealed class SandcastleApiClient(HttpClient http)
             $"/api/v1/refactors/{id}/batches/{n}/retry", null, ct);
         return resp.IsSuccessStatusCode;
     }
+
+    // ---- SPEC-151: alert integrations -----------------------------------
+
+    /// <summary>GET /alerts/sources — fontes de alerta da org efetiva.</summary>
+    public async Task<IReadOnlyList<AlertSourceDto>> ListAlertSourcesAsync(
+        CancellationToken ct = default)
+    {
+        var page = await GetOrNull<AlertSourcePageDto>(
+            "/api/v1/alerts/sources", ct);
+        return page?.Items ?? [];
+    }
+
+    /// <summary>
+    /// POST /alerts/sources — cria a fonte. <paramref name="secretValue"/>
+    /// (opcional) é armazenado no secret store; alternativa =
+    /// <paramref name="secretRef"/> apontando segredo já existente.
+    /// </summary>
+    public async Task<AlertSourceDto?> CreateAlertSourceAsync(
+        string provider, string name, string? secretRef,
+        string? secretValue,
+        IReadOnlyDictionary<string, string>? repoMapping,
+        bool autoCreateSession, string triageSeverityMin,
+        CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync("/api/v1/alerts/sources", new
+        {
+            provider,
+            name,
+            secret_ref = secretRef,
+            secret_value = secretValue,
+            repo_mapping = repoMapping,
+            auto_create_session = autoCreateSession,
+            triage_severity_min = triageSeverityMin,
+        }, Json, ct);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content
+                .ReadFromJsonAsync<AlertSourceDto>(Json, ct)
+            : null;
+    }
+
+    /// <summary>PATCH /alerts/sources/{id} — campos nulos preservam.</summary>
+    public async Task<bool> PatchAlertSourceAsync(
+        Guid id, string? name, bool? enabled, bool? autoCreateSession,
+        string? triageSeverityMin, CancellationToken ct = default)
+    {
+        var req = new HttpRequestMessage(
+            HttpMethod.Patch, $"/api/v1/alerts/sources/{id}")
+        {
+            Content = JsonContent.Create(new
+            {
+                name,
+                enabled,
+                auto_create_session = autoCreateSession,
+                triage_severity_min = triageSeverityMin,
+            }, options: Json),
+        };
+        var resp = await http.SendAsync(req, ct);
+        return resp.IsSuccessStatusCode;
+    }
+
+    /// <summary>DELETE /alerts/sources/{id}.</summary>
+    public async Task<bool> DeleteAlertSourceAsync(
+        Guid id, CancellationToken ct = default) =>
+        (await http.DeleteAsync($"/api/v1/alerts/sources/{id}", ct))
+        .IsSuccessStatusCode;
+
+    /// <summary>
+    /// GET /alerts/events — filtros provider/severity/status/repository
+    /// + unrouted + cursor.
+    /// </summary>
+    public Task<AlertEventPageDto?> ListAlertEventsAsync(
+        string? provider = null, string? severity = null,
+        string? status = null, string? repository = null,
+        bool unrouted = false, string? pageId = null, int limit = 50,
+        CancellationToken ct = default)
+    {
+        var url = $"/api/v1/alerts/events?limit={limit}";
+        if (!string.IsNullOrEmpty(provider))
+        {
+            url += $"&provider={Uri.EscapeDataString(provider)}";
+        }
+        if (!string.IsNullOrEmpty(severity))
+        {
+            url += $"&severity={Uri.EscapeDataString(severity)}";
+        }
+        if (!string.IsNullOrEmpty(status))
+        {
+            url += $"&status={Uri.EscapeDataString(status)}";
+        }
+        if (!string.IsNullOrEmpty(repository))
+        {
+            url += $"&repository={Uri.EscapeDataString(repository)}";
+        }
+        if (unrouted)
+        {
+            url += "&unrouted=true";
+        }
+        if (!string.IsNullOrEmpty(pageId))
+        {
+            url += $"&page_id={Uri.EscapeDataString(pageId)}";
+        }
+        return GetOrNull<AlertEventPageDto>(url, ct);
+    }
+
+    /// <summary>GET /alerts/events/{id} — detalhe.</summary>
+    public Task<AlertEventDto?> GetAlertEventAsync(
+        Guid id, CancellationToken ct = default) =>
+        GetOrNull<AlertEventDto>($"/api/v1/alerts/events/{id}", ct);
+
+    /// <summary>
+    /// PATCH /alerts/events/{id} — <paramref name="status"/> dismissed |
+    /// resolved | new; <paramref name="repository"/> = route manual.
+    /// </summary>
+    public async Task<HttpStatusCode> PatchAlertEventAsync(
+        Guid id, string? status, string? repository,
+        CancellationToken ct = default)
+    {
+        var req = new HttpRequestMessage(
+            HttpMethod.Patch, $"/api/v1/alerts/events/{id}")
+        {
+            Content = JsonContent.Create(new
+            {
+                status,
+                repository,
+            }, options: Json),
+        };
+        var resp = await http.SendAsync(req, ct);
+        return resp.StatusCode;
+    }
+
+    /// <summary>
+    /// POST /alerts/events/{id}/create-session → 202 {conversation_id}
+    /// (null quando 404/409 — unrouted/duplicado).
+    /// </summary>
+    public async Task<Guid?> CreateAlertSessionAsync(
+        Guid id, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsync(
+            $"/api/v1/alerts/events/{id}/create-session", null, ct);
+        if (resp.StatusCode != HttpStatusCode.Accepted)
+        {
+            return null;
+        }
+        var doc = await resp.Content
+            .ReadFromJsonAsync<JsonElement>(Json, ct);
+        return doc.TryGetProperty("conversation_id", out var c)
+            && c.ValueKind == JsonValueKind.String
+            && Guid.TryParse(c.GetString(), out var conv)
+            ? conv : null;
+    }
 }
 
 /// <summary>SPEC-147 RF-004: resposta de <c>/usage/budget</c>.</summary>
@@ -1677,3 +1827,31 @@ public sealed record KnowledgeSuggestionItem(
     Guid Id, string Scope, string? RepoPath, string Title,
     string Content, string Kind, string Status, string? Reason,
     string? Resolution, DateTimeOffset CreatedAt);
+/// <summary>SPEC-151: fonte de alertas (webhook inbound + mapping).</summary>
+public sealed record AlertSourceDto(
+    Guid Id, Guid? OrgId, string Provider, string Name,
+    string? SecretRef, IReadOnlyDictionary<string, string>? RepoMapping,
+    bool Enabled, bool AutoCreateSession, string TriageSeverityMin,
+    string? WebhookUrl, DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt);
+
+/// <summary>SPEC-151: envelope de GET /alerts/sources.</summary>
+public sealed record AlertSourcePageDto(
+    IReadOnlyList<AlertSourceDto> Items);
+
+/// <summary>SPEC-151: envelope de GET /alerts/events.</summary>
+public sealed record AlertEventPageDto(
+    IReadOnlyList<AlertEventDto> Items, string? NextPageId);
+
+/// <summary>
+/// SPEC-151: evento de alerta normalizado — <paramref name="Unrouted"/>
+/// true = sem repo mapeado (route manual via PATCH).
+/// </summary>
+public sealed record AlertEventDto(
+    Guid Id, Guid? OrgId, Guid SourceId, string Provider,
+    string ExternalId, string Kind, string Title, string? Url,
+    string Severity, string? Service, string? Culprit,
+    string? Repository, bool Unrouted,
+    IReadOnlyDictionary<string, string>? Labels,
+    DateTimeOffset FirstSeen, string Status, Guid? SessionId,
+    string? PrUrl, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);

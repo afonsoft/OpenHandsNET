@@ -46,6 +46,8 @@ public enum Permission
     RefactorsApprove,
     MarketplaceInstall,
     MarketplaceManage,
+    AlertsView,
+    AlertsManage,
 }
 
 public static class PermissionExtensions
@@ -92,6 +94,8 @@ public static class PermissionExtensions
         Permission.RefactorsApprove => "refactors.approve",
         Permission.MarketplaceInstall => "marketplace.install",
         Permission.MarketplaceManage => "marketplace.manage",
+        Permission.AlertsView => "alerts.view",
+        Permission.AlertsManage => "alerts.manage",
         _ => throw new ArgumentOutOfRangeException(nameof(permission)),
     };
 
@@ -137,6 +141,8 @@ public static class PermissionExtensions
         "refactors.approve" => Permission.RefactorsApprove,
         "marketplace.install" => Permission.MarketplaceInstall,
         "marketplace.manage" => Permission.MarketplaceManage,
+        "alerts.view" => Permission.AlertsView,
+        "alerts.manage" => Permission.AlertsManage,
         _ => null,
     };
 }

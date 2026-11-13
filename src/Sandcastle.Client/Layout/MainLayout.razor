@@ -132,6 +132,12 @@
                 <Icon Name="git-pull-request" Size="16" />
                 <span class="txt">@L["sidebar.reviews"]</span>
             </a>
+            @* SPEC-151 RF-004: alert integrations — sources + events. *@
+            <a class="sb-item @(IsActive("/alerts") ? "active" : "")"
+               href="/alerts" title="@L["sidebar.alerts"]">
+                <Icon Name="alert" Size="16" />
+                <span class="txt">@L["sidebar.alerts"]</span>
+            </a>
             <div class="sb-label">@L["sidebar.general"]</div>
             <a class="sb-item @(IsActive("/automations") ? "active" : "")"
                href="/automations" title="@L["sidebar.automations"]">

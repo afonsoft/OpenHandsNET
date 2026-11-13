@@ -1,10 +1,13 @@
 namespace Sandcastle.Application.ChatOps;
 
-/// <summary>Chat provider kinds (SPEC-54; ms-teams futuro).</summary>
+/// <summary>Chat provider kinds (SPEC-54 Slack; SPEC-151 Teams).</summary>
 public enum ChatKind
 {
     /// <summary>Slack workspace.</summary>
     Slack,
+
+    /// <summary>Microsoft Teams (Incoming Webhook — SPEC-151 RF-003).</summary>
+    Teams,
 }
 
 /// <summary>Wire name ↔ <see cref="ChatKind"/>.</summary>
@@ -14,6 +17,7 @@ public static class ChatKindExtensions
     public static string ToWire(this ChatKind kind) => kind switch
     {
         ChatKind.Slack => "slack",
+        ChatKind.Teams => "teams",
         _ => throw new ArgumentOutOfRangeException(nameof(kind)),
     };
 
@@ -21,22 +25,28 @@ public static class ChatKindExtensions
     public static ChatKind? Parse(string? wire) => wire switch
     {
         "slack" => ChatKind.Slack,
+        "teams" => ChatKind.Teams,
         _ => null,
     };
 }
 
-/// <summary>Org-level chat (Slack) connection — secrets by-ref only.</summary>
+/// <summary>
+/// Org-level chat connection — secrets by-ref (Slack) ou webhook URL
+/// (Teams, SPEC-151). <see cref="TeamId"/> é null em Teams;
+/// <see cref="WebhookUrl"/> é credencial — serializar mascarado.
+/// </summary>
 public sealed record ChatConnection(
     Guid Id,
     Guid? OrgId,
     ChatKind Kind,
-    string TeamId,
-    string BotTokenSecretRef,
-    string SigningSecretRef,
+    string? TeamId,
+    string? BotTokenSecretRef,
+    string? SigningSecretRef,
     string? BotUserId,
     string? DefaultChannelId,
     string? CreatedByUserId,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    string? WebhookUrl = null);
 
 /// <summary>Canal → repo/automation mapping (SPEC-54 RF-004/RF-005).</summary>
 public sealed record ChatChannelConfig(
@@ -129,12 +139,18 @@ public interface IChatSink
 /// <summary>Admin CRUD de chat_connections + channel configs.</summary>
 public interface IChatConnectionService
 {
-    /// <summary>Cria connection (bot token + signing secret por-ref).</summary>
+    /// <summary>
+    /// Cria connection Slack (bot token + signing secret por-ref).
+    /// SPEC-151: <paramref name="kind"/> + <paramref name="webhookUrl"/>
+    /// — Teams leva <see cref="ChatKind.Teams"/> + webhook URL (os
+    /// secret refs ficam null; <paramref name="teamId"/> ignorado).
+    /// </summary>
     Task<ChatConnection> CreateAsync( // NOSONAR S107 — SPEC-104 (decisão aprovada): contrato público upstream-parity; param object mudaria API
         Guid orgId, string teamId, string botTokenSecretRef,
         string signingSecretRef, string? botUserId,
         string? defaultChannelId, string? createdByUserId,
-        CancellationToken ct);
+        CancellationToken ct,
+        ChatKind? kind = null, string? webhookUrl = null);
 
     /// <summary>Lista connections da org.</summary>
     Task<IReadOnlyList<ChatConnection>> ListAsync(

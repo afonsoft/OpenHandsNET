@@ -1,0 +1,339 @@
+@page "/alerts"
+@using Sandcastle.Client.Services
+@inject SandcastleApiClient Api
+@inject LocalizationService L
+@inject ToastService Toasts
+@inject NavigationManager Nav
+
+<PageTitle>@L["alerts.title"] — Sandcastle</PageTitle>
+
+<h2>@L["alerts.title"]</h2>
+<p class="sub">@L["alerts.subtitle"]</p>
+
+@* SPEC-151 RF-004: fontes (CRUD + webhook url) + eventos com filtros. *@
+<details class="scan-new" open>
+    <summary>@L["alerts.sources"]</summary>
+    <div class="scan-form">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>@L["alerts.col_name"]</th>
+                    <th>@L["alerts.col_provider"]</th>
+                    <th>@L["alerts.col_webhook"]</th>
+                    <th>@L["alerts.col_min_sev"]</th>
+                    <th>@L["alerts.col_auto"]</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in _sources)
+                {
+                    <tr>
+                        <td>@s.Name @(s.Enabled ? "" : $"({L["alerts.disabled"]})")</td>
+                        <td>@s.Provider</td>
+                        <td><code>@s.WebhookUrl</code></td>
+                        <td>@s.TriageSeverityMin</td>
+                        <td>@(s.AutoCreateSession ? "✓" : "—")</td>
+                        <td>
+                            <button class="btn"
+                                @onclick="() => ToggleAutoAsync(s)">
+                                @(s.AutoCreateSession
+                                    ? L["alerts.auto_off"]
+                                    : L["alerts.auto_on"])
+                            </button>
+                            <button class="btn danger"
+                                @onclick="() => DeleteSourceAsync(s)">
+                                @L["alerts.delete"]
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <div class="admin-toolbar">
+            <input aria-label="@L["alerts.col_name"]"
+                   placeholder="@L["alerts.source_name_placeholder"]"
+                   @bind="_srcName" />
+            <select aria-label="@L["alerts.col_provider"]" @bind="_srcProvider">
+                <option value="sentry">Sentry</option>
+                <option value="pagerduty">PagerDuty</option>
+                <option value="generic">@L["alerts.provider_generic"]</option>
+            </select>
+            <input aria-label="@L["alerts.secret"]"
+                   placeholder="@L["alerts.secret_placeholder"]"
+                   type="password" @bind="_srcSecret" />
+            <input aria-label="@L["alerts.repo_mapping"]"
+                   placeholder="@L["alerts.repo_mapping_placeholder"]"
+                   @bind="_srcMapping" />
+            <select aria-label="@L["alerts.col_min_sev"]" @bind="_srcSev">
+                <option value="critical">critical</option>
+                <option value="high" selected>high</option>
+                <option value="medium">medium</option>
+                <option value="low">low</option>
+                <option value="info">info</option>
+            </select>
+            <button class="primary" @onclick="CreateSourceAsync"
+                    disabled="@(_busy || _srcName.Trim().Length == 0)">
+                @L["alerts.add_source"]
+            </button>
+        </div>
+    </div>
+</details>
+
+<div class="scan-toolbar">
+    <select aria-label="@L["alerts.filter_provider"]" @bind="_fProvider"
+            @bind:after="ReloadAsync">
+        <option value="">@L["alerts.provider_all"]</option>
+        <option value="sentry">Sentry</option>
+        <option value="pagerduty">PagerDuty</option>
+        <option value="generic">@L["alerts.provider_generic"]</option>
+    </select>
+    <select aria-label="@L["alerts.filter_severity"]" @bind="_fSeverity"
+            @bind:after="ReloadAsync">
+        <option value="">@L["alerts.severity_all"]</option>
+        <option value="critical">critical</option>
+        <option value="high">high</option>
+        <option value="medium">medium</option>
+        <option value="low">low</option>
+        <option value="info">info</option>
+    </select>
+    <select aria-label="@L["alerts.filter_status"]" @bind="_fStatus"
+            @bind:after="ReloadAsync">
+        <option value="">@L["alerts.status_all"]</option>
+        <option value="new">new</option>
+        <option value="investigating">investigating</option>
+        <option value="pr_open">pr_open</option>
+        <option value="resolved">resolved</option>
+        <option value="dismissed">dismissed</option>
+    </select>
+    <input aria-label="@L["alerts.filter_repository"]"
+           placeholder="@L["alerts.repository_placeholder"]"
+           @bind="_fRepo" @bind:event="oninput" />
+    <label class="muted">
+        <input type="checkbox" @bind="_fUnrouted" @bind:after="ReloadAsync" />
+        @L["alerts.filter_unrouted"]
+    </label>
+    <button @onclick="ReloadAsync">@L["common.refresh"]</button>
+</div>
+
+@if (_events.Count == 0)
+{
+    <p class="empty-state">@L["alerts.empty"]</p>
+}
+else
+{
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>@L["alerts.col_title"]</th>
+                <th>@L["alerts.col_provider"]</th>
+                <th>@L["alerts.col_severity"]</th>
+                <th>@L["alerts.col_repo"]</th>
+                <th>@L["alerts.col_status"]</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var e in _events)
+            {
+                <tr>
+                    <td>
+                        @if (e.Url is not null)
+                        {
+                            <a href="@e.Url" target="_blank"
+                               rel="noopener noreferrer">@e.Title</a>
+                        }
+                        else
+                        {
+                            @e.Title
+                        }
+                    </td>
+                    <td>@e.Provider</td>
+                    <td>@e.Severity</td>
+                    <td>@(e.Repository ?? $"⚠ {L["alerts.unrouted"]}")</td>
+                    <td>@e.Status</td>
+                    <td>
+                        @if (e.SessionId is { } sess)
+                        {
+                            <a href="/conversations/@sess">session</a>
+                        }
+                        else
+                        {
+                            <button class="btn"
+                                @onclick="() => CreateSessionAsync(e)">
+                                @L["alerts.create_session"]
+                            </button>
+                        }
+                        @if (e.Unrouted)
+                        {
+                            <input aria-label="@L["alerts.route_repo"]"
+                                   placeholder="org/repo" @bind="_routeRepo" />
+                            <button class="btn"
+                                @onclick="() => RouteAsync(e)">
+                                @L["alerts.route"]
+                            </button>
+                        }
+                        @if (e.Status is "new")
+                        {
+                            <button class="btn"
+                                @onclick="() => DismissAsync(e)">
+                                @L["alerts.dismiss"]
+                            </button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (_nextPageId is not null)
+    {
+        <button class="btn" @onclick="LoadMoreAsync">
+            @L["common.load_more"]
+        </button>
+    }
+}
+
+@code {
+    private IReadOnlyList<AlertSourceDto> _sources = [];
+    private List<AlertEventDto> _events = [];
+    private string? _nextPageId;
+    private bool _busy;
+
+    private string _srcName = "";
+    private string _srcProvider = "sentry";
+    private string _srcSecret = "";
+    private string _srcMapping = "";
+    private string _srcSev = "high";
+
+    private string _fProvider = "";
+    private string _fSeverity = "";
+    private string _fStatus = "";
+    private string _fRepo = "";
+    private bool _fUnrouted;
+    private string _routeRepo = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+        _sources = await Api.ListAlertSourcesAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        var page = await Api.ListAlertEventsAsync(
+            Empty(_fProvider), Empty(_fSeverity), Empty(_fStatus),
+            Empty(_fRepo), _fUnrouted);
+        _events = page?.Items.ToList() ?? [];
+        _nextPageId = page?.NextPageId;
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        var page = await Api.ListAlertEventsAsync(
+            Empty(_fProvider), Empty(_fSeverity), Empty(_fStatus),
+            Empty(_fRepo), _fUnrouted, _nextPageId);
+        if (page is null)
+        {
+            return;
+        }
+        _events.AddRange(page.Items);
+        _nextPageId = page.NextPageId;
+    }
+
+    private async Task CreateSourceAsync()
+    {
+        _busy = true;
+        try
+        {
+            var mapping = ParseMapping(_srcMapping);
+            var created = await Api.CreateAlertSourceAsync(
+                _srcProvider, _srcName.Trim(), null,
+                Empty(_srcSecret), mapping,
+                autoCreateSession: false, _srcSev);
+            if (created is null)
+            {
+                Toasts.Error(L["alerts.create_failed"]);
+            }
+            else
+            {
+                Toasts.Success(L["alerts.source_created"]);
+                _srcName = _srcSecret = _srcMapping = "";
+                _sources = await Api.ListAlertSourcesAsync();
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ToggleAutoAsync(AlertSourceDto s)
+    {
+        await Api.PatchAlertSourceAsync(
+            s.Id, null, s.Enabled, !s.AutoCreateSession, null);
+        _sources = await Api.ListAlertSourcesAsync();
+    }
+
+    private async Task DeleteSourceAsync(AlertSourceDto s)
+    {
+        await Api.DeleteAlertSourceAsync(s.Id);
+        Toasts.Success(L["alerts.source_deleted"]);
+        _sources = await Api.ListAlertSourcesAsync();
+    }
+
+    private async Task CreateSessionAsync(AlertEventDto e)
+    {
+        var conv = await Api.CreateAlertSessionAsync(e.Id);
+        if (conv is null)
+        {
+            Toasts.Error(L["alerts.session_failed"]);
+        }
+        else
+        {
+            Toasts.Success(L["alerts.session_created"]);
+            Nav.NavigateTo($"/conversations/{conv}");
+        }
+        await ReloadAsync();
+    }
+
+    private async Task DismissAsync(AlertEventDto e)
+    {
+        await Api.PatchAlertEventAsync(e.Id, "dismissed", null);
+        await ReloadAsync();
+    }
+
+    private async Task RouteAsync(AlertEventDto e)
+    {
+        var repo = string.IsNullOrWhiteSpace(_routeRepo)
+            ? null : _routeRepo.Trim();
+        if (repo is null)
+        {
+            Toasts.Error(L["alerts.route_need_repo"]);
+            return;
+        }
+        await Api.PatchAlertEventAsync(e.Id, null, repo);
+        _routeRepo = "";
+        await ReloadAsync();
+    }
+
+    private static string? Empty(string s) =>
+        string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    /// <summary>"svc=org/repo, other=org2/repo2" → mapping.</summary>
+    private static Dictionary<string, string>? ParseMapping(string text)
+    {
+        var map = new Dictionary<string, string>(
+            StringComparer.OrdinalIgnoreCase);
+        foreach (var part in text.Split(
+            ',', StringSplitOptions.RemoveEmptyEntries
+                | StringSplitOptions.TrimEntries))
+        {
+            var eq = part.IndexOf('=');
+            if (eq > 0)
+            {
+                map[part[..eq]] = part[(eq + 1)..];
+            }
+        }
+        return map.Count > 0 ? map : null;
+    }
+}

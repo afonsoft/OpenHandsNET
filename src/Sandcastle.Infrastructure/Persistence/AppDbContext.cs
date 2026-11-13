@@ -234,6 +234,16 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
         ChatChannelConfigs =>
             Set<Sandcastle.Infrastructure.ChatOps.ChatChannelConfigRecord>();
 
+    /// <summary>SPEC-151: fontes de alertas inbound (secrets by-ref).</summary>
+    public DbSet<Sandcastle.Infrastructure.Alerts.AlertSourceRecord>
+        AlertSources =>
+            Set<Sandcastle.Infrastructure.Alerts.AlertSourceRecord>();
+
+    /// <summary>SPEC-151: eventos de alerta normalizados.</summary>
+    public DbSet<Sandcastle.Infrastructure.Alerts.AlertEventRecord>
+        AlertEvents =>
+            Set<Sandcastle.Infrastructure.Alerts.AlertEventRecord>();
+
     /// <summary>Conexões Linear/Jira — tokens by-ref (SPEC-55).</summary>
     public DbSet<Sandcastle.Infrastructure.Tickets.TicketConnectionRecord>
         TicketConnections =>
@@ -363,6 +373,9 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
                 case Sandcastle.Infrastructure.Refactors.RefactorPlanRecord r:
                     r.CreatedAtTicks = r.CreatedAt.UtcTicks;
                     break;
+                case Sandcastle.Infrastructure.Alerts.AlertEventRecord a:
+                    a.CreatedAtTicks = a.CreatedAt.UtcTicks;
+                    break;
             }
         }
         return base.SaveChangesAsync(cancellationToken);
@@ -447,6 +460,12 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
             .HasQueryFilter(r =>
                 !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
         modelBuilder.Entity<Sandcastle.Infrastructure.Scans.ScanFindingRecord>()
+            .HasQueryFilter(r =>
+                !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
+        modelBuilder.Entity<Sandcastle.Infrastructure.Alerts.AlertSourceRecord>()
+            .HasQueryFilter(r =>
+                !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
+        modelBuilder.Entity<Sandcastle.Infrastructure.Alerts.AlertEventRecord>()
             .HasQueryFilter(r =>
                 !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
     }

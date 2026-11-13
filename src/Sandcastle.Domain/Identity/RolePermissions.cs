@@ -26,6 +26,8 @@ public static class RolePermissions
         Permission.RefactorsRun,
         // SPEC-148: member instala entries no próprio user scope.
         Permission.MarketplaceInstall,
+        // SPEC-151: member lê fontes/eventos de alerta da org.
+        Permission.AlertsView,
     ];
 
     private static readonly Permission[] Admin =
@@ -52,6 +54,8 @@ public static class RolePermissions
         Permission.RefactorsApprove,
         // SPEC-148: admin+ instala/gerencia entries no scope da org.
         Permission.MarketplaceManage,
+        // SPEC-151: admin+ gerencia fontes e ações de alerta.
+        Permission.AlertsManage,
     ];
 
     private static readonly Permission[] Owner =
