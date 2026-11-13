@@ -179,7 +179,8 @@ public sealed class Spec149ModelRouterApiTests : IDisposable
         await using var db = Db();
         var member = new Infrastructure.Persistence.UserRecord
         {
-            Id = Guid.NewGuid(), Email = "member149@local",
+            Id = Guid.NewGuid(),
+            Email = "member149@local",
             DisplayName = "member149",
             RolesJson = "[]",
             CreatedAt = DateTimeOffset.UtcNow,
@@ -188,7 +189,8 @@ public sealed class Spec149ModelRouterApiTests : IDisposable
         db.OrgMembers.Add(new Infrastructure.Persistence.OrgMemberRecord
         {
             OrgId = org,
-            UserId = member.Id, Role = "member",
+            UserId = member.Id,
+            Role = "member",
             CreatedAt = DateTimeOffset.UtcNow,
         });
         await db.SaveChangesAsync();
