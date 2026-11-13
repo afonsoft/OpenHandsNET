@@ -1,6 +1,6 @@
 # SPEC-139 — Sandcastle brand assets
 
-- **Status**: Draft
+- **Status**: Approved
 - **Tipo**: feature/brand
 - **Prioridade**: média (pós-beta.2)
 
