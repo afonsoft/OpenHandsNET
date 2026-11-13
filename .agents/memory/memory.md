@@ -1,5 +1,24 @@
 # memory.md — estado corrente (max 100 linhas)
 
+## Sessão 2026-11-12 — SPEC-150 cli-handoff ENTREGUE (issue #430)
+
+- **PR #433 merged** (squash `eaba487`). Handoff local↔cloud:
+  `POST /conversations/handoff` (patch validado 400/oversize,
+  SecretRedactor, start-task assíncrono — políticas intactas) →
+  worker aplica no sandbox `git apply --3way`→`--reject` (.rej→stats,
+  evento `handoff_applied`) → prompt com envelope SPEC-91.
+  `GET /{id}/handoff-package` on-demand (diff sandbox vs base +
+  untracked/blocklist/binário placeholder), cache TTL 60min em
+  `HandoffPackageJson`, `?regenerate=1`, snapshot p/ sandbox morto,
+  authz owner/org. CLI `handoff`/`pickup` (force-stash, reject→exit 2,
+  `--pr` resolve conversa). Dual migration + golden OpenAPI.
+- Testes: 37 unit + 9 integration novos; suite 1157/303/147/10 verde
+  (2 flakes Spec42 passaram no rerun). Archive: `9960891`.
+- Lições: `ef migrations add --no-build` usa Debug (stale c/ build
+  Release → `--configuration Release`); `ef migrations remove`
+  Postgres tenta conectar (`--force`); bool query non-nullable =
+  required (400 — usar `= false`); 1º dev-user = superadmin.
+
 ## Sessão 2026-11-12 — SPEC-148 skills-marketplace ENTREGUE (issue #428)
 
 - **PR #431 merged** (squash `22b6d6e`). Marketplace self-hostable:
@@ -49,8 +68,7 @@
 
 ## Fatos operacionais
 
-- SPECs ativas: **149** (model-router), **150** (cli-handoff) —
-  Approved; **139** (brand assets) Draft.
+- SPECs ativas: **139** (brand assets) Draft — 148/149/150 delivered.
 - `scripts/check-spec-lifecycle.sh` → specs terminais fora de `.specs/`.
 - SonarCloud: `.../summary?id=afonsoft_OpenHandsNET&branch=main`;
   bloqueio #148 (`SONAR_TOKEN` + `SONAR_ENABLED=true`).
