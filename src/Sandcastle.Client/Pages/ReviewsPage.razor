@@ -1,0 +1,135 @@
+@page "/reviews"
+@using Sandcastle.Client.Services
+@inject SandcastleApiClient Api
+@inject LocalizationService L
+
+<PageTitle>@L["reviews.title"] — Sandcastle</PageTitle>
+
+<h2>@L["reviews.title"]</h2>
+<p class="sub">@L["reviews.subtitle"]</p>
+
+@* SPEC-140 RF-004 / #435: browser de review runs — filtros server-side
+   (repository é match exato na API) + paginação por cursor. *@
+<div class="rev-toolbar">
+    <input aria-label="@L["reviews.filter_repository"]"
+           placeholder="@L["reviews.repository_placeholder"]"
+           @bind="_repository" @bind:event="oninput" />
+    <input aria-label="@L["reviews.filter_pr"]" class="rev-pr"
+           placeholder="@L["reviews.pr_placeholder"]"
+           @bind="_prText" @bind:event="oninput" />
+    <select aria-label="@L["reviews.filter_status"]" @bind="_status">
+        <option value="">@L["reviews.status_all"]</option>
+        <option value="queued">@L["reviews.status_queued"]</option>
+        <option value="running">@L["reviews.status_running"]</option>
+        <option value="completed">@L["reviews.status_completed"]</option>
+        <option value="skipped">@L["reviews.status_skipped"]</option>
+        <option value="failed">@L["reviews.status_failed"]</option>
+    </select>
+    <button @onclick="ReloadAsync">@L["reviews.apply_filters"]</button>
+</div>
+
+@if (_runs is null)
+{
+    <p><em>@L["common.loading"]</em></p>
+}
+else if (_runs.Count == 0)
+{
+    <p class="sub">@L["reviews.empty"]</p>
+}
+else
+{
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>@L["reviews.repository"]</th>
+                <th>@L["reviews.pr"]</th>
+                <th>@L["reviews.head"]</th>
+                <th>@L["reviews.status"]</th>
+                <th>@L["reviews.findings"]</th>
+                <th>@L["reviews.trigger"]</th>
+                <th>@L["reviews.created"]</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in _runs)
+            {
+                <tr>
+                    <td><a href="/reviews/@r.Id">@r.Repository</a></td>
+                    <td>#@r.PrNumber</td>
+                    <td><code>@ShortSha(r.HeadSha)</code></td>
+                    <td>
+                        <span class="badge @StatusClass(r.Status)">
+                            @r.Status</span>
+                        @if (r.Partial)
+                        {
+                            <span class="badge idle">@L["reviews.partial"]</span>
+                        }
+                    </td>
+                    <td>@r.FindingCount</td>
+                    <td>@r.Trigger</td>
+                    <td>@r.CreatedAt.LocalDateTime.ToString("g")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (_next is not null)
+    {
+        <button @onclick="LoadMoreAsync">@L["common.load_more"]</button>
+    }
+}
+
+@code {
+    private List<ReviewRunDto>? _runs;
+    private string? _next;
+    private string _repository = "";
+    private string _prText = "";
+    private string _status = "";
+
+    /// <inheritdoc />
+    protected override Task OnInitializedAsync() => ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _runs = null;
+        _next = null;
+        var page = await Api.ListReviewsAsync(
+            repository: NullIfEmpty(_repository),
+            pr: ParsePr(), status: NullIfEmpty(_status));
+        _runs = page?.Items.ToList() ?? [];
+        _next = page?.NextPageId;
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        if (_runs is null || _next is null)
+        {
+            return;
+        }
+        var page = await Api.ListReviewsAsync(
+            repository: NullIfEmpty(_repository),
+            pr: ParsePr(), status: NullIfEmpty(_status),
+            pageId: _next);
+        if (page is not null)
+        {
+            _runs.AddRange(page.Items);
+            _next = page.NextPageId;
+        }
+    }
+
+    private int? ParsePr() =>
+        int.TryParse(_prText.Trim().TrimStart('#'), out var n) ? n : null;
+
+    internal static string ShortSha(string sha) =>
+        sha.Length <= 8 ? sha : sha[..8];
+
+    internal static string StatusClass(string status) => status switch
+    {
+        "completed" => "finished",
+        "failed" => "error",
+        "running" => "running",
+        _ => "idle",
+    };
+
+    private static string? NullIfEmpty(string s) =>
+        string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+}

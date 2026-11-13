@@ -1400,6 +1400,50 @@ public sealed class SandcastleApiClient(HttpClient http)
         return page?.Items;
     }
 
+    // ---- SPEC-140: PR reviews ------------------------------------------------
+
+    /// <summary>
+    /// GET /scm/reviews (repository/pr/status + cursor) — runs de
+    /// auto-review de PR. <paramref name="pageId"/> = next_page_id.
+    /// </summary>
+    public Task<ReviewRunPageDto?> ListReviewsAsync(
+        string? repository = null, int? pr = null, string? status = null,
+        string? pageId = null, int limit = 50,
+        CancellationToken ct = default)
+    {
+        var path = $"/api/v1/scm/reviews?limit={limit}"
+            + (string.IsNullOrEmpty(repository)
+                ? "" : $"&repository={Uri.EscapeDataString(repository)}")
+            + (pr is null ? "" : $"&pr={pr.Value}")
+            + (string.IsNullOrEmpty(status)
+                ? "" : $"&status={Uri.EscapeDataString(status)}")
+            + (string.IsNullOrEmpty(pageId)
+                ? "" : $"&page_id={Uri.EscapeDataString(pageId)}");
+        return GetOrNull<ReviewRunPageDto>(path, ct);
+    }
+
+    /// <summary>GET /scm/reviews/{id} — run + findings do run.</summary>
+    public Task<ReviewDetailDto?> GetReviewAsync(
+        Guid id, CancellationToken ct = default) =>
+        GetOrNull<ReviewDetailDto>($"/api/v1/scm/reviews/{id}", ct);
+
+    /// <summary>
+    /// PATCH /scm/reviews/{runId}/findings/{fid} {status} — triagem
+    /// (<c>open|dismissed</c>). null = 404/400.
+    /// </summary>
+    public async Task<ReviewFindingDto?> PatchReviewFindingAsync(
+        Guid runId, Guid findingId, string status,
+        CancellationToken ct = default)
+    {
+        var resp = await http.PatchAsJsonAsync(
+            $"/api/v1/scm/reviews/{runId}/findings/{findingId}",
+            new { status }, Json, ct);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content
+                .ReadFromJsonAsync<ReviewFindingDto>(Json, ct)
+            : null;
+    }
+
     // ---- SPEC-144: batch refactors ------------------------------------------
 
     /// <summary>
@@ -1562,6 +1606,32 @@ public sealed record ScanFixResultDto(
 /// <summary>SPEC-143: envelope 202 do fix-bulk.</summary>
 public sealed record ScanFixBulkDto(
     IReadOnlyList<ScanFixResultDto> Items);
+
+/// <summary>SPEC-140: página de review runs (GET /scm/reviews).</summary>
+public sealed record ReviewRunPageDto(
+    IReadOnlyList<ReviewRunDto> Items, string? NextPageId);
+
+/// <summary>SPEC-140: run de auto-review de PR.</summary>
+public sealed record ReviewRunDto(
+    Guid Id, Guid? OrgId, Guid ConnectionId, string Repository,
+    int PrNumber, string HeadSha, string? DiffHash, string Status,
+    bool Partial, string Trigger, string? RequestedByUserId,
+    string? Error, int FindingCount, DateTimeOffset CreatedAt,
+    DateTimeOffset? FinishedAt);
+
+/// <summary>SPEC-140: envelope de GET /scm/reviews/{id}.</summary>
+public sealed record ReviewDetailDto(
+    ReviewRunDto Run, IReadOnlyList<ReviewFindingDto> Findings);
+
+/// <summary>
+/// SPEC-140: finding triável do review (kind/severity/path/line +
+/// <c>comment_url</c> = permalink do review postado no provider).
+/// </summary>
+public sealed record ReviewFindingDto(
+    Guid Id, Guid ReviewRunId, string Repository, int PrNumber,
+    string Kind, string Severity, double? Confidence, string Path,
+    int? Line, string? Title, string Body, string? SuggestedPatch,
+    string Status, string? CommentUrl, DateTimeOffset CreatedAt);
 
 /// <summary>SPEC-144: resposta 202 do POST /refactors.</summary>
 public sealed record RefactorCreatedDto(
