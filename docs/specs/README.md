@@ -204,3 +204,4 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | SPEC | Título | Entrega |
 |---|---|---|
 | 139 | brand-assets — sandcastle logo, favicons, PWA icons, README header, social preview | PR #439 · #436 |
+| 152 | benchmark-adapters — eval_task_v1, suites (swe-lite/terminal-bench-2/custom), hermetic eval_mode, /api/v1/evals + scorecards | PR #449 · #446 |
