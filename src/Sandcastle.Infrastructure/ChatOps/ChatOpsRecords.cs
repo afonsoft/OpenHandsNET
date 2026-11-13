@@ -14,17 +14,35 @@ public sealed class ChatConnectionRecord : IOrgScoped
     public required Guid Id { get; set; }
     public Guid? OrgId { get; set; }
 
-    /// <summary><c>slack</c>.</summary>
+    /// <summary><c>slack</c> | <c>teams</c> (legado: ver Provider).</summary>
     public required string Kind { get; set; }
 
-    /// <summary>Slack <c>team_id</c> (T…).</summary>
-    public required string TeamId { get; set; }
+    /// <summary>
+    /// SPEC-151 RF-003: provider canônico <c>slack|teams</c> — mesmos
+    /// valores de <see cref="Kind"/> (coluna dedicada para o picker da
+    /// UI / sinks futuros que não sejam ChatKind). Default
+    /// <c>slack</c> faz backfill das linhas legadas.
+    /// </summary>
+    public string Provider { get; set; } = "slack";
 
-    /// <summary>Nome do secret com o bot token (xoxb-…).</summary>
-    public required string BotTokenSecretRef { get; set; }
+    /// <summary>
+    /// Slack <c>team_id</c> (T…) — NULL p/ Teams (o unique index
+    /// continua garantindo uma connection por workspace Slack; NULLs
+    /// não colidem).
+    /// </summary>
+    public string? TeamId { get; set; }
 
-    /// <summary>Nome do secret com o signing secret.</summary>
-    public required string SigningSecretRef { get; set; }
+    /// <summary>
+    /// SPEC-151 RF-003: Incoming Webhook URL (Teams). É credencial —
+    /// serializada mascarada pela API e nunca logada.
+    /// </summary>
+    public string? WebhookUrl { get; set; }
+
+    /// <summary>Nome do secret com o bot token (xoxb-…; null p/ Teams).</summary>
+    public string? BotTokenSecretRef { get; set; }
+
+    /// <summary>Nome do secret com o signing secret (null p/ Teams).</summary>
+    public string? SigningSecretRef { get; set; }
 
     /// <summary>User id do bot no workspace (resolvido no test).</summary>
     public string? BotUserId { get; set; }
@@ -76,9 +94,13 @@ public sealed class ChatConnectionRecordConfiguration
         b.ToTable("chat_connections");
         b.HasKey(e => e.Id);
         b.Property(e => e.Kind).HasMaxLength(20).IsRequired();
-        b.Property(e => e.TeamId).HasMaxLength(40).IsRequired();
-        b.Property(e => e.BotTokenSecretRef).HasMaxLength(200).IsRequired();
-        b.Property(e => e.SigningSecretRef).HasMaxLength(200).IsRequired();
+        // Default "slack" backfilla rows existentes na migration.
+        b.Property(e => e.Provider).HasMaxLength(20).IsRequired()
+            .HasDefaultValue("slack");
+        b.Property(e => e.TeamId).HasMaxLength(40);
+        b.Property(e => e.WebhookUrl).HasMaxLength(1000);
+        b.Property(e => e.BotTokenSecretRef).HasMaxLength(200);
+        b.Property(e => e.SigningSecretRef).HasMaxLength(200);
         b.Property(e => e.BotUserId).HasMaxLength(40);
         b.Property(e => e.DefaultChannelId).HasMaxLength(40);
         b.Property(e => e.CreatedByUserId).HasMaxLength(200);

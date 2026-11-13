@@ -3,6 +3,7 @@ using System.Text.Json;
 
 using Microsoft.AspNetCore.Mvc;
 
+using Sandcastle.Api.ProblemDetails;
 using Sandcastle.Application.ChatOps;
 using Sandcastle.Application.Identity;
 
@@ -55,21 +56,36 @@ public static class ChatOpsEndpoints
         conns.MapGet("", async (
             Guid org_id, IChatConnectionService svc,
             CancellationToken ct) =>
-            Results.Ok(await svc.ListAsync(org_id, ct)));
+            Results.Ok((await svc.ListAsync(org_id, ct))
+                .Select(MaskConnection).ToList()));
 
         conns.MapPost("", async (
             Guid org_id, [FromBody] ChatConnectionRequest req,
             ICurrentUserAccessor current, IChatConnectionService svc,
-            CancellationToken ct) =>
+            HttpContext http, CancellationToken ct) =>
         {
             var user = current.User;
             if (user is null)
                 return Results.Unauthorized();
+            // SPEC-151 RF-003: provider picker — slack (default) ou
+            // teams (Incoming Webhook URL, sem bot token/signing).
+            var kind = ChatKindExtensions.Parse(req.Provider)
+                ?? ChatKind.Slack;
+            if (kind == ChatKind.Teams
+                && (string.IsNullOrWhiteSpace(req.WebhookUrl)
+                    || !Uri.TryCreate(req.WebhookUrl, UriKind.Absolute,
+                        out var u)
+                    || u.Scheme != Uri.UriSchemeHttps))
+            {
+                return SandcastleProblemFactory.Create(http, 400,
+                    "teams connections require an https webhook_url");
+            }
             var conn = await svc.CreateAsync(
                 org_id, req.TeamId, req.BotTokenSecretRef,
                 req.SigningSecretRef, req.BotUserId,
-                req.DefaultChannelId, user.UserId.ToString(), ct);
-            return Results.Ok(conn);
+                req.DefaultChannelId, user.UserId.ToString(), ct,
+                kind, req.WebhookUrl);
+            return Results.Ok(MaskConnection(conn));
         });
 
         conns.MapDelete("/{id:guid}", async (
@@ -95,20 +111,64 @@ public static class ChatOpsEndpoints
 
         // SPEC-54: diagnóstico — auth.test via IChatSink (postMessage no-op
         // aqui; test completo de token fica no SlackChatSink/test job).
-        app.MapPost("/api/v1/chat/connections/{id:guid}/test", async (
-            Guid id, IChatConnectionService conns2, IChatSink sink,
-            CancellationToken ct) =>
-        {
-            var conn = await conns2.GetAsync(id, ct);
-            if (conn is null)
-                return Results.NotFound();
-            var ts = await sink.PostMessageAsync(
-                conn, conn.DefaultChannelId ?? "general", null,
-                ":mag: Sandcastle connection test", ct);
-            return Results.Ok(new { ok = ts is not null, ts });
-        }).RequireAuthorization("perm:manage_integrations");
+        app.MapPost("/api/v1/chat/connections/{id:guid}/test",
+            TestConnectionAsync)
+            .RequireAuthorization("perm:manage_integrations");
+
+        // SPEC-151 RF-003: rota canônica {provider}-aware (Teams posta
+        // card de teste no webhook; Slack posta no canal default).
+        app.MapPost("/api/v1/chat-connections/{id:guid}/test",
+            TestConnectionAsync)
+            .RequireAuthorization("perm:manage_integrations");
 
         return app;
+    }
+
+    private static async Task<IResult> TestConnectionAsync(
+        Guid id, IChatConnectionService conns, IChatSink sink,
+        CancellationToken ct)
+    {
+        var conn = await conns.GetAsync(id, ct);
+        if (conn is null)
+        {
+            return Results.NotFound();
+        }
+        var ts = await sink.PostMessageAsync(
+            conn, conn.DefaultChannelId ?? "general", null,
+            ":mag: Sandcastle connection test", ct);
+        return Results.Ok(new { ok = ts is not null, ts });
+    }
+
+    /// <summary>
+    /// SPEC-151: <c>webhook_url</c> é credencial — serializa mascarada
+    /// (scheme + sufixo; nunca a URL completa).
+    /// </summary>
+    private static object MaskConnection(ChatConnection c) => new
+    {
+        c.Id,
+        org_id = c.OrgId,
+        kind = c.Kind.ToWire(),
+        provider = c.Kind.ToWire(),
+        c.TeamId,
+        c.BotTokenSecretRef,
+        c.SigningSecretRef,
+        c.BotUserId,
+        c.DefaultChannelId,
+        c.CreatedByUserId,
+        c.CreatedAt,
+        webhook_url = MaskWebhook(c.WebhookUrl),
+        has_webhook_url = c.WebhookUrl is not null,
+    };
+
+    /// <summary>Mostra só scheme + últimos 4 — nunca a URL inteira.</summary>
+    private static string? MaskWebhook(string? url)
+    {
+        if (string.IsNullOrEmpty(url))
+        {
+            return null;
+        }
+        var tail = url.Length > 4 ? url[^4..] : url;
+        return $"https://***{tail}";
     }
 
     private static async Task<IResult> SlackEventsAsync(
@@ -195,13 +255,19 @@ public static class ChatOpsEndpoints
     };
 }
 
-/// <summary>Create chat connection request.</summary>
+/// <summary>
+/// Create chat connection request. SPEC-151: <paramref name="Provider"/>
+/// = <c>slack</c> (default) | <c>teams</c> — Teams exige
+/// <paramref name="WebhookUrl"/> e ignora os secret refs.
+/// </summary>
 public sealed record ChatConnectionRequest(
     string TeamId,
     string BotTokenSecretRef,
     string SigningSecretRef,
     string? BotUserId = null,
-    string? DefaultChannelId = null);
+    string? DefaultChannelId = null,
+    string? Provider = null,
+    string? WebhookUrl = null);
 
 /// <summary>Canal→repo config request (SPEC-54 RF-004).</summary>
 public sealed record ChatChannelConfigRequest(

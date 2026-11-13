@@ -78,6 +78,195 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations.Postgres
                     b.ToTable("app_settings", (string)null);
                 });
 
+            modelBuilder.Entity("Sandcastle.Infrastructure.Alerts.AlertEventRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("CreatedAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_at_ticks");
+
+                    b.Property<string>("Culprit")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("culprit");
+
+                    b.Property<string>("ExternalId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("external_id");
+
+                    b.Property<DateTimeOffset>("FirstSeen")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("first_seen");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("LabelsJson")
+                        .HasColumnType("text")
+                        .HasColumnName("labels_json");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("PrUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("pr_url");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("Repository")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("repository");
+
+                    b.Property<string>("Service")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("service");
+
+                    b.Property<Guid?>("SessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("session_id");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("severity");
+
+                    b.Property<Guid>("SourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("Url")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("url");
+
+                    b.HasKey("Id")
+                        .HasName("pk_alert_events");
+
+                    b.HasIndex("CreatedAtTicks")
+                        .IsDescending()
+                        .HasDatabaseName("ix_alert_events_created_at_ticks");
+
+                    b.HasIndex("SessionId")
+                        .HasDatabaseName("ix_alert_events_session_id");
+
+                    b.HasIndex("OrgId", "Status")
+                        .HasDatabaseName("ix_alert_events_org_id_status");
+
+                    b.HasIndex("SourceId", "ExternalId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_alert_events_source_id_external_id");
+
+                    b.ToTable("alert_events", (string)null);
+                });
+
+            modelBuilder.Entity("Sandcastle.Infrastructure.Alerts.AlertSourceRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("AutoCreateSession")
+                        .HasColumnType("boolean")
+                        .HasColumnName("auto_create_session");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("enabled");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("RepoMappingJson")
+                        .HasColumnType("text")
+                        .HasColumnName("repo_mapping_json");
+
+                    b.Property<string>("SecretRef")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("secret_ref");
+
+                    b.Property<string>("TriageSeverityMin")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("triage_severity_min");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_alert_sources");
+
+                    b.HasIndex("OrgId")
+                        .HasDatabaseName("ix_alert_sources_org_id");
+
+                    b.ToTable("alert_sources", (string)null);
+                });
+
             modelBuilder.Entity("Sandcastle.Infrastructure.Automations.AutomationHookRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -376,7 +565,6 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnName("id");
 
                     b.Property<string>("BotTokenSecretRef")
-                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("bot_token_secret_ref");
@@ -410,17 +598,28 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("uuid")
                         .HasColumnName("org_id");
 
-                    b.Property<string>("SigningSecretRef")
+                    b.Property<string>("Provider")
                         .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("slack")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("SigningSecretRef")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("signing_secret_ref");
 
                     b.Property<string>("TeamId")
-                        .IsRequired()
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)")
                         .HasColumnName("team_id");
+
+                    b.Property<string>("WebhookUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("webhook_url");
 
                     b.HasKey("Id")
                         .HasName("pk_chat_connections");

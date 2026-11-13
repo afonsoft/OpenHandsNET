@@ -2,7 +2,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -31,62 +30,36 @@ public sealed class SlackChatSink(
 
     /// <summary>
     /// Org setting (<c>organizations.settings_json</c>) que permite
-    /// pings de grupo explicitamente (SPEC-147 RF-001).
+    /// pings de grupo explicitamente (SPEC-147 RF-001). Alias legado —
+    /// a chave canônica vive em <see cref="GroupMentionGate"/>.
     /// </summary>
     public const string OrgSettingAllowGroupMentions =
-        "chatops_allow_group_mentions";
+        GroupMentionGate.OrgSettingAllowGroupMentions;
 
     private async Task<string> SanitizeAsync(
         ChatConnection c, string text, CancellationToken ct)
     {
-        if (options.Value.AllowGroupMentions
-            || await OrgAllowsGroupMentionsAsync(c.OrgId, ct))
+        if (await GroupMentionGate.AllowsAsync(
+                db, options.Value, c.OrgId, ct))
         {
             return text;
         }
 
-        return SlackTextSanitizer.NeutralizePings(text);
-    }
-
-    /// <summary>Org opt-in via settings dict (default false).</summary>
-    private async Task<bool> OrgAllowsGroupMentionsAsync(
-        Guid? orgId, CancellationToken ct)
-    {
-        if (orgId is not { } id)
-        {
-            return false;
-        }
-
-        var json = await db.Organizations.AsNoTracking()
-            .Where(o => o.Id == id)
-            .Select(o => o.SettingsJson)
-            .FirstOrDefaultAsync(ct);
-        if (json is null)
-        {
-            return false;
-        }
-
-        try
-        {
-            using var doc = JsonDocument.Parse(json);
-            return doc.RootElement.TryGetProperty(
-                    OrgSettingAllowGroupMentions, out var v)
-                && v.ValueKind == JsonValueKind.String
-                && bool.TryParse(v.GetString(), out var allow)
-                && allow;
-        }
-        catch (JsonException)
-        {
-            return false; // fail-closed: settings inválidas não liberam ping
-        }
+        return ChatTextSanitizer.NeutralizeSlackPings(text);
     }
 
     private async Task<HttpRequestMessage> ReqAsync(
         ChatConnection c, string method, CancellationToken ct)
     {
-        var token = await secrets.ResolveAsync(
-            "org", c.OrgId?.ToString() ?? "", c.BotTokenSecretRef, ct)
-            ?? throw new InvalidOperationException("bot token secret missing");
+        var token = c.BotTokenSecretRef is null ? null
+            : await secrets.ResolveAsync(
+                "org", c.OrgId?.ToString() ?? "", c.BotTokenSecretRef,
+                ct);
+        if (token is null)
+        {
+            throw new InvalidOperationException(
+                "bot token secret missing");
+        }
         var req = new HttpRequestMessage(HttpMethod.Post, ApiBase + method);
         req.Headers.Authorization = new AuthenticationHeaderValue(
             "Bearer", token);

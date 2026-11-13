@@ -302,12 +302,35 @@ public static class DependencyInjection
         services.AddScoped<
             Sandcastle.Application.ChatOps.IChatOpsService,
             Sandcastle.Infrastructure.ChatOps.SlackChatOpsService>();
+        // SPEC-151: sinks por provider + router — IChatSink despacha
+        // pelo Kind da connection (Slack|Teams).
+        services.AddScoped<
+            Sandcastle.Infrastructure.ChatOps.SlackChatSink>();
+        services.AddScoped<
+            Sandcastle.Infrastructure.ChatOps.TeamsChatSink>();
         services.AddScoped<
             Sandcastle.Application.ChatOps.IChatSink,
-            Sandcastle.Infrastructure.ChatOps.SlackChatSink>();
+            Sandcastle.Infrastructure.ChatOps.ChatSinkRouter>();
+        services.AddHttpClient("chatops-slack");
+        services.AddHttpClient("chatops-teams");
         services.AddScoped<
             Sandcastle.Application.ChatOps.IChatOpsReporter,
             Sandcastle.Infrastructure.ChatOps.ChatOpsReporter>();
+
+        // SPEC-151: alert integrations — sources CRUD, inbound
+        // webhooks (signature/idempotência), pipeline alerta→sessão.
+        services.Configure<
+            Sandcastle.Infrastructure.Alerts.AlertOptions>(
+            configuration.GetSection(
+                Sandcastle.Infrastructure.Alerts.AlertOptions.Section));
+        services.AddScoped<
+            Sandcastle.Application.Alerts.IAlertService,
+            Sandcastle.Infrastructure.Alerts.AlertService>();
+        services.AddScoped<
+            Sandcastle.Application.Alerts.IAlertIngestService,
+            Sandcastle.Infrastructure.Alerts.AlertIngestService>();
+        services.AddScoped<
+            Sandcastle.Infrastructure.Alerts.AlertSessionPipeline>();
 
         // SPEC-55 Tickets: Linear/Jira connections, providers,
         // trigger pipeline e write-back.

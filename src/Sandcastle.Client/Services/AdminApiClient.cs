@@ -401,12 +401,37 @@ public sealed class AdminApiClient(HttpClient http)
         return resp.IsSuccessStatusCode;
     }
 
+    /// <summary>
+    /// SPEC-151 RF-003: cria chat connection — <paramref name="provider"/>
+    /// <c>slack</c> (bot token + signing refs) ou <c>teams</c>
+    /// (<paramref name="webhookUrl"/> Incoming Webhook).
+    /// </summary>
+    public async Task<bool> CreateChatConnectionAsync(
+        string orgId, string provider, string? teamId,
+        string? botTokenSecretRef, string? signingSecretRef,
+        string? botUserId, string? defaultChannelId, string? webhookUrl,
+        CancellationToken ct = default)
+    {
+        var resp = Guard(await http.PostAsJsonAsync(
+            $"/api/v1/orgs/{orgId}/chat-connections", new
+            {
+                provider,
+                team_id = teamId,
+                bot_token_secret_ref = botTokenSecretRef,
+                signing_secret_ref = signingSecretRef,
+                bot_user_id = botUserId,
+                default_channel_id = defaultChannelId,
+                webhook_url = webhookUrl,
+            }, Json, ct));
+        return resp.IsSuccessStatusCode;
+    }
+
     /// <summary>Diagnóstico: auth.test no Slack via connection.</summary>
     public async Task<JsonElement> TestChatConnectionAsync(
         string id, CancellationToken ct = default)
     {
         var resp = Guard(await http.PostAsync(
-            $"/api/v1/chat/connections/{id}/test", null, ct));
+            $"/api/v1/chat-connections/{id}/test", null, ct));
         return resp.IsSuccessStatusCode
             ? await resp.Content.ReadFromJsonAsync<JsonElement>(Json, ct)
             : default;

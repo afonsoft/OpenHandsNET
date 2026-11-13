@@ -18,16 +18,23 @@ public sealed class ChatConnectionService(
         Guid orgId, string teamId, string botTokenSecretRef,
         string signingSecretRef, string? botUserId,
         string? defaultChannelId, string? createdByUserId,
-        CancellationToken ct)
+        CancellationToken ct,
+        ChatKind? kind = null, string? webhookUrl = null)
     {
+        var k = kind ?? ChatKind.Slack;
         var record = new ChatConnectionRecord
         {
             Id = Guid.NewGuid(),
             OrgId = orgId,
-            Kind = "slack",
-            TeamId = teamId,
-            BotTokenSecretRef = botTokenSecretRef,
-            SigningSecretRef = signingSecretRef,
+            Kind = k.ToWire(),
+            Provider = k.ToWire(),
+            // Teams não tem team_id — NULL preserva o unique index slack.
+            TeamId = k == ChatKind.Slack ? teamId : null,
+            WebhookUrl = k == ChatKind.Teams ? webhookUrl : null,
+            BotTokenSecretRef = k == ChatKind.Slack
+                ? botTokenSecretRef : null,
+            SigningSecretRef = k == ChatKind.Slack
+                ? signingSecretRef : null,
             BotUserId = botUserId,
             DefaultChannelId = defaultChannelId,
             CreatedByUserId = createdByUserId,
@@ -38,7 +45,8 @@ public sealed class ChatConnectionService(
         await audit.RecordAsync("chatops.connection_added",
             actorUserId: createdByUserId, orgId: orgId,
             targetType: "chat_connection", targetId: record.Id.ToString(),
-            metadata: new { teamId }, cancellationToken: ct);
+            metadata: new { teamId, provider = k.ToWire() },
+            cancellationToken: ct);
         return ToModel(record);
     }
 
@@ -134,9 +142,14 @@ public sealed class ChatConnectionService(
     }
 
     internal static ChatConnection ToModel(ChatConnectionRecord r) =>
-        new(r.Id, r.OrgId, ChatKindExtensions.Parse(r.Kind) ?? ChatKind.Slack,
+        new(r.Id, r.OrgId,
+            // Provider é a coluna canônica (SPEC-151); Kind cobre rows
+            // antigas que ainda não foram migradas.
+            ChatKindExtensions.Parse(r.Provider)
+                ?? ChatKindExtensions.Parse(r.Kind) ?? ChatKind.Slack,
             r.TeamId, r.BotTokenSecretRef, r.SigningSecretRef,
-            r.BotUserId, r.DefaultChannelId, r.CreatedByUserId, r.CreatedAt);
+            r.BotUserId, r.DefaultChannelId, r.CreatedByUserId, r.CreatedAt,
+            r.WebhookUrl);
 
     private static ChatChannelConfig ToConfig(ChatChannelConfigRecord r) =>
         new(r.Id, r.ConnectionId, r.ChannelId, r.SelectedRepository,

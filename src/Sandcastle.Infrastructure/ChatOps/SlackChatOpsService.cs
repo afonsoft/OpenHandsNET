@@ -65,8 +65,10 @@ public sealed class SlackChatOpsService( // NOSONAR S107 — SPEC-104 (decisão 
         ChatConnection c, string? signature, string? timestamp,
         byte[] payload, CancellationToken ct)
     {
-        var secret = await secrets.ResolveAsync(
-            "org", c.OrgId?.ToString() ?? "", c.SigningSecretRef, ct);
+        var secret = c.SigningSecretRef is null ? null
+            : await secrets.ResolveAsync(
+                "org", c.OrgId?.ToString() ?? "", c.SigningSecretRef,
+                ct);
         return secret is not null
             && VerifySignature(secret, timestamp, signature, payload,
                 DateTimeOffset.UtcNow.ToUnixTimeSeconds());

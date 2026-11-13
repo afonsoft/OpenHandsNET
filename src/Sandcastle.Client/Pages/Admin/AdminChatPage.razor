@@ -50,8 +50,8 @@ else
                         @foreach (var c in _connections)
                         {
                             <tr>
-                                <td>@Str(c, "kind")</td>
-                                <td>@Str(c, "team_id")</td>
+                                <td>@Str(c, "provider")</td>
+                                <td>@(Str(c, "team_id") ?? Str(c, "webhook_url") ?? "—")</td>
                                 <td>@Str(c, "bot_user_id")</td>
                                 <td>
                                     <button class="btn"
@@ -71,6 +71,36 @@ else
 
             <h3>@L["admin.chat_connect_title"]</h3>
             <p class="muted">@L["admin.chat_connect_hint"]</p>
+            <div class="admin-toolbar">
+                <select aria-label="@L["admin.chat_provider"]"
+                        @bind="_provider">
+                    <option value="slack">Slack</option>
+                    <option value="teams">Microsoft Teams</option>
+                </select>
+                @if (_provider == "teams")
+                {
+                    <input aria-label="@L["admin.chat_webhook_url"]"
+                           placeholder="https://…/IncomingWebhook/…"
+                           @bind="_webhookUrl" style="min-width:32rem" />
+                }
+                else
+                {
+                    <input aria-label="team_id" placeholder="T…"
+                           @bind="_teamId" />
+                    <input aria-label="bot_token_secret_ref"
+                           placeholder="bot token secret ref"
+                           @bind="_botTokenRef" />
+                    <input aria-label="signing_secret_ref"
+                           placeholder="signing secret ref"
+                           @bind="_signingRef" />
+                    <input aria-label="default_channel_id"
+                           placeholder="default channel"
+                           @bind="_channelId" />
+                }
+                <button class="primary" @onclick="CreateAsync">
+                    @L["admin.chat_connect_title"]
+                </button>
+            </div>
             <ul class="muted">
                 <li>Events → <code>POST /api/v1/webhooks/chat/slack/events</code></li>
                 <li>Commands → <code>POST /api/v1/webhooks/chat/slack/commands</code></li>
@@ -85,6 +115,12 @@ else
     private IReadOnlyList<JsonElement> _orgs = [];
     private IReadOnlyList<JsonElement> _connections = [];
     private bool _loaded;
+    private string _provider = "slack";
+    private string _teamId = "";
+    private string _botTokenRef = "";
+    private string _signingRef = "";
+    private string _channelId = "";
+    private string _webhookUrl = "";
 
     protected override async Task LoadAsync()
     {
@@ -121,6 +157,32 @@ else
             Toasts.Error(detail ?? L["admin.chat_test_fail"]);
         }
     }
+
+    private async Task CreateAsync()
+    {
+        if (string.IsNullOrEmpty(_orgId))
+        {
+            return;
+        }
+        var ok = await Api.CreateChatConnectionAsync(
+            _orgId, _provider, OrNull(_teamId), OrNull(_botTokenRef),
+            OrNull(_signingRef), null, OrNull(_channelId),
+            OrNull(_webhookUrl));
+        if (ok)
+        {
+            Toasts.Success(L["admin.chat_connected"]);
+            _teamId = _botTokenRef = _signingRef = _channelId
+                = _webhookUrl = "";
+            await LoadConnectionsAsync();
+        }
+        else
+        {
+            Toasts.Error(L["admin.chat_test_fail"]);
+        }
+    }
+
+    private static string? OrNull(string s) =>
+        string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
     private async Task DeleteAsync(JsonElement c)
     {

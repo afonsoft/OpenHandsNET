@@ -13,6 +13,124 @@
         ],
         "type": "object"
       },
+      "AlertEventPatchRequest": {
+        "description": "PATCH alert event \u2014 \u0060{status, repository}\u0060.",
+        "properties": {
+          "repository": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "AlertSourcePatchRequest": {
+        "description": "PATCH alert source \u2014 campos nulos preservam o atual.",
+        "properties": {
+          "auto_create_session": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "enabled": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "repo_mapping": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "object"
+            ]
+          },
+          "secret_ref": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "secret_value": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "triage_severity_min": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "AlertSourceRequest": {
+        "description": "Create alert source request.",
+        "properties": {
+          "auto_create_session": {
+            "default": false,
+            "type": "boolean"
+          },
+          "enabled": {
+            "default": true,
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "repo_mapping": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "object"
+            ]
+          },
+          "secret_ref": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "secret_value": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "triage_severity_min": {
+            "default": "high",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "name"
+        ],
+        "type": "object"
+      },
       "ApiKeyCreateRequest": {
         "description": "Create request body.",
         "properties": {
@@ -266,7 +384,7 @@
         "type": "object"
       },
       "ChatConnectionRequest": {
-        "description": "Create chat connection request.",
+        "description": "Create chat connection request. SPEC-151: Provider\n= \u0060slack\u0060 (default) | \u0060teams\u0060 \u2014 Teams exige\nWebhookUrl e ignora os secret refs.",
         "properties": {
           "bot_token_secret_ref": {
             "type": "string"
@@ -283,11 +401,23 @@
               "string"
             ]
           },
+          "provider": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "signing_secret_ref": {
             "type": "string"
           },
           "team_id": {
             "type": "string"
+          },
+          "webhook_url": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         },
         "required": [
@@ -3248,6 +3378,329 @@
         ]
       }
     },
+    "/api/v1/alerts/events": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "source_id",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "provider",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "severity",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "repository",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "unrouted",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/alerts/events",
+        "tags": [
+          "Alerts"
+        ]
+      }
+    },
+    "/api/v1/alerts/events/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/alerts/events/{id:guid}",
+        "tags": [
+          "Alerts"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertEventPatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "PATCH /api/v1/alerts/events/{id:guid}",
+        "tags": [
+          "Alerts"
+        ]
+      }
+    },
+    "/api/v1/alerts/events/{id}/create-session": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "POST /api/v1/alerts/events/{id:guid}/create-session",
+        "tags": [
+          "Alerts"
+        ]
+      }
+    },
+    "/api/v1/alerts/sources": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/alerts/sources",
+        "tags": [
+          "Alerts"
+        ]
+      },
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertSourceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "POST /api/v1/alerts/sources",
+        "tags": [
+          "Alerts"
+        ]
+      }
+    },
+    "/api/v1/alerts/sources/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "DELETE /api/v1/alerts/sources/{id:guid}",
+        "tags": [
+          "Alerts"
+        ]
+      },
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/alerts/sources/{id:guid}",
+        "tags": [
+          "Alerts"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertSourcePatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "PATCH /api/v1/alerts/sources/{id:guid}",
+        "tags": [
+          "Alerts"
+        ]
+      }
+    },
     "/api/v1/app-conversations": {
       "get": {
         "parameters": [
@@ -5960,6 +6413,36 @@
         ]
       }
     },
+    "/api/v1/chat-connections/{id}/test": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "POST /api/v1/chat-connections/{id:guid}/test",
+        "tags": [
+          "ChatOpsEndpoints"
+        ]
+      }
+    },
     "/api/v1/chat/channels/{connectionId}/config": {
       "post": {
         "parameters": [
@@ -6026,7 +6509,7 @@
         },
         "summary": "POST /api/v1/chat/connections/{id:guid}/test",
         "tags": [
-          "Sandcastle.Api"
+          "ChatOpsEndpoints"
         ]
       }
     },
@@ -12434,6 +12917,36 @@
         ]
       }
     },
+    "/api/v1/webhooks/alerts/{source_id}": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "POST /api/v1/webhooks/alerts/{source_id:guid}",
+        "tags": [
+          "Sandcastle.Api"
+        ]
+      }
+    },
     "/api/v1/webhooks/chat/slack/commands": {
       "post": {
         "responses": {
@@ -13252,6 +13765,9 @@
       "name": "OpenAI Gateway"
     },
     {
+      "name": "ChatOpsEndpoints"
+    },
+    {
       "name": "Scans"
     },
     {
@@ -13292,6 +13808,9 @@
     },
     {
       "name": "BrowserProfiles"
+    },
+    {
+      "name": "Alerts"
     }
   ]
 }

@@ -69,6 +69,195 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations
                     b.ToTable("app_settings", (string)null);
                 });
 
+            modelBuilder.Entity("Sandcastle.Infrastructure.Alerts.AlertEventRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("CreatedAtTicks")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("created_at_ticks");
+
+                    b.Property<string>("Culprit")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("culprit");
+
+                    b.Property<string>("ExternalId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("external_id");
+
+                    b.Property<DateTimeOffset>("FirstSeen")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("first_seen");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("LabelsJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("labels_json");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("PrUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("pr_url");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("Repository")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("repository");
+
+                    b.Property<string>("Service")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("service");
+
+                    b.Property<Guid?>("SessionId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("session_id");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("severity");
+
+                    b.Property<Guid>("SourceId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("source_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("title");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("Url")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("url");
+
+                    b.HasKey("Id")
+                        .HasName("pk_alert_events");
+
+                    b.HasIndex("CreatedAtTicks")
+                        .IsDescending()
+                        .HasDatabaseName("ix_alert_events_created_at_ticks");
+
+                    b.HasIndex("SessionId")
+                        .HasDatabaseName("ix_alert_events_session_id");
+
+                    b.HasIndex("OrgId", "Status")
+                        .HasDatabaseName("ix_alert_events_org_id_status");
+
+                    b.HasIndex("SourceId", "ExternalId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_alert_events_source_id_external_id");
+
+                    b.ToTable("alert_events", (string)null);
+                });
+
+            modelBuilder.Entity("Sandcastle.Infrastructure.Alerts.AlertSourceRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("AutoCreateSession")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("auto_create_session");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("enabled");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("org_id");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("RepoMappingJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("repo_mapping_json");
+
+                    b.Property<string>("SecretRef")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("secret_ref");
+
+                    b.Property<string>("TriageSeverityMin")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("triage_severity_min");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_alert_sources");
+
+                    b.HasIndex("OrgId")
+                        .HasDatabaseName("ix_alert_sources_org_id");
+
+                    b.ToTable("alert_sources", (string)null);
+                });
+
             modelBuilder.Entity("Sandcastle.Infrastructure.Automations.AutomationHookRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -367,7 +556,6 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations
                         .HasColumnName("id");
 
                     b.Property<string>("BotTokenSecretRef")
-                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("TEXT")
                         .HasColumnName("bot_token_secret_ref");
@@ -401,17 +589,28 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("org_id");
 
-                    b.Property<string>("SigningSecretRef")
+                    b.Property<string>("Provider")
                         .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("slack")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("SigningSecretRef")
                         .HasMaxLength(200)
                         .HasColumnType("TEXT")
                         .HasColumnName("signing_secret_ref");
 
                     b.Property<string>("TeamId")
-                        .IsRequired()
                         .HasMaxLength(40)
                         .HasColumnType("TEXT")
                         .HasColumnName("team_id");
+
+                    b.Property<string>("WebhookUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("webhook_url");
 
                     b.HasKey("Id")
                         .HasName("pk_chat_connections");
