@@ -198,3 +198,9 @@ Arquivado em 2026-10-19 pela SPEC-65 (gap-analysis).
 | 134 | beta-byok — user LLM keys, encrypted store, precedence | PR #377 (+#378) · #368 |
 | 135 | beta-conversation-ux — fork, turn undo, diff hunk revert | PR #384 · #369 |
 | 138 | sandcastle-rename — OpenHandsNET → Sandcastle / Sandcastle Cloud | PRs #396/#397 · #395 |
+
+## Entregues (Leva 2026-11-10 — competitive gap analysis / PR loop)
+
+| SPEC | Título | Entrega |
+|---|---|---|
+| 139 | brand-assets — sandcastle logo, favicons, PWA icons, README header, social preview | PR #439 · #436 |
