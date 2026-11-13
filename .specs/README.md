@@ -149,3 +149,11 @@ Aprovadas em 2026-11-10 pelo usuário — Epic acompanha no GitHub.
 | 148 | skills-marketplace | Delivered · PR #431 | #428 |
 | 149 | model-router | Delivered · PR #432 | #429 |
 | 150 | cli-handoff | Delivered · PR #433 | #430 |
+
+### Próxima onda (Onda E — enterprise + eval) — Draft
+
+| SPEC | Título | Status | Ticket |
+|---|---|---|---|
+| 151 | alert-integrations | Draft | GAP-ALERT-INTEGRATIONS |
+| 152 | benchmark-adapters | Draft | GAP-BENCHMARKS |
+| 153 | hybrid-runner | Draft | GAP-HYBRID-RUNNER |
