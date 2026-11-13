@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Sandcastle logo">
+  <title>Sandcastle</title>
+  <!-- SPEC-139: monochrome light variant (for dark backgrounds). -->
+  <path fill="#F9FAFB" d="M0 64l0-3q16-5.5 32-5.5t32 5.5l0 3z"/>
+  <path fill="#F9FAFB" fill-rule="evenodd" d="M6 56V30h5v4h4v-4h5V16h6v8h12v-8h6v14h5v4h4v-4h5v26zM28 56v-8a4 4 0 0 1 8 0v8zM30 28h4v4h-4z"/>
+  <path fill="#F9FAFB" d="M30 4h4v20h-4z"/>
+  <path fill="#F9FAFB" d="M34 5l16 5.75-16 5.75z"/>
+</svg>

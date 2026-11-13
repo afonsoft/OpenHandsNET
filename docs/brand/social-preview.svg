@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-label="Sandcastle — social preview">
+  <title>Sandcastle — open-source AI software engineer</title>
+  <!-- SPEC-139: GitHub social preview (1280x640). Rendered to PNG via
+       tools/brand/generate.sh; text is raster output only — the vector
+       mark itself carries no font dependency. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#182640"/>
+      <stop offset="1" stop-color="#0C1526"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <!-- subtle dune echo at the bottom edge -->
+  <path fill="#14203A" d="M0 640v-46q320-60 640-60t640 60v46z"/>
+  <path fill="#1C2C4E" d="M0 640v-24q320-42 640-42t640 42v24z"/>
+  <!-- brand mark -->
+  <g transform="translate(531.2 134.4) scale(3.4)">
+    <path fill="#B9832F" d="M0 64l0-3q16-5.5 32-5.5t32 5.5l0 3z"/>
+    <path fill="#E7B457" fill-rule="evenodd" d="M6 56V30h5v4h4v-4h5V16h6v8h12v-8h6v14h5v4h4v-4h5v26zM28 56v-8a4 4 0 0 1 8 0v8zM30 28h4v4h-4z"/>
+    <path fill="#E7B457" d="M30 4h4v20h-4z"/>
+    <path fill="#B9832F" fill-rule="evenodd" d="M20 34h24v22H20zM28 56v-8a4 4 0 0 1 8 0v8z"/>
+    <path fill="#B9832F" d="M34 5l16 5.75-16 5.75z"/>
+  </g>
+  <text x="640" y="452" text-anchor="middle" font-family="DejaVu Sans" font-weight="bold" font-size="92" fill="#F8FAFC" letter-spacing="1">Sandcastle</text>
+  <text x="640" y="512" text-anchor="middle" font-family="DejaVu Sans" font-size="34" fill="#A8B6CC">Open-source AI software engineer — MIT</text>
+</svg>

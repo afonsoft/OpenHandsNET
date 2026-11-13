@@ -1,7 +1,15 @@
-# Sandcastle
+<div align="center">
+  <img src="docs/brand/logo.svg" alt="Sandcastle logo" width="140" />
+  <h1>Sandcastle</h1>
+  <p><strong>Open-source AI software engineer</strong> — MIT port of the
+  OpenHands ecosystem to .NET 10 + Blazor WebAssembly.</p>
+  <p>
+    <a href="https://github.com/afonsoft/sandcastle/releases"><img alt="release" src="https://img.shields.io/github/v/release/afonsoft/sandcastle?display_name=tag&sort=semver" /></a>
+    <a href="#license"><img alt="license: MIT" src="https://img.shields.io/badge/license-MIT-green" /></a>
+    <a href="https://github.com/afonsoft/sandcastle/actions/workflows/ci.yml"><img alt="ci" src="https://github.com/afonsoft/sandcastle/actions/workflows/ci.yml/badge.svg?branch=main" /></a>
+  </p>
+</div>
 
-[![version](https://img.shields.io/badge/version-0.1.0--beta.1-orange)](https://github.com/afonsoft/sandcastle/releases)
-[![ci](https://github.com/afonsoft/sandcastle/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/afonsoft/sandcastle/actions/workflows/ci.yml)
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=afonsoft_OpenHandsNET&metric=alert_status)](https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main)
 [![Maintainability](https://sonarcloud.io/api/project_badges/measure?project=afonsoft_OpenHandsNET&metric=sqale_rating)](https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main)
 [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=afonsoft_OpenHandsNET&metric=code_smells)](https://sonarcloud.io/summary/overall?id=afonsoft_OpenHandsNET&branch=main)

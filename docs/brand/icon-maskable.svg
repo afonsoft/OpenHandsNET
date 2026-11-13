@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Sandcastle maskable icon">
+  <title>Sandcastle</title>
+  <!-- SPEC-139: maskable icon source — mark at 70% inside the 80% safe
+       zone (>=10% inset on every side); tile bleeds to the edges. -->
+  <rect width="64" height="64" fill="#0F172A"/>
+  <g transform="translate(9.6 8.2) scale(0.7)">
+    <path fill="#B9832F" d="M0 64l0-3q16-5.5 32-5.5t32 5.5l0 3z"/>
+    <path fill="#E7B457" fill-rule="evenodd" d="M6 56V30h5v4h4v-4h5V16h6v8h12v-8h6v14h5v4h4v-4h5v26zM28 56v-8a4 4 0 0 1 8 0v8zM30 28h4v4h-4z"/>
+    <path fill="#E7B457" d="M30 4h4v20h-4z"/>
+    <path fill="#B9832F" fill-rule="evenodd" d="M20 34h24v22H20zM28 56v-8a4 4 0 0 1 8 0v8z"/>
+    <path fill="#B9832F" d="M34 5l16 5.75-16 5.75z"/>
+  </g>
+</svg>
