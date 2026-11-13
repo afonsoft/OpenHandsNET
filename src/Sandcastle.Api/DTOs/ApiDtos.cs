@@ -206,3 +206,28 @@ public sealed record WebhookEventRequest
 {
     public required JsonElement Event { get; init; }
 }
+
+/// <summary>
+/// SPEC-150: POST /api/v1/conversations/handoff body — estado do working
+/// tree local empacotado pelo CLI (<c>sandcastle handoff</c>).
+/// </summary>
+public sealed record HandoffRequestDto
+{
+    /// <summary>Repositório (<c>owner/repo</c> ou URL) com SCM connection.</summary>
+    public string? Repository { get; init; }
+
+    /// <summary>SHA base do working tree local.</summary>
+    public string? BaseSha { get; init; }
+
+    /// <summary>Branch local de origem.</summary>
+    public string? BaseBranch { get; init; }
+
+    /// <summary>Unified diff do working tree vs base_sha.</summary>
+    public string? DiffPatch { get; init; }
+
+    /// <summary>Mensagem/prompt do usuário (envelope SPEC-91 server-side).</summary>
+    public string? Message { get; init; }
+
+    /// <summary>Metadata do CLI (cli_version, stat, …).</summary>
+    public JsonElement? Metadata { get; init; }
+}

@@ -381,6 +381,20 @@ public static class DependencyInjection
         services.AddHostedService<
             Sandcastle.Infrastructure.Conversations.ConversationStartWorker>();
 
+        // SPEC-150: handoff local↔cloud — create+package service e o
+        // applier do patch dentro do sandbox (git apply --3way → --reject).
+        services.Configure<
+            Sandcastle.Application.Conversations.HandoffOptions>(
+            configuration.GetSection(
+                Sandcastle.Application.Conversations
+                    .HandoffOptions.Section));
+        services.AddScoped<
+            Sandcastle.Application.Conversations.IHandoffService,
+            Sandcastle.Infrastructure.Handoff.HandoffService>();
+        services.AddScoped<
+            Sandcastle.Application.Conversations.IHandoffApplier,
+            Sandcastle.Infrastructure.Handoff.HandoffApplier>();
+
         // SPEC-47: automations — scheduler de usuário (start-task de
         // conversa por agenda ou webhook trigger anônimo).
         services.AddScoped<Sandcastle.Application.Automations.IAutomationService,

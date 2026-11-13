@@ -100,6 +100,10 @@ public sealed class ConversationStartWorker(
         await CloneRepositoryAsync(
             scope, workspaces, sbForProvision, sandbox, conv, ct);
 
+        // SPEC-150 RF-001: handoff — aplica o patch do working tree local
+        // sobre o base_sha clonado e reporta stats no stream.
+        await ApplyHandoffAsync(scope, db, sbForProvision, sandbox, conv, ct);
+
         // SPEC-17 RF-004 + SPEC-25 RF-001: blueprint + descoberta de contexto
         // — falha nunca bloqueia READY.
         var sbForBlueprint = await sandboxService.GetAsync(sandbox.Id, ct);
@@ -259,6 +263,82 @@ public sealed class ConversationStartWorker(
                     MultiRepoCloner.ToStateValue(outcomes),
                     Domain.Events.EventJson.Options),
             }, ct);
+    }
+
+    /// <summary>
+    /// SPEC-150: quando a conversa nasceu de <c>POST /conversations/handoff</c>
+    /// (<see cref="ConversationRecord.HandoffMetaJson"/>), aplica o patch no
+    /// sandbox, grava <c>applied_stats</c> e emite o evento
+    /// <c>ConversationStateUpdateEvent(key="handoff_applied")</c>.
+    /// </summary>
+    private async Task ApplyHandoffAsync(
+        IServiceScope scope, AppDbContext db,
+        Domain.Sandbox.Sandbox? sbForProvision,
+        Domain.Sandbox.Sandbox sandbox,
+        ConversationRecord conv, CancellationToken ct)
+    {
+        if (conv.HandoffMetaJson is not { } metaJson)
+        {
+            return;
+        }
+
+        var meta = Handoff.HandoffService.Deserialize<Application
+            .Conversations.HandoffMeta>(metaJson);
+        if (meta?.DiffPatch is not { Length: > 0 })
+        {
+            return;
+        }
+
+        try
+        {
+            var gitOpt = scope.ServiceProvider
+                .GetRequiredService<IOptions<Git.GitOptions>>().Value;
+            var workBranch = gitOpt.WorkBranch
+                .Replace("{id}", conv.Id.ToString("N")[..8],
+                    StringComparison.Ordinal);
+            var sb = sbForProvision
+                ?? await scope.ServiceProvider
+                    .GetRequiredService<ISandboxService>()
+                    .GetAsync(sandbox.Id, ct) ?? sandbox;
+            var stats = await scope.ServiceProvider
+                .GetRequiredService<Application.Conversations.IHandoffApplier>()
+                .ApplyAsync(sb, meta, workBranch, ct);
+
+            conv.HandoffMetaJson = Handoff.HandoffService.Serialize(
+                meta with { AppliedStats = stats });
+            conv.UpdatedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync(ct);
+
+            await scope.ServiceProvider
+                .GetRequiredService<Application.Events.IEventService>()
+                .AppendAsync(conv.Id,
+                    new Domain.Events.ConversationStateUpdateEvent
+                    {
+                        Key = "handoff_applied",
+                        Value = System.Text.Json.JsonSerializer
+                            .SerializeToElement(new
+                            {
+                                origin = meta.Origin,
+                                base_sha = meta.BaseSha,
+                                base_branch = meta.BaseBranch,
+                                applied = stats.Applied,
+                                files = stats.Files,
+                                additions = stats.Additions,
+                                deletions = stats.Deletions,
+                                rejected_files = stats.RejectedFiles,
+                                rejected_hunks = stats.RejectedHunks,
+                                cli_version = meta.CliVersion,
+                                error = stats.Error,
+                            }, Domain.Events.EventJson.Options),
+                    }, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // apply best-effort — READY não depende dele; o erro fica
+            // visível nos stats do evento handoff_applied.
+            logger.LogWarning(ex,
+                "handoff apply falhou na conversa {Id}", conv.Id);
+        }
     }
 
     // SPEC-11 RF-005: resolve + persiste skills da conversa antes de READY.

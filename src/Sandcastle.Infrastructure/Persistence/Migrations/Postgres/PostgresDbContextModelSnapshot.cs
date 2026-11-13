@@ -529,6 +529,14 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("character varying(20)")
                         .HasColumnName("execution_status");
 
+                    b.Property<string>("HandoffMetaJson")
+                        .HasColumnType("text")
+                        .HasColumnName("handoff_meta_json");
+
+                    b.Property<string>("HandoffPackageJson")
+                        .HasColumnType("text")
+                        .HasColumnName("handoff_package_json");
+
                     b.Property<string>("LlmModel")
                         .HasColumnType("text")
                         .HasColumnName("llm_model");

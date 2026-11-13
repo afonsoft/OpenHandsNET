@@ -16,7 +16,10 @@ public sealed record CreateConversationRequest(
     IReadOnlyList<string>? Secrets = null,
     // SPEC-146 RF-001: multi-repo — ordered, primary first (==
     // SelectedRepository when both present). null/empty = single repo.
-    IReadOnlyList<string>? SelectedRepositories = null);
+    IReadOnlyList<string>? SelectedRepositories = null,
+    // SPEC-150: JSON de HandoffMeta — conversa criada via
+    // POST /conversations/handoff (patch aplicado no provisioning).
+    string? HandoffMetaJson = null);
 
 /// <summary>
 /// SPEC-146 RF-001: <c>MultiRepo</c> options — <c>MaxRepos</c> is a hard cap

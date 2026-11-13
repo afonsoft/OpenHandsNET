@@ -412,6 +412,91 @@ public sealed class CloudApiClient
         return (int)resp.StatusCode;
     }
 
+    // ---- handoff (SPEC-150) -------------------------------------------
+
+    /// <summary>
+    /// SPEC-150 RF-001: POST /conversations/handoff → start-task (body
+    /// cru). Erros sobem via <see cref="EnsureAsync"/> com o status.
+    /// </summary>
+    public async Task<JsonElement> CreateHandoffAsync(
+        string repository, string baseSha, string? baseBranch,
+        string diffPatch, string? message, object? metadata,
+        CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsJsonAsync(
+            $"{BaseUrl}/api/v1/conversations/handoff", new
+            {
+                repository,
+                base_sha = baseSha,
+                base_branch = baseBranch,
+                diff_patch = diffPatch,
+                message,
+                metadata = metadata is null
+                    ? (JsonElement?)null
+                    : JsonSerializer.SerializeToElement(metadata),
+            }, Json, ct);
+        await EnsureAsync(resp, ct);
+        return await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
+    }
+
+    /// <summary>
+    /// SPEC-150 RF-002: GET …/{id}/handoff-package → (status, body).
+    /// Sem EnsureAsync — caller trata 403/404/409/422.
+    /// </summary>
+    public async Task<(int Status, JsonElement Body)> GetHandoffPackageAsync(
+        string conversationId, bool regenerate = false,
+        CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync(
+            $"{BaseUrl}/api/v1/conversations/{conversationId}"
+            + $"/handoff-package{(regenerate ? "?regenerate=1" : "")}", ct);
+        var body = await resp.Content
+            .ReadFromJsonAsync<JsonElement>(ct);
+        return ((int)resp.StatusCode, body);
+    }
+
+    /// <summary>
+    /// SPEC-150 RF-002: resolve a conversa dona do PR <paramref name="number"/>
+    /// — varre o /search (limite) e casa <c>pull_requests[].number</c>.
+    /// </summary>
+    public async Task<string?> FindConversationByPrAsync(
+        int number, CancellationToken ct = default)
+    {
+        var page = await _http.GetFromJsonAsync<JsonElement>(
+            $"{BaseUrl}/api/v1/app-conversations/search?limit=100",
+            Json, ct);
+        if (!page.TryGetProperty("items", out var items))
+        {
+            return null;
+        }
+
+        foreach (var item in items.EnumerateArray())
+        {
+            var id = item.TryGetProperty("id", out var i)
+                ? i.GetString() : null;
+            if (id is null)
+            {
+                continue;
+            }
+
+            var conv = await GetConversationAsync(id, ct);
+            if (conv is { } c
+                && c.TryGetProperty("pull_requests", out var prs))
+            {
+                foreach (var pr in prs.EnumerateArray())
+                {
+                    if (pr.TryGetProperty("number", out var n)
+                        && n.GetInt32() == number)
+                    {
+                        return id;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>SPEC-52: abre PR a partir do workspace da conversa.</summary>
     public async Task<JsonElement> CreatePullRequestAsync(
         string conversationId, string title, string body,
