@@ -132,7 +132,7 @@ Aprovadas em 2026-11-10 pelo usuário — Epic acompanha no GitHub.
 
 | SPEC | Título | Status | Ticket |
 |---|---|---|---|
-| 139 | brand-assets | Draft | — |
+| 139 | brand-assets | Delivered · PR #439 | #436 |
 | 140 | pr-review-agent | Delivered · PR #414 | #405 |
 | 141 | ci-autofix-loop | Delivered · PR #416 | #406 |
 | 142 | qa-agent-evidence | Delivered · PR #418 | #407 |
