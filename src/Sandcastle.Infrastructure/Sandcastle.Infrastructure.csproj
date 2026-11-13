@@ -44,6 +44,9 @@
     <!-- SPEC-123: prompts embutidos (advisor, smart-permission-judge) -->
     <EmbeddedResource Include="prompts/*.md" />
     <EmbeddedResource Include="Scm/Qa/qa-driver.mjs" />
+    <!-- SPEC-152: subset curado swe-lite (conteúdo próprio, ~20 tasks) -->
+    <EmbeddedResource Include="../../bench/swe-lite.jsonl"
+        LogicalName="Sandcastle.bench.swe-lite.jsonl" />
   </ItemGroup>
   <ItemGroup>
     <!-- Testes dirigem internals (ex.: SandboxTimeoutWatcher.Interval). -->

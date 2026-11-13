@@ -362,9 +362,22 @@ public sealed class AgentRunner(
         }
 
         var routeWait = System.Diagnostics.Stopwatch.StartNew();
+        // SPEC-152 §5/RF-002: eval_mode = agent_type "eval" persistido na
+        // conversa. Capa o loop em Eval:MaxTurns (bound de task), liga os
+        // gates de hermeticidade (auto-confirm, ask_user sintético,
+        // postbacks externos off) — conversas normais inalteradas.
+        var evalMode = Application.Eval.EvalAgentTypes.IsEval(conv.AgentType);
+        var evalOpt = services.GetService<IOptions<
+            Application.Eval.EvalOptions>>()?.Value;
+        var maxIterations = evalMode
+            ? Math.Min(opt.MaxIterations,
+                evalOpt?.MaxTurns ?? int.MaxValue)
+            : opt.MaxIterations;
         return new LoopState
         {
             RouteWait = routeWait,
+            EvalMode = evalMode,
+            MaxIterations = maxIterations,
             Services = services,
             Events = events,
             Db = db,
@@ -413,14 +426,14 @@ public sealed class AgentRunner(
         var extraAttempts = 0;
         try
         {
-            for (var iteration = 0; iteration < opt.MaxIterations + extraAttempts;
+            for (var iteration = 0; iteration < st.MaxIterations + extraAttempts;
                 iteration++)
             {
                 using var iterSpan = Telemetry.ScTelemetry.StartSpan(
                     "agent_iteration", conversationId, sandbox.Id.ToString());
                 iterSpan?.SetTag("iteration", iteration);
                 await activity.ProgressAsync(events, conversationId, iteration,
-                    opt.MaxIterations, "iteration", ct);
+                    st.MaxIterations, "iteration", ct);
                 if (await CheckSignalsAsync(st.Services, events, db, conv))
                 {
                     return;
@@ -509,11 +522,11 @@ public sealed class AgentRunner(
             {
                 ToolName = "loop",
                 ToolCallId = "",
-                Error = $"max_iterations ({opt.MaxIterations}) reached",
+                Error = $"max_iterations ({st.MaxIterations}) reached",
             }, CancellationToken.None);
             await activity.DiagnosticAsync(events, conversationId, "warn",
                 "max_iterations",
-                $"max_iterations ({opt.MaxIterations}) reached",
+                $"max_iterations ({st.MaxIterations}) reached",
                 CancellationToken.None);
             await activity.SummaryAsync(events, conversationId, "stuck", null,
                 CancellationToken.None);
@@ -1312,6 +1325,22 @@ public sealed class AgentRunner(
         LoopState st, LlmToolCall call,
         ActionEvent actionEvent, CancellationToken ct)
     {
+        // SPEC-152 §5: eval_mode não tem operador humano — confirmações
+        // são auto-aprovadas com trilha de auditoria (DecisionAutoEvent),
+        // senão a run travaria em waiting_for_confirmation até timeout.
+        if (st.EvalMode)
+        {
+            st.LastEventId = (await st.Events.AppendAsync(st.Conv.Id,
+                new DecisionAutoEvent
+                {
+                    ParentId = st.LastEventId,
+                    AskedId = actionEvent.Id,
+                    Chosen = "approve",
+                    Reason = "eval_mode",
+                }, ct)).Id;
+            return null;
+        }
+
         await SetStatusAsync(st.Events, st.Db, st.Conv,
             "waiting_for_confirmation", null,
             pendingAction: actionEvent.Id,
@@ -1349,6 +1378,16 @@ public sealed class AgentRunner(
         if (string.Equals(call.Name, "ask_user",
             StringComparison.Ordinal))
         {
+            // SPEC-152 §5: eval_mode não tem operador — resposta
+            // sintética evita travar a task até o timeout.
+            if (st.EvalMode)
+            {
+                return new ExecOutcome(null, ToolResult.Ok(
+                    "No human operator is available in eval mode. "
+                    + "Proceed autonomously with your best judgement; "
+                    + "document any assumptions you make."));
+            }
+
             var answer = await WaitUserAnswerAsync(
                 st.Events, st.Db, st.Conv, st.Opt, ct);
             return answer is null
@@ -1507,31 +1546,37 @@ public sealed class AgentRunner(
             "completed", finalText, CancellationToken.None);
         await SetStatusAsync(st.Events, st.Db, st.Conv, "finished",
             ConversationExecutionStatus.Finished);
-        // SPEC-52 RF-005: commit status no head SHA do PR
-        // (fire-and-forget — nunca falha a run).
-        _ = Task.Run(() => st.Services
-                .GetService<Application.Scm.IScmStatusReporter>()?
-                .ReportRunFinishedAsync(
-                    conversationId, success: true,
-                    CancellationToken.None)
-            ?? Task.CompletedTask, CancellationToken.None);
-        // SPEC-54 RF-003: postback no thread Slack bound
-        // (fire-and-forget — nunca falha a run).
-        _ = Task.Run(() => st.Services
-                .GetService<Application.ChatOps.IChatOpsReporter>()?
-                .ReportRunFinishedAsync(
-                    conversationId, success: true,
-                    finalText, CancellationToken.None)
-            ?? Task.CompletedTask, CancellationToken.None);
-        // SPEC-55 RF-004: write-back no ticket (comentário +
-        // transição) — fire-and-forget.
-        _ = Task.Run(() => st.Services
-                .GetService<Application.Tickets.ITicketReporter>()?
-                .ReportRunFinishedAsync(
-                    conversationId, success: true,
-                    finalText, st.Conv.PullRequestUrl,
-                    CancellationToken.None)
-            ?? Task.CompletedTask, CancellationToken.None);
+        // SPEC-152 §5: eval_mode é hermetic — postbacks externos
+        // (commit status, ChatOps, ticket write-back) ficam OFF para
+        // agent_type=eval. Conversas normais inalteradas.
+        if (!st.EvalMode)
+        {
+            // SPEC-52 RF-005: commit status no head SHA do PR
+            // (fire-and-forget — nunca falha a run).
+            _ = Task.Run(() => st.Services
+                    .GetService<Application.Scm.IScmStatusReporter>()?
+                    .ReportRunFinishedAsync(
+                        conversationId, success: true,
+                        CancellationToken.None)
+                ?? Task.CompletedTask, CancellationToken.None);
+            // SPEC-54 RF-003: postback no thread Slack bound
+            // (fire-and-forget — nunca falha a run).
+            _ = Task.Run(() => st.Services
+                    .GetService<Application.ChatOps.IChatOpsReporter>()?
+                    .ReportRunFinishedAsync(
+                        conversationId, success: true,
+                        finalText, CancellationToken.None)
+                ?? Task.CompletedTask, CancellationToken.None);
+            // SPEC-55 RF-004: write-back no ticket (comentário +
+            // transição) — fire-and-forget.
+            _ = Task.Run(() => st.Services
+                    .GetService<Application.Tickets.ITicketReporter>()?
+                    .ReportRunFinishedAsync(
+                        conversationId, success: true,
+                        finalText, st.Conv.PullRequestUrl,
+                        CancellationToken.None)
+                ?? Task.CompletedTask, CancellationToken.None);
+        }
         // SPEC-43 RF-002: snapshot automático pós-turno
         // (Checkpoints:Auto) — melhor esforço, nunca falha a run.
         await AutoCheckpointAsync(st.Services, st.Sandbox,
@@ -1633,6 +1678,17 @@ public sealed class AgentRunner(
         public UserLlmKeyCallContext? UserKeyCtx { get; init; }
         public string KeySource { get; init; } = "global";
         public required System.Diagnostics.Stopwatch RouteWait { get; init; }
+
+        /// <summary>
+        /// SPEC-152 §5: <c>eval_mode</c> (agent_type <c>eval</c>) — sem
+        /// confirmação humana, ask_user auto-respondido, postbacks
+        /// externos (SCM/ChatOps/ticket) desligados e
+        /// <see cref="MaxIterations"/> capado por <c>Eval:MaxTurns</c>.
+        /// </summary>
+        public bool EvalMode { get; init; }
+
+        /// <summary>Iterations bound efetivo (eval_mode aplica MaxTurns).</summary>
+        public required int MaxIterations { get; init; }
 
         // Estado mutável carregado entre iterações.
         public required List<LlmMessage> History { get; set; }

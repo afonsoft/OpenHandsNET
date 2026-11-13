@@ -31,6 +31,12 @@ public sealed class ConversationRecord : IOrgScoped
     public string? SandboxProfile { get; set; }
 
     /// <summary>
+    /// SPEC-152: sandbox spec explícita da conversa (imagem custom de
+    /// eval tasks; <see langword="null"/> = spec default no worker).
+    /// </summary>
+    public Guid? SandboxSpecId { get; set; }
+
+    /// <summary>
     /// Regras de permissão por tool da conversa (SPEC-29 RF-001) — JSON de
     /// <c>AgentPermissionRule[]</c>; null = herda org/instância.
     /// </summary>

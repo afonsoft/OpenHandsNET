@@ -48,6 +48,7 @@ public enum Permission
     MarketplaceManage,
     AlertsView,
     AlertsManage,
+    EvalsRun,
 }
 
 public static class PermissionExtensions
@@ -96,6 +97,7 @@ public static class PermissionExtensions
         Permission.MarketplaceManage => "marketplace.manage",
         Permission.AlertsView => "alerts.view",
         Permission.AlertsManage => "alerts.manage",
+        Permission.EvalsRun => "evals.run",
         _ => throw new ArgumentOutOfRangeException(nameof(permission)),
     };
 
@@ -143,6 +145,7 @@ public static class PermissionExtensions
         "marketplace.manage" => Permission.MarketplaceManage,
         "alerts.view" => Permission.AlertsView,
         "alerts.manage" => Permission.AlertsManage,
+        "evals.run" => Permission.EvalsRun,
         _ => null,
     };
 }

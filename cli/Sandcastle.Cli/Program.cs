@@ -42,11 +42,19 @@ app.Configure(config =>
         .WithDescription("TUI contra backend remoto: --url");
     config.AddBranch("eval", b =>
     {
-        b.SetDescription("SPEC-39: harness de regressão — eval run|report|list");
+        b.SetDescription("eval: benchmarks server-side (SPEC-152) + harness local (SPEC-39) — eval run|status|report|datasets|list");
         b.AddCommand<EvalRunCommand>("run")
-            .WithDescription("roda suite/task: [--parallel N] [--mode live|recorded] [--gate]");
+            .WithDescription("[suite|task] local OU --suite swe-lite|terminal-bench-2|custom (server) [--n N --model M --route R --watch --yes]");
+        b.AddCommand<EvalStatusCommand>("status")
+            .WithDescription("runs de eval recentes ou detalhe — eval status [run-id]");
         b.AddCommand<EvalReportCommand>("report")
-            .WithDescription("tabela/JSON de um dir de resultados [--baseline dir] [--gate]");
+            .WithDescription("SPEC-39 dir local OU --run <id> | --suite <name> scorecard [--format table|md|json]");
+        b.AddBranch("datasets", d =>
+        {
+            d.SetDescription("datasets de benchmark (cache local, nunca commitado)");
+            d.AddCommand<EvalDatasetsFetchCommand>("fetch")
+                .WithDescription("git clone do dataset terminal-bench-2 → eval-cache/");
+        });
         b.AddCommand<EvalListCommand>("list")
             .WithDescription("lista + valida evals/tasks e evals/suites");
     });

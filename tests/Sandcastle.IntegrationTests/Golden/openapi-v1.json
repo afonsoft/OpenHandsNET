@@ -562,6 +562,49 @@
         },
         "type": "object"
       },
+      "CreateEvalRunRequest": {
+        "description": "\u0060POST /api/v1/evals\u0060 body.",
+        "properties": {
+          "estimate_acknowledged": {
+            "default": false,
+            "type": "boolean"
+          },
+          "model": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "n": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ]
+          },
+          "route_override": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "suite": {
+            "type": "string"
+          },
+          "tasks_path": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "suite"
+        ],
+        "type": "object"
+      },
       "CreateRefactorRequest": {
         "description": "Payload of \u0060POST /api/v1/refactors\u0060 (SPEC-144 RF-001).",
         "properties": {
@@ -754,6 +797,39 @@
         },
         "required": [
           "reason"
+        ],
+        "type": "object"
+      },
+      "EvalEstimateRequest": {
+        "description": "\u0060POST /api/v1/evals/estimate\u0060 body.",
+        "properties": {
+          "model": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "n": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ]
+          },
+          "suite": {
+            "type": "string"
+          },
+          "tasks_path": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "suite"
         ],
         "type": "object"
       },
@@ -6872,6 +6948,246 @@
         "summary": "POST /api/v1/edge/check",
         "tags": [
           "Sandcastle.Api"
+        ]
+      }
+    },
+    "/api/v1/evals": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "suite",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/evals/",
+        "tags": [
+          "Evals"
+        ]
+      },
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEvalRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "POST /api/v1/evals/",
+        "tags": [
+          "Evals"
+        ]
+      }
+    },
+    "/api/v1/evals/estimate": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvalEstimateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "POST /api/v1/evals/estimate",
+        "tags": [
+          "Evals"
+        ]
+      }
+    },
+    "/api/v1/evals/scorecard": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "suite",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "last",
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/evals/scorecard",
+        "tags": [
+          "Evals"
+        ]
+      }
+    },
+    "/api/v1/evals/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/evals/{id:guid}",
+        "tags": [
+          "Evals"
+        ]
+      }
+    },
+    "/api/v1/evals/{id}/cancel": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "POST /api/v1/evals/{id:guid}/cancel",
+        "tags": [
+          "Evals"
+        ]
+      }
+    },
+    "/api/v1/evals/{id}/results": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "GET /api/v1/evals/{id:guid}/results",
+        "tags": [
+          "Evals"
         ]
       }
     },
@@ -13811,6 +14127,9 @@
     },
     {
       "name": "Alerts"
+    },
+    {
+      "name": "Evals"
     }
   ]
 }

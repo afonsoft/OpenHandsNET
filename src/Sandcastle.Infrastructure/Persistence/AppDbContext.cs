@@ -282,6 +282,14 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<Sandcastle.Infrastructure.Refactors.RefactorBatchRecord>
         RefactorBatches => Set<Sandcastle.Infrastructure.Refactors.RefactorBatchRecord>();
 
+    /// <summary>SPEC-152: eval runs — benchmark passes por suite/modelo.</summary>
+    public DbSet<Sandcastle.Infrastructure.Eval.EvalRunRecord>
+        EvalRuns => Set<Sandcastle.Infrastructure.Eval.EvalRunRecord>();
+
+    /// <summary>SPEC-152: eval results — verdict por task.</summary>
+    public DbSet<Sandcastle.Infrastructure.Eval.EvalResultRecord>
+        EvalResults => Set<Sandcastle.Infrastructure.Eval.EvalResultRecord>();
+
     /// <summary>SPEC-61 RF-001: Diagnósticos pós-sessão de conversas.</summary>
     public DbSet<SessionInsightRecord> SessionInsights => Set<SessionInsightRecord>();
 
@@ -369,6 +377,12 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
                     break;
                 case Sandcastle.Infrastructure.Scans.ScanFindingRecord f:
                     f.CreatedAtTicks = f.CreatedAt.UtcTicks;
+                    break;
+                case Sandcastle.Infrastructure.Eval.EvalRunRecord r:
+                    r.CreatedAtTicks = r.CreatedAt.UtcTicks;
+                    break;
+                case Sandcastle.Infrastructure.Eval.EvalResultRecord r:
+                    r.CreatedAtTicks = r.CreatedAt.UtcTicks;
                     break;
                 case Sandcastle.Infrastructure.Refactors.RefactorPlanRecord r:
                     r.CreatedAtTicks = r.CreatedAt.UtcTicks;
@@ -466,6 +480,12 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
             .HasQueryFilter(r =>
                 !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
         modelBuilder.Entity<Sandcastle.Infrastructure.Alerts.AlertEventRecord>()
+            .HasQueryFilter(r =>
+                !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
+        modelBuilder.Entity<Sandcastle.Infrastructure.Eval.EvalRunRecord>()
+            .HasQueryFilter(r =>
+                !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
+        modelBuilder.Entity<Sandcastle.Infrastructure.Eval.EvalResultRecord>()
             .HasQueryFilter(r =>
                 !_multiTenancy || CurrentOrgId == null || r.OrgId == CurrentOrgId);
     }
