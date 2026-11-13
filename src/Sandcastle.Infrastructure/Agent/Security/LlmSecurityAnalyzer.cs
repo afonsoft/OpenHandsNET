@@ -35,7 +35,8 @@ public sealed class LlmSecurityAnalyzer(
 
     /// <inheritdoc />
     public async Task<SecurityRisk> AnalyzeAsync(
-        string toolName, JsonElement action, CancellationToken ct)
+        string toolName, JsonElement action, CancellationToken ct,
+        LlmRouteContext? routeCtx = null)
     {
         var payload = action.GetRawText();
         var key = $"sec:{toolName}:{Convert.ToHexString(
@@ -49,10 +50,12 @@ public sealed class LlmSecurityAnalyzer(
         try
         {
             var text = new StringBuilder();
-            // SPEC-149: analyzer é a role critic (choke point único).
+            // SPEC-149: analyzer é a role critic (choke point único) —
+            // routeCtx traz o org do run para as routing_rules da org
+            // engajarem; null = org-less (só candidatos globais).
             var model = router is null ? null
                 : (await router.ResolveAsync(LlmRole.Critic,
-                    new LlmRouteContext(), ct))?.Model;
+                    routeCtx ?? new LlmRouteContext(), ct))?.Model;
             await foreach (var chunk in llm.ChatStreamAsync(
                 [LlmMessage.User(Prompt + payload)], [],
                 new LlmOptions(Model: model, MaxTokens: 8,

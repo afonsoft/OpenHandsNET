@@ -252,7 +252,7 @@ public sealed class Spec48RunnerPolicyTests
         public int Calls;
         public Task<SecurityRisk> AnalyzeAsync(
             string toolName, System.Text.Json.JsonElement args,
-            CancellationToken ct)
+            CancellationToken ct, LlmRouteContext? routeCtx = null)
         {
             Calls++;
             return Task.FromResult(SecurityRisk.Low);

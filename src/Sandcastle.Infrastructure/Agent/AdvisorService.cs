@@ -36,13 +36,24 @@ public sealed class AdvisorService(
         }
 
         // SPEC-149: advisor é a role critic — rules da org vencem quando
-        // configuradas; sem rules o AdvisorModel passa (comportamento atual).
-        var model = router is not null
-            ? (await router.ResolveAsync(LlmRole.Critic,
-                routeCtx ?? new LlmRouteContext(
-                    PreferredModel: options.Value.AdvisorModel), ct))
-                ?.Model ?? options.Value.AdvisorModel!
-            : options.Value.AdvisorModel!;
+        // configuradas; sem rules o AdvisorModel passa (comportamento
+        // atual — PreferredModel preserva o pin legado). Rules ativas
+        // sem candidato elegível ⇒ null respeita a policy (advisor é
+        // fail-open, nunca um modelo arbitrário fora da allowlist).
+        var model = options.Value.AdvisorModel!;
+        if (router is not null)
+        {
+            var sel = await router.ResolveAsync(LlmRole.Critic,
+                (routeCtx ?? new LlmRouteContext()) with
+                {
+                    PreferredModel = options.Value.AdvisorModel,
+                }, ct);
+            if (sel is null)
+            {
+                return null;
+            }
+            model = sel.Model;
+        }
         var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {

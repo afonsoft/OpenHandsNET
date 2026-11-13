@@ -17,7 +17,8 @@ public sealed class NoOpCondenser : ICondenser
         CompactionTrigger trigger,
         string? model,
         Func<CompactionStart, Task>? onCompacting,
-        CancellationToken ct) =>
+        CancellationToken ct,
+        LlmRouteContext? routeCtx = null) =>
         Task.FromResult(new CondenseResult(
             messages, eventIds, [], [], null, null, null, 0, 0));
 }

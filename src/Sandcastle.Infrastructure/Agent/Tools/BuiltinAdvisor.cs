@@ -43,10 +43,13 @@ public static class BuiltinAdvisor
                 return ToolResult.Error("question é obrigatório");
             }
 
+            // SPEC-149 (#434): org do run no ctx — a role critic do
+            // advisor resolve sob as routing_rules da org. Runner sem
+            // RouteCtx ⇒ org-less (só regras globais).
             var verdict = await advisor.ConsultAsync(
                 Str(a, "context") ?? "(sem contexto adicional)",
                 question, ct,
-                new LlmRouteContext(ctx.ConversationId));
+                ctx.RouteCtx ?? new LlmRouteContext(ctx.ConversationId));
             if (verdict is null)
             {
                 return ToolResult.Error(

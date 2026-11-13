@@ -695,20 +695,26 @@ public static class DependencyInjection
                 Sandcastle.Application.Agent.IAgentLlmProvider>();
             var memCache = sp.GetRequiredService<
                 Microsoft.Extensions.Caching.Memory.IMemoryCache>();
+            // SPEC-149: router no analyzer — a role critic resolve sob as
+            // routing_rules do org passado em routeCtx pelo runner (#434).
+            var modelRouter = sp.GetService<
+                Sandcastle.Application.Agent.IModelRouter>();
             return o.SecurityAnalyzer.ToLowerInvariant() switch
             {
                 "llm" => new Sandcastle.Infrastructure.Agent.Security
-                    .LlmSecurityAnalyzer(llmProvider(), memCache),
+                    .LlmSecurityAnalyzer(llmProvider(), memCache, modelRouter),
                 // SPEC-123: juiz allow/deny/ask com prompt embutido.
                 "judge" => new Sandcastle.Infrastructure.Agent.Security
-                    .SmartPermissionJudge(llmProvider(), memCache),
+                    .SmartPermissionJudge(llmProvider(), memCache, modelRouter),
                 _ => (Sandcastle.Application.Agent.ISecurityAnalyzer)
                     new Sandcastle.Infrastructure.Agent.Security
                         .PatternSecurityAnalyzer(),
             };
         });
         // SPEC-125 RF-001: advisor (2º modelo opinando em ações risky) —
-        // inerte quando Agent:AdvisorModel não configurado.
+        // inerte quando Agent:AdvisorModel não configurado. SPEC-149:
+        // router injetado — a role critic resolve sob as routing_rules
+        // do org passado em routeCtx pelos callers (#434).
         services.AddSingleton<
             Sandcastle.Application.Agent.IAdvisorService>(sp =>
             new Sandcastle.Infrastructure.Agent.AdvisorService(
@@ -716,7 +722,9 @@ public static class DependencyInjection
                     .IAgentLlmProvider>(),
                 sp.GetRequiredService<Microsoft.Extensions.Options
                     .IOptions<Sandcastle.Application.Agent
-                        .AgentLlmOptions>>()));
+                        .AgentLlmOptions>>(),
+                sp.GetService<Sandcastle.Application.Agent
+                    .IModelRouter>()));
         // SPEC-48 RF-001: política de segurança por org — presets +
         // overrides, cache distribuído (TTL 60s) com invalidação no write.
         services.AddScoped<

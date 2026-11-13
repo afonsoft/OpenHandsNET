@@ -30,7 +30,8 @@ public sealed partial class PatternSecurityAnalyzer : ISecurityAnalyzer
 
     /// <inheritdoc />
     public Task<SecurityRisk> AnalyzeAsync(
-        string toolName, JsonElement action, CancellationToken ct)
+        string toolName, JsonElement action, CancellationToken ct,
+        LlmRouteContext? routeCtx = null)
     {
         var payload = ExtractPayload(toolName, action);
         if (payload is null)
