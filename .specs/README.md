@@ -150,10 +150,10 @@ Aprovadas em 2026-11-10 pelo usuário — Epic acompanha no GitHub.
 | 149 | model-router | Delivered · PR #432 | #429 |
 | 150 | cli-handoff | Delivered · PR #433 | #430 |
 
-### Próxima onda (Onda E — enterprise + eval) — Draft
+### Próxima onda (Onda E — enterprise + eval) — Approved
 
 | SPEC | Título | Status | Ticket |
 |---|---|---|---|
-| 151 | alert-integrations | Draft | GAP-ALERT-INTEGRATIONS |
-| 152 | benchmark-adapters | Draft | GAP-BENCHMARKS |
-| 153 | hybrid-runner | Draft | GAP-HYBRID-RUNNER |
+| 151 | alert-integrations | Approved | GAP-ALERT-INTEGRATIONS |
+| 152 | benchmark-adapters | Approved | GAP-BENCHMARKS |
+| 153 | hybrid-runner | Approved | GAP-HYBRID-RUNNER |

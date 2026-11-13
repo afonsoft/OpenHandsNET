@@ -8,7 +8,7 @@
 | Type | `Feature / Integrations + ChatOps` |
 | Stack | `.NET 10 · inbound webhooks (SPEC-52 pattern) · ChatOps sinks` |
 | Repository | `afonsoft/sandcastle` |
-| Status | `Draft` |
+| Status | `Approved` |
 | Ticket | `GAP-ALERT-INTEGRATIONS` (docs/research/2026-11-competitive-gap-analysis.md §P2) |
 | Depends on | `52` (webhook HMAC+idempotency), `54` (ChatOps), `66` (automations/triggers) |
 | Reference | Devin Sentry/PagerDuty/Teams integrations — conceitos apenas |

@@ -8,7 +8,7 @@
 | Type | `Feature / Infra + Security (enterprise)` |
 | Stack | `.NET 10 · agent runner binary · outbound relay · sandbox remoto` |
 | Repository | `afonsoft/sandcastle` |
-| Status | `Draft` |
+| Status | `Approved` |
 | Ticket | `GAP-HYBRID-RUNNER` (docs/research/2026-11-competitive-gap-analysis.md §P2/E) |
 | Depends on | `85` (k8s/sysbox), `86` (runtime image), `57` (service users), `149` (router residency) |
 | Reference | Devin Outposts (sandbox dentro da rede do cliente); OH Enterprise TLS/egress policies — conceitos apenas |

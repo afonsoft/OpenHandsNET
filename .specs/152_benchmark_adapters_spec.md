@@ -8,7 +8,7 @@
 | Type | `Feature / Eval infra` |
 | Stack | `.NET 10 · sandbox runtime · batch runner` |
 | Repository | `afonsoft/sandcastle` |
-| Status | `Draft` |
+| Status | `Approved` |
 | Ticket | `GAP-BENCHMARKS` (docs/research/2026-11-competitive-gap-analysis.md §P2) |
 | Depends on | `04` (conversations), `12` (git), `149` (router — medir por modelo), `144` (batch/parallel) |
 | Reference | Terminal-Bench 2.0, SWE-bench Pro harnesses — conceitos apenas; NÃO copiar código benchmark |
