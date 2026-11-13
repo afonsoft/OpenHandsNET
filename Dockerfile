@@ -16,6 +16,9 @@ RUN dotnet restore src/Sandcastle.Api/Sandcastle.Api.csproj
 
 COPY src/ src/
 COPY cli/ cli/
+# SPEC-152: swe-lite subset — EmbeddedResource da Infrastructure
+# (referência ../../bench/swe-lite.jsonl no csproj).
+COPY bench/ bench/
 RUN dotnet publish src/Sandcastle.Api/Sandcastle.Api.csproj \
       -c Release -o /app/publish --no-restore
 
