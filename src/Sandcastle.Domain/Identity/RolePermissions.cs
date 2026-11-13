@@ -56,6 +56,9 @@ public static class RolePermissions
         Permission.MarketplaceManage,
         // SPEC-151: admin+ gerencia fontes e ações de alerta.
         Permission.AlertsManage,
+        // SPEC-152 §RF-004: evals são caros — run/scorecard é admin+
+        // (member não recebe perm:evals.run por default).
+        Permission.EvalsRun,
     ];
 
     private static readonly Permission[] Owner =

@@ -810,6 +810,10 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("text")
                         .HasColumnName("sandbox_profile");
 
+                    b.Property<Guid?>("SandboxSpecId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sandbox_spec_id");
+
                     b.Property<string>("SecretNamesJson")
                         .HasColumnType("text")
                         .HasColumnName("secret_names_json");
@@ -913,6 +917,227 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations.Postgres
                         .HasDatabaseName("ix_conversation_start_tasks_status");
 
                     b.ToTable("conversation_start_tasks", (string)null);
+                });
+
+            modelBuilder.Entity("Sandcastle.Infrastructure.Eval.EvalResultRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<long>("CompletionTokens")
+                        .HasColumnType("bigint")
+                        .HasColumnName("completion_tokens");
+
+                    b.Property<decimal>("CostUsd")
+                        .HasColumnType("numeric")
+                        .HasColumnName("cost_usd");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("CreatedAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_at_ticks");
+
+                    b.Property<double?>("DurationS")
+                        .HasColumnType("double precision")
+                        .HasColumnName("duration_s");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("error");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finished_at");
+
+                    b.Property<string>("LogDigest")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("log_digest");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<long>("PromptTokens")
+                        .HasColumnType("bigint")
+                        .HasColumnName("prompt_tokens");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("run_id");
+
+                    b.Property<Guid?>("SessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("session_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TaskId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("task_id");
+
+                    b.Property<string>("TaskJson")
+                        .HasColumnType("text")
+                        .HasColumnName("task_json");
+
+                    b.Property<long>("Tokens")
+                        .HasColumnType("bigint")
+                        .HasColumnName("tokens");
+
+                    b.Property<string>("Verdict")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("verdict");
+
+                    b.HasKey("Id")
+                        .HasName("pk_eval_results");
+
+                    b.HasIndex("CreatedAtTicks")
+                        .IsDescending()
+                        .HasDatabaseName("ix_eval_results_created_at_ticks");
+
+                    b.HasIndex("RunId")
+                        .HasDatabaseName("ix_eval_results_run_id");
+
+                    b.HasIndex("SessionId")
+                        .HasDatabaseName("ix_eval_results_session_id");
+
+                    b.HasIndex("OrgId", "Verdict")
+                        .HasDatabaseName("ix_eval_results_org_id_verdict");
+
+                    b.HasIndex("RunId", "TaskId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_eval_results_run_id_task_id");
+
+                    b.ToTable("eval_results", (string)null);
+                });
+
+            modelBuilder.Entity("Sandcastle.Infrastructure.Eval.EvalRunRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal?>("ActualCostUsd")
+                        .HasColumnType("numeric")
+                        .HasColumnName("actual_cost_usd");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("CreatedAtTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_at_ticks");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("DatasetPath")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("dataset_path");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("error");
+
+                    b.Property<int>("ErrorN")
+                        .HasColumnType("integer")
+                        .HasColumnName("error_n");
+
+                    b.Property<decimal?>("EstimatedCostUsd")
+                        .HasColumnType("numeric")
+                        .HasColumnName("estimated_cost_usd");
+
+                    b.Property<int>("FailedN")
+                        .HasColumnType("integer")
+                        .HasColumnName("failed_n");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finished_at");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("model");
+
+                    b.Property<int>("NTasks")
+                        .HasColumnType("integer")
+                        .HasColumnName("n_tasks");
+
+                    b.Property<Guid?>("OrgId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("org_id");
+
+                    b.Property<int>("ResolvedN")
+                        .HasColumnType("integer")
+                        .HasColumnName("resolved_n");
+
+                    b.Property<string>("RouteOverride")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("route_override");
+
+                    b.Property<double>("ScorePct")
+                        .HasColumnType("double precision")
+                        .HasColumnName("score_pct");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("StatsJson")
+                        .HasColumnType("text")
+                        .HasColumnName("stats_json");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Suite")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("suite");
+
+                    b.Property<int>("TimeoutN")
+                        .HasColumnType("integer")
+                        .HasColumnName("timeout_n");
+
+                    b.HasKey("Id")
+                        .HasName("pk_eval_runs");
+
+                    b.HasIndex("CreatedAtTicks")
+                        .IsDescending()
+                        .HasDatabaseName("ix_eval_runs_created_at_ticks");
+
+                    b.HasIndex("OrgId", "Status")
+                        .HasDatabaseName("ix_eval_runs_org_id_status");
+
+                    b.HasIndex("OrgId", "Suite")
+                        .HasDatabaseName("ix_eval_runs_org_id_suite");
+
+                    b.ToTable("eval_runs", (string)null);
                 });
 
             modelBuilder.Entity("Sandcastle.Infrastructure.Eventing.EventRecord", b =>

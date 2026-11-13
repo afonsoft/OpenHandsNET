@@ -147,6 +147,36 @@ builder.Services.AddScoped<Sandcastle.Application.Refactors.IRefactorPlanner,
     Sandcastle.Infrastructure.Refactors.RefactorPlanner>();
 builder.Services.AddScoped<Sandcastle.Application.Refactors.IBatchExecutor,
     Sandcastle.Infrastructure.Refactors.BatchExecutor>();
+// SPEC-152: benchmark/eval harness — service (runs/results/scorecard +
+// guardrails de custo), suite adapters (swe-lite/custom/terminal-bench-2),
+// runner (sandbox efêmero → agente eval → checker → verdict) + worker.
+builder.Services.Configure<Sandcastle.Application.Eval.EvalOptions>(
+    builder.Configuration.GetSection(
+        Sandcastle.Application.Eval.EvalOptions.Section));
+builder.Services.AddSingleton<Sandcastle.Infrastructure.Eval.EvalDispatcher>();
+builder.Services.AddScoped<Sandcastle.Application.Eval.IEvalDispatcher>(
+    sp => sp.GetRequiredService<Sandcastle.Infrastructure.Eval.EvalDispatcher>());
+builder.Services.AddHostedService<Sandcastle.Infrastructure.Eval.EvalWorker>();
+builder.Services.AddScoped<Sandcastle.Application.Eval.IEvalService,
+    Sandcastle.Infrastructure.Eval.EvalService>();
+builder.Services.AddScoped<Sandcastle.Application.Eval.IEvalRunner,
+    Sandcastle.Infrastructure.Eval.EvalRunner>();
+// SPEC-152: EvalRunner paraleliza tasks — um DbContext por task
+// (DbContext não é thread-safe); factory sobre as options scoped.
+builder.Services.AddSingleton<Microsoft.EntityFrameworkCore
+    .IDbContextFactory<Sandcastle.Infrastructure.Persistence
+    .AppDbContext>>(sp => new Sandcastle.Infrastructure.Persistence
+    .AppDbContextFactory(sp.GetRequiredService<
+        Microsoft.EntityFrameworkCore.DbContextOptions<
+        Sandcastle.Infrastructure.Persistence.AppDbContext>>()));
+builder.Services.AddSingleton<Sandcastle.Application.Eval.IEvalSuiteAdapter,
+    Sandcastle.Infrastructure.Eval.SweLiteSuiteAdapter>();
+builder.Services.AddSingleton<Sandcastle.Application.Eval.IEvalSuiteAdapter,
+    Sandcastle.Infrastructure.Eval.CustomJsonlSuiteAdapter>();
+builder.Services.AddSingleton<Sandcastle.Application.Eval.IEvalSuiteAdapter,
+    Sandcastle.Infrastructure.Eval.TerminalBench2SuiteAdapter>();
+builder.Services.AddSingleton<Sandcastle.Application.Eval.IEvalSuiteResolver,
+    Sandcastle.Infrastructure.Eval.EvalSuiteResolver>();
 builder.Services.AddScoped<Sandcastle.Application.Identity.ICurrentUserAccessor,
     Sandcastle.Api.Auth.HttpCurrentUserAccessor>();
 

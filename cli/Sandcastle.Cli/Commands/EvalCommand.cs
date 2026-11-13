@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using System.Text.Json;
 
 using Sandcastle.Cli.Services;
@@ -10,9 +11,12 @@ namespace Sandcastle.Cli.Commands;
 
 /// <summary>
 /// SPEC-39 RF-002: <c>sandcastle eval run &lt;suite|task&gt;</c> —
-/// runner headless: cria conversa, espera READY, roda asserts e grava
-/// <c>result.json</c> por task. <c>--mode recorded</c> replaya
-/// evidências gravadas (determinístico, sem LLM).
+/// runner headless local (yaml): cria conversa, espera READY, roda
+/// asserts e grava <c>result.json</c> por task. <c>--mode recorded</c>
+/// replaya evidências gravadas (determinístico, sem LLM).
+/// SPEC-152: <c>--suite swe-lite|terminal-bench-2|custom</c> roda o
+/// benchmark no servidor (<c>POST /api/v1/evals</c>) — hermetic,
+/// scorecard via <c>eval report --suite</c>.
 /// </summary>
 public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
 {
@@ -20,8 +24,26 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
     /// <summary>CLI settings.</summary>
     public sealed class Settings : CommandSettings
     {
-        /// <summary>Nome da suite em <c>evals/suites</c> ou task em <c>evals/tasks</c>.</summary>
-        [CommandArgument(0, "<suite|task>")] public required string Target { get; set; }
+        /// <summary>Nome da suite em <c>evals/suites</c> ou task em <c>evals/tasks</c> (modo local SPEC-39).</summary>
+        [CommandArgument(0, "[suite|task]")] public string? Target { get; set; }
+
+        /// <summary>SPEC-152: suite server-side (swe-lite|terminal-bench-2|custom).</summary>
+        [CommandOption("--suite")] public string? Suite { get; set; }
+
+        /// <summary>SPEC-152: tasks por run (default: todas).</summary>
+        [CommandOption("--n")] public int? N { get; set; }
+
+        /// <summary>SPEC-152: label de route p/ scorecard comparativo.</summary>
+        [CommandOption("--route")] public string? Route { get; set; }
+
+        /// <summary>SPEC-152: jsonl eval_task_v1 (suite=custom).</summary>
+        [CommandOption("--tasks-path")] public string? TasksPath { get; set; }
+
+        /// <summary>SPEC-152: confirma a estimativa quando n > gate (25).</summary>
+        [CommandOption("--yes")] public bool EstimateAcknowledged { get; set; }
+
+        /// <summary>SPEC-152: aguarda o término da run (poll status).</summary>
+        [CommandOption("--watch")] public bool Watch { get; set; }
 
         /// <summary>Base URL do Api.</summary>
         [CommandOption("--url")] public string? Url { get; set; }
@@ -64,6 +86,21 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
     public override async Task<int> ExecuteAsync(
         CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
+        // SPEC-152: modo server-side (--suite) → POST /api/v1/evals.
+        if (settings.Suite is { Length: > 0 })
+        {
+            return await RunServerBenchmarkAsync(
+                settings, cancellationToken);
+        }
+
+        if (settings.Target is null)
+        {
+            AnsiConsole.MarkupLine(
+                "[red]informe <suite|task> (yaml local) ou "
+                + "--suite <benchmark> (server-side)[/]");
+            return 1;
+        }
+
         if (settings.Mode is not "live" and not "recorded")
         {
             AnsiConsole.MarkupLine("[red]--mode deve ser live|recorded[/]");
@@ -186,6 +223,126 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
             ct: ct);
     }
 
+    /// <summary>
+    /// SPEC-152 RF-002: server-side benchmark — POST /api/v1/evals,
+    /// trata o gate de estimativa e (opcional) aguarda o fim via
+    /// <c>--watch</c>. Exit 0 = run aceita; não-zero = rejeitada.
+    /// </summary>
+    private static async Task<int> RunServerBenchmarkAsync(
+        Settings settings, CancellationToken ct)
+    {
+        var api = await EvalBench.ApiAsync(settings.Url, ct);
+        var resp = await api.CreateEvalAsync(
+            settings.Suite!, settings.Model, settings.Route,
+            settings.N, settings.TasksPath,
+            settings.EstimateAcknowledged, ct);
+        JsonElement body;
+        try
+        {
+            body = await resp.Content
+                .ReadFromJsonAsync<JsonElement>(ct);
+        }
+        catch (JsonException)
+        {
+            body = JsonDocument.Parse("{}").RootElement.Clone();
+        }
+
+        if (body.ValueKind == JsonValueKind.Undefined)
+        {
+            body = JsonDocument.Parse("{}").RootElement.Clone();
+        }
+
+        if ((int)resp.StatusCode == 400
+            && body.TryGetProperty("error", out var err)
+            && err.GetString() == "estimate_required")
+        {
+            var est = body.GetProperty("estimate");
+            AnsiConsole.MarkupLine(
+                $"[yellow]estimate gate[/] n={EvalBench.Str(est, "n")}"
+                + $" tasks > gate — custo estimado "
+                + $"${EvalBench.Str(est, "estimated_cost_usd")} "
+                + $"({EvalBench.Str(est, "warning")})");
+            AnsiConsole.MarkupLine(
+                "[grey]repita com --yes para confirmar a estimativa[/]");
+            return 2;
+        }
+
+        if (!resp.IsSuccessStatusCode)
+        {
+            var detail = body.TryGetProperty("detail", out var d)
+                ? d.GetString() : resp.ReasonPhrase;
+            AnsiConsole.MarkupLine(
+                $"[red]run rejeitada ({(int)resp.StatusCode})[/] {detail}");
+            return 1;
+        }
+
+        var runId = body.GetProperty("id").GetString()!;
+        if (settings.Json)
+        {
+            AnsiConsole.WriteLine(body.GetRawText());
+        }
+        else
+        {
+            AnsiConsole.MarkupLine(
+                $"[green]run {runId[..8]}[/] {settings.Suite} "
+                + $"— {EvalBench.Str(body, "n_tasks")} tasks "
+                + $"[grey](eval status {runId})[/]");
+        }
+
+        if (!settings.Watch)
+        {
+            return 0;
+        }
+
+        return await WatchRunAsync(api, runId, settings, ct);
+    }
+
+    /// <summary>Polls GET /evals/{id} até estado terminal.</summary>
+    private static async Task<int> WatchRunAsync(
+        CloudApiClient api, string runId, Settings settings,
+        CancellationToken ct)
+    {
+        string? last = null;
+        while (!ct.IsCancellationRequested)
+        {
+            var run = await api.GetEvalAsync(runId, ct);
+            if (run is null)
+            {
+                AnsiConsole.MarkupLine("[red]run sumiu[/]");
+                return 1;
+            }
+
+            var status = EvalBench.Str(run.Value, "status");
+            if (status != last && !settings.Json)
+            {
+                AnsiConsole.MarkupLine(
+                    $"[grey]→[/] {status} "
+                    + $"({EvalBench.Str(run.Value, "resolved_n")}/"
+                    + $"{EvalBench.Str(run.Value, "n_tasks")} resolved)");
+                last = status;
+            }
+
+            if (status is "completed" or "failed" or "cancelled")
+            {
+                if (settings.Json)
+                {
+                    AnsiConsole.WriteLine(run.Value.GetRawText());
+                }
+                else
+                {
+                    await EvalBench.RunReportAsync(
+                        api, runId, null, ct);
+                }
+
+                return status == "completed" ? 0 : 1;
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(10), ct);
+        }
+
+        return 1;
+    }
+
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -195,17 +352,18 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
     private static List<EvalTask>? ResolveTasks(Settings settings, out string suiteName)
     {
         var tasksDir = Path.Combine(settings.EvalsDir, "tasks");
+        var target = settings.Target!;
         var suitePath = Path.Combine(settings.EvalsDir, "suites",
-            settings.Target.EndsWith(".yaml") ? settings.Target : $"{settings.Target}.yaml");
+            target.EndsWith(".yaml") ? target : $"{target}.yaml");
         var taskPath = Path.Combine(tasksDir,
-            settings.Target.EndsWith(".yaml") ? settings.Target : $"{settings.Target}.yaml");
+            target.EndsWith(".yaml") ? target : $"{target}.yaml");
 
         List<EvalTask> tasks;
         if (File.Exists(suitePath))
         {
             var suite = EvalParser.ParseSuite(File.ReadAllText(suitePath));
             suiteName = string.IsNullOrWhiteSpace(suite.Name)
-                ? settings.Target : suite.Name;
+                ? target : suite.Name;
             tasks = suite.Tasks
                 .Select(t => EvalParser.ParseTask(File.ReadAllText(
                     Path.Combine(tasksDir,
@@ -216,17 +374,17 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
         }
         else if (File.Exists(taskPath))
         {
-            suiteName = settings.Target;
+            suiteName = target;
             tasks = [EvalParser.ParseTask(File.ReadAllText(taskPath))];
         }
-        else if (File.Exists(settings.Target))
+        else if (File.Exists(target))
         {
-            suiteName = Path.GetFileNameWithoutExtension(settings.Target);
-            tasks = [EvalParser.ParseTask(File.ReadAllText(settings.Target))];
+            suiteName = Path.GetFileNameWithoutExtension(target);
+            tasks = [EvalParser.ParseTask(File.ReadAllText(target))];
         }
         else
         {
-            suiteName = settings.Target;
+            suiteName = target;
             return null;
         }
 
@@ -285,14 +443,35 @@ public sealed class EvalRunCommand : AsyncCommand<EvalRunCommand.Settings>
     }
 }
 
-/// <summary><c>eval report</c> — tabela + diff vs baseline.</summary>
-public sealed class EvalReportCommand : Command<EvalReportCommand.Settings>
+/// <summary>
+/// <c>eval report</c> — SPEC-39: tabela + diff vs baseline de um dir
+/// de resultados locais (posicional). SPEC-152: <c>--run &lt;id&gt;</c>
+/// report por run server-side; <c>--suite &lt;name&gt;</c> scorecard
+/// comparativo (resolved% por model/route) —
+/// <c>--format table|md|json</c>.
+/// </summary>
+public sealed class EvalReportCommand : AsyncCommand<EvalReportCommand.Settings>
 {
     /// <summary>CLI settings.</summary>
     public sealed class Settings : CommandSettings
     {
-        /// <summary>Dir de resultados.</summary>
-        [CommandArgument(0, "<results>")] public required string Dir { get; set; }
+        /// <summary>Dir de resultados (modo local SPEC-39).</summary>
+        [CommandArgument(0, "[results]")] public string? Dir { get; set; }
+
+        /// <summary>SPEC-152: run id — report por task.</summary>
+        [CommandOption("--run")] public string? RunId { get; set; }
+
+        /// <summary>SPEC-152: suite — scorecard comparativo.</summary>
+        [CommandOption("--suite")] public string? Suite { get; set; }
+
+        /// <summary>SPEC-152: últimas N runs no scorecard.</summary>
+        [CommandOption("--last")] public int Last { get; set; } = 10;
+
+        /// <summary>SPEC-152: table|md|json (default table).</summary>
+        [CommandOption("--format")] public string? Format { get; set; }
+
+        /// <summary>Base URL do Api (modo server-side).</summary>
+        [CommandOption("--url")] public string? Url { get; set; }
 
         /// <summary>Baseline dir p/ comparação.</summary>
         [CommandOption("--baseline")] public string? Baseline { get; set; }
@@ -305,8 +484,44 @@ public sealed class EvalReportCommand : Command<EvalReportCommand.Settings>
     }
 
     /// <inheritdoc />
-    public override int Execute(CommandContext context, Settings settings, CancellationToken cancellationToken)
+    public override async Task<int> ExecuteAsync(
+        CommandContext context, Settings settings,
+        CancellationToken cancellationToken)
     {
+        // SPEC-152: modos server-side — report por run ou scorecard.
+        if (settings.RunId is { Length: > 0 } runId)
+        {
+            var api = await EvalBench.ApiAsync(
+                settings.Url, cancellationToken);
+            if (settings.Json || settings.Format is "json")
+            {
+                var runResults = await api.GetEvalResultsAsync(
+                    runId, cancellationToken);
+                AnsiConsole.WriteLine(runResults.GetRawText());
+                return 0;
+            }
+
+            return await EvalBench.RunReportAsync(
+                api, runId, settings.Format, cancellationToken);
+        }
+
+        if (settings.Suite is { Length: > 0 } suite)
+        {
+            var api = await EvalBench.ApiAsync(
+                settings.Url, cancellationToken);
+            return await EvalBench.ScorecardAsync(
+                api, suite, settings.Last, settings.Format,
+                settings.Json, cancellationToken);
+        }
+
+        if (settings.Dir is null)
+        {
+            AnsiConsole.MarkupLine(
+                "[red]informe [results] (local), --run <id> ou "
+                + "--suite <name> (scorecard)[/]");
+            return 1;
+        }
+
         var results = LoadResults(settings.Dir);
         var regressions = settings.Baseline is { } b && Directory.Exists(b)
             ? Scorer.Regressions(results, LoadResults(b)) : [];

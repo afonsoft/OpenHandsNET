@@ -515,6 +515,87 @@ public sealed class CloudApiClient
         return await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
     }
 
+    /// <summary>SPEC-152: POST /evals — dispara run de benchmark (202).</summary>
+    public async Task<HttpResponseMessage> CreateEvalAsync(
+        string suite, string? model, string? routeOverride, int? n,
+        string? tasksPath, bool estimateAcknowledged,
+        CancellationToken ct = default) =>
+        await _http.PostAsJsonAsync($"{BaseUrl}/api/v1/evals", new
+        {
+            suite,
+            model,
+            route_override = routeOverride,
+            n,
+            tasks_path = tasksPath,
+            estimate_acknowledged = estimateAcknowledged,
+        }, Json, ct);
+
+    /// <summary>SPEC-152: GET /evals/{id}.</summary>
+    public async Task<JsonElement?> GetEvalAsync(
+        string runId, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync(
+            $"{BaseUrl}/api/v1/evals/{runId}", ct);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<JsonElement>(ct) : null;
+    }
+
+    /// <summary>SPEC-152: GET /evals with suite/status/limit filters.</summary>
+    public async Task<JsonElement> ListEvalsAsync(
+        string? suite, string? status, int limit = 20,
+        CancellationToken ct = default)
+    {
+        var q = $"?limit={limit}"
+            + (suite is null ? "" : $"&suite={Uri.EscapeDataString(suite)}")
+            + (status is null
+                ? "" : $"&status={Uri.EscapeDataString(status)}");
+        return await _http.GetFromJsonAsync<JsonElement>(
+            $"{BaseUrl}/api/v1/evals{q}", Json, ct);
+    }
+
+    /// <summary>SPEC-152: GET /evals/{id}/results.</summary>
+    public async Task<JsonElement> GetEvalResultsAsync(
+        string runId, CancellationToken ct = default) =>
+        await _http.GetFromJsonAsync<JsonElement>(
+            $"{BaseUrl}/api/v1/evals/{runId}/results", Json, ct);
+
+    /// <summary>SPEC-152: POST /evals/{id}/cancel.</summary>
+    public async Task<JsonElement> CancelEvalAsync(
+        string runId, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsync(
+            $"{BaseUrl}/api/v1/evals/{runId}/cancel", null, ct);
+        await EnsureAsync(resp, ct);
+        return await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
+    }
+
+    /// <summary>SPEC-152: POST /evals/estimate.</summary>
+    public async Task<JsonElement> EstimateEvalAsync(
+        string suite, int? n, string? model, string? tasksPath,
+        CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsJsonAsync(
+            $"{BaseUrl}/api/v1/evals/estimate", new
+            {
+                suite,
+                n,
+                model,
+                tasks_path = tasksPath,
+            }, Json, ct);
+        await EnsureAsync(resp, ct);
+        return await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
+    }
+
+    /// <summary>SPEC-152: GET /evals/scorecard with suite/last filters.</summary>
+    public async Task<JsonElement> GetEvalScorecardAsync(
+        string? suite, int last = 10, CancellationToken ct = default)
+    {
+        var q = $"?last={last}"
+            + (suite is null ? "" : $"&suite={Uri.EscapeDataString(suite)}");
+        return await _http.GetFromJsonAsync<JsonElement>(
+            $"{BaseUrl}/api/v1/evals/scorecard{q}", Json, ct);
+    }
+
     private static async Task EnsureAsync(
         HttpResponseMessage resp, CancellationToken ct)
     {

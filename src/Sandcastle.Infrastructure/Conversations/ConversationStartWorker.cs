@@ -264,7 +264,9 @@ public sealed class ConversationStartWorker(
         }
 
         var sandbox = await sandboxService.StartAsync(
-            Guid.Empty /* default spec */, conv.Id, ct);
+            // SPEC-152: eval tasks podem trazer spec própria (imagem) —
+            // null/Empty cai na spec default.
+            conv.SandboxSpecId ?? Guid.Empty, conv.Id, ct);
         task.SandboxId = sandbox.Id;
         conv.SandboxId = sandbox.Id;
         conv.UpdatedAt = DateTimeOffset.UtcNow;
@@ -273,10 +275,14 @@ public sealed class ConversationStartWorker(
         // SPEC-15 RF-004: gh/git auth persistente no sandbox do dono da
         // conversa — roda com e sem selected_repository ("inicializar uma
         // conversa"); no-op quando não há token cadastrado.
+        // SPEC-152 §5/NFR: eval_mode é hermetic — conversas
+        // agent_type=eval NUNCA recebem credencial SCM (sem push/PR;
+        // zero side-effects fora do sandbox).
+        var evalMode = Application.Eval.EvalAgentTypes.IsEval(conv.AgentType);
         var gitService = scope.ServiceProvider
             .GetRequiredService<Application.Git.IGitService>();
         var sbForProvision = await sandboxService.GetAsync(sandbox.Id, ct);
-        if (sbForProvision is not null)
+        if (sbForProvision is not null && !evalMode)
         {
             await gitService.ProvisionGhAuthAsync(
                 sbForProvision, conv.CreatedByUserId, ct);

@@ -93,6 +93,9 @@ public sealed class AppConversationService( // NOSONAR S107 — SPEC-104 (decis�
             SandboxProfile = Domain.Sandbox.SandboxProfiles
                 .IsValid(request.SandboxProfile)
                     ? request.SandboxProfile : null,
+            // SPEC-152: imagem custom (eval tasks) — honra o campo
+            // sandbox_spec_id do request, até aqui ignorado.
+            SandboxSpecId = request.SandboxSpecId,
             ConfirmationMode = request.ConfirmationMode,
             // SPEC-29: regras de permissão por conversa + modo (plan|build).
             PermissionsJson = request.Permissions is { Count: > 0 } rules
