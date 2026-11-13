@@ -240,7 +240,10 @@ public sealed class EvalRunner(
                         "user", [task.Prompt], Run: true),
                     SelectedRepository: task.Repo,
                     AgentType: EvalAgentTypes.Eval,
-                    LlmModel: run.Model,
+                    // SPEC-152: route_override = pin duro no
+                    // LlmRouteContext.PreferredModel (SPEC-149) —
+                    // `model` fica como label de scorecard.
+                    LlmModel: run.RouteOverride ?? run.Model,
                     SandboxSpecId: specId,
                     ConfirmationMode: false,
                     Mode: "build"), taskCt);

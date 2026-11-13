@@ -391,6 +391,15 @@ public sealed class Spec152EvalRunnerTests : IDisposable
             && r.LlmModel == "m-eval"          // model pin (SPEC-149)
             && r.ConfirmationMode == false
             && r.Mode == "build");
+
+        // route_override vira o pin duro (LlmModel da conversa).
+        var routed = await SeedRunAsync(1);
+        routed.RouteOverride = "route-x";
+        await _db.SaveChangesAsync();
+        await RunnerFor([MakeTask("routed")])
+            .RunAsync(routed.Id, CancellationToken.None);
+        _conversations.Requests.Last().LlmModel
+            .ShouldBe("route-x");
         var imgReq = reqs.First(r => r.SelectedRepository is null);
         imgReq.SandboxSpecId.ShouldNotBeNull(); // imagem custom → spec
         reqs.First(r => r.SelectedRepository == "org/repo")
