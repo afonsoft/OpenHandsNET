@@ -93,7 +93,11 @@ public static class ReviewFindingStatuses
         { Open, Dismissed };
 }
 
-/// <summary>SPEC-140 RF-004: run persistido (visão de API).</summary>
+/// <summary>
+/// SPEC-140 RF-004: run persistido (visão de API). #442:
+/// <paramref name="SummaryText"/> = markdown do comentário de sumário
+/// postado no provider (null em runs antigos/skipped/failed).
+/// </summary>
 public sealed record ReviewRun(
     Guid Id,
     Guid? OrgId,
@@ -107,11 +111,16 @@ public sealed record ReviewRun(
     string Trigger,
     string? RequestedByUserId,
     string? Error,
+    string? SummaryText,
     int FindingCount,
     DateTimeOffset CreatedAt,
     DateTimeOffset? FinishedAt);
 
-/// <summary>SPEC-140 RF-002/RF-004: finding validado + persistido.</summary>
+/// <summary>
+/// SPEC-140 RF-002/RF-004: finding validado + persistido. #442:
+/// <paramref name="Permalink"/> = blob permalink do provider p/
+/// <see cref="Path"/>+<see cref="Line"/> no head revisado.
+/// </summary>
 public sealed record ReviewFinding(
     Guid Id,
     Guid ReviewRunId,
@@ -127,6 +136,7 @@ public sealed record ReviewFinding(
     string? SuggestedPatch,
     string Status,
     string? CommentUrl,
+    string? Permalink,
     DateTimeOffset CreatedAt);
 
 /// <summary>Run + findings para <c>GET /scm/reviews/{id}</c>.</summary>

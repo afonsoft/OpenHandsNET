@@ -3554,6 +3554,11 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("path");
 
+                    b.Property<string>("Permalink")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("permalink");
+
                     b.Property<int>("PrNumber")
                         .HasColumnType("integer")
                         .HasColumnName("pr_number");
@@ -3683,6 +3688,10 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations.Postgres
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("status");
+
+                    b.Property<string>("SummaryText")
+                        .HasColumnType("text")
+                        .HasColumnName("summary_text");
 
                     b.Property<string>("Trigger")
                         .IsRequired()

@@ -36,6 +36,15 @@ else
         <p class="text-danger">@run.Error</p>
     }
 
+    @* #442: markdown do comentário de sumário postado no provider. *@
+    @if (run.SummaryText is { } summary)
+    {
+        <details class="rev-summary" open>
+            <summary>@L["reviews.summary"]</summary>
+            <div class="md">@MarkdownService.Render(summary)</div>
+        </details>
+    }
+
     @* #435: filtros client-side (findings vêm todos no detalhe) +
        seleção p/ triagem em lote via PATCH individual. *@
     <div class="rev-toolbar">
@@ -93,9 +102,12 @@ else
                             {
                                 <strong>@f.Title</strong>
                             }
-                            @if (f.CommentUrl is { } commentUrl)
+                            @* #442: path:Lx âncora p/ o blob permalink do
+                               provider quando presente (fallback: url do
+                               comentário postado). *@
+                            @if (LocationHref(f) is { } href)
                             {
-                                <a href="@commentUrl" target="_blank"
+                                <a href="@href" target="_blank"
                                    rel="noopener"><code>@Location(f)</code></a>
                             }
                             else
@@ -205,6 +217,11 @@ else
 
     private static string Location(ReviewFindingDto f) =>
         f.Line is { } line ? $"{f.Path}:L{line}" : f.Path;
+
+    /// <summary>#442: destino da âncora de localização — blob permalink
+    /// da fonte revisada, senão o comentário postado.</summary>
+    private static string? LocationHref(ReviewFindingDto f) =>
+        f.Permalink ?? f.CommentUrl;
 
     private void Toggle(Guid id, ChangeEventArgs e)
     {

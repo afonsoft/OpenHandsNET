@@ -3545,6 +3545,11 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("path");
 
+                    b.Property<string>("Permalink")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("permalink");
+
                     b.Property<int>("PrNumber")
                         .HasColumnType("INTEGER")
                         .HasColumnName("pr_number");
@@ -3674,6 +3679,10 @@ namespace Sandcastle.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("TEXT")
                         .HasColumnName("status");
+
+                    b.Property<string>("SummaryText")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("summary_text");
 
                     b.Property<string>("Trigger")
                         .IsRequired()

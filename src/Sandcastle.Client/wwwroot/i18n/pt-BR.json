@@ -808,5 +808,6 @@
   "reviews.triage_partial": "{{n}} achados não puderam ser atualizados.",
   "reviews.no_findings": "Nenhum achado para este filtro.",
   "reviews.suggested_patch": "Patch sugerido",
-  "reviews.view_comment": "Ver comentário"
+  "reviews.view_comment": "Ver comentário",
+  "reviews.summary": "Sumário do review"
 }
