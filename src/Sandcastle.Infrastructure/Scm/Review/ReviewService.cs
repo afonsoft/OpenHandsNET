@@ -193,11 +193,12 @@ public sealed class ReviewService(
     private static ReviewRun ToModel(ReviewRunRecord r, int findingCount) => new(
         r.Id, r.OrgId, r.ConnectionId, r.Repository, r.PrNumber,
         r.HeadSha, r.DiffHash, r.Status, r.Partial, r.Trigger,
-        r.RequestedByUserId, r.Error, findingCount,
+        r.RequestedByUserId, r.Error, r.SummaryText, findingCount,
         r.CreatedAt, r.FinishedAt);
 
     private static ReviewFinding ToModel(ReviewFindingRecord f) => new(
         f.Id, f.ReviewRunId, f.Repository, f.PrNumber, f.Kind,
         f.Severity, f.Confidence, f.Path, f.Line, f.Title, f.Body,
-        f.SuggestedPatch, f.Status, f.CommentUrl, f.CreatedAt);
+        f.SuggestedPatch, f.Status, f.CommentUrl, f.Permalink,
+        f.CreatedAt);
 }

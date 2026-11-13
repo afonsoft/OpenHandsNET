@@ -808,5 +808,6 @@
   "reviews.triage_partial": "{{n}} 个发现无法更新。",
   "reviews.no_findings": "此筛选条件下没有发现。",
   "reviews.suggested_patch": "建议补丁",
-  "reviews.view_comment": "查看评论"
+  "reviews.view_comment": "查看评论",
+  "reviews.summary": "评审摘要"
 }

@@ -60,20 +60,21 @@ public class Spec140ReviewPageTests : BunitContext
     }
 
     private static string RunJson(string status = "completed",
-        int findings = 2) => $$"""
+        int findings = 2, string? summary = null) => $$"""
         {"id":"{{RunId}}","org_id":null,
          "connection_id":"bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
          "repository":"octo/hello","pr_number":42,
          "head_sha":"0123456789abcdef","diff_hash":null,
          "status":"{{status}}","partial":false,"trigger":"webhook",
          "requested_by_user_id":null,"error":null,
+         "summary_text":{{(summary is null ? "null" : System.Text.Json.JsonSerializer.Serialize(summary))}},
          "finding_count":{{findings}},
          "created_at":"2026-10-17T09:00:00Z","finished_at":null}
         """;
 
     private static string FindingJson(Guid id, string path, int? line,
         string severity, string kind, string status,
-        string? commentUrl = null) => $$"""
+        string? commentUrl = null, string? permalink = null) => $$"""
         {"id":"{{id}}","review_run_id":"{{RunId}}",
          "repository":"octo/hello","pr_number":42,
          "kind":"{{kind}}","severity":"{{severity}}","confidence":0.9,
@@ -81,11 +82,13 @@ public class Spec140ReviewPageTests : BunitContext
          "title":"t-{{kind}}","body":"body {{kind}}",
          "suggested_patch":null,"status":"{{status}}",
          "comment_url":{{(commentUrl is null ? "null" : $"\"{commentUrl}\"")}},
+         "permalink":{{(permalink is null ? "null" : $"\"{permalink}\"")}},
          "created_at":"2026-10-17T09:01:00Z"}
         """;
 
-    private static string DetailJson(params string[] findings) => $$"""
-        {"run":{{RunJson()}},
+    private static string DetailJson(string? runSummary,
+        params string[] findings) => $$"""
+        {"run":{{RunJson(summary: runSummary)}},
          "findings":[{{string.Join(",", findings)}}]}
         """;
 
@@ -138,7 +141,7 @@ public class Spec140ReviewPageTests : BunitContext
         var stale = FindingJson(
             Guid.Parse("00000000-0000-0000-0000-000000000002"),
             "src/Bar.cs", 7, "nit", "style", "stale");
-        Api(_ => Json(DetailJson(open, stale)));
+        Api(_ => Json(DetailJson(null, open, stale)));
         var cut = Render<ReviewDetailPage>(p => p.Add(x => x.Id, RunId));
         cut.WaitForAssertion(() =>
         {
@@ -152,6 +155,50 @@ public class Spec140ReviewPageTests : BunitContext
     }
 
     [Fact]
+    public void Detail_Renders_Summary_And_Permalink_Location_Anchor()
+    {
+        // #442: path:Lx âncora p/ o blob permalink; summary_text do run
+        // renderizado como markdown no detalhe.
+        var permalink =
+            "https://github.com/octo/hello/blob/0123456789abcdef"
+            + "/src/Foo.cs#L12";
+        var open = FindingJson(
+            Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            "src/Foo.cs", 12, "critical", "bug", "open",
+            permalink: permalink);
+        Api(_ => Json(DetailJson(
+            "## Sandcastle Review\n\n**1 finding**", open)));
+        var cut = Render<ReviewDetailPage>(p => p.Add(x => x.Id, RunId));
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.ShouldContain("rev-summary");
+            cut.Markup.ShouldContain("Sandcastle Review");
+            var anchor = cut.Find($"a[href='{permalink}']");
+            anchor.TextContent.ShouldContain("src/Foo.cs:L12");
+        });
+    }
+
+    [Fact]
+    public void Detail_Location_Anchor_Falls_Back_To_Comment_Url()
+    {
+        // #442: sem permalink (runs antigos) mantém o link do comentário.
+        var commentUrl = "https://github.com/octo/hello/pull/42#r1";
+        var open = FindingJson(
+            Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            "src/Foo.cs", 12, "critical", "bug", "open",
+            commentUrl: commentUrl);
+        Api(_ => Json(DetailJson(null, open)));
+        var cut = Render<ReviewDetailPage>(p => p.Add(x => x.Id, RunId));
+        cut.WaitForAssertion(() =>
+        {
+            // comment_url serve dois anchors (location + view_comment).
+            cut.FindAll($"a[href='{commentUrl}']")
+                .Count(a => a.TextContent.Contains("src/Foo.cs:L12"))
+                .ShouldBe(1);
+        });
+    }
+
+    [Fact]
     public void Detail_Dismiss_Patches_Finding_And_Updates_Badge()
     {
         var fid = Guid.Parse("00000000-0000-0000-0000-000000000001");
@@ -160,7 +207,7 @@ public class Spec140ReviewPageTests : BunitContext
             ? (patched = true, Json(FindingJson(
                 fid, "src/Foo.cs", 12, "critical", "bug",
                 "dismissed"))).Item2
-            : Json(DetailJson(FindingJson(
+            : Json(DetailJson(null, FindingJson(
                 fid, "src/Foo.cs", 12, "critical", "bug", "open"))));
         var cut = Render<ReviewDetailPage>(p => p.Add(x => x.Id, RunId));
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Descartar"));
@@ -184,7 +231,7 @@ public class Spec140ReviewPageTests : BunitContext
         var stale = FindingJson(
             Guid.Parse("00000000-0000-0000-0000-000000000002"),
             "src/Bar.cs", 7, "nit", "style", "stale");
-        Api(_ => Json(DetailJson(open, stale)));
+        Api(_ => Json(DetailJson(null, open, stale)));
         var cut = Render<ReviewDetailPage>(p => p.Add(x => x.Id, RunId));
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("src/Foo.cs"));
 
@@ -212,7 +259,7 @@ public class Spec140ReviewPageTests : BunitContext
                 return Json(FindingJson(Guid.Parse(fid),
                     "src/Foo.cs", 1, "nit", "style", "dismissed"));
             }
-            return Json(DetailJson(
+            return Json(DetailJson(null,
                 FindingJson(f1, "src/Foo.cs", 1, "nit", "style", "open"),
                 FindingJson(f2, "src/Foo.cs", 2, "nit", "style", "open")));
         });

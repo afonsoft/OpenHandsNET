@@ -73,6 +73,18 @@ public sealed class PersistenceSchemaTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Migrate_AddsReviewPermalinkAndSummaryColumns()
+    {
+        // #442: review_findings.permalink + review_runs.summary_text —
+        // a migration deve aplicar limpa sobre o schema existente.
+        await using var db = NewContext();
+        await db.Database.MigrateAsync();
+
+        (await ColumnsOfAsync("review_findings")).ShouldContain("permalink");
+        (await ColumnsOfAsync("review_runs")).ShouldContain("summary_text");
+    }
+
+    [Fact]
     public async Task Migrate_UsesSnakeCaseColumns()
     {
         await using var db = NewContext();

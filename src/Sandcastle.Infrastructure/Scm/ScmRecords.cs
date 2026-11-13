@@ -125,6 +125,13 @@ public sealed class ReviewRunRecord : IOrgScoped
     /// <summary>Detalhe do erro quando <c>failed</c>.</summary>
     public string? Error { get; set; }
 
+    /// <summary>
+    /// #442: markdown do comentário de sumário postado no provider
+    /// (review body ou comentário único de fallback) — null quando o
+    /// posting falhou ou o run foi <c>skipped</c>.
+    /// </summary>
+    public string? SummaryText { get; set; }
+
     /// <summary>Stats do run (files_reviewed, tokens, dropped_findings…).</summary>
     public string? StatsJson { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
@@ -164,6 +171,13 @@ public sealed class ReviewFindingRecord : IOrgScoped
 
     /// <summary>URL do comentário/review no provider.</summary>
     public string? CommentUrl { get; set; }
+
+    /// <summary>
+    /// #442: blob permalink do provider p/ a localização do finding
+    /// (<c>{repo}/blob/{head_sha}/{path}#Lx</c> no GitHub) — null em
+    /// runs antigos (backfill não aplicado).
+    /// </summary>
+    public string? Permalink { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 }
@@ -450,6 +464,7 @@ public sealed class ReviewFindingRecordConfiguration
         builder.Property(e => e.Title).HasMaxLength(300);
         builder.Property(e => e.Status).HasMaxLength(20).IsRequired();
         builder.Property(e => e.CommentUrl).HasMaxLength(1000);
+        builder.Property(e => e.Permalink).HasMaxLength(1000);
         builder.HasIndex(e => new { e.Repository, e.PrNumber });
         builder.HasIndex(e => e.ReviewRunId);
         builder.HasIndex(e => e.Status);

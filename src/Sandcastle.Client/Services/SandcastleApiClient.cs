@@ -1611,13 +1611,16 @@ public sealed record ScanFixBulkDto(
 public sealed record ReviewRunPageDto(
     IReadOnlyList<ReviewRunDto> Items, string? NextPageId);
 
-/// <summary>SPEC-140: run de auto-review de PR.</summary>
+/// <summary>
+/// SPEC-140: run de auto-review de PR. #442: <paramref name="SummaryText"/>
+/// = markdown do sumário postado no provider (null em runs antigos).
+/// </summary>
 public sealed record ReviewRunDto(
     Guid Id, Guid? OrgId, Guid ConnectionId, string Repository,
     int PrNumber, string HeadSha, string? DiffHash, string Status,
     bool Partial, string Trigger, string? RequestedByUserId,
-    string? Error, int FindingCount, DateTimeOffset CreatedAt,
-    DateTimeOffset? FinishedAt);
+    string? Error, string? SummaryText, int FindingCount,
+    DateTimeOffset CreatedAt, DateTimeOffset? FinishedAt);
 
 /// <summary>SPEC-140: envelope de GET /scm/reviews/{id}.</summary>
 public sealed record ReviewDetailDto(
@@ -1625,13 +1628,16 @@ public sealed record ReviewDetailDto(
 
 /// <summary>
 /// SPEC-140: finding triável do review (kind/severity/path/line +
-/// <c>comment_url</c> = permalink do review postado no provider).
+/// <c>comment_url</c> = link do review postado no provider). #442:
+/// <paramref name="Permalink"/> = blob permalink da localização do
+/// finding (<c>{repo}/blob/{head}/{path}#Lx</c>).
 /// </summary>
 public sealed record ReviewFindingDto(
     Guid Id, Guid ReviewRunId, string Repository, int PrNumber,
     string Kind, string Severity, double? Confidence, string Path,
     int? Line, string? Title, string Body, string? SuggestedPatch,
-    string Status, string? CommentUrl, DateTimeOffset CreatedAt);
+    string Status, string? CommentUrl, string? Permalink,
+    DateTimeOffset CreatedAt);
 
 /// <summary>SPEC-144: resposta 202 do POST /refactors.</summary>
 public sealed record RefactorCreatedDto(

@@ -808,5 +808,6 @@
   "reviews.triage_partial": "{{n}} 件の検出結果を更新できませんでした。",
   "reviews.no_findings": "このフィルターに一致する検出結果はありません。",
   "reviews.suggested_patch": "提案パッチ",
-  "reviews.view_comment": "コメントを見る"
+  "reviews.view_comment": "コメントを見る",
+  "reviews.summary": "レビュー概要"
 }

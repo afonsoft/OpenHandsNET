@@ -1206,6 +1206,12 @@ details.ev-details summary { cursor: pointer; color: var(--sc-fg-dim); font-size
     overflow-x: auto; border: 1px solid var(--sc-border);
     border-radius: 6px; padding: 8px 10px;
 }
+/* #442: summary markdown postado no provider (detalhe do run). */
+.rev-summary {
+    border: 1px solid var(--sc-border); border-radius: 8px;
+    padding: 10px 14px; margin: 0 0 12px;
+}
+.rev-summary > summary { cursor: pointer; font-weight: 600; }
 
 /* SPEC-148: skills marketplace — catalog grid, detail head, install row. */
 .mkt-tabs { margin-bottom: 12px; }

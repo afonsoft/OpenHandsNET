@@ -14,6 +14,7 @@ using Sandcastle.Infrastructure.Agent;
 using Sandcastle.Infrastructure.Persistence;
 using Sandcastle.Infrastructure.Scm;
 using Sandcastle.Infrastructure.Scm.Review;
+using Sandcastle.Infrastructure.Wiki;
 
 using Shouldly;
 
@@ -431,6 +432,123 @@ public sealed class Spec140ReviewRunnerTests : IAsyncDisposable
         while (cursor is not null);
 
         seen.ShouldBe(seeded, ignoreOrder: true);
+    }
+
+    // ---- #442: permalink por finding + summary_text do run -----------------
+
+    [Fact]
+    public async Task Run_persists_permalink_and_summary_text()
+    {
+        var runId = await SeedRunAsync();
+        var findings = """
+            {"findings":[{"path":"src/Foo.cs","line":3,
+              "severity":"critical","kind":"bug","body":"boom"}]}
+            """;
+
+        await Runner(findings).RunAsync(runId, CancellationToken.None);
+
+        var run = await ReloadAsync(runId);
+        run.SummaryText.ShouldNotBeNull();
+        run.SummaryText.ShouldBe(_provider.Reviews.Single().Body);
+        run.SummaryText.ShouldContain("## Sandcastle Review");
+
+        var finding = await _db.ReviewFindings.IgnoreQueryFilters()
+            .SingleAsync(f => f.ReviewRunId == runId);
+        finding.Permalink.ShouldBe(
+            "https://github.com/afonsoft/demo/blob/head-1/src/Foo.cs#L3");
+    }
+
+    [Fact]
+    public async Task Run_persists_file_level_permalink_without_anchor()
+    {
+        var runId = await SeedRunAsync();
+        var findings = """
+            {"findings":[{"path":"src/Foo.cs",
+              "severity":"note","kind":"note","body":"file-level"}]}
+            """;
+
+        await Runner(findings).RunAsync(runId, CancellationToken.None);
+
+        var finding = await _db.ReviewFindings.IgnoreQueryFilters()
+            .SingleAsync(f => f.ReviewRunId == runId);
+        finding.Line.ShouldBeNull();
+        finding.Permalink.ShouldBe(
+            "https://github.com/afonsoft/demo/blob/head-1/src/Foo.cs");
+    }
+
+    [Fact]
+    public async Task Fallback_comment_persists_summary_text()
+    {
+        _provider.ReviewResult = null; // provider sem review API
+        var runId = await SeedRunAsync();
+
+        await Runner("""{"findings":[]}""")
+            .RunAsync(runId, CancellationToken.None);
+
+        (await ReloadAsync(runId)).SummaryText.ShouldBe(
+            _provider.IssueComments.Single().Body);
+    }
+
+    [Fact]
+    public async Task Detail_maps_permalink_and_summary_text()
+    {
+        var svc = Service();
+        var trig = await svc.TriggerAsync(Connection(), "afonsoft/demo",
+            7, "head-1", "webhook", null, CancellationToken.None);
+        var runId = trig.ReviewRunId!.Value;
+        var run = await ReloadAsync(runId);
+        run.SummaryText = "## Sandcastle Review\n\nok";
+        _db.ReviewFindings.Add(new ReviewFindingRecord
+        {
+            Id = Guid.NewGuid(),
+            OrgId = _orgId,
+            ReviewRunId = runId,
+            Repository = "afonsoft/demo",
+            PrNumber = 7,
+            Kind = ReviewFindingKinds.Bug,
+            Severity = ReviewSeverities.Important,
+            Path = "src/Foo.cs",
+            Line = 3,
+            Body = "b",
+            Status = ReviewFindingStatuses.Open,
+            Permalink =
+                "https://github.com/afonsoft/demo/blob/head-1/src/Foo.cs#L3",
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        });
+        await _db.SaveChangesAsync();
+
+        var detail = await svc.GetAsync(_orgId, runId,
+            CancellationToken.None);
+
+        detail!.Run.SummaryText.ShouldBe("## Sandcastle Review\n\nok");
+        detail.Findings.ShouldHaveSingleItem().Permalink.ShouldBe(
+            "https://github.com/afonsoft/demo/blob/head-1/src/Foo.cs#L3");
+    }
+
+    /// <summary>
+    /// #442: formato do blob permalink por provider (mesmo helper das
+    /// citações do Ask — SPEC-145): github <c>/blob/#Lx</c>, gitlab
+    /// <c>/-/blob/#Lx</c>, bitbucket <c>/src/#lines-x</c>, self-hosted
+    /// via ApiUrl.
+    /// </summary>
+    [Theory]
+    [InlineData("github", null,
+        "https://github.com/o/r/blob/abc123/src/A.cs#L3")]
+    [InlineData("gitlab", null,
+        "https://gitlab.com/o/r/-/blob/abc123/src/A.cs#L3")]
+    [InlineData("bitbucket", null,
+        "https://bitbucket.org/o/r/src/abc123/src/A.cs#lines-3")]
+    [InlineData("github", "https://ghe.corp",
+        "https://ghe.corp/o/r/blob/abc123/src/A.cs#L3")]
+    public void Permalink_uses_provider_blob_format(
+        string kind, string? apiUrl, string expected)
+    {
+        var conn = new ScmConnection(Guid.NewGuid(), null,
+            ScmKindExtensions.Parse(kind)!.Value, null, null, null, [],
+            null, null, null, DateTimeOffset.UtcNow, ApiUrl: apiUrl);
+        WikiPermalink.Build(conn, "o/r", "abc123", "src/A.cs", 3, null)
+            .ShouldBe(expected);
     }
 
     // ---- worker: reconcile de órfãos no boot ------------------------------

@@ -12,6 +12,7 @@ using Sandcastle.Infrastructure.Agent;
 using Sandcastle.Infrastructure.Agent.SystemPrompt;
 using Sandcastle.Infrastructure.Persistence;
 using Sandcastle.Infrastructure.Security;
+using Sandcastle.Infrastructure.Wiki;
 
 namespace Sandcastle.Infrastructure.Scm.Review;
 
@@ -178,7 +179,9 @@ public sealed class ReviewRunner( // NOSONAR S107 — SPEC-104 (decisão aprovad
         var (findings, dropped) = ReviewFindingParser.Parse(
             SecretRedactor.Redact(response.Text), diffIndex);
 
-        // 7) persistir findings (redacted).
+        // 7) persistir findings (redacted). #442: blob permalink do
+        //    provider por finding (mesma forma das citações do Ask —
+        //    WikiPermalink cobre github/gitlab/bitbucket self-host).
         var now = DateTimeOffset.UtcNow;
         var records = findings.Select(f => new ReviewFindingRecord
         {
@@ -192,6 +195,7 @@ public sealed class ReviewRunner( // NOSONAR S107 — SPEC-104 (decisão aprovad
             Confidence = f.Confidence,
             Path = f.Path,
             Line = f.Line,
+            Permalink = PermalinkFor(connection, run, f),
             Title = f.Title is null ? null
                 : SecretRedactor.Redact(f.Title)[..Math.Min(300,
                     SecretRedactor.Redact(f.Title).Length)],
@@ -245,6 +249,8 @@ public sealed class ReviewRunner( // NOSONAR S107 — SPEC-104 (decisão aprovad
         if (review is not null)
         {
             reviewUrl = review.Url;
+            // #442: persiste o markdown postado (detalhe do run na UI).
+            run.SummaryText = summary;
         }
         else
         {
@@ -252,6 +258,7 @@ public sealed class ReviewRunner( // NOSONAR S107 — SPEC-104 (decisão aprovad
                 findings, selected.Count, files.Count, partial);
             await provider.CreateIssueCommentAsync(
                 connection, run.Repository, run.PrNumber, body, ct);
+            run.SummaryText = body;
             reviewUrl = null;
         }
 
@@ -417,6 +424,18 @@ public sealed class ReviewRunner( // NOSONAR S107 — SPEC-104 (decisão aprovad
         }
         return (text.ToString(), usage);
     }
+
+    /// <summary>
+    /// #442: permalink do blob no provider — âncora <c>#Lx</c> quando o
+    /// finding tem linha; senão link do arquivo no head revisado.
+    /// </summary>
+    private static string? PermalinkFor(
+        ScmConnection connection, ReviewRunRecord run, ParsedFinding f) =>
+        f.Line is { } line
+            ? WikiPermalink.Build(
+                connection, run.Repository, run.HeadSha, f.Path, line, null)
+            : WikiPermalink.FileLink(
+                connection, run.Repository, run.HeadSha, f.Path);
 
     /// <summary>Posta o commit status — melhor esforço (nunca lança).</summary>
     private async Task PostStatusAsync(
