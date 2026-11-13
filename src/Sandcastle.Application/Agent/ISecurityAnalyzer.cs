@@ -13,7 +13,13 @@ public enum SecurityRisk { Low, Medium, High }
 /// </summary>
 public interface ISecurityAnalyzer
 {
-    /// <summary>Analyzes one tool call; must be fast (pattern) or cached (llm).</summary>
+    /// <summary>
+    /// Analyzes one tool call; must be fast (pattern) or cached (llm).
+    /// <paramref name="routeCtx"/> carries the run's org/user so LLM-backed
+    /// analyzers resolve the <c>critic</c> role under the org routing rules
+    /// (SPEC-149); null = org-less (global candidates only).
+    /// </summary>
     Task<SecurityRisk> AnalyzeAsync(string toolName,
-        JsonElement action, CancellationToken ct);
+        JsonElement action, CancellationToken ct,
+        LlmRouteContext? routeCtx = null);
 }

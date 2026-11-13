@@ -23,7 +23,11 @@ public sealed record ToolCallContext(
     IServiceProvider Services,
     TimeSpan DefaultTimeout,
     string? ToolCallId = null,
-    string? ActionId = null)
+    string? ActionId = null,
+    // SPEC-149: route context do run (org/user) para tools que fazem
+    // calls LLM próprias (advisor). Null ⇒ org-less — apenas regras
+    // globais se aplicam.
+    LlmRouteContext? RouteCtx = null)
 {
     /// <summary>
     /// Appends a run-activity event (SPEC-24): <c>command_output</c>,

@@ -59,7 +59,8 @@ public sealed class LlmSummarizingCondenser(
         CompactionTrigger trigger,
         string? model,
         Func<CompactionStart, Task>? onCompacting,
-        CancellationToken ct)
+        CancellationToken ct,
+        LlmRouteContext? routeCtx = null)
     {
         var o = options.Value;
         var co = o.Compaction;
@@ -92,7 +93,7 @@ public sealed class LlmSummarizingCondenser(
 
         return await SummarizePhaseAsync(
             new PruneOutcome(working, ids, pruned, tokens, afterPrune),
-            trigger, model, co, o, ct);
+            trigger, model, co, o, routeCtx, ct);
     }
 
     /// <summary>Estado da fase 1 (pruning) que alimenta a fase 2.</summary>
@@ -104,7 +105,7 @@ public sealed class LlmSummarizingCondenser(
     private async Task<CondenseResult> SummarizePhaseAsync(
         PruneOutcome p, CompactionTrigger trigger,
         string? model, CompactionOptions co, AgentLlmOptions o,
-        CancellationToken ct)
+        LlmRouteContext? routeCtx, CancellationToken ct)
     {
         var working = p.Working;
         var ids = p.Ids;
@@ -124,7 +125,8 @@ public sealed class LlmSummarizingCondenser(
         try
         {
             var (summary, responseId) = await SummarizeAsync(
-                working.GetRange(start, boundary - start), model, o, ct);
+                working.GetRange(start, boundary - start), model, o,
+                routeCtx, ct);
             if (string.IsNullOrWhiteSpace(summary))
             {
                 return Passthrough();
@@ -213,7 +215,7 @@ public sealed class LlmSummarizingCondenser(
 
     private async Task<(string? summary, string responseId)> SummarizeAsync(
         List<LlmMessage> old, string? model, AgentLlmOptions o,
-        CancellationToken ct)
+        LlmRouteContext? routeCtx, CancellationToken ct)
     {
         var sb = new StringBuilder();
         foreach (var m in old)
@@ -233,12 +235,17 @@ public sealed class LlmSummarizingCondenser(
 
         var text = new StringBuilder();
         var responseId = "";
-        // SPEC-23 RF-002: o role Summarizer resolve via router —
-        // RoleModels["summarizer"] vence sobre o modelo da conversa.
+        // SPEC-23 RF-002 + SPEC-149: o role summarizer resolve via router
+        // com o org ctx do run (#434 — antes passava Guid.Empty e as
+        // routing_rules da org nunca engajavam aqui). Sem candidato
+        // elegível ⇒ LlmNoRouteException (fail-open vira Passthrough).
         var summaryModel = o.Compaction.SummaryModel
             ?? (router is not null
-                ? (await router.SelectAsync(Guid.Empty, ModelRole.Summarizer,
-                    model, ct)).Model
+                ? (await router.ResolveAsync(LlmRole.Summarizer,
+                    (routeCtx ?? new LlmRouteContext()) with
+                    { PreferredModel = model }, ct))?.Model
+                    ?? throw new LlmNoRouteException(
+                        "summarizer", "no eligible candidate")
                 : model);
         await foreach (var chunk in llm.ChatStreamAsync(
             [

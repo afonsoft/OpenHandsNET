@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using Sandcastle.Application.Coordination;
 using Sandcastle.Application.Sandbox;
 using Sandcastle.Domain.Conversations;
 using Sandcastle.Infrastructure.Persistence;
@@ -20,11 +21,13 @@ namespace Sandcastle.Infrastructure.Conversations;
 public sealed class ConversationStartWorker(
     StartTaskService tasks,
     IServiceScopeFactory scopes,
+    IDistributedLock distributedLock,
     ILogger<ConversationStartWorker> logger) : BackgroundService
 {
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        await ReconcileOrphansAsync(stoppingToken);
         await foreach (var taskId in tasks.Queue.ReadAllAsync(stoppingToken))
         {
             try
@@ -35,6 +38,174 @@ public sealed class ConversationStartWorker(
             {
                 logger.LogError(ex, "Start task {TaskId} failed", taskId);
                 await FailAsync(taskId, ex.Message, stoppingToken);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Reconcile de boot (#434 — mesmo padrão dos run workers SPEC-140/141/
+    /// 142/145): a fila é in-process, então no start toda task
+    /// <c>Working</c> (queued) é órfã do processo anterior e volta ao
+    /// canal. Tasks interrompidas a caminho do READY
+    /// (<c>WaitingForSandbox|PreparingRepository|SettingUpEnvironment|
+    /// SettingUpSkills</c>) viram <c>Error</c> com
+    /// <c>worker_restart</c> — re-executar cego podia provisionar um
+    /// segundo sandbox para a mesma conversa. Como podem ter sandbox
+    /// parcialmente provisionado, o cleanup é best-effort via
+    /// <see cref="ISandboxService.DeleteAsync"/> (mesmo caminho do
+    /// delete de conversa): o handle é <c>task.SandboxId</c> e qualquer
+    /// record de sandbox bound à conversa (cobre a janela de crash entre
+    /// <c>StartAsync</c> persistir o record e a task gravar o id). Um
+    /// sandbox saudável nunca é tocado — enquanto uma start-task está
+    /// em curso todo sandbox bound à conversa nasceu daquela task
+    /// (o profile switch deleta o anterior antes de re-enfileirar).
+    /// </summary>
+    private async Task ReconcileOrphansAsync(CancellationToken ct)
+    {
+        try
+        {
+            // Um reconcile por vez entre réplicas (padrão ScanWorker).
+            await using var guard = await distributedLock.TryAcquireAsync(
+                "starttask-orphan-reconcile", TimeSpan.FromMinutes(2), ct);
+            if (guard is null)
+            {
+                return;
+            }
+
+            await using var scope = scopes.CreateAsyncScope();
+            var db = scope.ServiceProvider
+                .GetRequiredService<AppDbContext>();
+            var sandboxService = scope.ServiceProvider
+                .GetRequiredService<ISandboxService>();
+            var now = DateTimeOffset.UtcNow;
+
+            var interrupted = await db.StartTasks.IgnoreQueryFilters()
+                .Where(t => t.Status != nameof(StartTaskStatus.Working)
+                    && t.Status != nameof(StartTaskStatus.Ready)
+                    && t.Status != nameof(StartTaskStatus.Error))
+                .ToListAsync(ct);
+            foreach (var task in interrupted)
+            {
+                task.Status = nameof(StartTaskStatus.Error);
+                task.Detail = "worker_restart";
+                task.UpdatedAt = now;
+                if (task.AppConversationId is not { } convId)
+                {
+                    continue;
+                }
+
+                var conv = await db.Conversations.IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(c => c.Id == convId, ct);
+                if (conv is not null
+                    && conv.ExecutionStatus
+                        != nameof(ConversationExecutionStatus.Archived))
+                {
+                    conv.ExecutionStatus =
+                        nameof(ConversationExecutionStatus.Error);
+                    conv.UpdatedAt = now;
+                }
+
+                await CleanupPartialSandboxesAsync(
+                    db, sandboxService, scope.ServiceProvider,
+                    task, convId, conv?.OrgId, ct);
+            }
+            if (interrupted.Count > 0)
+            {
+                await db.SaveChangesAsync(ct);
+            }
+
+            var queued = await db.StartTasks.IgnoreQueryFilters()
+                .Where(t => t.Status == nameof(StartTaskStatus.Working))
+                .Select(t => t.Id)
+                .ToListAsync(ct);
+            foreach (var id in queued)
+            {
+                await tasks.EnqueueAsync(id, ct);
+            }
+
+            if (queued.Count + interrupted.Count > 0)
+            {
+                logger.LogInformation(
+                    "start-task orphan reconcile: {Queued} requeued, "
+                    + "{Failed} failed (worker_restart)",
+                    queued.Count, interrupted.Count);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Reconcile falhou não pode derrubar o drain da fila.
+            logger.LogWarning(ex, "start-task orphan reconcile failed");
+        }
+    }
+
+    /// <summary>
+    /// Best-effort: remove o sandbox parcial da task — o id persistido em
+    /// <paramref name="task"/> + todo record bound à conversa (janela de
+    /// crash entre o insert do record e o save de
+    /// <c>task.SandboxId</c>). Falha vira warning + audit
+    /// <c>starttask.orphan_cleanup_failed</c> — o task-fail acontece
+    /// mesmo assim (o sandbox residual fica para o
+    /// <see cref="ISandboxService.SweepOrphansAsync"/>).
+    /// </summary>
+    private async Task CleanupPartialSandboxesAsync(
+        AppDbContext db, ISandboxService sandboxService,
+        IServiceProvider services, StartTaskRecord task,
+        Guid conversationId, Guid? orgId, CancellationToken ct)
+    {
+        var ids = await db.Sandboxes.IgnoreQueryFilters()
+            .Where(s => s.ConversationId == conversationId)
+            .Select(s => s.Id)
+            .ToListAsync(ct);
+        if (task.SandboxId is { } handle && !ids.Contains(handle))
+        {
+            ids.Add(handle);
+        }
+        if (ids.Count == 0)
+        {
+            return;
+        }
+
+        var audit = services
+            .GetService<Application.Identity.IAuditService>();
+        foreach (var sandboxId in ids)
+        {
+            try
+            {
+                await sandboxService.DeleteAsync(sandboxId, ct);
+                logger.LogInformation(
+                    "start-task {TaskId} orphan cleanup removed sandbox "
+                    + "{SandboxId}", task.Id, sandboxId);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(ex,
+                    "start-task {TaskId} orphan cleanup failed for "
+                    + "sandbox {SandboxId}", task.Id, sandboxId);
+                try
+                {
+                    if (audit is not null)
+                    {
+                        await audit.RecordAsync(
+                            "starttask.orphan_cleanup_failed",
+                            orgId: orgId,
+                            targetType: "start_task",
+                            targetId: task.Id.ToString(),
+                            metadata: new
+                            {
+                                sandbox_id = sandboxId,
+                                conversation_id = conversationId,
+                                error = ex.Message[..Math.Min(
+                                    200, ex.Message.Length)],
+                            },
+                            cancellationToken: CancellationToken.None);
+                    }
+                }
+                catch (Exception auditEx)
+                    when (auditEx is not OperationCanceledException)
+                {
+                    logger.LogWarning(auditEx,
+                        "starttask.orphan_cleanup_failed audit failed");
+                }
             }
         }
     }
@@ -60,6 +231,23 @@ public sealed class ConversationStartWorker(
             return;
         }
 
+        // Claim atômico Working→WaitingForSandbox (#434): o reconcile de
+        // boot pode re-enfileirar uma task que outra réplica também
+        // enxergou no banco (fila in-process por nó) — só o primeiro
+        // claim provisiona; os demais saem sem tocar em sandbox/plano.
+        var claimed = await db.StartTasks
+            .Where(t => t.Id == taskId
+                && t.Status == nameof(StartTaskStatus.Working))
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(t => t.Status,
+                    nameof(StartTaskStatus.WaitingForSandbox))
+                .SetProperty(t => t.UpdatedAt, DateTimeOffset.UtcNow), ct);
+        if (claimed == 0)
+        {
+            return;
+        }
+        task.Status = nameof(StartTaskStatus.WaitingForSandbox);
+
         // SPEC-20 RF-003: enforcement de plano antes de criar o sandbox —
         // concurrent runs, tokens/mês e sandbox-seconds/mês.
         var planError = await scope.ServiceProvider
@@ -74,8 +262,6 @@ public sealed class ConversationStartWorker(
                 + $" ({planError.Used}/{planError.Limit})", ct);
             return;
         }
-
-        await AdvanceAsync(db, task, StartTaskStatus.WaitingForSandbox, ct);
 
         var sandbox = await sandboxService.StartAsync(
             Guid.Empty /* default spec */, conv.Id, ct);

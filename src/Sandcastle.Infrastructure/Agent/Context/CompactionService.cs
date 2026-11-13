@@ -43,7 +43,11 @@ public sealed class CompactionService(
             conv.LlmModel ?? options.Value.Model,
             onCompacting: start => EmitRequestAsync(
                 conversationId, start, instructions),
-            ct);
+            ct,
+            // SPEC-149: org da conversa no ctx — a role summarizer
+            // resolve sob as routing_rules da org (#434).
+            new LlmRouteContext(conversationId, conv.OrgId,
+                conv.CreatedByUserId));
         if (!result.Compacted)
         {
             return false;

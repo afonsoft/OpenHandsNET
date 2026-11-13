@@ -51,7 +51,8 @@ public sealed class SmartPermissionJudge(
 
     /// <inheritdoc />
     public async Task<SecurityRisk> AnalyzeAsync(
-        string toolName, JsonElement action, CancellationToken ct)
+        string toolName, JsonElement action, CancellationToken ct,
+        LlmRouteContext? routeCtx = null)
     {
         var payload = action.GetRawText();
         var haystack = toolName + " " + payload;
@@ -78,11 +79,12 @@ public sealed class SmartPermissionJudge(
                     + $"arguments={payload}\n</untrusted_{nonce}>"
                 : FallbackInlinePrompt + haystack;
             var text = new StringBuilder();
-            // SPEC-149: juiz é a role critic — passa pelo choke point
-            // (sem org ctx aqui; rules engajam quando disponíveis).
+            // SPEC-149: juiz é a role critic — passa pelo choke point;
+            // routeCtx traz o org do run para as routing_rules da org
+            // engajarem; null = org-less (só candidatos globais).
             var model = router is null ? null
                 : (await router.ResolveAsync(LlmRole.Critic,
-                    new LlmRouteContext(), ct))?.Model;
+                    routeCtx ?? new LlmRouteContext(), ct))?.Model;
             await foreach (var chunk in llm.ChatStreamAsync(
                 [LlmMessage.User(prompt)], [],
                 new LlmOptions(Model: model, MaxTokens: 128,

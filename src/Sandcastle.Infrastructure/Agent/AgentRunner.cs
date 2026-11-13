@@ -554,7 +554,9 @@ public sealed class AgentRunner(
                 st.History, st.Ids, s.Trigger, st.Model,
                 cs => Context.CompactionService.EmitRequestAsync(
                     st.Events, conversationId, cs, pendingInstructions, ct),
-                ct);
+                ct,
+                new LlmRouteContext(conversationId, st.Conv.OrgId,
+                    st.Conv.CreatedByUserId));
             if (condensed.Compacted)
             {
                 var condensation = await Context.CompactionService
@@ -1183,7 +1185,11 @@ public sealed class AgentRunner(
     {
         var risk = st.Security is null || actionEvent.Action is not { } act
             ? SecurityRisk.Low
-            : await st.Security.AnalyzeAsync(call.Name, act, ct);
+            // SPEC-149: org do run no ctx — analyzers LLM resolvem a
+            // role critic sob as routing_rules da org (#434).
+            : await st.Security.AnalyzeAsync(call.Name, act, ct,
+                new LlmRouteContext(conversationId, st.Conv.OrgId,
+                    st.Conv.CreatedByUserId));
         if (risk < SecurityRisk.Medium)
         {
             return risk;
@@ -1364,7 +1370,9 @@ public sealed class AgentRunner(
             var ctx = new ToolCallContext(conversationId, st.Sandbox,
                 st.Executor, st.Events, st.Services,
                 TimeSpan.FromSeconds(st.Opt.ToolTimeoutSeconds),
-                call.Id, actionEvent.Id);
+                call.Id, actionEvent.Id,
+                new LlmRouteContext(conversationId, st.Conv.OrgId,
+                    st.Conv.CreatedByUserId));
             st.Activity.NoteToolCall(call.Name, call.ArgumentsJson);
             var result = await tool.Handler(ctx,
                 TryParseJson(call.ArgumentsJson)
@@ -1403,7 +1411,9 @@ public sealed class AgentRunner(
         var midResult = await st.Condenser.CondenseAsync(
             st.History, st.Ids, CompactionTrigger.MidTurn, st.Model,
             cs => Context.CompactionService.EmitRequestAsync(
-                st.Events, conversationId, cs, null, ct), ct);
+                st.Events, conversationId, cs, null, ct), ct,
+            new LlmRouteContext(conversationId, st.Conv.OrgId,
+                st.Conv.CreatedByUserId));
         if (!midResult.Compacted)
         {
             return;
@@ -2052,7 +2062,12 @@ public sealed class AgentRunner(
                         Microsoft.Extensions.Caching.Memory.IMemoryCache>();
                     if (llmProvider is not null && mem is not null)
                     {
-                        return new Security.LlmSecurityAnalyzer(llmProvider, mem);
+                        // SPEC-149: router no analyzer por-run — a role
+                        // critic resolve com o org ctx que o caller passa
+                        // em routeCtx (#434).
+                        return new Security.LlmSecurityAnalyzer(
+                            llmProvider, mem,
+                            services.GetService<IModelRouter>());
                     }
 
                     await events.AppendAsync(conversationId,

@@ -91,7 +91,9 @@ public interface ICondenser
     /// Executes a compaction for <paramref name="trigger"/> (from
     /// <see cref="EvaluateAsync"/> or a forced trigger). When summarization
     /// starts, <paramref name="onCompacting"/> fires first so the runner can
-    /// emit <c>CondensationRequest</c>.
+    /// emit <c>CondensationRequest</c>. <paramref name="routeCtx"/> carries
+    /// the run's org/user so the <c>summarizer</c> role resolves under the
+    /// org routing rules (SPEC-149); null = org-less (global only).
     /// </summary>
     Task<CondenseResult> CondenseAsync(
         IReadOnlyList<LlmMessage> messages,
@@ -99,5 +101,6 @@ public interface ICondenser
         CompactionTrigger trigger,
         string? model,
         Func<CompactionStart, Task>? onCompacting,
-        CancellationToken ct);
+        CancellationToken ct,
+        LlmRouteContext? routeCtx = null);
 }
