@@ -1,0 +1,305 @@
+@page "/reviews/{Id:guid}"
+@using Sandcastle.Client.Services
+@inject SandcastleApiClient Api
+@inject LocalizationService L
+@inject ToastService Toasts
+@implements IDisposable
+
+<PageTitle>@L["reviews.detail_title"] — Sandcastle</PageTitle>
+
+@if (_detail is null)
+{
+    <p><em>@L["common.loading"]</em></p>
+}
+else
+{
+    var run = _detail.Run;
+    <h2>@run.Repository <span class="sub">#@run.PrNumber</span></h2>
+    <p class="sub">
+        <span class="badge @ReviewsPage.StatusClass(run.Status)">
+            @run.Status</span>
+        @if (run.Partial)
+        {
+            <span class="badge idle">@L["reviews.partial"]</span>
+        }
+        <code>@ReviewsPage.ShortSha(run.HeadSha)</code>
+        @run.Trigger —
+        @run.CreatedAt.LocalDateTime.ToString("g")
+        @if (ProviderUrl is { } url)
+        {
+            <a href="@url" target="_blank" rel="noopener">
+                @L["reviews.open_provider"]</a>
+        }
+    </p>
+    @if (run.Error is not null)
+    {
+        <p class="text-danger">@run.Error</p>
+    }
+
+    @* #435: filtros client-side (findings vêm todos no detalhe) +
+       seleção p/ triagem em lote via PATCH individual. *@
+    <div class="rev-toolbar">
+        <select aria-label="@L["reviews.filter_severity"]" @bind="_severity">
+            <option value="">@L["reviews.severity_all"]</option>
+            <option value="critical">critical</option>
+            <option value="important">important</option>
+            <option value="suggestion">suggestion</option>
+            <option value="nit">nit</option>
+        </select>
+        <select aria-label="@L["reviews.filter_status"]" @bind="_status"
+                disabled="@_staleOnly">
+            <option value="">@L["reviews.status_all"]</option>
+            <option value="open">@L["reviews.finding_open"]</option>
+            <option value="fixed">@L["reviews.finding_fixed"]</option>
+            <option value="dismissed">@L["reviews.finding_dismissed"]</option>
+            <option value="stale">@L["reviews.finding_stale"]</option>
+        </select>
+        <label class="rev-stale">
+            <input type="checkbox" @bind="_staleOnly" />
+            @L["reviews.stale_only"]
+        </label>
+        <button @onclick="DismissBulkAsync"
+                disabled="@(_selected.Count == 0 || _busy)">
+            @L.T("reviews.dismiss_selected", ("n", _selected.Count.ToString()))
+        </button>
+        <button @onclick="ReopenBulkAsync"
+                disabled="@(_selected.Count == 0 || _busy)">
+            @L.T("reviews.reopen_selected", ("n", _selected.Count.ToString()))
+        </button>
+    </div>
+
+    @if (Groups().Count == 0)
+    {
+        <p class="sub">@L["reviews.no_findings"]</p>
+    }
+    else
+    {
+        @foreach (var group in Groups())
+        {
+            <h3 class="rev-file"><code>@group.Key</code> (@group.Count())</h3>
+            <ul class="rev-findings">
+                @foreach (var f in group)
+                {
+                    <li class="rev-finding @(f.Status == "stale" ? "stale" : "")">
+                        <div class="rev-finding-head">
+                            <input type="checkbox"
+                                   checked="@_selected.Contains(f.Id)"
+                                   aria-label="@L["reviews.select_finding"]"
+                                   @onchange="e => Toggle(f.Id, e)" />
+                            <span class="badge @SeverityClass(f.Severity)">
+                                @SeverityEmoji(f.Severity) @f.Severity</span>
+                            <span class="badge idle">@f.Kind</span>
+                            @if (f.Title is not null)
+                            {
+                                <strong>@f.Title</strong>
+                            }
+                            @if (f.CommentUrl is { } commentUrl)
+                            {
+                                <a href="@commentUrl" target="_blank"
+                                   rel="noopener"><code>@Location(f)</code></a>
+                            }
+                            else
+                            {
+                                <code>@Location(f)</code>
+                            }
+                            <span class="badge @StatusBadge(f.Status)">
+                                @f.Status</span>
+                        </div>
+                        <p class="sub">@f.Body</p>
+                        @if (f.SuggestedPatch is not null)
+                        {
+                            <details class="rev-suggestion">
+                                <summary>@L["reviews.suggested_patch"]</summary>
+                                <pre><code>@f.SuggestedPatch</code></pre>
+                            </details>
+                        }
+                        <div class="rev-finding-actions">
+                            @if (f.Status == "open")
+                            {
+                                <button
+                                    @onclick='() => TriageAsync(f, "dismissed")'
+                                    disabled="@_busy">
+                                    @L["reviews.mark_dismissed"]</button>
+                            }
+                            else if (f.Status is "dismissed" or "stale")
+                            {
+                                <button
+                                    @onclick='() => TriageAsync(f, "open")'
+                                    disabled="@_busy">
+                                    @L["reviews.mark_open"]</button>
+                            }
+                            @if (f.CommentUrl is not null)
+                            {
+                                <a href="@f.CommentUrl" target="_blank"
+                                   rel="noopener">
+                                    @L["reviews.view_comment"]</a>
+                            }
+                        </div>
+                    </li>
+                }
+            </ul>
+        }
+    }
+}
+
+@code {
+    /// <summary>Review run id da rota.</summary>
+    [Parameter] public Guid Id { get; set; }
+
+    private ReviewDetailDto? _detail;
+    private readonly HashSet<Guid> _selected = [];
+    private string _severity = "";
+    private string _status = "";
+    private bool _staleOnly;
+    private bool _busy;
+    private CancellationTokenSource _poll = new();
+
+    /// <summary>Permalink do review postado no provider (1º com url).</summary>
+    private string? ProviderUrl => _detail?.Findings
+        .FirstOrDefault(f => f.CommentUrl is not null)?.CommentUrl;
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        _detail = await Api.GetReviewAsync(Id);
+        _ = PollWhileRunningAsync();
+    }
+
+    /// <summary>Re-lê o run até terminal (findings chegam no fim).</summary>
+    private async Task PollWhileRunningAsync()
+    {
+        while (_detail is { Run.Status: "queued" or "running" }
+            && !_poll.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(4), _poll.Token);
+                _detail = await Api.GetReviewAsync(Id, _poll.Token)
+                    ?? _detail;
+                await InvokeAsync(StateHasChanged);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception)
+            {
+                return; // poll best-effort
+            }
+        }
+    }
+
+    /// <summary>Findings visíveis (severity/status/stale — client-side).</summary>
+    private IEnumerable<ReviewFindingDto> Visible() =>
+        (_detail?.Findings ?? (IReadOnlyList<ReviewFindingDto>)[])
+            .Where(f => _severity == "" || f.Severity == _severity)
+            .Where(f => _staleOnly
+                ? f.Status == "stale"
+                : _status == "" || f.Status == _status);
+
+    /// <summary>Agrupa por arquivo (ordem: path, depois severity+line).</summary>
+    private List<IGrouping<string, ReviewFindingDto>> Groups() => Visible()
+        .GroupBy(f => f.Path)
+        .OrderBy(g => g.Key, StringComparer.Ordinal)
+        .ToList();
+
+    private static string Location(ReviewFindingDto f) =>
+        f.Line is { } line ? $"{f.Path}:L{line}" : f.Path;
+
+    private void Toggle(Guid id, ChangeEventArgs e)
+    {
+        if (e.Value is true)
+        {
+            _selected.Add(id);
+        }
+        else
+        {
+            _selected.Remove(id);
+        }
+    }
+
+    private async Task TriageAsync(ReviewFindingDto f, string status)
+    {
+        var updated = await Api.PatchReviewFindingAsync(
+            f.ReviewRunId, f.Id, status);
+        if (updated is null)
+        {
+            Toasts.Error(L["reviews.triage_failed"]);
+            return;
+        }
+        if (_detail is not null)
+        {
+            var findings = _detail.Findings.ToList();
+            var i = findings.FindIndex(x => x.Id == f.Id);
+            if (i >= 0)
+            {
+                findings[i] = updated;
+                _detail = _detail with { Findings = findings };
+            }
+        }
+    }
+
+    /// <summary>Triagem em lote — PATCH por finding selecionado.</summary>
+    private async Task BulkAsync(string status)
+    {
+        _busy = true;
+        try
+        {
+            var failed = 0;
+            foreach (var id in _selected.ToList())
+            {
+                var updated = await Api.PatchReviewFindingAsync(
+                    Id, id, status);
+                if (updated is null)
+                {
+                    failed++;
+                }
+            }
+            if (failed > 0)
+            {
+                Toasts.Warn(L.T("reviews.triage_partial",
+                    ("n", failed.ToString())));
+            }
+            _selected.Clear();
+            _detail = await Api.GetReviewAsync(Id) ?? _detail;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private Task DismissBulkAsync() => BulkAsync("dismissed");
+
+    private Task ReopenBulkAsync() => BulkAsync("open");
+
+    internal static string SeverityClass(string severity) => severity switch
+    {
+        "critical" => "error",
+        "important" => "working",
+        _ => "idle",
+    };
+
+    /// <summary>Mesmos emojis do comentário postado (SPEC-140 RF-003).</summary>
+    internal static string SeverityEmoji(string severity) => severity switch
+    {
+        "critical" => "🔴",
+        "important" => "🟠",
+        "nit" => "🟢",
+        _ => "🟡",
+    };
+
+    internal static string StatusBadge(string status) => status switch
+    {
+        "open" => "working",
+        "fixed" => "finished",
+        _ => "idle",
+    };
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        _poll.Cancel();
+        _poll.Dispose();
+    }
+}

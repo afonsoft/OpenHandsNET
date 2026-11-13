@@ -125,6 +125,13 @@
                 <Icon Name="git-branch" Size="16" />
                 <span class="txt">@L["sidebar.refactors"]</span>
             </a>
+            @* #435: PR reviews — findings triáveis do auto-review
+               (SPEC-140 deferral). *@
+            <a class="sb-item @(IsActive("/reviews") ? "active" : "")"
+               href="/reviews" title="@L["sidebar.reviews"]">
+                <Icon Name="git-pull-request" Size="16" />
+                <span class="txt">@L["sidebar.reviews"]</span>
+            </a>
             <div class="sb-label">@L["sidebar.general"]</div>
             <a class="sb-item @(IsActive("/automations") ? "active" : "")"
                href="/automations" title="@L["sidebar.automations"]">

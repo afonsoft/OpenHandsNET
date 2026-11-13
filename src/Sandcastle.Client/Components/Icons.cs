@@ -78,6 +78,8 @@ public static class Icons
             ["link-external"] = "<path d='M14 4h6v6M20 4 11 13M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6'/>",
             // SPEC-148 RF-004: marketplace — catálogo de extensões.
             ["package"] = "<path d='m7.5 4.27 9 5.15'/><path d='M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73l-7 4'/><path d='m3.3 7 8.7 5 8.7-5'/><path d='M12 22V12'/>",
+            // #435: reviews — PR auto-review (SPEC-140).
+            ["git-pull-request"] = "<circle cx='6' cy='6' r='2.5'/><circle cx='6' cy='18' r='2.5'/><circle cx='18' cy='18' r='2.5'/><path d='M6 8.5v7'/><path d='M18 15.5V9.8a2.8 2.8 0 0 0-2.8-2.8H9'/>",
         };
 
     /// <summary>Inner markup do ícone ou fallback <c>info</c>.</summary>
